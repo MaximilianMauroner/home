@@ -1,5 +1,6 @@
 import { component$, useSignal } from "@builder.io/qwik";
 import { Link } from "@builder.io/qwik-city";
+import { it } from "node:test";
 
 function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(" ");
@@ -25,6 +26,11 @@ const links = [
         name: "GitHub",
         href: "https://github.com/maximilianMauroner/",
         icon: "github-mark-white.svg",
+    },
+    {
+        name: "Twitter",
+        href: "https://twitter.com/MaxiMauroner/",
+        icon: "twitter-blue.svg",
     },
 ];
 
@@ -105,9 +111,13 @@ const Header = component$(() => {
                                 </div>
                             </div>
                         </div>
-                        <div class="flex flex-1 items-center justify-center sm:items-stretch sm:justify-end">
+                        <div class="flex flex-1 items-center justify-center space-x-4 sm:items-stretch sm:justify-end">
                             {links.map((item) => (
-                                <Link href={item.href} target="_blank">
+                                <Link
+                                    href={item.href}
+                                    target="_blank"
+                                    key={item.name}
+                                >
                                     <img
                                         class={"h-8 w-8"}
                                         src={item.icon}
