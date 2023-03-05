@@ -1,5 +1,5 @@
 import { component$, useSignal } from "@builder.io/qwik";
-import { Link } from "@builder.io/qwik-city";
+import { Link, useLocation } from "@builder.io/qwik-city";
 
 function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(" ");
@@ -13,10 +13,10 @@ const navigation = [
     },
     {
         name: "Projects",
-        href: "/projects",
+        href: "/projects/",
         current: false,
     },
-    { name: "Next Projects", href: "/next-projects", current: false },
+    { name: "Next Projects", href: "/next-projects/", current: false },
     // { name: "Contact", href: "/contact", current: false },
 ];
 
@@ -34,6 +34,15 @@ const links = [
 ];
 
 const Header = component$(() => {
+    const navigate = useLocation();
+    for (const navItem of navigation) {
+        if (navItem.href === navigate.url.pathname) {
+            navItem.current = true;
+        } else {
+            navItem.current = false;
+        }
+    }
+
     const menuOpen = useSignal(false);
     return (
         <>
