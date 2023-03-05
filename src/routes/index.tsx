@@ -50,8 +50,8 @@ export default component$(() => {
                             href="http://www.mauroner.eu/"
                             name="This Website"
                         />
-                        . For more info check the projects on GitHub or message
-                        send me a message Twitter
+                        . For more info check the projects on GitHub or send me
+                        a message Twitter
                     </span>
                 </div>
             </div>
@@ -84,7 +84,12 @@ const TechStackItem = component$(
         const linearGradient = getLinearGradient();
         return (
             <>
-                <Link href={href} class={"inline-block"} title={name}>
+                <Link
+                    href={href}
+                    target="_blank"
+                    class={"inline-block"}
+                    title={name}
+                >
                     <span
                         style={{
                             background: `linear-gradient( to right,${linearGradient.start},  ${linearGradient.middle}, ${linearGradient.end},${linearGradient.start})`,
