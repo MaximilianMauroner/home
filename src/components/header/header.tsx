@@ -24,12 +24,12 @@ const links = [
     {
         name: "GitHub",
         href: "https://github.com/maximilianMauroner/",
-        icon: "github-mark-white.svg",
+        icon: "/github-mark-white.svg",
     },
     {
         name: "Twitter",
         href: "https://twitter.com/MaxiMauroner/",
-        icon: "twitter-blue.svg",
+        icon: "/twitter-blue.svg",
     },
 ];
 
