@@ -8,9 +8,9 @@ import dayjs from "dayjs";
 
 export default component$(() => {
     return (
-        <>
+        <div class={""}>
             <AgeCalculator />
-        </>
+        </div>
     );
 });
 

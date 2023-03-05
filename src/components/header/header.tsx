@@ -1,20 +1,14 @@
 import { component$, useSignal } from "@builder.io/qwik";
 import { Link } from "@builder.io/qwik-city";
 
-type LinkType = {
-    name: string;
-    href: string;
-    current: boolean;
-};
-
 function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(" ");
 }
 
-const navigation: LinkType[] = [
+const navigation = [
     {
         name: "Who am I",
-        href: "/whoami",
+        href: "/",
         current: true,
     },
     {
@@ -26,12 +20,20 @@ const navigation: LinkType[] = [
     { name: "Contact", href: "/contact", current: false },
 ];
 
+const links = [
+    {
+        name: "GitHub",
+        href: "https://github.com/maximilianMauroner/",
+        icon: "github-mark-white.svg",
+    },
+];
+
 const Header = component$(() => {
     const menuOpen = useSignal(false);
     return (
         <>
             <nav class="bg-gray-800">
-                <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
+                <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8 ">
                     <div class="relative flex h-16 items-center justify-between">
                         <div class="absolute inset-y-0 left-0 flex items-center sm:hidden">
                             {/* <!-- Mobile menu button--> */}
@@ -78,20 +80,8 @@ const Header = component$(() => {
                                 )}
                             </button>
                         </div>
-                        <div class="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
-                            <div class="flex flex-shrink-0 items-center">
-                                <img
-                                    class="block h-8 w-auto lg:hidden"
-                                    src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
-                                    alt="Your Company"
-                                />
-                                <img
-                                    class="hidden h-8 w-auto lg:block"
-                                    src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
-                                    alt="Your Company"
-                                />
-                            </div>
-                            <div class="hidden sm:ml-6 sm:block">
+                        <div class="hidden flex-1 items-center justify-center sm:flex sm:items-stretch sm:justify-start">
+                            <div class="sm:ml-6">
                                 <div class="flex space-x-4">
                                     {navigation.map((item) => (
                                         <a
@@ -114,6 +104,17 @@ const Header = component$(() => {
                                     ))}
                                 </div>
                             </div>
+                        </div>
+                        <div class="flex flex-1 items-center justify-center sm:items-stretch sm:justify-end">
+                            {links.map((item) => (
+                                <Link href={item.href} target="_blank">
+                                    <img
+                                        class={"h-8 w-8"}
+                                        src={item.icon}
+                                        alt={item.name}
+                                    />
+                                </Link>
+                            ))}
                         </div>
                     </div>
                 </div>
