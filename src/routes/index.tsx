@@ -50,8 +50,8 @@ export default component$(() => {
                             href="http://www.mauroner.eu/"
                             name="This Website"
                         />
-                        &nbsp;. For more info check the projects on GitHub or
-                        message send me a message Twitter
+                        . For more info check the projects on GitHub or message
+                        send me a message Twitter
                     </span>
                 </div>
             </div>
