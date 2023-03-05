@@ -5,7 +5,7 @@ import Header from "../components/header/header";
 export default component$(() => {
     return (
         <>
-            <main>
+            <main class={"h-full min-h-screen dark:bg-indigo-500"}>
                 <Header />
                 <section>
                     <Slot />

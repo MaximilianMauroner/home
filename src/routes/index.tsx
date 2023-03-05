@@ -8,7 +8,7 @@ import dayjs from "dayjs";
 
 export default component$(() => {
     return (
-        <div class={"h-full min-h-screen dark:bg-indigo-500"}>
+        <div>
             <div class={"flex flex-col items-center justify-center p-4"}>
                 <div class={"max-w-prose font-mono dark:text-white"}>
                     <span>
