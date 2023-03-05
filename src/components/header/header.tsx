@@ -95,28 +95,24 @@ const Header = component$(() => {
                             </button>
                         </div>
                         <div class="hidden flex-1 items-center justify-center sm:flex sm:items-stretch sm:justify-start">
-                            <div class="sm:ml-6">
-                                <div class="flex space-x-4">
-                                    {navigation.map((item) => (
-                                        <a
-                                            key={item.name}
-                                            href={item.href}
-                                            class={classNames(
-                                                item.current
-                                                    ? "bg-gray-900 text-white"
-                                                    : "text-gray-300 hover:bg-gray-700 hover:text-white",
-                                                "rounded-md px-3 py-2 text-sm font-medium"
-                                            )}
-                                            aria-current={
-                                                item.current
-                                                    ? "page"
-                                                    : undefined
-                                            }
-                                        >
-                                            {item.name}
-                                        </a>
-                                    ))}
-                                </div>
+                            <div class="flex space-x-4">
+                                {navigation.map((item) => (
+                                    <a
+                                        key={item.name}
+                                        href={item.href}
+                                        class={classNames(
+                                            item.current
+                                                ? "bg-gray-900 text-white"
+                                                : "text-gray-300 hover:bg-gray-700 hover:text-white",
+                                            "rounded-md border border-slate-500 border-white px-3 py-2 text-sm font-medium"
+                                        )}
+                                        aria-current={
+                                            item.current ? "page" : undefined
+                                        }
+                                    >
+                                        {item.name}
+                                    </a>
+                                ))}
                             </div>
                         </div>
                         <div class="flex flex-1 items-center justify-center space-x-4 sm:items-stretch sm:justify-end">

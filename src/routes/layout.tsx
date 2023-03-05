@@ -7,7 +7,7 @@ export default component$(() => {
         <>
             <main class={"h-full min-h-screen dark:bg-indigo-500"}>
                 <Header />
-                <section>
+                <section class={"mx-auto max-w-7xl px-2 sm:px-6 lg:px-8"}>
                     <Slot />
                 </section>
             </main>

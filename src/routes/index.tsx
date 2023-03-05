@@ -9,15 +9,15 @@ import dayjs from "dayjs";
 export default component$(() => {
     return (
         <div>
-            <div class={"flex flex-col items-center justify-center p-4"}>
+            <div class={"flex flex-col items-center justify-center py-4"}>
                 <span class="sr-only">
                     This page is intentionally ugly until it is done
                 </span>
                 <div class={"max-w-prose font-mono dark:text-white"}>
                     <span>
                         Hi, I'm Maximilian a <AgeCalculator /> year-old
-                        developer. I'm currently studying software engineering
-                        at the&nbsp;
+                        developer. Currently studying software engineering at
+                        the&nbsp;
                         <TechStackItem
                             href="https://tuwien.at/"
                             name="TU Wien"
