@@ -1,34 +1,44 @@
-import { component$, useStylesScoped$ } from '@builder.io/qwik';
-import { QwikLogo } from '../icons/qwik';
-import styles from './header.css?inline';
+import { component$ } from "@builder.io/qwik";
 
-export default component$(() => {
-  useStylesScoped$(styles);
+type LinkType = {
+    name: string;
+    url: string;
+};
 
-  return (
-    <header>
-      <div class="logo">
-        <a href="https://qwik.builder.io/" target="_blank" title="qwik">
-          <QwikLogo />
-        </a>
-      </div>
-      <ul>
-        <li>
-          <a href="https://qwik.builder.io/docs/components/overview/" target="_blank">
-            Docs
-          </a>
-        </li>
-        <li>
-          <a href="https://qwik.builder.io/examples/introduction/hello-world/" target="_blank">
-            Examples
-          </a>
-        </li>
-        <li>
-          <a href="https://qwik.builder.io/tutorial/welcome/overview/" target="_blank">
-            Tutorials
-          </a>
-        </li>
-      </ul>
-    </header>
-  );
+const projects: LinkType[] = [
+    {
+        name: "Who am I",
+        url: "/whoami",
+    },
+    {
+        name: "Projects",
+        url: "/projects",
+    },
+    { name: "Goals", url: "/goals" },
+    { name: "Contact", url: "/contact" },
+];
+const Header = component$(() => {
+    return (
+        <header>
+            <ul>
+                {projects.map((project: LinkType) => (
+                    <HeaderLinkItem project={project} />
+                ))}
+            </ul>
+        </header>
+    );
 });
+
+const HeaderLinkItem = component$(({ project }: { project: LinkType }) => {
+    return (
+        <>
+            <li>
+                <a href={project.url} target="_blank">
+                    {project.name}
+                </a>
+            </li>
+        </>
+    );
+});
+
+export default Header;
