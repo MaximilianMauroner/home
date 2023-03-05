@@ -10,22 +10,48 @@ export default component$(() => {
     return (
         <div>
             <div class={"flex flex-col items-center justify-center p-4"}>
+                <span class="sr-only">
+                    This page is intentionally ugly until it is done
+                </span>
                 <div class={"max-w-prose font-mono dark:text-white"}>
                     <span>
                         Hi, I'm Maximilian a <AgeCalculator /> year-old
                         developer. I'm currently studying software engineering
-                        at the
+                        at the&nbsp;
                         <TechStackItem
                             href="https://tuwien.at/"
                             name="TU Wien"
                         />
+                        <br />
                     </span>
                     <span class={"pt-3"}>
-                        I'm currently working on
+                        Am I'm working on&nbsp;
                         <TechStackItem
                             href="http://danger-radar.mauroner.eu/"
                             name="Danger Radar"
                         />
+                        ,&nbsp;
+                        <TechStackItem
+                            href="https://github.com/MaximilianMauroner/kochbuchweb/"
+                            name="Kochbuch"
+                        />
+                        ,&nbsp;
+                        <TechStackItem
+                            href="https://github.com/MaximilianMauroner/PersonalNotionManager/"
+                            name="Personal Notion Manager"
+                        />
+                        ,&nbsp;
+                        <TechStackItem
+                            href="https://github.com/MaximilianMauroner/PersonalNotionManager/"
+                            name="Audible Highlights Transcriber"
+                        />
+                        &nbsp;and&nbsp;
+                        <TechStackItem
+                            href="http://www.mauroner.eu/"
+                            name="This Website"
+                        />
+                        &nbsp;for more info check the projects on GitHub or
+                        message send me a message Twitter
                     </span>
                 </div>
             </div>
@@ -58,7 +84,6 @@ const TechStackItem = component$(
         const linearGradient = getLinearGradient();
         return (
             <>
-                &nbsp;
                 <Link href={href} class={"inline-block"} title={name}>
                     <span
                         style={{
@@ -82,7 +107,6 @@ const TechStackItem = component$(
                         ></span>
                     </span>
                 </Link>
-                &nbsp;
             </>
         );
     }
@@ -175,7 +199,6 @@ const getLinearGradient = () => {
             randomIndexes.push(randomIndex);
         }
     }
-
     return {
         start: colors[randomIndexes[0]],
         middle: colors[randomIndexes[1]],
