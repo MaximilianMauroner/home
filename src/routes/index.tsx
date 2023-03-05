@@ -25,7 +25,7 @@ export default component$(() => {
                         <br />
                     </span>
                     <span class={"pt-3"}>
-                        Am I'm working on&nbsp;
+                        And I'm working on&nbsp;
                         <TechStackItem
                             href="http://danger-radar.mauroner.eu/"
                             name="Danger Radar"
