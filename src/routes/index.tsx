@@ -59,7 +59,7 @@ const TechStackItem = component$(
         return (
             <>
                 &nbsp;
-                <Link href={href} class={"inline-block"}>
+                <Link href={href} class={"inline-block"} title={name}>
                     <span
                         style={{
                             background: `linear-gradient( to right,${linearGradient.start},  ${linearGradient.middle}, ${linearGradient.end},${linearGradient.start})`,

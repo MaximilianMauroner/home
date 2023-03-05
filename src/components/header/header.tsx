@@ -114,6 +114,7 @@ const Header = component$(() => {
                             {links.map((item) => (
                                 <Link
                                     href={item.href}
+                                    title={item.name}
                                     target="_blank"
                                     key={item.name}
                                 >
@@ -136,6 +137,7 @@ const Header = component$(() => {
                                 <Link
                                     key={item.name}
                                     href={item.href}
+                                    title={item.name}
                                     class={classNames(
                                         item.current
                                             ? "bg-gray-900 text-white"
