@@ -3,16 +3,30 @@ import {
     useBrowserVisibleTask$,
     useSignal,
 } from "@builder.io/qwik";
-import { DocumentHead, Link } from "@builder.io/qwik-city";
+import { type DocumentHead, Link } from "@builder.io/qwik-city";
 import dayjs from "dayjs";
 
 export default component$(() => {
     return (
         <div class={"h-full min-h-screen dark:bg-indigo-500"}>
-            <div class={"flex flex-col items-center justify-center"}>
-                <AgeCalculator />
-                <div>
-                    <TechStackItem name="Test" href="Test" />
+            <div class={"flex flex-col items-center justify-center p-4"}>
+                <div class={"max-w-prose font-mono dark:text-white"}>
+                    <span>
+                        Hi, I'm Maximilian a <AgeCalculator /> year-old
+                        developer. I'm currently studying software engineering
+                        at the
+                        <TechStackItem
+                            href="https://tuwien.at/"
+                            name="TU Wien"
+                        />
+                    </span>
+                    <span class={"pt-3"}>
+                        I'm currently working on
+                        <TechStackItem
+                            href="http://danger-radar.mauroner.eu/"
+                            name="Danger Radar"
+                        />
+                    </span>
                 </div>
             </div>
         </div>
@@ -36,44 +50,40 @@ const AgeCalculator = component$(() => {
         return () => clearInterval(interval);
     });
 
-    return (
-        <>
-            <span class={"font-mono dark:text-white"}>
-                Hi, I'm Maximilian and <br /> I'm a {age.value} year-old
-                developer. I'm currently studying software engineering at the{" "}
-                <TechStackItem href="https://tuwien.at/" name="TU Wien" />
-            </span>
-        </>
-    );
+    return <>{age.value}</>;
 });
 
 const TechStackItem = component$(
     ({ name, href }: { name: string; href: string }) => {
         const linearGradient = getLinearGradient();
         return (
-            <Link href={href} class={"inline-block"}>
-                <span
-                    style={{
-                        background: `linear-gradient( to right,${linearGradient.start},  ${linearGradient.middle}, ${linearGradient.end},${linearGradient.start})`,
-                        "background-size": "200%",
-                        "-webkit-background-clip": "text",
-                        "-webkit-text-fill-color": "transparent",
-                    }}
-                    class="group animate-pan whitespace-nowrap bg-clip-text text-xl font-extrabold"
-                >
-                    {name}
-                    {/* animation also stolen and modified from https://ottomated.net/ */}
+            <>
+                &nbsp;
+                <Link href={href} class={"inline-block"}>
                     <span
                         style={{
                             background: `linear-gradient( to right,${linearGradient.start},  ${linearGradient.middle}, ${linearGradient.end},${linearGradient.start})`,
                             "background-size": "200%",
+                            "-webkit-background-clip": "text",
+                            "-webkit-text-fill-color": "transparent",
                         }}
-                        class={
-                            "mx-auto block h-1 w-0 animate-pan rounded-3xl group-hover:w-full group-hover:animate-pan-underline"
-                        }
-                    ></span>
-                </span>
-            </Link>
+                        class="group animate-pan whitespace-nowrap bg-clip-text text-lg font-extrabold"
+                    >
+                        {name}
+                        {/* animation also stolen and modified from https://ottomated.net/ */}
+                        <span
+                            style={{
+                                background: `linear-gradient( to right,${linearGradient.start},  ${linearGradient.middle}, ${linearGradient.end},${linearGradient.start})`,
+                                "background-size": "200%",
+                            }}
+                            class={
+                                "mx-auto block h-0.5 w-0 animate-pan rounded-3xl group-hover:w-full group-hover:animate-pan-underline"
+                            }
+                        ></span>
+                    </span>
+                </Link>
+                &nbsp;
+            </>
         );
     }
 );
