@@ -16,8 +16,8 @@ const navigation = [
         href: "/projects",
         current: false,
     },
-    { name: "Goals", href: "/goals", current: false },
-    { name: "Contact", href: "/contact", current: false },
+    { name: "Next Projects", href: "/next-projects", current: false },
+    // { name: "Contact", href: "/contact", current: false },
 ];
 
 const links = [
