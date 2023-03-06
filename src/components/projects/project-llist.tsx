@@ -1,4 +1,4 @@
-import { component$ } from "@builder.io/qwik";
+import { $, component$, useOn, useSignal } from "@builder.io/qwik";
 import { Link } from "@builder.io/qwik-city";
 
 type Project = {
@@ -8,6 +8,7 @@ type Project = {
     github: string;
     website: string;
     technologies: string[];
+    images: { primary: string; secondary: string; tertiary: string };
     progress: number;
 };
 const projects: Project[] = [
@@ -27,6 +28,11 @@ const projects: Project[] = [
             "tRPC",
             "Prisma",
         ],
+        images: {
+            primary: "/danger-radar-first.jpg",
+            secondary: "/danger-radar-second.jpg",
+            tertiary: "/danger-radar-third.jpg",
+        },
         progress: 0.5,
     },
 ];
@@ -60,24 +66,7 @@ const SingleProject = component$(({ project }: { project: Project }) => {
                         </p>
                     </div>
                     <div class="col-start-1 col-end-3 row-start-1 grid gap-4 sm:mb-6 sm:grid-cols-4 lg:col-start-2 lg:row-span-6 lg:row-end-6 lg:mb-0 lg:gap-6">
-                        <img
-                            src="/danger-radar-first.jpg"
-                            alt=""
-                            class="h-60 w-full rounded-lg object-cover sm:col-span-2 sm:h-52 lg:col-span-full"
-                            loading="lazy"
-                        />
-                        <img
-                            src="/danger-radar-second.jpg"
-                            alt=""
-                            class="hidden h-52 w-full rounded-lg object-cover sm:col-span-2 sm:block md:col-span-1 lg:col-span-2 lg:row-start-2 lg:h-32"
-                            loading="lazy"
-                        />
-                        <img
-                            src="/danger-radar-third.jpg"
-                            alt=""
-                            class="hidden h-52 w-full rounded-lg object-cover md:block lg:col-span-2 lg:row-start-2 lg:h-32"
-                            loading="lazy"
-                        />
+                        <ProjectImages project={project} />
                     </div>
                     <div class="row-start-2 mt-4 flex flex-col justify-center space-y-2 text-xs font-medium sm:row-start-3 sm:mt-1 md:mt-2.5 lg:row-start-2">
                         <span class="sr-only">Progress</span>
@@ -164,4 +153,74 @@ const SingleProject = component$(({ project }: { project: Project }) => {
     );
 });
 
+const ProjectImages = component$(({ project }: { project: Project }) => {
+    return (
+        <>
+            <SingleImage
+                src={project.images.primary}
+                alt=""
+                imageClasses="h-60 w-full  object-cover sm:h-52"
+                spacingClasses="rounded-lg sm:col-span-2 lg:col-span-full"
+            />
+            <SingleImage
+                src={project.images.secondary}
+                alt=""
+                imageClasses="h-52 w-full  object-cover lg:h-32"
+                spacingClasses="rounded-lg hidden sm:col-span-2 sm:block md:col-span-1 lg:col-span-2 lg:row-start-2 lg:h-32"
+            />
+            <SingleImage
+                src={project.images.tertiary}
+                alt=""
+                imageClasses="h-52 w-full  object-cover lg:h-32"
+                spacingClasses="rounded-lg hidden md:block lg:col-span-2 lg:row-start-2"
+            />
+        </>
+    );
+});
+
+const SingleImage = component$(
+    ({
+        src,
+        alt,
+        imageClasses,
+        spacingClasses,
+    }: {
+        src: string;
+        alt: string;
+        imageClasses: string;
+        spacingClasses: string;
+    }) => {
+        const figureRef = useSignal<HTMLElement>();
+        useOn(
+            "mousemove",
+            $((e: any) => {
+                if (figureRef.value) {
+                    const zoomer = figureRef.value;
+                    const offsetX = e.offsetX ? e.offsetX : e.touches[0].pageX;
+                    const offsetY = e.offsetY ? e.offsetY : e.touches[0].pageX;
+                    const x = (offsetX / zoomer.offsetWidth) * 100;
+                    const y = (offsetY / zoomer.offsetHeight) * 100;
+                    zoomer.style.backgroundPosition = ` ${x}%  ${y}%`;
+                }
+            })
+        );
+        return (
+            <div class={`${spacingClasses} overflow-hidden`}>
+                <figure
+                    ref={figureRef}
+                    style={{
+                        "background-image": `url(${src})`,
+                    }}
+                >
+                    <img
+                        src={src}
+                        alt={alt}
+                        class={`${imageClasses} bg-center hover:opacity-0`}
+                        loading="lazy"
+                    />
+                </figure>
+            </div>
+        );
+    }
+);
 export default ProjectList;

@@ -1,10 +1,10 @@
 import { component$ } from "@builder.io/qwik";
-import { DocumentHead } from "@builder.io/qwik-city";
+import { type DocumentHead } from "@builder.io/qwik-city";
 import ProjectList from "~/components/projects/project-llist";
 
 const Projects = component$(() => {
     return (
-        <div class={"m-4"}>
+        <div class={"mt-4"}>
             <ProjectList />
         </div>
     );
