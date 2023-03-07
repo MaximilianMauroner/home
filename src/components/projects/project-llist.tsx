@@ -1,5 +1,6 @@
 import { $, component$, useOn, useSignal } from "@builder.io/qwik";
 import { Link } from "@builder.io/qwik-city";
+import { default as projects } from "~/data/projects.json";
 
 type Project = {
     name: string;
@@ -11,43 +12,14 @@ type Project = {
     images: { primary: string; secondary: string; tertiary: string };
     progress: number;
 };
-const projects: Project[] = [
-    {
-        name: "Danger Radar",
-        contributors: [
-            {
-                name: "Maximilian Mauroner",
-                href: "https://github.com/MaximilianMauroner",
-            },
-        ],
-        description: "A web app to show the danger of a location",
-        github: "https://github.com/MaximilianMauroner/danger-radar/",
-        website: "https://danger-radar.mauroner.eu/",
-        technologies: [
-            { name: "React", href: "https://reactjs.org/" },
-            { name: "TypeScript", href: "https://www.typescriptlang.org/" },
-            { name: "Leaflet", href: "https://leafletjs.com/" },
-            { name: "Vercel", href: "https://vercel.com/" },
-            { name: "Pusher", href: "https://pusher.com/" },
-            { name: "Next-Auth", href: "https://next-auth.js.org/" },
-            { name: "tRPC", href: "https://trpc.io/" },
-            { name: "Prisma", href: "https://www.prisma.io/" },
-        ],
-        images: {
-            primary: "/danger-radar/danger-radar-first.jpg",
-            secondary: "/danger-radar/danger-radar-second.jpg",
-            tertiary: "/danger-radar/danger-radar-third.jpg",
-        },
-        progress: 0.5,
-    },
-];
+
 const ProjectList = component$(() => {
     return (
-        <>
+        <div class={"my-4 flex flex-col space-y-4"}>
             {projects.map((project) => (
                 <SingleProject project={project} />
             ))}
-        </>
+        </div>
     );
 });
 
@@ -249,6 +221,7 @@ const SingleImage = component$(
                 isFullScreen.value = !isFullScreen.value;
             })
         );
+        useOn;
         return (
             <>
                 {isFullScreen.value && (

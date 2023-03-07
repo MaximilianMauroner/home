@@ -1,6 +1,7 @@
 import { component$, Slot } from "@builder.io/qwik";
+import Footer from "~/components/footer";
 
-import Header from "../components/header/header";
+import Header from "../components/header";
 
 export default component$(() => {
     return (
@@ -15,12 +16,7 @@ export default component$(() => {
                     <Slot />
                 </section>
             </main>
-            <footer class={"bg-indigo-900 p-4 text-white"}>
-                {/* contact me via email */}
-                <a href="mailto:homepage@relay.mauroner.eu">
-                    <span class="">Email</span>
-                </a>
-            </footer>
+            <Footer />
         </body>
     );
 });

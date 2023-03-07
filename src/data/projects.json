@@ -1,0 +1,63 @@
+[
+    {
+        "name": "Danger Radar",
+        "contributors": [
+            {
+                "name": "Maximilian Mauroner",
+                "href": "https://github.com/MaximilianMauroner"
+            }
+        ],
+        "description": "A web app to show the danger of a location",
+        "github": "https://github.com/MaximilianMauroner/danger-radar/",
+        "website": "https://danger-radar.mauroner.eu/",
+        "technologies": [
+            { "name": "React", "href": "https://reactjs.org/" },
+            {
+                "name": "TypeScript",
+                "href": "https://www.typescriptlang.org/"
+            },
+            { "name": "Leaflet", "href": "https://leafletjs.com/" },
+            { "name": "Vercel", "href": "https://vercel.com/" },
+            { "name": "Pusher", "href": "https://pusher.com/" },
+            { "name": "Next-Auth", "href": "https://next-auth.js.org/" },
+            { "name": "tRPC", "href": "https://trpc.io/" },
+            { "name": "Prisma", "href": "https://www.prisma.io/" },
+            { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+        ],
+        "images": {
+            "primary": "/danger-radar/danger-radar-first.jpg",
+            "secondary": "/danger-radar/danger-radar-second.jpg",
+            "tertiary": "/danger-radar/danger-radar-third.jpg"
+        },
+        "progress": 0.66
+    },
+    {
+        "name": "League Lore Reader",
+        "contributors": [
+            {
+                "name": "Maximilian Mauroner",
+                "href": "https://github.com/MaximilianMauroner"
+            }
+        ],
+        "description": "A website which reads the lore of League of Legends and displays it with the option to let it get read to you",
+        "github": "https://github.com/MaximilianMauroner/LeagueLoreReader/",
+        "website": "https://lorereader.mauroner.eu/",
+        "technologies": [
+            { "name": "React", "href": "https://reactjs.org/" },
+            {
+                "name": "TypeScript",
+                "href": "https://www.typescriptlang.org/"
+            },
+            { "name": "Vercel", "href": "https://vercel.com/" },
+            { "name": "tRPC", "href": "https://trpc.io/" },
+            { "name": "Prisma", "href": "https://www.prisma.io/" },
+            { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+        ],
+        "images": {
+            "primary": "/lorereader/lorereader-first.png",
+            "secondary": "/lorereader/lorereader-second.png",
+            "tertiary": "/lorereader/lorereader-third.png"
+        },
+        "progress": 0.8
+    }
+]
