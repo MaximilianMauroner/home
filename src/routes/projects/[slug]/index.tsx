@@ -2,9 +2,7 @@
 import { component$ } from "@builder.io/qwik";
 import {
     type StaticGenerateHandler,
-    useLocation,
     type DocumentHead,
-    useDocumentHead,
     routeLoader$,
 } from "@builder.io/qwik-city";
 import ProjectCard, { type Project } from "~/components/projects/project-card";
