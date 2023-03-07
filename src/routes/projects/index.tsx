@@ -1,6 +1,7 @@
 import { component$ } from "@builder.io/qwik";
 import { type DocumentHead } from "@builder.io/qwik-city";
-import ProjectList from "~/components/projects/project-llist";
+import ProjectCard from "~/components/projects/project-card";
+import { default as projects } from "~/data/projects.json";
 
 export const head: DocumentHead = {
     title: "My Projects ",
@@ -16,7 +17,11 @@ export const head: DocumentHead = {
 const Projects = component$(() => {
     return (
         <div class={"mt-4"}>
-            <ProjectList />
+            <div class={"my-4 flex flex-col space-y-4"}>
+                {projects.map((project) => (
+                    <ProjectCard project={project} />
+                ))}
+            </div>
         </div>
     );
 });

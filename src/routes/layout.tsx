@@ -12,7 +12,9 @@ export default component$(() => {
         >
             <main>
                 <Header />
-                <section class={"mx-auto max-w-7xl px-2 sm:px-6 lg:px-8"}>
+                <section
+                    class={"mx-auto max-w-7xl px-2 text-white sm:px-6 lg:px-8"}
+                >
                     <Slot />
                 </section>
             </main>

@@ -1,9 +1,9 @@
 import { $, component$, useOn, useSignal } from "@builder.io/qwik";
 import { Link } from "@builder.io/qwik-city";
-import { default as projects } from "~/data/projects.json";
 
-type Project = {
+export type Project = {
     name: string;
+    slug: string;
     contributors: { name: string; href: string }[];
     description: string;
     github: string;
@@ -13,28 +13,18 @@ type Project = {
     progress: number;
 };
 
-const ProjectList = component$(() => {
-    return (
-        <div class={"my-4 flex flex-col space-y-4"}>
-            {projects.map((project) => (
-                <SingleProject project={project} />
-            ))}
-        </div>
-    );
-});
-
-const SingleProject = component$(({ project }: { project: Project }) => {
+const ProjectCard = component$(({ project }: { project: Project }) => {
     return (
         <div class={"border-lg rounded-xl border bg-indigo-700"}>
             <main class="py-6 px-4 sm:p-6 md:py-10 md:px-8">
                 <div class="mx-auto grid max-w-4xl grid-cols-1 lg:max-w-5xl lg:grid-cols-2 lg:gap-x-20">
                     <div class="relative col-start-1 row-start-1 flex flex-col-reverse rounded-lg bg-gradient-to-t from-black/75 via-black/0 p-3 sm:row-start-2 sm:bg-none sm:p-0 lg:row-start-1">
                         <Link
-                            href={project.website}
+                            href={`/projects/${project.slug}/`}
                             title={project.name}
-                            target="_blank"
+                            target="_self"
                         >
-                            <h1 class="mt-1 text-lg font-semibold text-white sm:text-slate-900 dark:sm:text-white md:text-2xl">
+                            <h1 class="mt-1 mr-auto block text-lg font-semibold text-white hover:text-indigo-300 sm:text-slate-900 dark:sm:text-white md:text-2xl">
                                 {project.name}
                             </h1>
                         </Link>
@@ -260,4 +250,4 @@ const SingleImage = component$(
         );
     }
 );
-export default ProjectList;
+export default ProjectCard;
