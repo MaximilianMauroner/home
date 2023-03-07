@@ -27,8 +27,8 @@ export const onStaticGenerate: StaticGenerateHandler = () => {
     const ids = projects.map((project) => project.slug);
 
     return {
-        params: ids.map((id) => {
-            return { id };
+        params: ids.map((slug) => {
+            return { slug };
         }),
     };
 };
