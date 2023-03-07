@@ -54,9 +54,9 @@
             { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
         ],
         "images": {
-            "primary": "/lorereader/lorereader-first.png",
-            "secondary": "/lorereader/lorereader-second.png",
-            "tertiary": "/lorereader/lorereader-third.png"
+            "primary": "/lorereader/lorereader-first.jpg",
+            "secondary": "/lorereader/lorereader-second.webp",
+            "tertiary": "/lorereader/lorereader-third.webp"
         },
         "progress": 0.8
     }
