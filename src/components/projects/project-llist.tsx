@@ -191,6 +191,7 @@ const SingleImage = component$(
         spacingClasses: string;
     }) => {
         const figureRef = useSignal<HTMLElement>();
+
         useOn(
             "mousemove",
             $((e: any) => {

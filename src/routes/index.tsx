@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 export default component$(() => {
     return (
         <div>
+            <h1 class="invisible h-0">Maximilian Mauroner</h1>
             <div class={"flex flex-col items-center justify-center py-4"}>
                 <span class="sr-only">
                     This page is intentionally ugly until it is done
