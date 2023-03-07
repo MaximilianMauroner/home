@@ -20,7 +20,7 @@ const navigation = [
     // { name: "Contact", href: "/contact", current: false },
 ];
 
-const links = [
+const socials = [
     {
         name: "GitHub",
         href: "https://github.com/maximilianMauroner/",
@@ -46,7 +46,7 @@ const Header = component$(() => {
     const menuOpen = useSignal(false);
     return (
         <>
-            <nav class="bg-gray-800">
+            <nav class="bg-indigo-900">
                 <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8 ">
                     <div class="relative flex h-16 items-center justify-between">
                         <div class="absolute inset-y-0 left-0 flex items-center sm:hidden">
@@ -56,7 +56,7 @@ const Header = component$(() => {
                                 onClick$={() =>
                                     (menuOpen.value = !menuOpen.value)
                                 }
-                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                                class="inline-flex items-center justify-center rounded-md p-2 text-indigo-400 hover:bg-indigo-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
                                 aria-controls="mobile-menu"
                                 aria-expanded="false"
                             >
@@ -102,8 +102,8 @@ const Header = component$(() => {
                                         href={item.href}
                                         class={classNames(
                                             item.current
-                                                ? "bg-gray-900 text-white"
-                                                : "text-gray-300 hover:bg-gray-700 hover:text-white",
+                                                ? "bg-indigo-900 text-white"
+                                                : "text-indigo-300 hover:bg-indigo-700 hover:text-white",
                                             "rounded-md border border-slate-500 border-white px-3 py-2 text-sm font-medium"
                                         )}
                                         aria-current={
@@ -116,12 +116,13 @@ const Header = component$(() => {
                             </div>
                         </div>
                         <div class="flex flex-1 items-center justify-center space-x-4 sm:items-stretch sm:justify-end">
-                            {links.map((item) => (
+                            {socials.map((item) => (
                                 <Link
                                     href={item.href}
                                     title={item.name}
                                     target="_blank"
                                     key={item.name}
+                                    class={"rounded-lg border border-white p-1"}
                                 >
                                     <img
                                         class={"h-8 w-8"}
@@ -145,8 +146,8 @@ const Header = component$(() => {
                                     title={item.name}
                                     class={classNames(
                                         item.current
-                                            ? "bg-gray-900 text-white"
-                                            : "text-gray-300 hover:bg-gray-700 hover:text-white",
+                                            ? "bg-indigo-900 text-white"
+                                            : "text-indigo-300 hover:bg-indigo-700 hover:text-white",
                                         "block rounded-md px-3 py-2 text-base font-medium"
                                     )}
                                     aria-current={

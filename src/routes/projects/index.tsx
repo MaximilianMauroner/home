@@ -1,15 +1,18 @@
-import { component$ } from "@builder.io/qwik";
+import { component$, useSignal } from "@builder.io/qwik";
 import { type DocumentHead } from "@builder.io/qwik-city";
 import ProjectList from "~/components/projects/project-llist";
 
 const Projects = component$(() => {
+    const projectsPageDiv = useSignal<HTMLElement>();
+
     return (
-        <div class={"mt-4"}>
+        <div ref={projectsPageDiv} class={"mt-4"}>
             <ProjectList />
         </div>
     );
 });
 export default Projects;
+
 export const head: DocumentHead = {
     title: "My Projects ",
     meta: [

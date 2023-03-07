@@ -122,7 +122,8 @@ export const head: DocumentHead = {
     meta: [
         {
             name: "description",
-            content: "Welcome to my Homepage - Maximilian Mauroner",
+            content:
+                "Welcome to my Homepage, here is show of my blog(TBD) and projects",
         },
     ],
 };

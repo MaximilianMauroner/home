@@ -4,19 +4,23 @@ import Header from "../components/header/header";
 
 export default component$(() => {
     return (
-        <>
-            <main class={"h-full min-h-screen dark:bg-indigo-500"}>
+        <body
+            class={
+                "flex h-full min-h-screen flex-col justify-between dark:bg-indigo-500"
+            }
+        >
+            <main>
                 <Header />
                 <section class={"mx-auto max-w-7xl px-2 sm:px-6 lg:px-8"}>
                     <Slot />
                 </section>
             </main>
-            <footer>
-                {/* <a href="https://www.builder.io/" target="_blank">
-                    Made with ♡ by Builder.io
-                    <div>{serverTime.value.date}</div>
-                </a> */}
+            <footer class={"bg-indigo-900 p-4 text-white"}>
+                {/* contact me via email */}
+                <a href="mailto:homepage@relay.mauroner.eu">
+                    <span class="">Email</span>
+                </a>
             </footer>
-        </>
+        </body>
     );
 });
