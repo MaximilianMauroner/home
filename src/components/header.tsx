@@ -95,7 +95,7 @@ const Header = component$(() => {
                     <div class="hidden flex-1 items-center justify-center sm:flex sm:items-stretch sm:justify-start">
                         <div class="flex space-x-4">
                             {navigation.map((item) => (
-                                <a
+                                <Link
                                     key={item.name}
                                     href={item.href}
                                     class={classNames(
@@ -109,13 +109,13 @@ const Header = component$(() => {
                                     }
                                 >
                                     {item.name}
-                                </a>
+                                </Link>
                             ))}
                         </div>
                     </div>
                     <div class="flex flex-1 items-center justify-center space-x-4 sm:items-stretch sm:justify-end">
                         {socials.map((item) => (
-                            <a
+                            <Link
                                 href={item.href}
                                 title={item.name}
                                 target="_blank"
@@ -127,7 +127,7 @@ const Header = component$(() => {
                                     src={item.icon}
                                     alt={item.name}
                                 />
-                            </a>
+                            </Link>
                         ))}
                     </div>
                 </div>
@@ -136,7 +136,7 @@ const Header = component$(() => {
                 <div class="sm:hidden" id="mobile-menu">
                     <div class="space-y-1 px-2 pt-2 pb-3">
                         {navigation.map((item) => (
-                            <a
+                            <Link
                                 key={item.name}
                                 href={item.href}
                                 title={item.name}
@@ -149,7 +149,7 @@ const Header = component$(() => {
                                 aria-current={item.current ? "page" : undefined}
                             >
                                 {item.name}
-                            </a>
+                            </Link>
                         ))}
                     </div>
                 </div>
