@@ -16,7 +16,7 @@ export type Project = {
 const ProjectCard = component$(({ project }: { project: Project }) => {
     return (
         <div class={"border-lg rounded-xl border bg-indigo-700"}>
-            <main class="py-6 px-4 sm:p-6 md:py-10 md:px-8">
+            <main class="px-4 py-6 sm:p-6 md:px-8 md:py-10">
                 <div class="mx-auto grid max-w-4xl grid-cols-1 lg:max-w-5xl lg:grid-cols-2 lg:gap-x-20">
                     <div class="relative col-start-1 row-start-1 flex flex-col-reverse rounded-lg bg-gradient-to-t from-black/75 via-black/0 p-3 sm:row-start-2 sm:bg-none sm:p-0 lg:row-start-1">
                         <Link
@@ -24,7 +24,7 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
                             title={project.name}
                             target="_self"
                         >
-                            <h1 class="mt-1 mr-auto block text-lg font-semibold text-white hover:text-indigo-300 sm:text-slate-900 dark:sm:text-white md:text-2xl">
+                            <h1 class="mr-auto mt-1 block text-lg font-semibold text-white hover:text-indigo-300 sm:text-slate-900 dark:sm:text-white md:text-2xl">
                                 {project.name}
                             </h1>
                         </Link>
@@ -99,14 +99,14 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
                     <div class="col-start-1 row-start-3 mt-4 self-center sm:col-start-2 sm:row-span-2 sm:row-start-2 sm:mt-0 lg:col-start-1 lg:row-start-3 lg:row-end-4 lg:mt-6">
                         <div
                             class={
-                                "space-x-1 sm:flex sm:w-full sm:flex-col sm:justify-center sm:space-y-1 sm:space-x-0 lg:w-auto lg:flex-row lg:justify-start lg:space-y-0 lg:space-x-1"
+                                "space-x-1 sm:flex sm:w-full sm:flex-col sm:justify-center sm:space-x-0 sm:space-y-1 lg:w-auto lg:flex-row lg:justify-start lg:space-x-1 lg:space-y-0"
                             }
                         >
                             <Link
                                 href={project.website}
                                 title={"Website for " + project.name}
                                 target="_blank"
-                                class="inline-block rounded-lg bg-indigo-600 py-2 px-3 text-sm font-medium leading-6 text-white"
+                                class="inline-block rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium leading-6 text-white"
                             >
                                 <div class={"flex h-6 w-full items-center"}>
                                     <svg
@@ -130,7 +130,7 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
                                 href={project.github}
                                 title={"GitHub repository for " + project.name}
                                 target="_blank"
-                                class="inline-block rounded-lg bg-indigo-600 py-2 px-3 text-sm font-medium leading-6 text-white"
+                                class="inline-block rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium leading-6 text-white"
                             >
                                 <div class={"flex h-6 w-full items-center"}>
                                     <img
@@ -217,7 +217,7 @@ const SingleImage = component$(
                 {isFullScreen.value && (
                     <div
                         class={
-                            "fixed top-0 bottom-0 left-0 right-0 flex items-center justify-center"
+                            "fixed bottom-0 left-0 right-0 top-0 flex items-center justify-center"
                         }
                     >
                         <img

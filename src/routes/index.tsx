@@ -1,8 +1,4 @@
-import {
-    component$,
-    useBrowserVisibleTask$,
-    useSignal,
-} from "@builder.io/qwik";
+import { component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
 import { type DocumentHead, Link } from "@builder.io/qwik-city";
 import dayjs from "dayjs";
 
@@ -66,7 +62,7 @@ const AgeCalculator = component$(() => {
         dayjs().diff(dayjs(birthday), "year", true).toString().substring(0, 12)
     );
 
-    useBrowserVisibleTask$(() => {
+    useVisibleTask$(() => {
         // copied from https://ottomated.net/
         const interval = setInterval(() => {
             age.value = dayjs()
@@ -83,6 +79,7 @@ const AgeCalculator = component$(() => {
 const TechStackItem = component$(
     ({ name, href }: { name: string; href: string }) => {
         const linearGradient = getLinearGradient();
+
         return (
             <>
                 <Link
@@ -92,13 +89,13 @@ const TechStackItem = component$(
                     title={name}
                 >
                     <span
-                        style={{
-                            background: `linear-gradient( to right,${linearGradient.start},  ${linearGradient.middle}, ${linearGradient.end},${linearGradient.start})`,
-                            "background-size": "200%",
-                            "-webkit-background-clip": "text",
-                            "-webkit-text-fill-color": "transparent",
-                        }}
-                        class="group animate-pan whitespace-nowrap bg-clip-text text-lg font-extrabold"
+                        // style={{
+                        //     background: `linear-gradient( to right,${linearGradient.start},  ${linearGradient.middle}, ${linearGradient.end},${linearGradient.start})`,
+                        //     "background-size": "200%",
+                        //     "-webkit-background-clip": "text",
+                        //     "-webkit-text-fill-color": "transparent",
+                        // }}
+                        class="group animate-pan whitespace-nowrap bg-clip-text text-lg font-extrabold text-sky-500"
                     >
                         {name}
                         {/* animation also stolen and modified from https://ottomated.net/ */}

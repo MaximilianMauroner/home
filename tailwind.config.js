@@ -15,7 +15,7 @@ module.exports = {
             },
             animation: {
                 pan: "background-pan 3s linear infinite",
-                underline: "underline-width .25s linear",
+                underline: "underline-width .15s linear",
                 "pan-underline":
                     "background-pan 3s linear infinite, underline-width .25s linear",
             },
