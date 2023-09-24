@@ -92,8 +92,15 @@ const Header = component$(() => {
                             )}
                         </button>
                     </div>
-                    <div class="hidden flex-1 items-center justify-center sm:flex sm:items-stretch sm:justify-start">
-                        <div class="flex space-x-4">
+                    <div class="flex-1 items-center justify-center sm:flex sm:items-stretch sm:justify-start">
+                        <div class="mr-2 flex flex-shrink-0 items-center justify-center sm:justify-start">
+                            <img
+                                class="h-12 w-auto"
+                                src={"/astronaut.png"}
+                                alt={"Astronaut in space with a laptop"}
+                            />
+                        </div>
+                        <div class="hidden space-x-4 sm:flex">
                             {navigation.map((item) => (
                                 <a
                                     key={item.name}
@@ -102,7 +109,7 @@ const Header = component$(() => {
                                         item.current
                                             ? "bg-indigo-900 text-white"
                                             : "text-indigo-300 hover:bg-indigo-700 hover:text-white",
-                                        "rounded-md border border-slate-500 px-3 py-2 text-sm font-medium"
+                                        "my-auto block rounded-md border border-slate-500 px-3 py-2 text-sm font-medium"
                                     )}
                                     aria-current={
                                         item.current ? "page" : undefined
@@ -132,7 +139,7 @@ const Header = component$(() => {
                     </div>
                 </div>
             </div>
-            {menuOpen.value ? (
+            {menuOpen.value && (
                 <div class="sm:hidden" id="mobile-menu">
                     <div class="space-y-1 px-2 pb-3 pt-2">
                         {navigation.map((item) => (
@@ -153,7 +160,7 @@ const Header = component$(() => {
                         ))}
                     </div>
                 </div>
-            ) : null}
+            )}
         </nav>
     );
 });

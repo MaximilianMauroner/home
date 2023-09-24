@@ -10,7 +10,7 @@ export default component$(() => {
                 <span class="sr-only">
                     This page is intentionally ugly until it is done
                 </span>
-                <div class={"max-w-prose font-mono dark:text-white"}>
+                <div class={"max-w-prose px-4 font-mono dark:text-white"}>
                     <span>
                         Hi, I'm Maximilian a <AgeCalculator /> year-old
                         developer. Currently studying software engineering at
