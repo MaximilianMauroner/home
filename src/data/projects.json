@@ -61,35 +61,5 @@
             "tertiary": "/lorereader/lorereader-third.webp"
         },
         "progress": 0.8
-    },
-    {
-        "name": "League Lore Reader",
-        "slug": "league-lore-reader",
-        "contributors": [
-            {
-                "name": "Maximilian Mauroner",
-                "href": "https://github.com/MaximilianMauroner"
-            }
-        ],
-        "description": "A website which reads the lore of League of Legends and displays it with the option to let it get read to you",
-        "github": "https://github.com/MaximilianMauroner/LeagueLoreReader/",
-        "website": "https://lorereader.mauroner.eu/",
-        "technologies": [
-            { "name": "React", "href": "https://reactjs.org/" },
-            {
-                "name": "TypeScript",
-                "href": "https://www.typescriptlang.org/"
-            },
-            { "name": "Vercel", "href": "https://vercel.com/" },
-            { "name": "tRPC", "href": "https://trpc.io/" },
-            { "name": "Prisma", "href": "https://www.prisma.io/" },
-            { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
-        ],
-        "images": {
-            "primary": "/lorereader/lorereader-first.jpg",
-            "secondary": "/lorereader/lorereader-second.webp",
-            "tertiary": "/lorereader/lorereader-third.webp"
-        },
-        "progress": 0.8
     }
 ]
