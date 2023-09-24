@@ -48,7 +48,7 @@ const Blog = component$(() => {
                     </div>
                     <div class="grid gap-8 lg:grid-cols-2">
                         {blogsPosts.map((post) => (
-                            <BlogPreview post={post} />
+                            <BlogPreview key={post.slug} post={post} />
                         ))}
                     </div>
                 </div>
