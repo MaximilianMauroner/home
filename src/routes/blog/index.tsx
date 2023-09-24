@@ -1,5 +1,5 @@
-import { component$, noSerialize } from "@builder.io/qwik";
-import { routeLoader$, type DocumentHead } from "@builder.io/qwik-city";
+import { component$ } from "@builder.io/qwik";
+import { type DocumentHead } from "@builder.io/qwik-city";
 
 type BlogPostType = {
     title: string;
