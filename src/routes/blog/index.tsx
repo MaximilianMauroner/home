@@ -3,20 +3,21 @@ import { type DocumentHead } from "@builder.io/qwik-city";
 
 type BlogPostType = {
     title: string;
-    type: "blog" | "project" | "tutorial";
     image: string;
     date: string;
     description: string;
     slug: string;
+    tags: string[];
 };
 const blogsPosts: BlogPostType[] = [
     {
         title: "Hello World",
-        type: "blog",
         image: "https://source.unsplash.com/random/800x600",
         date: "2023-09-22",
-        description: "This is my first blog post",
+        description:
+            "Since this is my first blog post, so I thought I'd start with a classic",
         slug: "hello-world",
+        tags: ["hello-world", "blog"],
     },
 ];
 
@@ -68,8 +69,8 @@ const BlogPreview = component$<{ post: BlogPostType }>(
             return Math.floor(days);
         };
         return (
-            <article class="rounded-lg border border-gray-200 bg-white p-6 shadow-md dark:border-gray-700 dark:bg-gray-800">
-                <div class="mb-5 flex items-center justify-between text-gray-500">
+            <article class="rounded-lg border border-gray-200 bg-white p-6 shadow-md dark:border-gray-700 dark:bg-indigo-800">
+                <div class="mb-5 flex items-center justify-between text-gray-300/50">
                     <span class="bg-primary-100 text-primary-800 dark:bg-primary-200 dark:text-primary-800 inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium">
                         <svg
                             class="mr-1 h-3 w-3"
@@ -79,7 +80,21 @@ const BlogPreview = component$<{ post: BlogPostType }>(
                         >
                             <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
                         </svg>
-                        Tutorial
+
+                        <span>
+                            {post.tags.map((tag, index) => (
+                                <a
+                                    key={tag}
+                                    class={"hover:text-white hover:underline"}
+                                    href={"/blog/tags/" + tag}
+                                >
+                                    {tag +
+                                        (index < post.tags.length - 1
+                                            ? ", "
+                                            : "")}
+                                </a>
+                            ))}
+                        </span>
                     </span>
                     <span class="text-sm">
                         {calculateReleaseDate()} days ago
