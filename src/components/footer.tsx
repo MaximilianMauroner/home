@@ -2,14 +2,15 @@ import { component$ } from "@builder.io/qwik";
 
 const Footer = component$(() => {
     return (
-        <footer class={"bg-indigo-900 py-4 text-white"}>
-            <div class={"mx-auto max-w-7xl px-2 sm:px-6 lg:px-8"}>
-                <div class={"flex items-center justify-between"}>
-                    <a href="mailto:homepage@relay.mauroner.eu">
-                        <span class="">Email</span>
-                    </a>
-                </div>
-            </div>
+        <footer class="flex items-center justify-between bg-primary px-6 py-4 text-primary-foreground">
+            <p class="text-sm">
+                <a
+                    href="mailto:home@relay.mauroner.net"
+                    class="font-medium underline-offset-4 hover:underline"
+                >
+                    <span class="">Email</span>
+                </a>
+            </p>
         </footer>
     );
 });

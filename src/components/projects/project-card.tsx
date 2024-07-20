@@ -9,7 +9,7 @@ export type Project = {
     github: string;
     website: string;
     technologies: { name: string; href: string }[];
-    images: { primary: string; secondary: string; tertiary: string };
+    images: { primary: string; secondary: string; tertiary: string } | null;
     progress: number;
 };
 
@@ -153,6 +153,9 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
 });
 
 const ProjectImages = component$(({ project }: { project: Project }) => {
+    if (!project.images) {
+        return <></>;
+    }
     return (
         <>
             <SingleImage
