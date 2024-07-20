@@ -19,7 +19,7 @@ const Projects = component$(() => {
         <div class={"mt-4"}>
             <div class={"my-4 flex flex-col space-y-4"}>
                 {projects.map((project) => (
-                    <ProjectCard project={project} />
+                    <ProjectCard key={project.slug} project={project} />
                 ))}
             </div>
         </div>

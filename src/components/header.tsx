@@ -1,4 +1,4 @@
-import { component$, useSignal } from "@builder.io/qwik";
+import { component$ } from "@builder.io/qwik";
 import { useLocation } from "@builder.io/qwik-city";
 
 function classs(...classes: string[]) {
@@ -34,7 +34,7 @@ const socials = [
 ];
 
 const Header = component$(() => {
-    const menuOpen = useSignal(false);
+    // const menuOpen = useSignal(false);
     const navigate = useLocation();
     for (const navItem of navigation) {
         if (navItem.href === navigate.url.pathname) {
