@@ -15,6 +15,13 @@ export const head: DocumentHead = {
 };
 
 const Projects = component$(() => {
+    projects.sort((a, b) => {
+        const val = b.date.localeCompare(a.date);
+        if (val == 0) {
+            return a.slug.localeCompare(b.slug);
+        }
+        return val;
+    });
     return (
         <div class={"mt-4"}>
             <div class={"my-4 flex flex-col space-y-4"}>

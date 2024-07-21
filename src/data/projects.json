@@ -2,6 +2,7 @@
     {
         "name": "Danger Radar",
         "slug": "danger-radar",
+        "date": "2024-07-20",
         "contributors": [
             {
                 "name": "Maximilian Mauroner",
@@ -35,6 +36,7 @@
     {
         "name": "League Lore Reader",
         "slug": "league-lore-reader",
+        "date": "2024-07-20",
         "contributors": [
             {
                 "name": "Maximilian Mauroner",
@@ -61,5 +63,12 @@
             "tertiary": "/lorereader/lorereader-third.webp"
         },
         "progress": 0.8
+    },
+    {
+        "name": "Mauroner.eu",
+        "slug": "mauroner-eu",
+        "date": "2024-07-21",
+        "description": "My personal website",
+        "github": "https://github.com/MaximilianMauroner/home/"
     }
 ]
