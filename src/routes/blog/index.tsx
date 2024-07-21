@@ -7,6 +7,7 @@ type BlogPostType = {
     date: string;
     description: string;
     slug: string;
+    published: boolean;
     tags: string[];
 };
 const blogsPosts: BlogPostType[] = [
@@ -17,6 +18,7 @@ const blogsPosts: BlogPostType[] = [
         description:
             "Since this is my first blog post, so I thought I'd start with a classic",
         slug: "hello-world",
+        published: false,
         tags: ["hello-world", "blog"],
     },
 ];
@@ -48,9 +50,11 @@ const Blog = component$(() => {
                         </p>
                     </div>
                     <div class="grid gap-8 lg:grid-cols-2">
-                        {blogsPosts.map((post) => (
-                            <BlogPreview key={post.slug} post={post} />
-                        ))}
+                        {blogsPosts
+                            .filter((e) => e.published)
+                            .map((post) => (
+                                <BlogPreview key={post.slug} post={post} />
+                            ))}
                     </div>
                 </div>
             </section>
