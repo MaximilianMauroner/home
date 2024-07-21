@@ -5,7 +5,7 @@ export default component$(() => {
         <div class="my-auto flex flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
             <div class="mx-auto max-w-md text-center">
                 <img
-                    src="/astronaut.png"
+                    src="/astronaut.avif"
                     width="200"
                     height="200"
                     alt="404 Error"

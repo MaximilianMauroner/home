@@ -51,7 +51,7 @@ const Header = component$(() => {
                         <img
                             loading="lazy"
                             class="h-6 w-auto"
-                            src={"/astronaut.png"}
+                            src={"/astronaut.avif"}
                             alt={"Astronaut in space with a laptop"}
                         />
                         <span class="sr-only">Astronaut</span>
