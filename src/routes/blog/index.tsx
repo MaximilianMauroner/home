@@ -35,13 +35,13 @@ export const head: DocumentHead = {
 const Blog = component$(() => {
     return (
         <>
-            <section class="">
+            <section>
                 <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
                     <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">
-                        <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white lg:text-4xl">
+                        <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl ">
                             My Blog
                         </h2>
-                        <p class="font-light text-gray-500 dark:text-gray-300 sm:text-xl">
+                        <p class="l font-light text-gray-500 sm:text-xl">
                             In my free time, I dive headfirst into the world of
                             programming, uncovering some incredible gems along
                             the way, and I can't wait to share them with you
@@ -69,9 +69,9 @@ const BlogPreview = component$<{ post: BlogPostType }>(
             return Math.floor(days);
         };
         return (
-            <article class="rounded-lg border border-gray-200 bg-white p-6 shadow-md dark:border-gray-700 dark:bg-indigo-800">
+            <article class="rounded-lg border border-gray-200 bg-primary p-6 shadow-md ">
                 <div class="mb-5 flex items-center justify-between text-gray-300/50">
-                    <span class="bg-primary-100 text-primary-800 dark:bg-primary-200 dark:text-primary-800 inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium">
+                    <span class="bg-primary-100 text-primary-800 inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium">
                         <svg
                             class="mr-1 h-3 w-3"
                             fill="currentColor"
@@ -85,7 +85,9 @@ const BlogPreview = component$<{ post: BlogPostType }>(
                             {post.tags.map((tag, index) => (
                                 <a
                                     key={tag}
-                                    class={"hover:text-white hover:underline"}
+                                    class={
+                                        "text-secondary hover:text-white hover:underline"
+                                    }
                                     href={"/blog/tags/" + tag}
                                 >
                                     {tag +
@@ -100,16 +102,14 @@ const BlogPreview = component$<{ post: BlogPostType }>(
                         {calculateReleaseDate()} days ago
                     </span>
                 </div>
-                <h2 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                <h2 class="mb-2 text-2xl font-bold tracking-tight text-secondary ">
                     <a href={"/blog/" + post.slug}>{post.title}</a>
                 </h2>
-                <p class="mb-5 font-light text-gray-500 dark:text-gray-400">
-                    {post.description}
-                </p>
+                <p class="mb-5 font-light text-gray-300 ">{post.description}</p>
                 <div class="flex items-center justify-between">
                     <a
                         href={"/blog/" + post.slug}
-                        class="text-primary-600 dark:text-primary-500 inline-flex items-center font-medium hover:underline"
+                        class="inline-flex  items-center font-medium text-secondary hover:underline"
                     >
                         Read more
                         <svg
