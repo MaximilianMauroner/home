@@ -69,6 +69,7 @@ const TechStackItem = component$(
                 <Link
                     href={href}
                     target="_blank"
+                    rel="nofollow"
                     class={"inline-block"}
                     title={name}
                 >

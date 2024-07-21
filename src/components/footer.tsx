@@ -6,6 +6,7 @@ const Footer = component$(() => {
             <p class="text-sm">
                 <a
                     href="mailto:home@relay.mauroner.net"
+                    rel="nofollow"
                     class="font-medium underline-offset-4 hover:underline"
                 >
                     <span class="">Email</span>

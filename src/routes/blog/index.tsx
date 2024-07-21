@@ -29,7 +29,7 @@ export const head: DocumentHead = {
         {
             name: "description",
             content:
-                "This is my blog where I'll be posting my thoughts on various topics",
+                "Trying to get my blog started so future historians can have my genius thoughts preserved for eternity /s",
         },
     ],
 };
