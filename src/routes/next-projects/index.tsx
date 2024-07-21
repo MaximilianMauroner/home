@@ -1,5 +1,5 @@
 import { component$ } from "@builder.io/qwik";
-import { DocumentHead } from "@builder.io/qwik-city";
+import { type DocumentHead } from "@builder.io/qwik-city";
 
 export const head: DocumentHead = {
     title: "My Next Projects",
@@ -7,12 +7,14 @@ export const head: DocumentHead = {
         {
             name: "description",
             content:
-                "These are the Projects that I've either put on hold or are in the planning stage",
+                "Next proejcts are determined randomly so this page is not useful",
         },
     ],
 };
 
 const NextProjects = component$(() => {
-    return <> Next Projects</>;
+    return (
+        <>Next proejcts are determined randomly so this page is not useful</>
+    );
 });
 export default NextProjects;

@@ -12,7 +12,7 @@ export default extendConfig(baseConfig, () => {
     },
     plugins: [
       staticAdapter({
-        origin: 'https://www.mauroner.eu',
+        origin: 'https://www.mauroner.net',
       }),
     ],
   };
