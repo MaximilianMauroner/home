@@ -47,12 +47,15 @@ const Header = component$(() => {
         <header class="flex items-center justify-between bg-primary px-6 py-4 text-primary-foreground">
             <nav class="flex items-center gap-6">
                 <a href="/" class="flex items-center gap-2 font-medium">
-                    <img
-                        class="h-6 w-auto"
-                        src={"/astronaut.png"}
-                        alt={"Astronaut in space with a laptop"}
-                    />
-                    <span class="sr-only">Astronaut</span>
+                    <div class={"h-6 w-8"}>
+                        <img
+                            loading="lazy"
+                            class="h-6 w-auto"
+                            src={"/astronaut.png"}
+                            alt={"Astronaut in space with a laptop"}
+                        />
+                        <span class="sr-only">Astronaut</span>
+                    </div>
                 </a>
                 {navigation.map((item) => (
                     <a

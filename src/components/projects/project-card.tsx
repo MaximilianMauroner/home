@@ -34,6 +34,7 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
                                 <>
                                     <Link
                                         href={contributor.href}
+                                        rel="nofollow"
                                         title={contributor.name}
                                         target="_blank"
                                     >
@@ -93,6 +94,7 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
                                                 <>
                                                     <Link
                                                         href={technology.href}
+                                                        rel="nofollow"
                                                         title={technology.name}
                                                         target="_blank"
                                                         class={
@@ -124,6 +126,7 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
                             {project.website && (
                                 <Link
                                     href={project.website}
+                                    rel="nofollow"
                                     title={"Website for " + project.name}
                                     target="_blank"
                                     class="inline-block rounded-lg border border-white bg-gray-800 px-3 py-2 text-sm font-medium leading-6 text-secondary hover:bg-primary"
@@ -153,6 +156,7 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
                                     title={
                                         "GitHub repository for " + project.name
                                     }
+                                    rel="nofollow"
                                     target="_blank"
                                     class="inline-block rounded-lg border border-white bg-gray-800 px-3 py-2 text-sm font-medium leading-6 text-secondary hover:bg-primary"
                                 >

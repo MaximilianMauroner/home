@@ -12,6 +12,8 @@ export default extendConfig(baseConfig, () => {
     },
     plugins: [
       staticAdapter({
+        sitemapOutFile: 'sitemap.xml',
+        include: ['/*'],
         origin: 'https://www.mauroner.net',
       }),
     ],
