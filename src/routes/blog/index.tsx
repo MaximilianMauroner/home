@@ -44,9 +44,9 @@ const Blog = component$(() => {
                             My Blog
                         </h2>
                         <p class="l font-light text-gray-500 sm:text-xl">
-                            In my free time, I dive headfirst into the world of
-                            programming, uncovering some incredible gems along
-                            the way, and I can't wait to share them with you
+                            Trying to get my blog started so future historians
+                            can have my genius thoughts preserved for eternity
+                            /s
                         </p>
                     </div>
                     <div class="grid gap-8 lg:grid-cols-2">
