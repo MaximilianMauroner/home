@@ -1,3 +1,4 @@
+/* eslint-disable qwik/jsx-img */
 import { $, component$, useOn, useSignal } from "@builder.io/qwik";
 import { Link } from "@builder.io/qwik-city";
 
@@ -16,7 +17,7 @@ export type Project = {
 
 const ProjectCard = component$(({ project }: { project: Project }) => {
   return (
-    <div class={"mx-2 md:mx-auto md:w-2/3"}>
+    <div class={"mx-2 bg-card md:mx-auto md:w-2/3"}>
       <main class="rounded-lg border bg-card px-4 py-6 text-card-foreground shadow-sm sm:p-6 md:px-8 md:py-10">
         <div class="mx-auto grid max-w-4xl grid-cols-1 lg:max-w-5xl lg:grid-cols-2 lg:gap-x-20">
           <div class="relative col-start-1 row-start-1 flex flex-col-reverse rounded-lg bg-gradient-to-t from-black/75 via-black/0 p-3 sm:row-start-2 sm:bg-none sm:p-0 lg:row-start-1">
@@ -174,19 +175,19 @@ const ProjectImages = component$(({ project }: { project: Project }) => {
       <SingleImage
         src={project.images.primary}
         alt=""
-        imageClasses="h-60 w-full  object-cover  sm:h-52"
+        imageClasses="h-60 w-full object-cover sm:h-52"
         spacingClasses="rounded-lg sm:col-span-2 lg:col-span-full"
       />
       <SingleImage
         src={project.images.secondary}
         alt=""
-        imageClasses="h-52 w-full  object-cover lg:h-32"
+        imageClasses="h-52 w-full object-cover lg:h-32"
         spacingClasses="rounded-lg hidden sm:col-span-2 sm:block md:col-span-1 lg:col-span-2 lg:row-start-2 lg:h-32"
       />
       <SingleImage
         src={project.images.tertiary}
         alt=""
-        imageClasses="h-52 w-full  object-cover lg:h-32"
+        imageClasses="h-52 w-full object-cover lg:h-32"
         spacingClasses="rounded-lg hidden md:block lg:col-span-2 lg:row-start-2"
       />
     </>
@@ -205,35 +206,20 @@ const SingleImage = component$(
     imageClasses: string;
     spacingClasses: string;
   }) => {
-    const figureRef = useSignal<HTMLElement>();
     const isFullScreen = useSignal(false);
 
-    useOn(
-      "mousemove",
-      $((e: any) => {
-        if (figureRef.value) {
-          const zoomer = figureRef.value;
-          const offsetX = e.offsetX ? e.offsetX : e.touches[0].pageX;
-          const offsetY = e.offsetY ? e.offsetY : e.touches[0].pageX;
-          const x = (offsetX / zoomer.offsetWidth) * 100;
-          const y = (offsetY / zoomer.offsetHeight) * 100;
-          zoomer.style.backgroundPosition = ` ${x}%  ${y}%`;
-        }
-      }),
-    );
     useOn(
       "click",
       $(() => {
         isFullScreen.value = !isFullScreen.value;
       }),
     );
-    useOn;
     return (
       <>
         {isFullScreen.value && (
           <div
             class={
-              "fixed bottom-0 left-0 right-0 top-0 flex items-center justify-center"
+              "fixed bottom-0 left-0 right-0 top-0 z-50 flex items-center justify-center"
             }
           >
             <img
@@ -242,25 +228,18 @@ const SingleImage = component$(
               })}
               src={src}
               alt={alt}
-              class={`container z-10 h-min rounded-lg object-cover`}
+              class={`container z-10 h-full w-screen rounded-lg object-cover`}
               loading="lazy"
             />
           </div>
         )}
-        <div class={`${spacingClasses} overflow-hidden`}>
-          <figure
-            ref={figureRef}
-            style={{
-              "background-image": `url(${src})`,
-            }}
-          >
-            <img
-              src={src}
-              alt={alt}
-              class={`${imageClasses} bg-center hover:opacity-0`}
-              loading="lazy"
-            />
-          </figure>
+        <div class={`${spacingClasses} cursor-pointer overflow-hidden`}>
+          <img
+            src={src}
+            alt={alt}
+            class={`${imageClasses} bg-center`}
+            loading="lazy"
+          />
         </div>
       </>
     );

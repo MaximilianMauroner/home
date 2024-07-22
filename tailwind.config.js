@@ -1,15 +1,19 @@
 /** @type {import('tailwindcss').Config} */
 
-import { fontFamily } from "tailwindcss/defaultTheme";
+const { fontFamily } = require("tailwindcss/defaultTheme");
 
-module.exports = {
+export default {
+  darkMode: ["class"],
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
-    extend: {
-      fontFamily: {
-        heading: ["var(--font-heading)", ...fontFamily.sans],
-        body: ["var(--font-body)", ...fontFamily.sans],
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
       },
+    },
+    extend: {
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -46,15 +50,21 @@ module.exports = {
         },
       },
       borderRadius: {
-        xl: `calc(var(--radius) + 4px)`,
         lg: `var(--radius)`,
         md: `calc(var(--radius) - 2px)`,
-        sm: `calc(var(--radius) - 4px)`,
+        sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", ...fontFamily.sans],
       },
       keyframes: {
-        "background-pan": {
-          "0%": { "background-position": "0% center" },
-          "100%": { "background-position": "-200% center" },
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
         "underline-width": {
           "0%": { width: "0%" },
@@ -62,7 +72,8 @@ module.exports = {
         },
       },
       animation: {
-        pan: "background-pan 3s linear infinite",
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
         underline: "underline-width .15s linear",
         "pan-underline":
           "background-pan 3s linear infinite, underline-width .25s linear",
