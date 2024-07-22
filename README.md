@@ -2,9 +2,9 @@
 
 ## Technologies Used
 
--   Qwik
--   Vercel
--   Tailwind CSS
+- Qwik
+- Vercel
+- Tailwind CSS
 
 ## Static Site Generator (Node.js)
 

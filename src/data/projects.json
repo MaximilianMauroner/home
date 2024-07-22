@@ -1,151 +1,168 @@
 [
-    {
-        "name": "Danger Radar",
-        "slug": "danger-radar",
-        "date": "2024-07-20",
-        "contributors": [
-            {
-                "name": "Maximilian Mauroner",
-                "href": "https://github.com/MaximilianMauroner"
-            }
-        ],
-        "description": "A web app to show the danger of a location",
-        "github": "https://github.com/MaximilianMauroner/danger-radar/",
-        "website": "https://danger-radar.mauroner.eu/",
-        "technologies": [
-            { "name": "React", "href": "https://reactjs.org/" },
-            {
-                "name": "TypeScript",
-                "href": "https://www.typescriptlang.org/"
-            },
-            { "name": "Leaflet", "href": "https://leafletjs.com/" },
-            { "name": "Vercel", "href": "https://vercel.com/" },
-            { "name": "Pusher", "href": "https://pusher.com/" },
-            { "name": "Next-Auth", "href": "https://next-auth.js.org/" },
-            { "name": "tRPC", "href": "https://trpc.io/" },
-            { "name": "Prisma", "href": "https://www.prisma.io/" },
-            { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
-        ],
-        "images": {
-            "primary": "/danger-radar/danger-radar-first.jpg",
-            "secondary": "/danger-radar/danger-radar-second.jpg",
-            "tertiary": "/danger-radar/danger-radar-third.jpg"
-        },
-        "progress": 0.66
+  {
+    "name": "Danger Radar",
+    "slug": "danger-radar",
+    "date": "2024-07-20",
+    "contributors": [
+      {
+        "name": "Maximilian Mauroner",
+        "href": "https://github.com/MaximilianMauroner"
+      }
+    ],
+    "description": "A web app to show the danger of a location",
+    "github": "https://github.com/MaximilianMauroner/danger-radar/",
+    "website": "https://danger-radar.mauroner.eu/",
+    "technologies": [
+      { "name": "React", "href": "https://reactjs.org/" },
+      {
+        "name": "TypeScript",
+        "href": "https://www.typescriptlang.org/"
+      },
+      { "name": "Leaflet", "href": "https://leafletjs.com/" },
+      { "name": "Vercel", "href": "https://vercel.com/" },
+      { "name": "Pusher", "href": "https://pusher.com/" },
+      { "name": "Next-Auth", "href": "https://next-auth.js.org/" },
+      { "name": "tRPC", "href": "https://trpc.io/" },
+      { "name": "Prisma", "href": "https://www.prisma.io/" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+    ],
+    "images": {
+      "primary": "/danger-radar/danger-radar-first.jpg",
+      "secondary": "/danger-radar/danger-radar-second.jpg",
+      "tertiary": "/danger-radar/danger-radar-third.jpg"
     },
-    {
-        "name": "League Lore Reader",
-        "slug": "league-lore-reader",
-        "date": "2024-07-20",
-        "contributors": [
-            {
-                "name": "Maximilian Mauroner",
-                "href": "https://github.com/MaximilianMauroner"
-            }
-        ],
-        "description": "A website which reads the lore of League of Legends and displays it with the option to let it get read to you",
-        "github": "https://github.com/MaximilianMauroner/LeagueLoreReader/",
-        "website": "https://lorereader.mauroner.eu/",
-        "technologies": [
-            { "name": "React", "href": "https://reactjs.org/" },
-            {
-                "name": "TypeScript",
-                "href": "https://www.typescriptlang.org/"
-            },
-            { "name": "Vercel", "href": "https://vercel.com/" },
-            { "name": "tRPC", "href": "https://trpc.io/" },
-            { "name": "Prisma", "href": "https://www.prisma.io/" },
-            { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
-        ],
-        "images": {
-            "primary": "/lorereader/lorereader-first.jpg",
-            "secondary": "/lorereader/lorereader-second.webp",
-            "tertiary": "/lorereader/lorereader-third.webp"
-        },
-        "progress": 0.8
+    "progress": 0.66
+  },
+  {
+    "name": "League Lore Reader",
+    "slug": "league-lore-reader",
+    "date": "2024-07-20",
+    "contributors": [
+      {
+        "name": "Maximilian Mauroner",
+        "href": "https://github.com/MaximilianMauroner"
+      }
+    ],
+    "description": "A website which reads the lore of League of Legends and displays it with the option to let it get read to you",
+    "github": "https://github.com/MaximilianMauroner/LeagueLoreReader/",
+    "website": "https://lorereader.mauroner.eu/",
+    "technologies": [
+      { "name": "React", "href": "https://reactjs.org/" },
+      {
+        "name": "TypeScript",
+        "href": "https://www.typescriptlang.org/"
+      },
+      { "name": "Vercel", "href": "https://vercel.com/" },
+      { "name": "tRPC", "href": "https://trpc.io/" },
+      { "name": "Prisma", "href": "https://www.prisma.io/" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+    ],
+    "images": {
+      "primary": "/lorereader/lorereader-first.jpg",
+      "secondary": "/lorereader/lorereader-second.webp",
+      "tertiary": "/lorereader/lorereader-third.webp"
     },
-    {
-        "name": "Website",
-        "slug": "www.mauroner-net",
-        "date": "2024-07-21",
-        "description": "My personal website",
-        "github": "https://github.com/MaximilianMauroner/home/"
-    },
-    {
-        "name": "Highlights to Snipd",
-        "slug": "highlights-to-snipd",
-        "date": "2024-07-21",
-        "description": "A tool to help migrate highlights (that export from audible via Liberate) to Snipd",
-        "github": "https://github.com/MaximilianMauroner/highlights_to_snipd"
-    },
-    {
-        "name": "Liberate Bookmarks",
-        "slug": "liberate-bookmarks",
-        "date": "2024-07-21",
-        "description": "A programm to export bookmarks using Libarate from Audible and to then summarize them for easy export to Notion/Excel/Sheets",
-        "github": "https://github.com/MaximilianMauroner/liberate_bookmarks"
-    },
-    {
-        "name": "Colour Game",
-        "slug": "colour-game",
-        "date": "2024-07-21",
-        "description": "A simple game to test your colour perception",
-        "github": "https://github.com/MaximilianMauroner/colour-game"
-    },
-    {
-        "name": "Ring Tracker",
-        "slug": "ring-tracker",
-        "date": "2024-07-21",
-        "description": "A tool to help women that use menstrual discs track the times they have to remove and insert them",
-        "github": "https://github.com/MaximilianMauroner/ring-tracker"
-    },
-    {
-        "name": "SyncTime",
-        "slug": "synctime",
-        "date": "2024-07-21",
-        "description": "A lightweight tool that allows you to track the time you spend on phone and laptop and sync it between devices.",
-        "github": "https://github.com/MaximilianMauroner/synctime"
-    },
-    {
-        "name": "Subscription Manager",
-        "slug": "subscription-manager",
-        "date": "2024-07-21",
-        "description": "A tool to help you manage your subscriptions and calculate how much you are spending and overspending",
-        "github": "https://github.com/MaximilianMauroner/subscription-manager"
-    },
-    {
-        "name": "Race Pace Cheatsheet",
-        "slug": "race-pace-cheatsheet",
-        "date": "2024-07-21",
-        "description": "A website to help you calculate your pace for different units and to convert your speed into pace",
-        "github": "https://github.com/MaximilianMauroner/race-pace-cheatsheet"
-    },
-    {
-        "name": "TikTok Friend Downloader",
-        "slug": "tt-friend-dl",
-        "date": "2024-07-21",
-        "description": "A chrome extension that allows you to download all videos you recieved from a Friend on TikTok and watch (and track) them",
-        "github": "https://github.com/MaximilianMauroner/tt-friend-dl"
-    },
-    {
-        "name": "Duplifinder",
-        "slug": "duplifinder",
-        "date": "2024-07-21",
-        "description": "A tool to find duplicate passwords in your password manager",
-        "github": "https://github.com/MaximilianMauroner/duplifinder"
-    },
-    {
-        "name": "Camera Roll Formater",
-        "slug": "camera-roll-formater",
-        "date": "2024-07-21",
-        "description": "A tool to format your images into the format which is used by the onedrive cameraroll since the onedrive app is somewhat broken",
-        "github": "https://github.com/Lab4Code/camera-roll-formater"
-    },
-    {
-        "name": "Personal Notion Manager",
-        "slug": "personal-notion-manager",
-        "date": "2024-07-21",
-        "description": "A tool to help you manage your notion, this includes imports from various sources into notion",
-        "github": "https://github.com/Lab4Code/PersonalNotionManager"
+    "progress": 0.8
+  },
+  {
+    "name": "Website",
+    "slug": "www.mauroner-net",
+    "date": "2024-07-21",
+    "description": "My personal website",
+    "github": "https://github.com/MaximilianMauroner/home/"
+  },
+  {
+    "name": "Highlights to Snipd",
+    "slug": "highlights-to-snipd",
+    "date": "2024-07-21",
+    "description": "A tool to help migrate highlights (that export from audible via Liberate) to Snipd",
+    "github": "https://github.com/MaximilianMauroner/highlights_to_snipd"
+  },
+  {
+    "name": "Liberate Bookmarks",
+    "slug": "liberate-bookmarks",
+    "date": "2024-07-21",
+    "description": "A programm to export bookmarks using Libarate from Audible and to then summarize them for easy export to Notion/Excel/Sheets",
+    "github": "https://github.com/MaximilianMauroner/liberate_bookmarks"
+  },
+  {
+    "name": "Colour Game",
+    "slug": "colour-game",
+    "date": "2024-07-22",
+    "description": "A simple game to test your colour perception",
+    "github": "https://github.com/MaximilianMauroner/colour-game",
+    "website": "https://colour-game.mauroner.eu/",
+    "contributors": [
+      {
+        "name": "Maximilian Mauroner",
+        "href": "https://github.com/MaximilianMauroner"
+      }
+    ],
+    "progress": 0.8,
+    "technologies": [
+      { "name": "SolidJS", "href": "https://www.solidjs.com/" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+    ],
+    "images": {
+      "primary": "/colour-game/first.avif",
+      "secondary": "/colour-game/second.avif",
+      "tertiary": "/colour-game/third.avif"
     }
+  },
+  {
+    "name": "Ring Tracker",
+    "slug": "ring-tracker",
+    "date": "2024-07-21",
+    "description": "A tool to help women that use menstrual discs track the times they have to remove and insert them",
+    "github": "https://github.com/MaximilianMauroner/ring-tracker"
+  },
+  {
+    "name": "SyncTime",
+    "slug": "synctime",
+    "date": "2024-07-21",
+    "description": "A lightweight tool that allows you to track the time you spend on phone and laptop and sync it between devices.",
+    "github": "https://github.com/MaximilianMauroner/synctime"
+  },
+  {
+    "name": "Subscription Manager",
+    "slug": "subscription-manager",
+    "date": "2024-07-21",
+    "description": "A tool to help you manage your subscriptions and calculate how much you are spending and overspending",
+    "github": "https://github.com/MaximilianMauroner/subscription-manager"
+  },
+  {
+    "name": "Race Pace Cheatsheet",
+    "slug": "race-pace-cheatsheet",
+    "date": "2024-07-21",
+    "description": "A website to help you calculate your pace for different units and to convert your speed into pace",
+    "github": "https://github.com/MaximilianMauroner/race-pace-cheatsheet"
+  },
+  {
+    "name": "TikTok Friend Downloader",
+    "slug": "tt-friend-dl",
+    "date": "2024-07-21",
+    "description": "A chrome extension that allows you to download all videos you recieved from a Friend on TikTok and watch (and track) them",
+    "github": "https://github.com/MaximilianMauroner/tt-friend-dl"
+  },
+  {
+    "name": "Duplifinder",
+    "slug": "duplifinder",
+    "date": "2024-07-21",
+    "description": "A tool to find duplicate passwords in your password manager",
+    "github": "https://github.com/MaximilianMauroner/duplifinder"
+  },
+  {
+    "name": "Camera Roll Formater",
+    "slug": "camera-roll-formater",
+    "date": "2024-07-21",
+    "description": "A tool to format your images into the format which is used by the onedrive cameraroll since the onedrive app is somewhat broken",
+    "github": "https://github.com/Lab4Code/camera-roll-formater"
+  },
+  {
+    "name": "Personal Notion Manager",
+    "slug": "personal-notion-manager",
+    "date": "2024-07-21",
+    "description": "A tool to help you manage your notion, this includes imports from various sources into notion",
+    "github": "https://github.com/Lab4Code/PersonalNotionManager"
+  }
 ]
