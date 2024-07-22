@@ -43,7 +43,7 @@ export const head: DocumentHead = ({ resolveValue }) => {
   const project = resolveValue(useGetProjectData);
   if (!project) return {};
   return {
-    title: `Project "${project.name}"`,
+    title: `Project "${project?.name}"`,
     meta: [
       {
         name: "description",

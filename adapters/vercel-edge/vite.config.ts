@@ -11,12 +11,10 @@ export default extendConfig(baseConfig, () => {
       },
       outDir: ".vercel/output/functions/_qwik-city.func",
     },
-    plugins: [vercelEdgeAdapter({
-      ssg: {
-        include: ['/*'],
-        origin: 'https://www.mauroner.eu',
-        sitemapOutFile: 'sitemap.xml',
-      }, 
-    })],
+    plugins: [vercelEdgeAdapter({ssg: {
+      include: ['/*'],
+      origin: 'https://www.mauroner.eu',
+      sitemapOutFile: 'sitemap.xml',
+    }})],
   };
 });
