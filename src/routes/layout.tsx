@@ -24,6 +24,9 @@ export default component$(() => {
       <main class="flex-1">
         <Slot />
       </main>
+      <span class="text-sm text-muted-foreground">
+        This is page is cached from: {new Date().toLocaleString("en-GB")}
+      </span>
       <Footer />
     </>
   );
