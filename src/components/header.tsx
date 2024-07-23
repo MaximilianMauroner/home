@@ -38,8 +38,8 @@ const Header = component$(() => {
     }
   }
   return (
-    <header class="flex items-center justify-between bg-primary px-6 py-4 text-primary-foreground">
-      <nav class="flex items-center gap-6">
+    <header class="flex items-center justify-center bg-primary px-2 py-4 text-primary-foreground sm:px-6 md:justify-between">
+      <nav class="flex items-center gap-2 sm:gap-6">
         <a href="/" class="flex items-center gap-2 font-medium">
           <div class={"h-6 w-8"}>
             <ImgAstronaut
@@ -75,7 +75,9 @@ const Header = component$(() => {
               "hidden items-center gap-2 text-sm font-medium underline-offset-4 hover:underline md:flex"
             }
           >
-            <img class={"h-6 w-6"} src={item.icon} alt={item.name} />
+            <div class={"h-6 w-6"}>
+              <img src={item.icon} alt={item.name} width={1000} height={1000} />
+            </div>
           </a>
         ))}
       </div>

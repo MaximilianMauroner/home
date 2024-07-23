@@ -59,7 +59,7 @@ export default component$(() => {
 
   return (
     <>
-      <h1 class="w-full text-center font-mono text-5xl font-extrabold md:text-9xl">
+      <h1 class="my-10 w-full text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
         {firstname.value}
         <br /> {lastname.value}
       </h1>
