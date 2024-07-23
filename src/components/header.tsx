@@ -44,7 +44,7 @@ const Header = component$(() => {
           <div class={"h-6 w-8"}>
             <ImgAstronaut
               decoding="sync"
-              srcset="astronaut.avif"
+              srcset="/astronaut.avif"
               alt="Astronaut with laptop"
             />
             <span class="sr-only">Astronaut</span>
