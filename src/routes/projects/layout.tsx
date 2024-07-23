@@ -6,5 +6,7 @@ export const onGet: RequestHandler = async ({ cacheControl }) => {
     maxAge: 0,
     sMaxAge: 0,
     staleWhileRevalidate: 0,
+    noCache: true,
+    noStore: true,
   });
 };
