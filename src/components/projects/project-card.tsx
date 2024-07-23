@@ -171,7 +171,8 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
             </div>
             {project.lastUpdate && (
               <span class="text-xs text-muted-foreground">
-                Last Push:&nbsp;{new Date(project.lastUpdate).toLocaleString()}
+                Last Push:&nbsp;
+                {new Date(project.lastUpdate).toLocaleString("en-GB")}
               </span>
             )}
           </div>
