@@ -39,16 +39,21 @@ const getLastPush = async (url: string, apiKey: string | undefined) => {
 
   const apiUrl = url.replace("github.com/", "api.github.com/repos/");
 
-  const res = await fetch(apiUrl, {
-    headers: {
-      Authorization: "Bearer " + apiKey,
-    },
-  });
-  const repo = await res.json();
+  try {
+    const res = await fetch(apiUrl, {
+      headers: {
+        Authorization: "Bearer " + apiKey,
+      },
+    });
+    const repo = await res.json();
 
-  if (repo?.pushed_at) {
-    return repo.pushed_at;
+    if (repo?.pushed_at) {
+      return repo.pushed_at;
+    }
+  } catch (e) {
+    console.error(e);
   }
+
   return null;
 };
 
