@@ -42,7 +42,11 @@ const Header = component$(() => {
       <nav class="flex items-center gap-6">
         <a href="/" class="flex items-center gap-2 font-medium">
           <div class={"h-6 w-8"}>
-            <ImgAstronaut srcset="astronaut.avif" alt="Astronaut with laptop" />
+            <ImgAstronaut
+              decoding="sync"
+              srcset="astronaut.avif"
+              alt="Astronaut with laptop"
+            />
             <span class="sr-only">Astronaut</span>
           </div>
         </a>
