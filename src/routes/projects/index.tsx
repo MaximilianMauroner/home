@@ -33,8 +33,8 @@ export const useGetProjectUpdate = routeLoader$(async () => {
   // This code runs only on the server, after every navigation
   const res = await fetch(val);
   const repo = await res.json();
-  console.log("fetching on server", repo.updated_at);
-  return repo.updated_at as string | undefined;
+  console.log("fetching on server", repo.pushed_at);
+  return repo.pushed_at as string | undefined;
 });
 
 const Projects = component$(() => {
