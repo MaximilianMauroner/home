@@ -19,7 +19,9 @@ const val = "https://api.github.com/repos/maximilianmauroner/home";
 export const useGetProjectUpdate = routeLoader$(async () => {
   const res = await fetch(val);
   const repo = await res.json();
-  return repo.pushed_at as string | undefined;
+  return (
+    (repo.pushed_at as string | undefined) + " " + new Date().toLocaleString()
+  );
 });
 
 const Projects = component$(() => {
