@@ -5,7 +5,6 @@ import { Link } from "@builder.io/qwik-city";
 export type Project = {
   name: string;
   slug: string;
-  date: string;
   description: string;
   github: string;
   progress?: number;
@@ -67,11 +66,11 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
               <>
                 <span class="sr-only">Progress</span>
                 <div class="m-0 text-muted-foreground sm:w-2/3">
-                  <span>{project.progress * 100}% complete</span>
+                  <span>{Math.floor(project.progress * 100)}% complete</span>
                   <div class="mt-1 h-2 w-full rounded-full bg-secondary">
                     <div
                       class="h-2 rounded-full bg-primary"
-                      style={`width: ${project.progress * 100}%`}
+                      style={`width: ${Math.floor(project.progress * 100)}%`}
                     ></div>
                   </div>
                 </div>

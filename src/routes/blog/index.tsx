@@ -20,7 +20,7 @@ export const blogsPosts: BlogPostType[] = [
       "Since this is my first blog post, so I thought I'd start with a classic",
     slug: "hello-world",
     published: false,
-    tags: ["hello-world", "blog"],
+    tags: ["hello-world", "blog", "example"],
   },
 ];
 
@@ -41,7 +41,7 @@ const Blog = component$(() => {
       <section>
         <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
           <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">
-            <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl ">
+            <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl">
               My Blog
             </h2>
             <p class="l font-light text-gray-500 sm:text-xl">
@@ -75,7 +75,7 @@ export const BlogPreview = component$<{ post: BlogPostType }>(
       return Math.floor(days);
     };
     return (
-      <article class="rounded-lg border border-gray-200 bg-card p-6 shadow-md ">
+      <article class="rounded-lg border border-gray-200 bg-card p-6 shadow-md">
         <div class="mb-5 flex items-center justify-between">
           <div class="inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium text-primary">
             <svg
@@ -87,7 +87,7 @@ export const BlogPreview = component$<{ post: BlogPostType }>(
               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
             </svg>
 
-            <span>
+            <div class="overflow-ellipsis whitespace-nowrap">
               {post.tags.map((tag, index) => (
                 <a
                   key={tag}
@@ -97,7 +97,7 @@ export const BlogPreview = component$<{ post: BlogPostType }>(
                   {tag + (index < post.tags.length - 1 ? ", " : "")}
                 </a>
               ))}
-            </span>
+            </div>
           </div>
           <span class="text-sm text-muted-foreground">
             {calculateReleaseDate()} days ago

@@ -2,7 +2,6 @@
   {
     "name": "Danger Radar",
     "slug": "danger-radar",
-    "date": "2024-07-20",
     "description": "A web app to show the danger of a location",
     "github": "https://github.com/MaximilianMauroner/danger-radar/",
     "website": "https://danger-radar.mauroner.eu/",
@@ -45,7 +44,6 @@
   {
     "name": "League Lore Reader",
     "slug": "league-lore-reader",
-    "date": "2024-07-20",
     "description": "A website which reads the lore of League of Legends and displays it with the option to let it get read to you",
     "github": "https://github.com/MaximilianMauroner/LeagueLoreReader/",
     "website": "https://lorereader.mauroner.eu/",
@@ -85,7 +83,6 @@
   {
     "name": "Colour Game",
     "slug": "colour-game",
-    "date": "2024-07-22",
     "description": "A simple game to test your colour perception",
     "github": "https://github.com/MaximilianMauroner/colour-game",
     "website": "https://colour-game.mauroner.eu/",
@@ -109,78 +106,110 @@
   {
     "name": "Website",
     "slug": "www.mauroner-net",
-    "date": "2024-07-21",
     "description": "My personal website",
-    "github": "https://github.com/MaximilianMauroner/home/"
+    "github": "https://github.com/MaximilianMauroner/home/",
+    "progress": 0.54,
+    "website": "https://www.mauroner.eu/",
+    "contributors": [
+      {
+        "name": "Maximilian Mauroner",
+        "href": "https://github.com/MaximilianMauroner"
+      }
+    ],
+    "technologies": [
+      { "name": "qwik", "href": "https://qwik.dev/" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+    ]
   },
   {
     "name": "Highlights to Snipd",
     "slug": "highlights-to-snipd",
-    "date": "2024-07-21",
     "description": "A tool to help migrate highlights (that export from audible via Liberate) to Snipd",
-    "github": "https://github.com/MaximilianMauroner/highlights_to_snipd"
+    "github": "https://github.com/MaximilianMauroner/highlights_to_snipd",
+    "progress": 0.95,
+    "contributors": [
+      {
+        "name": "Maximilian Mauroner",
+        "href": "https://github.com/MaximilianMauroner"
+      }
+    ],
+    "technologies": [
+      { "name": "typescript", "href": "https://www.typescriptlang.org/" }
+    ]
   },
   {
     "name": "Liberate Bookmarks",
     "slug": "liberate-bookmarks",
-    "date": "2024-07-21",
     "description": "A programm to export bookmarks using Libarate from Audible and to then summarize them for easy export to Notion/Excel/Sheets",
-    "github": "https://github.com/MaximilianMauroner/liberate_bookmarks"
+    "github": "https://github.com/MaximilianMauroner/liberate_bookmarks",
+    "progress": 0.75,
+    "contributors": [
+      {
+        "name": "Maximilian Mauroner",
+        "href": "https://github.com/MaximilianMauroner"
+      }
+    ],
+    "technologies": [
+      { "name": "tauri", "href": "https://tauri.app/" },
+      { "name": "svelte", "href": "https://svelte.dev/" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com/" },
+      { "name": "typescript", "href": "https://www.typescriptlang.org/" }
+    ]
   },
   {
     "name": "Ring Tracker",
     "slug": "ring-tracker",
-    "date": "2024-07-21",
     "description": "A tool to help women that use menstrual discs track the times they have to remove and insert them",
-    "github": "https://github.com/MaximilianMauroner/ring-tracker"
+    "github": "https://github.com/MaximilianMauroner/ring-tracker",
+    "progress": 0.2
   },
   {
     "name": "SyncTime",
     "slug": "synctime",
-    "date": "2024-07-21",
     "description": "A lightweight tool that allows you to track the time you spend on phone and laptop and sync it between devices.",
-    "github": "https://github.com/MaximilianMauroner/synctime"
+    "github": "https://github.com/MaximilianMauroner/synctime",
+    "progress": 0.05
   },
   {
     "name": "Subscription Manager",
     "slug": "subscription-manager",
-    "date": "2024-07-21",
     "description": "A tool to help you manage your subscriptions and calculate how much you are spending and overspending",
-    "github": "https://github.com/MaximilianMauroner/subscription-manager"
+    "github": "https://github.com/MaximilianMauroner/subscription-manager",
+    "progress": 0.15
   },
   {
     "name": "Race Pace Cheatsheet",
     "slug": "race-pace-cheatsheet",
-    "date": "2024-07-21",
     "description": "A website to help you calculate your pace for different units and to convert your speed into pace",
-    "github": "https://github.com/MaximilianMauroner/race-pace-cheatsheet"
+    "github": "https://github.com/MaximilianMauroner/race-pace-cheatsheet",
+    "progress": 0.85
   },
   {
     "name": "TikTok Friend Downloader",
     "slug": "tt-friend-dl",
-    "date": "2024-07-21",
     "description": "A chrome extension that allows you to download all videos you recieved from a Friend on TikTok and watch (and track) them",
-    "github": "https://github.com/MaximilianMauroner/tt-friend-dl"
+    "github": "https://github.com/MaximilianMauroner/tt-friend-dl",
+    "progress": 0.15
   },
   {
     "name": "Duplifinder",
     "slug": "duplifinder",
-    "date": "2024-07-21",
     "description": "A tool to find duplicate passwords in your password manager",
-    "github": "https://github.com/MaximilianMauroner/duplifinder"
-  },
-  {
-    "name": "Camera Roll Formater",
-    "slug": "camera-roll-formater",
-    "date": "2024-07-21",
-    "description": "A tool to format your images into the format which is used by the onedrive cameraroll since the onedrive app is somewhat broken",
-    "github": "https://github.com/Lab4Code/camera-roll-formater"
+    "github": "https://github.com/MaximilianMauroner/duplifinder",
+    "progress": 0.55
   },
   {
     "name": "Personal Notion Manager",
     "slug": "personal-notion-manager",
-    "date": "2024-07-21",
     "description": "A tool to help you manage your notion, this includes imports from various sources into notion",
-    "github": "https://github.com/Lab4Code/PersonalNotionManager"
+    "github": "https://github.com/Lab4Code/PersonalNotionManager",
+    "progress": 0.02
+  },
+  {
+    "name": "Camera Roll Formater",
+    "slug": "camera-roll-formater",
+    "description": "A tool to format your images into the format which is used by the onedrive cameraroll since the onedrive app is somewhat broken",
+    "github": "https://github.com/Lab4Code/camera-roll-formater",
+    "progress": 0.9
   }
 ]

@@ -15,18 +15,17 @@ export const head: DocumentHead = {
 };
 
 const Projects = component$(() => {
-  projects.sort((a, b) => {
-    if (a.images?.primary && b.images?.primary) {
-      const val = b.date.localeCompare(a.date);
-      if (val == 0) {
-        return a.slug.localeCompare(b.slug);
+  if (process.env.NODE_ENV !== "development") {
+    projects.sort((a, b) => {
+      if (a.images?.primary && b.images?.primary) {
+        return a.progress > b.progress ? -1 : 1;
+      } else if (a.images?.primary) {
+        return -1;
       }
-      return val;
-    } else if (a.images?.primary) {
-      return -1;
-    }
-    return 1;
-  });
+      return a.progress > b.progress ? -1.5 : 0.5;
+    });
+  }
+
   return (
     <div class={"mt-4"}>
       <div class={"my-4 flex flex-col space-y-4"}>
