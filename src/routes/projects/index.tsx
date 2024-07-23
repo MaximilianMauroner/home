@@ -10,9 +10,9 @@ import { default as projects } from "~/data/projects.json";
 export const onGet: RequestHandler = async ({ cacheControl }) => {
   cacheControl({
     // Always serve a cached response by default, up to a week stale
-    staleWhileRevalidate: 60, //* 60 * 24 * 7,
+    staleWhileRevalidate: 60 * 5, //* 60 * 24 * 7,
     // Max once every 5 seconds, revalidate on the server to get a fresh version of this page
-    maxAge: 60,
+    maxAge: 60 * 5,
   });
 };
 
@@ -33,7 +33,7 @@ export const useGetProjectUpdate = routeLoader$(async () => {
   // This code runs only on the server, after every navigation
   const res = await fetch(val);
   const repo = await res.json();
-  console.log("fetching on server", repo.pushed_at);
+  console.error("fetching on server", repo.pushed_at);
   return repo.pushed_at as string | undefined;
 });
 
