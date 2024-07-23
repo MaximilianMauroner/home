@@ -1,9 +1,5 @@
 import { component$ } from "@builder.io/qwik";
-import {
-  RequestEvent,
-  routeLoader$,
-  type DocumentHead,
-} from "@builder.io/qwik-city";
+import { routeLoader$, type DocumentHead } from "@builder.io/qwik-city";
 import ProjectCard, { type Project } from "~/components/projects/project-card";
 import { default as localProjects } from "~/data/projects.json";
 
@@ -36,7 +32,7 @@ export const useGetProjectUpdate = routeLoader$(async (requestEvent) => {
   return projects;
 });
 
-const getLastPush = async (url: string, apiKey: string) => {
+const getLastPush = async (url: string, apiKey: string | undefined) => {
   // https://api.github.com/repos/MaximilianMauroner/tt-friend-dl
   // https://github.com/MaximilianMauroner/tt-friend-dl
   if (!apiKey) return null;
