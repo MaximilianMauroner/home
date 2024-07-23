@@ -231,7 +231,7 @@ const SingleImage = component$(
         {isFullScreen.value && (
           <div
             class={
-              "fixed bottom-0 left-0 right-0 top-0 z-50 flex items-center justify-center"
+              "fixed bottom-0 left-0 right-0 top-0 z-50 flex cursor-pointer items-center justify-center"
             }
           >
             <img
@@ -240,7 +240,7 @@ const SingleImage = component$(
               })}
               src={src}
               alt={alt}
-              class={`container z-10 h-full w-screen rounded-lg object-cover`}
+              class={`container h-full w-screen rounded-lg object-cover`}
               loading="lazy"
             />
           </div>
