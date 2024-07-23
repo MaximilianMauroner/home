@@ -4,14 +4,16 @@ import type { RequestHandler } from "@builder.io/qwik-city";
 import Header from "../components/header";
 
 export const onGet: RequestHandler = async ({ cacheControl }) => {
+  cacheControl({
+    staleWhileRevalidate: 60 * 3, //60 * 24 * 365,
+    maxAge: 5,
+  });
   cacheControl(
     {
-      // Always serve a cached response by default, up to a week stale
-      staleWhileRevalidate: 60 * 5, //60 * 24 * 7,
-      // Max once every 5 seconds, revalidate on the server to get a fresh version of this page
       maxAge: 5,
+      staleWhileRevalidate: 60 * 3, //60 * 24 * 365,
     },
-    "Vercel-CDN-Cache-Control",
+    "CDN-Cache-Control",
   );
 };
 

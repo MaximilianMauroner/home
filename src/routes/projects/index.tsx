@@ -25,8 +25,7 @@ export const useGetProjectUpdate = routeLoader$(async () => {
 });
 
 const Projects = component$(() => {
-  const signal = useGetProjectUpdate(); // Readonly<Signal<Product>>
-  console.log(signal.value);
+  const signal = useGetProjectUpdate();
 
   if (process.env.NODE_ENV !== "development") {
     projects.sort((a, b) => {
