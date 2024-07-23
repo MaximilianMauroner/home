@@ -21,6 +21,8 @@ const Projects = component$(() => {
         return a.progress > b.progress ? -1 : 1;
       } else if (a.images?.primary) {
         return -1;
+      } else if (b.images?.primary) {
+        return 1;
       }
       return a.progress > b.progress ? -1.5 : 0.5;
     });
