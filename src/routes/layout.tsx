@@ -5,13 +5,13 @@ import Header from "../components/header";
 
 export const onGet: RequestHandler = async ({ cacheControl }) => {
   cacheControl({
-    staleWhileRevalidate: 5, // 60 * 60 * 24 * 365,
+    staleWhileRevalidate: 60 * 60 * 24 * 365,
     maxAge: 5,
   });
   cacheControl(
     {
       maxAge: 5,
-      staleWhileRevalidate: 5, // 60 * 60 * 24 * 365,
+      staleWhileRevalidate: 60 * 60 * 24 * 365,
     },
     "CDN-Cache-Control",
   );
