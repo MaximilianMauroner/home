@@ -21,7 +21,6 @@ export const head: DocumentHead = {
 const val = "https://api.github.com/repos/maximilianmauroner/home";
 
 export const useGetProjectUpdate = routeLoader$(async () => {
-  // This code runs only on the server, after every navigation
   const res = await fetch(val);
   const repo = await res.json();
   return repo.pushed_at as string | undefined;
