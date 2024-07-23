@@ -3,8 +3,8 @@
     "name": "Danger Radar",
     "slug": "danger-radar",
     "description": "A web app to show the danger of a location",
-    "github": "https://github.com/MaximilianMauroner/danger-radar/",
-    "website": "https://danger-radar.mauroner.eu/",
+    "github": "https://github.com/MaximilianMauroner/danger-radar",
+    "website": "https://danger-radar.mauroner.eu",
     "progress": 0.66,
     "contributors": [
       {
@@ -13,18 +13,18 @@
       }
     ],
     "technologies": [
-      { "name": "React", "href": "https://reactjs.org/" },
+      { "name": "React", "href": "https://reactjs.org" },
       {
         "name": "TypeScript",
-        "href": "https://www.typescriptlang.org/"
+        "href": "https://www.typescriptlang.org"
       },
-      { "name": "Leaflet", "href": "https://leafletjs.com/" },
-      { "name": "Vercel", "href": "https://vercel.com/" },
-      { "name": "Pusher", "href": "https://pusher.com/" },
-      { "name": "Next-Auth", "href": "https://next-auth.js.org/" },
-      { "name": "tRPC", "href": "https://trpc.io/" },
-      { "name": "Prisma", "href": "https://www.prisma.io/" },
-      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+      { "name": "Leaflet", "href": "https://leafletjs.com" },
+      { "name": "Vercel", "href": "https://vercel.com" },
+      { "name": "Pusher", "href": "https://pusher.com" },
+      { "name": "Next-Auth", "href": "https://next-auth.js.org" },
+      { "name": "tRPC", "href": "https://trpc.io" },
+      { "name": "Prisma", "href": "https://www.prisma.io" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com" }
     ],
     "images": {
       "primary": {
@@ -45,8 +45,8 @@
     "name": "League Lore Reader",
     "slug": "league-lore-reader",
     "description": "A website which reads the lore of League of Legends and displays it with the option to let it get read to you",
-    "github": "https://github.com/MaximilianMauroner/LeagueLoreReader/",
-    "website": "https://lorereader.mauroner.eu/",
+    "github": "https://github.com/MaximilianMauroner/LeagueLoreReader",
+    "website": "https://lorereader.mauroner.eu",
     "progress": 0.8,
     "contributors": [
       {
@@ -55,15 +55,15 @@
       }
     ],
     "technologies": [
-      { "name": "React", "href": "https://reactjs.org/" },
+      { "name": "React", "href": "https://reactjs.org" },
       {
         "name": "TypeScript",
-        "href": "https://www.typescriptlang.org/"
+        "href": "https://www.typescriptlang.org"
       },
-      { "name": "Vercel", "href": "https://vercel.com/" },
-      { "name": "tRPC", "href": "https://trpc.io/" },
-      { "name": "Prisma", "href": "https://www.prisma.io/" },
-      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+      { "name": "Vercel", "href": "https://vercel.com" },
+      { "name": "tRPC", "href": "https://trpc.io" },
+      { "name": "Prisma", "href": "https://www.prisma.io" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com" }
     ],
     "images": {
       "primary": {
@@ -85,7 +85,7 @@
     "slug": "colour-game",
     "description": "A simple game to test your colour perception",
     "github": "https://github.com/MaximilianMauroner/colour-game",
-    "website": "https://colour-game.mauroner.eu/",
+    "website": "https://colour-game.mauroner.eu",
     "progress": 0.95,
     "contributors": [
       {
@@ -94,8 +94,8 @@
       }
     ],
     "technologies": [
-      { "name": "SolidJS", "href": "https://www.solidjs.com/" },
-      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+      { "name": "SolidJS", "href": "https://www.solidjs.com" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com" }
     ],
     "images": {
       "primary": { "src": "/colour-game/first.avif", "alt": "Alt text" },
@@ -107,9 +107,9 @@
     "name": "Website",
     "slug": "www.mauroner-net",
     "description": "My personal website",
-    "github": "https://github.com/MaximilianMauroner/home/",
+    "github": "https://github.com/MaximilianMauroner/home",
     "progress": 0.54,
-    "website": "https://www.mauroner.eu/",
+    "website": "https://www.mauroner.eu",
     "contributors": [
       {
         "name": "Maximilian Mauroner",
@@ -117,8 +117,8 @@
       }
     ],
     "technologies": [
-      { "name": "qwik", "href": "https://qwik.dev/" },
-      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+      { "name": "qwik", "href": "https://qwik.dev" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com" }
     ]
   },
   {
@@ -134,7 +134,7 @@
       }
     ],
     "technologies": [
-      { "name": "typescript", "href": "https://www.typescriptlang.org/" }
+      { "name": "typescript", "href": "https://www.typescriptlang.org" }
     ]
   },
   {
@@ -150,10 +150,10 @@
       }
     ],
     "technologies": [
-      { "name": "tauri", "href": "https://tauri.app/" },
-      { "name": "svelte", "href": "https://svelte.dev/" },
-      { "name": "tailwindcss", "href": "https://tailwindcss.com/" },
-      { "name": "typescript", "href": "https://www.typescriptlang.org/" }
+      { "name": "tauri", "href": "https://tauri.app" },
+      { "name": "svelte", "href": "https://svelte.dev" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com" },
+      { "name": "typescript", "href": "https://www.typescriptlang.org" }
     ]
   },
   {
