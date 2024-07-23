@@ -34,7 +34,7 @@ export const useGetProjectUpdate = routeLoader$(async () => {
   const res = await fetch(val);
   const repo = await res.json();
   console.log("fetching on server", repo.updated_at);
-  return repo.updated_at;
+  return repo.updated_at as string | undefined;
 });
 
 const Projects = component$(() => {
@@ -56,6 +56,7 @@ const Projects = component$(() => {
 
   return (
     <div class={"mt-4"}>
+      {signal.value && <h2>{signal.value}</h2>}
       <div class={"my-4 flex flex-col space-y-4"}>
         {projects.map((project) => (
           <ProjectCard key={project.slug} project={project} />
