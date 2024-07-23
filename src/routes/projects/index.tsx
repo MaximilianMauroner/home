@@ -33,7 +33,6 @@ export const useGetProjectUpdate = routeLoader$(async () => {
   // This code runs only on the server, after every navigation
   const res = await fetch(val);
   const repo = await res.json();
-  console.error("fetching on server", repo.pushed_at);
   return repo.pushed_at as string | undefined;
 });
 
