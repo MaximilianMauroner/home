@@ -12,7 +12,20 @@ export type Project = {
   website?: string;
   contributors?: { name: string; href: string }[];
   technologies?: { name: string; href: string }[];
-  images?: { primary: string; secondary: string; tertiary: string };
+  images?: {
+    primary: {
+      src: string;
+      alt: string;
+    };
+    secondary: {
+      src: string;
+      alt: string;
+    };
+    tertiary: {
+      src: string;
+      alt: string;
+    };
+  };
 };
 
 const ProjectCard = component$(({ project }: { project: Project }) => {
@@ -26,7 +39,7 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
               title={project.name}
               target="_self"
             >
-              <h1 class="mr-auto mt-1 block text-lg font-semibold text-primary hover:underline  md:text-2xl">
+              <h1 class="mr-auto mt-1 block text-lg font-semibold text-primary hover:underline md:text-2xl">
                 {project.name}
               </h1>
             </Link>
@@ -53,7 +66,7 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
             {project.progress && (
               <>
                 <span class="sr-only">Progress</span>
-                <div class="m-0 text-muted-foreground  sm:w-2/3">
+                <div class="m-0 text-muted-foreground sm:w-2/3">
                   <span>{project.progress * 100}% complete</span>
                   <div class="mt-1 h-2 w-full rounded-full bg-secondary">
                     <div
@@ -157,7 +170,7 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
               )}
             </div>
           </div>
-          <p class="col-start-1 mt-4 text-sm leading-6 text-primary  sm:col-span-2 lg:col-span-1 lg:row-start-4 lg:mt-6">
+          <p class="col-start-1 mt-4 text-sm leading-6 text-primary sm:col-span-2 lg:col-span-1 lg:row-start-4 lg:mt-6">
             {project.description}
           </p>
         </div>
@@ -173,20 +186,20 @@ const ProjectImages = component$(({ project }: { project: Project }) => {
   return (
     <>
       <SingleImage
-        src={project.images.primary}
-        alt=""
+        src={project.images.primary.src}
+        alt={project.images.primary.alt}
         imageClasses="h-60 w-full object-cover sm:h-52"
         spacingClasses="rounded-lg sm:col-span-2 lg:col-span-full"
       />
       <SingleImage
-        src={project.images.secondary}
-        alt=""
+        src={project.images.secondary.src}
+        alt={project.images.secondary.alt}
         imageClasses="h-52 w-full object-cover lg:h-32"
         spacingClasses="rounded-lg hidden sm:col-span-2 sm:block md:col-span-1 lg:col-span-2 lg:row-start-2 lg:h-32"
       />
       <SingleImage
-        src={project.images.tertiary}
-        alt=""
+        src={project.images.tertiary.src}
+        alt={project.images.tertiary.alt}
         imageClasses="h-52 w-full object-cover lg:h-32"
         spacingClasses="rounded-lg hidden md:block lg:col-span-2 lg:row-start-2"
       />

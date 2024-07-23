@@ -1,4 +1,3 @@
-// src/routes/user/[username]/index.tsx
 import { component$ } from "@builder.io/qwik";
 import {
   type StaticGenerateHandler,
@@ -19,12 +18,6 @@ export default component$(() => {
       <div class={"my-4 flex flex-col space-y-4"}>
         <ProjectCard project={project as Project} />
       </div>
-      {/* {project?.website && (
-                // <iframe
-                //     src={project.website}
-                //     class={"h-96 flex-1 md:mx-auto md:w-2/3"}
-                // ></iframe>
-            )} */}
     </div>
   );
 });
@@ -43,7 +36,7 @@ export const head: DocumentHead = ({ resolveValue }) => {
   const project = resolveValue(useGetProjectData);
   if (!project) return {};
   return {
-    title: `Project "${project?.name}"`,
+    title: `Project "${project.name}"`,
     meta: [
       {
         name: "description",

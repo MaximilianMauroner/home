@@ -1,9 +1,5 @@
-import { component$, useSignal } from "@builder.io/qwik";
-import {
-  routeLoader$,
-  server$,
-  type DocumentHead,
-} from "@builder.io/qwik-city";
+import { component$ } from "@builder.io/qwik";
+import { type DocumentHead } from "@builder.io/qwik-city";
 
 type BlogPostType = {
   title: string;
@@ -15,18 +11,7 @@ type BlogPostType = {
   tags: string[];
 };
 
-import * as fs from "node:fs";
-
-export const getBlogData = routeLoader$(() => {
-  const files: string[] = [];
-  fs.readdirSync(".").forEach((file) => {
-    console.log(file);
-    files.push(file);
-  });
-  return files;
-});
-
-const blogsPosts: BlogPostType[] = [
+export const blogsPosts: BlogPostType[] = [
   {
     title: "Hello World",
     image: "https://source.unsplash.com/random/800x600",
@@ -51,12 +36,8 @@ export const head: DocumentHead = {
 };
 
 const Blog = component$(() => {
-  const data = getBlogData();
-  console.log(data.value);
-
   return (
     <>
-      <div>Data:{data.value.join(",")}</div>
       <section>
         <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
           <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">
@@ -84,7 +65,7 @@ const Blog = component$(() => {
 });
 export default Blog;
 
-const BlogPreview = component$<{ post: BlogPostType }>(
+export const BlogPreview = component$<{ post: BlogPostType }>(
   ({ post }: { post: BlogPostType }) => {
     const calculateReleaseDate = () => {
       const date1 = new Date(post.date);
@@ -96,7 +77,7 @@ const BlogPreview = component$<{ post: BlogPostType }>(
     return (
       <article class="rounded-lg border border-gray-200 bg-card p-6 shadow-md ">
         <div class="mb-5 flex items-center justify-between">
-          <span class="inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium text-primary">
+          <div class="inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium text-primary">
             <svg
               class="mr-1 h-3 w-3"
               fill="currentColor"
@@ -117,12 +98,12 @@ const BlogPreview = component$<{ post: BlogPostType }>(
                 </a>
               ))}
             </span>
-          </span>
+          </div>
           <span class="text-sm text-muted-foreground">
             {calculateReleaseDate()} days ago
           </span>
         </div>
-        <h2 class="mb-2 text-2xl font-bold tracking-tight text-primary">
+        <h2 class="mb-2 text-2xl font-bold tracking-tight text-primary underline-offset-4 hover:underline">
           <a href={"/blog/" + post.slug}>{post.title}</a>
         </h2>
         <p class="mb-5 font-light text-muted-foreground">{post.description}</p>

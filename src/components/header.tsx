@@ -1,5 +1,6 @@
 import { component$ } from "@builder.io/qwik";
 import { useLocation } from "@builder.io/qwik-city";
+import ImgAstronaut from "~/media/astronaut.avif?jsx";
 
 function classs(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -41,12 +42,7 @@ const Header = component$(() => {
       <nav class="flex items-center gap-6">
         <a href="/" class="flex items-center gap-2 font-medium">
           <div class={"h-6 w-8"}>
-            <img
-              loading="lazy"
-              class="h-6 w-auto"
-              src={"/astronaut.avif"}
-              alt={"Astronaut in space with a laptop"}
-            />
+            <ImgAstronaut />
             <span class="sr-only">Astronaut</span>
           </div>
         </a>

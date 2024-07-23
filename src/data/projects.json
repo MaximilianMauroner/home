@@ -3,15 +3,16 @@
     "name": "Danger Radar",
     "slug": "danger-radar",
     "date": "2024-07-20",
+    "description": "A web app to show the danger of a location",
+    "github": "https://github.com/MaximilianMauroner/danger-radar/",
+    "website": "https://danger-radar.mauroner.eu/",
+    "progress": 0.66,
     "contributors": [
       {
         "name": "Maximilian Mauroner",
         "href": "https://github.com/MaximilianMauroner"
       }
     ],
-    "description": "A web app to show the danger of a location",
-    "github": "https://github.com/MaximilianMauroner/danger-radar/",
-    "website": "https://danger-radar.mauroner.eu/",
     "technologies": [
       { "name": "React", "href": "https://reactjs.org/" },
       {
@@ -27,25 +28,34 @@
       { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
     ],
     "images": {
-      "primary": "/danger-radar/danger-radar-first.jpg",
-      "secondary": "/danger-radar/danger-radar-second.jpg",
-      "tertiary": "/danger-radar/danger-radar-third.jpg"
-    },
-    "progress": 0.66
+      "primary": {
+        "src": "/danger-radar/danger-radar-first.jpg",
+        "alt": "Alt text"
+      },
+      "secondary": {
+        "src": "/danger-radar/danger-radar-second.jpg",
+        "alt": "Alt text 2"
+      },
+      "tertiary": {
+        "src": "/danger-radar/danger-radar-third.jpg",
+        "alt": "Alt text 3"
+      }
+    }
   },
   {
     "name": "League Lore Reader",
     "slug": "league-lore-reader",
     "date": "2024-07-20",
+    "description": "A website which reads the lore of League of Legends and displays it with the option to let it get read to you",
+    "github": "https://github.com/MaximilianMauroner/LeagueLoreReader/",
+    "website": "https://lorereader.mauroner.eu/",
+    "progress": 0.8,
     "contributors": [
       {
         "name": "Maximilian Mauroner",
         "href": "https://github.com/MaximilianMauroner"
       }
     ],
-    "description": "A website which reads the lore of League of Legends and displays it with the option to let it get read to you",
-    "github": "https://github.com/MaximilianMauroner/LeagueLoreReader/",
-    "website": "https://lorereader.mauroner.eu/",
     "technologies": [
       { "name": "React", "href": "https://reactjs.org/" },
       {
@@ -58,11 +68,43 @@
       { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
     ],
     "images": {
-      "primary": "/lorereader/lorereader-first.jpg",
-      "secondary": "/lorereader/lorereader-second.webp",
-      "tertiary": "/lorereader/lorereader-third.webp"
-    },
-    "progress": 0.8
+      "primary": {
+        "src": "/lorereader/lorereader-first.jpg",
+        "alt": "Alt text"
+      },
+      "secondary": {
+        "src": "/lorereader/lorereader-second.webp",
+        "alt": "Alt text 2"
+      },
+      "tertiary": {
+        "src": "/lorereader/lorereader-third.webp",
+        "alt": "Alt text 3"
+      }
+    }
+  },
+  {
+    "name": "Colour Game",
+    "slug": "colour-game",
+    "date": "2024-07-22",
+    "description": "A simple game to test your colour perception",
+    "github": "https://github.com/MaximilianMauroner/colour-game",
+    "website": "https://colour-game.mauroner.eu/",
+    "progress": 0.95,
+    "contributors": [
+      {
+        "name": "Maximilian Mauroner",
+        "href": "https://github.com/MaximilianMauroner"
+      }
+    ],
+    "technologies": [
+      { "name": "SolidJS", "href": "https://www.solidjs.com/" },
+      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
+    ],
+    "images": {
+      "primary": { "src": "/colour-game/first.avif", "alt": "Alt text" },
+      "secondary": { "src": "/colour-game/second.avif", "alt": "Alt text 2" },
+      "tertiary": { "src": "/colour-game/third.avif", "alt": "Alt text 3" }
+    }
   },
   {
     "name": "Website",
@@ -84,30 +126,6 @@
     "date": "2024-07-21",
     "description": "A programm to export bookmarks using Libarate from Audible and to then summarize them for easy export to Notion/Excel/Sheets",
     "github": "https://github.com/MaximilianMauroner/liberate_bookmarks"
-  },
-  {
-    "name": "Colour Game",
-    "slug": "colour-game",
-    "date": "2024-07-22",
-    "description": "A simple game to test your colour perception",
-    "github": "https://github.com/MaximilianMauroner/colour-game",
-    "website": "https://colour-game.mauroner.eu/",
-    "contributors": [
-      {
-        "name": "Maximilian Mauroner",
-        "href": "https://github.com/MaximilianMauroner"
-      }
-    ],
-    "progress": 0.8,
-    "technologies": [
-      { "name": "SolidJS", "href": "https://www.solidjs.com/" },
-      { "name": "tailwindcss", "href": "https://tailwindcss.com/" }
-    ],
-    "images": {
-      "primary": "/colour-game/first.avif",
-      "secondary": "/colour-game/second.avif",
-      "tertiary": "/colour-game/third.avif"
-    }
   },
   {
     "name": "Ring Tracker",
