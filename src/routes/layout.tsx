@@ -25,7 +25,8 @@ export default component$(() => {
         <Slot />
       </main>
       <span class="text-sm text-muted-foreground">
-        This is page is cached from: {new Date().toLocaleString("en-GB")}
+        This is page is cached from:&nbsp;
+        {new Date().toLocaleString("en-GB", { timeZoneName: "shortOffset" })}
       </span>
       <Footer />
     </>
