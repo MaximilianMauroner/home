@@ -18,11 +18,5 @@
         }
       ]
     }
-  ],
-  "routes": [
-    {
-      "src": "/projects",
-      "headers": { "cache-control": "s-maxage=60" }
-    }
   ]
 }
