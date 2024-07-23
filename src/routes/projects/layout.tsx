@@ -10,7 +10,7 @@ export const onGet: RequestHandler = async ({ cacheControl }) => {
       noCache: true,
       noStore: true,
     },
-    "CDN-Cache-Control",
+    "Vercel-CDN-Cache-Control",
   );
   cacheControl({
     public: false,
