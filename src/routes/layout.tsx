@@ -5,11 +5,18 @@ import Header from "../components/header";
 
 export const onGet: RequestHandler = async ({ cacheControl }) => {
   cacheControl({
-    // Always serve a cached response by default, up to a week stale
-    staleWhileRevalidate: 60 * 60 * 24 * 7,
-    // Max once every 5 seconds, revalidate on the server to get a fresh version of this page
+    staleWhileRevalidate: 60 * 60 * 24 * 365,
     maxAge: 5,
+    sMaxAge: 5,
   });
+  cacheControl(
+    {
+      staleWhileRevalidate: 60 * 60 * 24 * 365,
+      maxAge: 5,
+      sMaxAge: 5,
+    },
+    "CDN-Cache-Control",
+  );
 };
 
 export default component$(() => {
@@ -19,6 +26,10 @@ export default component$(() => {
       <main class="flex-1">
         <Slot />
       </main>
+      <span class="text-sm text-muted-foreground">
+        This is page is cached from:&nbsp;
+        {new Date().toLocaleString("en-GB", { timeZoneName: "shortOffset" })}
+      </span>
       <Footer />
     </>
   );

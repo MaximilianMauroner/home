@@ -7,10 +7,11 @@ export type Project = {
   slug: string;
   description: string;
   github: string;
-  progress?: number;
+  progress: number;
   website?: string;
   contributors?: { name: string; href: string }[];
   technologies?: { name: string; href: string }[];
+  lastUpdate: string | null;
   images?: {
     primary: {
       src: string;
@@ -168,6 +169,12 @@ const ProjectCard = component$(({ project }: { project: Project }) => {
                 </Link>
               )}
             </div>
+            {project.lastUpdate && (
+              <span class="text-xs text-muted-foreground">
+                Last Push:&nbsp;
+                {new Date(project.lastUpdate).toLocaleString("en-GB")}
+              </span>
+            )}
           </div>
           <p class="col-start-1 mt-4 text-sm leading-6 text-primary sm:col-span-2 lg:col-span-1 lg:row-start-4 lg:mt-6">
             {project.description}
@@ -231,7 +238,7 @@ const SingleImage = component$(
         {isFullScreen.value && (
           <div
             class={
-              "fixed bottom-0 left-0 right-0 top-0 z-50 flex items-center justify-center"
+              "fixed bottom-0 left-0 right-0 top-0 z-50 flex cursor-pointer items-center justify-center"
             }
           >
             <img
@@ -240,7 +247,7 @@ const SingleImage = component$(
               })}
               src={src}
               alt={alt}
-              class={`container z-10 h-full w-screen rounded-lg object-cover`}
+              class={`container h-full w-screen rounded-lg object-cover`}
               loading="lazy"
             />
           </div>

@@ -38,7 +38,7 @@ const Header = component$(() => {
     }
   }
   return (
-    <header class="flex items-center justify-center bg-primary px-2 py-4 text-primary-foreground sm:px-6 md:justify-between">
+    <header class="sticky top-0 z-10 flex items-center justify-center bg-primary px-2 py-4 text-primary-foreground sm:px-6 md:justify-between">
       <nav class="flex items-center gap-2 sm:gap-6">
         <a href="/" class="flex items-center gap-2 font-medium">
           <div class={"h-6 w-8"}>
