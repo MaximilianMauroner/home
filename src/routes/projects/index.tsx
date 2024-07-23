@@ -1,9 +1,5 @@
 import { component$ } from "@builder.io/qwik";
-import {
-  type RequestHandler,
-  routeLoader$,
-  type DocumentHead,
-} from "@builder.io/qwik-city";
+import { routeLoader$, type DocumentHead } from "@builder.io/qwik-city";
 import ProjectCard from "~/components/projects/project-card";
 import { default as projects } from "~/data/projects.json";
 
