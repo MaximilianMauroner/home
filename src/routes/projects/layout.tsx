@@ -1,4 +1,3 @@
-import { component$, Slot } from "@builder.io/qwik";
 import { type RequestHandler } from "@builder.io/qwik-city";
 
 export const onGet: RequestHandler = async ({ cacheControl }) => {
@@ -9,7 +8,3 @@ export const onGet: RequestHandler = async ({ cacheControl }) => {
     staleWhileRevalidate: 0,
   });
 };
-
-export default component$(() => {
-  return <Slot />;
-});
