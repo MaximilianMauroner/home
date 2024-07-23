@@ -3,6 +3,7 @@ import {
   type StaticGenerateHandler,
   type DocumentHead,
   routeLoader$,
+  type RequestEvent,
 } from "@builder.io/qwik-city";
 import ProjectCard, { type Project } from "~/components/projects/project-card";
 import { default as projects } from "~/data/projects.json";
@@ -10,6 +11,13 @@ import { default as projects } from "~/data/projects.json";
 export const useGetProjectData = routeLoader$(({ params }) => {
   return projects.find((project) => project.slug === params.slug);
 });
+
+export const onGet = async ({ redirect, params }: RequestEvent) => {
+  const project = projects.find((project) => project.slug === params.slug);
+  if (project === undefined) {
+    throw redirect(302, "/404");
+  }
+};
 
 export default component$(() => {
   const project = useGetProjectData().value;

@@ -1,6 +1,7 @@
 import {
+  type RequestEvent,
   routeLoader$,
-  StaticGenerateHandler,
+  type StaticGenerateHandler,
   useLocation,
 } from "@builder.io/qwik-city";
 import { component$ } from "@builder.io/qwik";
@@ -12,16 +13,26 @@ export const useGetBlogByTags = routeLoader$(({ params }) => {
   );
 });
 
+export const onGet = async ({ redirect, params }: RequestEvent) => {
+  const blogs = blogsPosts.filter((project) =>
+    project.tags.find((t) => t === params.tag),
+  );
+  if (blogs.length === 0) {
+    throw redirect(302, "/404");
+  }
+};
+
 export default component$(() => {
   const loc = useLocation();
   const blogs = useGetBlogByTags().value;
+
   const tags = getAllTags();
   return (
     <section>
       <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
         <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">
           Blogs with tag:
-          <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl ">
+          <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl">
             <b>{loc.params.tag}</b>
           </h2>
         </div>
