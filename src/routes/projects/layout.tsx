@@ -1,23 +1,18 @@
 import { type RequestHandler } from "@builder.io/qwik-city";
 
+const revalidate = 60 * 60 * 24 * 7;
 export const onGet: RequestHandler = async ({ cacheControl }) => {
+  cacheControl({
+    staleWhileRevalidate: revalidate,
+    maxAge: revalidate,
+    sMaxAge: revalidate,
+  });
   cacheControl(
     {
-      public: false,
-      maxAge: 0,
-      sMaxAge: 0,
-      staleWhileRevalidate: 0,
-      noCache: true,
-      noStore: true,
+      staleWhileRevalidate: revalidate,
+      maxAge: revalidate,
+      sMaxAge: revalidate,
     },
-    "Vercel-CDN-Cache-Control",
+    "CDN-Cache-Control",
   );
-  cacheControl({
-    public: false,
-    maxAge: 0,
-    sMaxAge: 0,
-    staleWhileRevalidate: 0,
-    noCache: true,
-    noStore: true,
-  });
 };

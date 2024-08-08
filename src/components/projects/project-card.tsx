@@ -29,21 +29,29 @@ export type Project = {
 };
 
 const ProjectCard = component$(({ project }: { project: Project }) => {
+  const imgbg = project.images?.primary
+    ? "from-black/75 via-black/0"
+    : "bg-card-foreground sm:bg-transparent";
   return (
     <div class={"mx-2 bg-card md:mx-auto md:w-2/3"}>
       <main class="rounded-lg border bg-card px-4 py-6 text-card-foreground shadow-sm sm:p-6 md:px-8 md:py-10">
         <div class="mx-auto grid max-w-4xl grid-cols-1 lg:max-w-5xl lg:grid-cols-2 lg:gap-x-20">
-          <div class="relative col-start-1 row-start-1 flex flex-col-reverse rounded-lg bg-gradient-to-t from-black/75 via-black/0 p-3 sm:row-start-2 sm:bg-none sm:p-0 lg:row-start-1">
+          <div
+            class={
+              "relative col-start-1 row-start-1 flex flex-col-reverse rounded-lg bg-gradient-to-t p-3 sm:row-start-2 sm:bg-none sm:p-0 lg:row-start-1 " +
+              imgbg
+            }
+          >
             <Link
               href={`/projects/${project.slug}/`}
               title={project.name}
               target="_self"
             >
-              <h1 class="mr-auto mt-1 block text-lg font-semibold text-primary hover:underline md:text-2xl">
+              <h1 class="mr-auto mt-1 block text-lg font-semibold text-secondary hover:underline sm:text-2xl sm:text-primary">
                 {project.name}
               </h1>
             </Link>
-            <p class="text-sm font-medium leading-4 text-primary hover:underline">
+            <p class="text-sm font-medium leading-4 text-secondary hover:underline sm:text-primary">
               {project.contributors?.map((contributor, index) => (
                 <>
                   <Link

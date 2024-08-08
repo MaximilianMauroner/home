@@ -20,7 +20,7 @@ export const blogsPosts: BlogPostType[] = [
       "Since this is my first blog post, so I thought I'd start with a classic",
     slug: "hello-world",
     published: false,
-    tags: ["hello-world", "blog", "example"],
+    tags: ["hello-world"],
   },
 ];
 
