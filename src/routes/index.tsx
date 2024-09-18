@@ -10,8 +10,8 @@ import dayjs from "dayjs";
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-const ogFirst = "Maximilian";
-const ogLast = "Mauroner";
+const ogFirst = "maximilian";
+const ogLast = "mauroner";
 
 export default component$(() => {
   const firstname = useSignal(ogFirst);
@@ -57,27 +57,82 @@ export default component$(() => {
     loadByName(lastname, ogLast);
   });
 
+  const downArrow = (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="1.5"
+      stroke="currentColor"
+      class="size-6"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M15.75 17.25 12 21m0 0-3.75-3.75M12 21V3"
+      />
+    </svg>
+  );
+  const rightUpArrow = (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="1.5"
+      stroke="currentColor"
+      class="size-6"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25"
+      />
+    </svg>
+  );
   return (
     <>
-      <h1 class="my-10 w-full text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
-        {firstname.value}
-        <br /> {lastname.value}
+      <h1 class="invisible">
+        {firstname.value} <br /> {lastname.value}
       </h1>
+      <div class="my-10 grid w-full grid-flow-col grid-cols-5 grid-rows-2 items-center justify-center text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
+        {firstname.value.split("").map((letter, index) => (
+          <span key={index} class="relative text-center">
+            <span>{letter}</span>
+            {index % 2 === 0 ? (
+              <div class="absolute -bottom-4 right-[47%]">{downArrow}</div>
+            ) : index !== firstname.value.length - 1 ? (
+              <div class="absolute right-0 top-0">{rightUpArrow}</div>
+            ) : null}
+          </span>
+        ))}
+      </div>
+      <div class="my-10 grid w-full grid-flow-col grid-cols-4 grid-rows-2 items-center justify-center text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
+        {lastname.value.split("").map((letter, index) => (
+          <span key={index} class="relative text-center">
+            <span>{letter}</span>
+            {index % 2 === 0 ? (
+              <div class="absolute -bottom-4 right-[47%]">{downArrow}</div>
+            ) : index !== lastname.value.length - 1 ? (
+              <div class="absolute right-0 top-0">{rightUpArrow}</div>
+            ) : null}
+          </span>
+        ))}
+      </div>
       <div class={"flex flex-col items-center justify-center py-4"}>
         <span class="sr-only">
-          This page is intentionally ugly until it is done
+          this page is intentionally ugly until it is done
         </span>
         <div class={"max-w-prose px-4 font-mono text-primary"}>
           <span>
-            Hi, I'm a <AgeCalculator /> year-old developer. Currently studying
+            hi, i'm a <AgeCalculator /> year-old developer. currently studying
             software engineering at the&nbsp;
             <TechStackItem href="https://tuwien.at/" name="TU Wien" />
             .
             <br />
           </span>
           <span class={"pt-3"}>
-            I'm usually working on multiple&nbsp;
-            <TechStackItem href="/projects" name="Projects" />. For more info
+            i'm usually working on multiple&nbsp;
+            <TechStackItem href="/projects" name="Projects" />. for more info
             check them out on&nbsp;
             <TechStackItem
               href="https://github.com/MaximilianMauroner"

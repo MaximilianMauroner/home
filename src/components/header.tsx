@@ -8,13 +8,14 @@ function classs(...classes: string[]) {
 
 const navigation = [
   {
-    name: "Who am I",
+    name: "who am i",
     href: "/",
     current: true,
   },
-  { name: "Blog", href: "/blog/", current: false },
+  { name: "blog", href: "/blog/", current: false },
+  { name: "dev log", href: "/dev-log/", current: false },
   {
-    name: "Projects",
+    name: "projects",
     href: "/projects/",
     current: false,
   },
