@@ -51,7 +51,7 @@ But there were some things i couldn't figure out, like dynamically loading tags 
 
 But recently I found a github issue which solved this for me in a very nice way.
 
-```ts
+```typescript
 export function getLogs() {
   const modules = import.meta.glob("./log/**/*.mdx", { eager: true });
 
