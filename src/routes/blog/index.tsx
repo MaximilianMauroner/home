@@ -1,28 +1,6 @@
 import { component$ } from "@builder.io/qwik";
 import { type DocumentHead } from "@builder.io/qwik-city";
-
-type BlogPostType = {
-  title: string;
-  image: string;
-  date: string;
-  description: string;
-  slug: string;
-  published: boolean;
-  tags: string[];
-};
-
-export const blogsPosts: BlogPostType[] = [
-  {
-    title: "Hello World",
-    image: "https://source.unsplash.com/random/800x600",
-    date: "2023-09-22",
-    description:
-      "Since this is my first blog post, so I thought I'd start with a classic",
-    slug: "hello-world",
-    published: false,
-    tags: ["hello-world"],
-  },
-];
+import { type BlogType, useBlogLoader } from "./layout";
 
 export const head: DocumentHead = {
   title: "Blog",
@@ -36,6 +14,7 @@ export const head: DocumentHead = {
 };
 
 const Blog = component$(() => {
+  const data = useBlogLoader();
   return (
     <>
       <section>
@@ -50,7 +29,7 @@ const Blog = component$(() => {
             </p>
           </div>
           <div class="grid gap-8 lg:grid-cols-2">
-            {blogsPosts
+            {data.value
               .filter(
                 (e) => e.published || process.env.NODE_ENV === "development",
               )
@@ -65,10 +44,10 @@ const Blog = component$(() => {
 });
 export default Blog;
 
-export const BlogPreview = component$<{ post: BlogPostType }>(
-  ({ post }: { post: BlogPostType }) => {
+export const BlogPreview = component$<{ post: BlogType }>(
+  ({ post }: { post: BlogType }) => {
     const calculateReleaseDate = () => {
-      const date1 = new Date(post.date);
+      const date1 = new Date(post.releaseDate);
       const date2 = new Date();
       const diffTime = date2.getTime() - date1.getTime();
       const days = diffTime / (1000 * 3600 * 24);

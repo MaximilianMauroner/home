@@ -16,7 +16,8 @@ export default component$(() => {
           Oops, page not found!
         </h1>
         <p class="mt-4 text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          The page you're looking for doesn't exist or has not been published
+          yet.
         </p>
         <div class="mt-6">
           <a
