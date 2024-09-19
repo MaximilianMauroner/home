@@ -39,6 +39,41 @@ What I want to build, like the MVP of my calendar app:
 - a direct way to modify calendar events like [akiflow](https://akiflow.com/) so I don't need to use google calendar in addition to my calendar
 - CRUD for events
 - a way to add habits and routines
-- 
+- a way to tell the app that a day/time is to be considered blocked without showing up in my calendar (e.g. free time)
+- vacation mode
+- a better(and faster) algorithm than the one in reclaim
+- option to add tasks with start time, deadline, and specific hours
+
+# Homepage
+
+i also updated my homepage, so the page you are currently reading this on. This page uses qwik and every "blog"-ish page uses mdx. 
+But there were some things i couldn't figure out, like dynamically loading tags for blogs, and dynamically loading blogs.
+
+But recently I found a github issue which solved this for me in a very nice way.
+
+```ts
+export function getLogs() {
+  const modules = import.meta.glob("./log/**/*.mdx", { eager: true });
+
+  const logs: Log[] = [];
+  for (const path in modules) {
+    // @ts-ignore
+    const fM = modules[path].frontmatter;
+    const url = path.replace("./", "/dev-log/").replace("/index.mdx", "");
+    logs.push({
+      title: fM?.title ?? "",
+      description: fM?.description ?? "",
+      tags: fM?.tags ?? [],
+      published: fM?.published ?? false,
+      url,
+      releaseDate: fM?.releaseDate ?? new Date().toISOString(),
+    });
+  }
+  return logs;
+}
+```
+
+This code (while not perfect) is way better than anything else i've found, espescially considering that this works on serverless
+
 
 </article>
