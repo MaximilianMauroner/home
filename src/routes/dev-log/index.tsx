@@ -1,31 +1,43 @@
 import { component$ } from "@builder.io/qwik";
 import { type DocumentHead } from "@builder.io/qwik-city";
-import { type BlogType, useBlogLoader } from "./layout";
+import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear"; // ES 2015
+import { type Log, useLogLoader } from "./layout";
 
 export const head: DocumentHead = {
-  title: "Blog",
+  title: "dev log",
   meta: [
     {
       name: "description",
-      content:
-        "Trying to get my blog started so future historians can have my genius thoughts preserved for eternity /s",
+      content: "weekly summary of what i've been working on",
     },
   ],
 };
 
 const Blog = component$(() => {
-  const data = useBlogLoader();
+  dayjs.extend(weekOfYear);
+  const currentWeek = dayjs().week(); // 26
+  const currentYear = dayjs().year(); // 2024
+
+  const data = useLogLoader();
   return (
     <>
       <section>
         <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
           <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">
             <h2 class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl">
-              My Blog
+              dev log
             </h2>
             <p class="l font-light text-gray-500 sm:text-xl">
-              Trying to get my blog started so future historians can have my
-              genius thoughts preserved for eternity /s
+              weekly summary of what i've been working on
+            </p>
+            <p>
+              next log:&nbsp;
+              <b>
+                <a href={`/dev-log/log/${currentYear}/${currentWeek}`}>
+                  {currentYear + "/" + currentWeek}
+                </a>
+              </b>
             </p>
           </div>
           <div class="grid gap-8 lg:grid-cols-2">
@@ -34,7 +46,7 @@ const Blog = component$(() => {
                 (e) => e.published || process.env.NODE_ENV === "development",
               )
               .map((post) => (
-                <BlogPreview key={post.slug} post={post} />
+                <LogPreview key={post.url} post={post} />
               ))}
           </div>
         </div>
@@ -42,10 +54,9 @@ const Blog = component$(() => {
     </>
   );
 });
-export default Blog;
 
-export const BlogPreview = component$<{ post: BlogType }>(
-  ({ post }: { post: BlogType }) => {
+export const LogPreview = component$<{ post: Log }>(
+  ({ post }: { post: Log }) => {
     const calculateReleaseDate = () => {
       const date1 = new Date(post.releaseDate);
       const date2 = new Date();
@@ -53,6 +64,8 @@ export const BlogPreview = component$<{ post: BlogType }>(
       const days = diffTime / (1000 * 3600 * 24);
       return Math.floor(days);
     };
+
+    const releaseDate = calculateReleaseDate();
     return (
       <article class="rounded-lg border border-gray-200 bg-card p-6 shadow-md">
         <div class="mb-5 flex items-center justify-between">
@@ -79,16 +92,18 @@ export const BlogPreview = component$<{ post: BlogType }>(
             </div>
           </div>
           <span class="text-sm text-muted-foreground">
-            {calculateReleaseDate()} days ago
+            {releaseDate < 0
+              ? `releases in ${Math.abs(releaseDate)} days`
+              : `released ${releaseDate} days ago`}
           </span>
         </div>
         <h2 class="mb-2 text-2xl font-bold tracking-tight text-primary underline-offset-4 hover:underline">
-          <a href={"/blog/" + post.slug}>{post.title}</a>
+          <a href={post.url}>{post.title}</a>
         </h2>
         <p class="mb-5 font-light text-muted-foreground">{post.description}</p>
         <div class="flex items-center justify-between text-sm font-medium text-primary underline-offset-4 ring-offset-background transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
           <a
-            href={"/blog/" + post.slug}
+            href={post.url}
             class="inline-flex items-center font-medium text-primary hover:underline"
           >
             Read more
@@ -110,3 +125,5 @@ export const BlogPreview = component$<{ post: BlogType }>(
     );
   },
 );
+
+export default Blog;

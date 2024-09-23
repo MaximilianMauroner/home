@@ -1,32 +1,15 @@
-import {
-  type RequestEvent,
-  routeLoader$,
-  type StaticGenerateHandler,
-  useLocation,
-} from "@builder.io/qwik-city";
+import { useLocation } from "@builder.io/qwik-city";
 import { component$ } from "@builder.io/qwik";
-import { BlogPreview, blogsPosts } from "../..";
-
-export const useGetBlogByTags = routeLoader$(({ params }) => {
-  return blogsPosts.filter((project) =>
-    project.tags.find((t) => t === params.tag),
-  );
-});
-
-export const onGet = async ({ redirect, params }: RequestEvent) => {
-  const blogs = blogsPosts.filter((project) =>
-    project.tags.find((t) => t === params.tag),
-  );
-  if (blogs.length === 0) {
-    throw redirect(302, "/404");
-  }
-};
+import { useBlogLoader } from "~/routes/blog/layout";
+import { useLogLoader } from "~/routes/dev-log/layout";
 
 export default component$(() => {
   const loc = useLocation();
-  const blogs = useGetBlogByTags().value;
+  const blogs = useBlogLoader();
+  const logs = useLogLoader();
 
-  const tags = getAllTags();
+  console.log(blogs.value, logs.value);
+
   return (
     <section>
       <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
@@ -38,7 +21,7 @@ export default component$(() => {
         </div>
         <div class="inline-flex w-full items-center justify-center gap-2 text-xs font-medium text-primary">
           <h3 class="text-lg">Tags:</h3>
-          {tags.map((tag, index) => (
+          {/* {tags.map((tag, index) => (
             <a
               key={tag}
               class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-md text-sm font-medium text-primary underline-offset-4 ring-offset-background transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
@@ -46,40 +29,40 @@ export default component$(() => {
             >
               {tag + (index < tags.length - 1 ? ", " : "")}
             </a>
-          ))}
+          ))} */}
         </div>
         <div class="grid gap-8 lg:grid-cols-2">
-          {blogs
+          {/* {blogs
             .filter(
               (e) => e.published || process.env.NODE_ENV === "development",
             )
             .map((post) => (
               <BlogPreview key={post.slug} post={post} />
-            ))}
+            ))} */}
         </div>
       </div>
     </section>
   );
 });
 
-const getAllTags = () => {
-  const tagsMap = new Map();
-  blogsPosts.forEach((blog) => {
-    blog.tags.forEach((tag) => {
-      if (!tagsMap.has(tagsMap)) {
-        tagsMap.set(tag, true);
-      }
-    });
-  });
-  return Array.from(tagsMap.keys());
-};
+// const getAllTags = () => {
+//   const tagsMap = new Map();
+//   blogsPosts.forEach((blog) => {
+//     blog.tags.forEach((tag) => {
+//       if (!tagsMap.has(tagsMap)) {
+//         tagsMap.set(tag, true);
+//       }
+//     });
+//   });
+//   return Array.from(tagsMap.keys());
+// };
 
-export const onStaticGenerate: StaticGenerateHandler = () => {
-  const ids = getAllTags();
+// export const onStaticGenerate: StaticGenerateHandler = () => {
+//   const ids = getAllTags();
 
-  return {
-    params: ids.map((slug) => {
-      return { slug };
-    }),
-  };
-};
+//   return {
+//     params: ids.map((slug) => {
+//       return { slug };
+//     }),
+//   };
+// };

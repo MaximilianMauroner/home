@@ -39,7 +39,6 @@
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
     "eslint-plugin-qwik": "^1.7.1",
-    "my-qwik-basic-starter": "file:",
     "postcss": "^8.4.31",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.5",
@@ -51,7 +50,6 @@
     "vite-tsconfig-paths": "^4.2.1"
   },
   "dependencies": {
-    "dayjs": "^1.11.7",
-    "home": "file:"
+    "dayjs": "^1.11.7"
   }
 }
