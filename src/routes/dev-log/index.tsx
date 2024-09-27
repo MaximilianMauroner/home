@@ -2,7 +2,7 @@ import { component$ } from "@builder.io/qwik";
 import { type DocumentHead } from "@builder.io/qwik-city";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear"; // ES 2015
-import { type Log, useLogLoader } from "./layout";
+import { calculateRelativeDate, type Log, useLogLoader } from "./layout";
 
 export const head: DocumentHead = {
   title: "dev log",
@@ -43,7 +43,9 @@ const Blog = component$(() => {
           <div class="grid gap-8 lg:grid-cols-2">
             {data.value
               .filter(
-                (e) => e.published || process.env.NODE_ENV === "development",
+                (e) =>
+                  (e.published === true && calculateRelativeDate(e) >= 0) ||
+                  process.env.NODE_ENV === "development",
               )
               .map((post) => (
                 <LogPreview key={post.url} post={post} />
@@ -57,15 +59,7 @@ const Blog = component$(() => {
 
 export const LogPreview = component$<{ post: Log }>(
   ({ post }: { post: Log }) => {
-    const calculateReleaseDate = () => {
-      const date1 = new Date(post.releaseDate);
-      const date2 = new Date();
-      const diffTime = date2.getTime() - date1.getTime();
-      const days = diffTime / (1000 * 3600 * 24);
-      return Math.floor(days);
-    };
-
-    const releaseDate = calculateReleaseDate();
+    const releaseDate = calculateRelativeDate(post);
     return (
       <article class="rounded-lg border border-gray-200 bg-card p-6 shadow-md">
         <div class="mb-5 flex items-center justify-between">
