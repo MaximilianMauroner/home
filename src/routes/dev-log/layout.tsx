@@ -31,6 +31,14 @@ export function getLogs() {
   return logs;
 }
 
+export const calculateRelativeDate = (post: Log) => {
+  const date1 = new Date(post.releaseDate);
+  const date2 = new Date();
+  const diffTime = date2.getTime() - date1.getTime();
+  const days = diffTime / (1000 * 3600 * 24);
+  return Math.floor(days);
+};
+
 export const useLogLoader = routeLoader$(async () => {
   return getLogs();
 });
@@ -41,7 +49,7 @@ export default component$(() => {
 
   const path = location.url.pathname;
   const post = data.value.find((p) => path.includes(p.url));
-  if (post && post.published === false) {
+  if (post && (post.published === false || calculateRelativeDate(post) < 0)) {
     return <Fourofour />;
   }
   return <Slot />;
