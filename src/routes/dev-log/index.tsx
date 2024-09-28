@@ -73,11 +73,11 @@ export const LogPreview = component$<{ post: Log }>(
               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
             </svg>
 
-            <div class="overflow-ellipsis whitespace-nowrap">
+            <div class="overflow-ellipsis">
               {post.tags.map((tag, index) => (
                 <a
                   key={tag}
-                  class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-md text-sm font-medium text-primary underline-offset-4 ring-offset-background transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                  class="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium text-primary underline-offset-4 ring-offset-background transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
                   href={"/blog/tags/" + tag}
                 >
                   {tag + (index < post.tags.length - 1 ? ", " : "")}
