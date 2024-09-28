@@ -40,7 +40,7 @@ const Header = component$(() => {
   }
   return (
     <header class="sticky top-0 z-10 flex items-center justify-center bg-primary px-2 py-2 text-primary-foreground sm:px-6 md:justify-between">
-      <nav class="flex items-center gap-2 sm:gap-6">
+      <nav class="flex w-full items-center justify-around gap-2 sm:justify-center sm:gap-6">
         <a href="/" class="flex items-center gap-2 font-medium">
           <div class={"my-auto flex h-20 w-20 items-center justify-center"}>
             <ImgAstronaut
