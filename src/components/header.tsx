@@ -39,10 +39,10 @@ const Header = component$(() => {
     }
   }
   return (
-    <header class="sticky top-0 z-10 flex items-center justify-center bg-primary px-2 py-4 text-primary-foreground sm:px-6 md:justify-between">
-      <nav class="flex items-center gap-2 sm:gap-6">
+    <header class="sticky top-0 z-10 flex items-center justify-center bg-primary px-2 py-2 text-primary-foreground sm:px-6 md:justify-between">
+      <nav class="flex w-full items-center justify-around gap-2 sm:justify-center sm:gap-6">
         <a href="/" class="flex items-center gap-2 font-medium">
-          <div class={"h-6 w-8"}>
+          <div class={"my-auto flex h-20 w-20 items-center justify-center"}>
             <ImgAstronaut
               decoding="sync"
               srcset="/astronaut.avif"
@@ -57,13 +57,28 @@ const Header = component$(() => {
             href={item.href}
             class={classs(
               item.current ? "border-2" : "",
-              "my-auto block rounded-md border border-slate-500 px-3 py-2 text-sm font-medium",
+              "my-auto hidden rounded-md border border-slate-500 px-3 py-2 text-center text-sm font-medium sm:block",
             )}
             aria-current={item.current ? "page" : undefined}
           >
             {item.name}
           </a>
         ))}
+        <div class="grid grid-cols-2 gap-2">
+          {navigation.map((item) => (
+            <a
+              key={item.name}
+              href={item.href}
+              class={classs(
+                item.current ? "border-2" : "",
+                "my-auto block rounded-md border border-slate-500 px-3 py-2 text-center text-sm font-medium sm:hidden",
+              )}
+              aria-current={item.current ? "page" : undefined}
+            >
+              {item.name}
+            </a>
+          ))}
+        </div>
       </nav>
       <div class="flex gap-4">
         {socials.map((item) => (

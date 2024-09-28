@@ -64,7 +64,7 @@ export default component$(() => {
       viewBox="0 0 24 24"
       stroke-width="1.5"
       stroke="currentColor"
-      class="size-6"
+      class="size-4 md:size-6"
     >
       <path
         stroke-linecap="round"
@@ -80,7 +80,7 @@ export default component$(() => {
       viewBox="0 0 24 24"
       stroke-width="1.5"
       stroke="currentColor"
-      class="size-6"
+      class="size-4 md:size-6"
     >
       <path
         stroke-linecap="round"
@@ -94,29 +94,35 @@ export default component$(() => {
       <h1 class="invisible">
         {firstname.value} <br /> {lastname.value}
       </h1>
-      <div class="my-10 grid w-full grid-flow-col grid-cols-5 grid-rows-2 items-center justify-center text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
-        {firstname.value.split("").map((letter, index) => (
-          <span key={index} class="relative text-center">
-            <span>{letter}</span>
-            {index % 2 === 0 ? (
-              <div class="absolute -bottom-4 right-[47%]">{downArrow}</div>
-            ) : index !== firstname.value.length - 1 ? (
-              <div class="absolute right-0 top-0">{rightUpArrow}</div>
-            ) : null}
-          </span>
-        ))}
-      </div>
-      <div class="my-10 grid w-full grid-flow-col grid-cols-4 grid-rows-2 items-center justify-center text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
-        {lastname.value.split("").map((letter, index) => (
-          <span key={index} class="relative text-center">
-            <span>{letter}</span>
-            {index % 2 === 0 ? (
-              <div class="absolute -bottom-4 right-[47%]">{downArrow}</div>
-            ) : index !== lastname.value.length - 1 ? (
-              <div class="absolute right-0 top-0">{rightUpArrow}</div>
-            ) : null}
-          </span>
-        ))}
+      <div class="mx-auto max-w-7xl">
+        <div class="my-10 grid w-full grid-flow-col grid-cols-5 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
+          {firstname.value.split("").map((letter, index) => (
+            <span key={index} class="relative text-center">
+              <span>{letter}</span>
+              {index % 2 === 0 ? (
+                <div class="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] md:-bottom-4">
+                  {downArrow}
+                </div>
+              ) : index !== firstname.value.length - 1 ? (
+                <div class="absolute right-0 top-0">{rightUpArrow}</div>
+              ) : null}
+            </span>
+          ))}
+        </div>
+        <div class="my-10 grid w-full grid-flow-col grid-cols-4 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
+          {lastname.value.split("").map((letter, index) => (
+            <span key={index} class="relative text-center">
+              <span>{letter}</span>
+              {index % 2 === 0 ? (
+                <div class="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] md:-bottom-4">
+                  {downArrow}
+                </div>
+              ) : index !== lastname.value.length - 1 ? (
+                <div class="absolute right-0 top-0">{rightUpArrow}</div>
+              ) : null}
+            </span>
+          ))}
+        </div>
       </div>
       <div class={"flex flex-col items-center justify-center py-4"}>
         <span class="sr-only">
