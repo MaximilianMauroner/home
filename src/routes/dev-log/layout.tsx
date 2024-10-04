@@ -63,7 +63,7 @@ export default component$(() => {
   return <Slot />;
 });
 
-const revalidate = 60 * 60 * 24;
+const revalidate = 60;
 export const onGet: RequestHandler = async ({ cacheControl }) => {
   cacheControl({
     staleWhileRevalidate: revalidate,
