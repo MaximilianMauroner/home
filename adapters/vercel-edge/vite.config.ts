@@ -14,7 +14,7 @@ export default extendConfig(baseConfig, () => {
     plugins: [
       vercelEdgeAdapter({
         ssg: {
-          exclude: ["/projects", "/logs"],
+          exclude: ["/projects", "/dev-log/"],
           include: ["/*"],
           origin: "https://www.mauroner.eu",
           sitemapOutFile: "sitemap.xml",
