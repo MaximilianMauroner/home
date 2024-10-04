@@ -1,6 +1,6 @@
 import { component$, Slot } from "@builder.io/qwik";
 import {
-  RequestHandler,
+  type RequestHandler,
   routeLoader$,
   useLocation,
 } from "@builder.io/qwik-city";
@@ -53,13 +53,17 @@ export default component$(() => {
 
   const path = location.url.pathname;
   const post = data.value.find((p) => path.includes(p.url));
-  if (post && (post.published === false || calculateRelativeDate(post) < 0)) {
+  if (
+    post &&
+    (post.published === false || calculateRelativeDate(post) < 0) &&
+    import.meta.env.DEV === false
+  ) {
     return <Fourofour />;
   }
   return <Slot />;
 });
 
-const revalidate = 60 * 60 * 24 * 7;
+const revalidate = 60 * 60 * 24;
 export const onGet: RequestHandler = async ({ cacheControl }) => {
   cacheControl({
     staleWhileRevalidate: revalidate,
