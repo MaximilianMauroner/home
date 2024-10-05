@@ -16,7 +16,7 @@ export default extendConfig(baseConfig, () => {
         ssg: {
           exclude: ["/projects", "/dev-log/*"],
           include: ["/*"],
-          origin: "https://www.mauroner.eu",
+          origin: "https://www.mauroner.net",
           sitemapOutFile: "sitemap.xml",
         },
       }),
