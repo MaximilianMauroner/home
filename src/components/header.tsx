@@ -44,6 +44,7 @@ const Header = component$(() => {
         <a href="/" class="flex items-center gap-2 font-medium">
           <div class={"my-auto flex h-20 w-20 items-center justify-center"}>
             <ImgAstronaut
+              loading="eager"
               decoding="sync"
               srcset="/astronaut.avif"
               alt="Astronaut with laptop"
