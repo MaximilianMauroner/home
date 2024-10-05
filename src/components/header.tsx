@@ -2,10 +2,6 @@ import { component$ } from "@builder.io/qwik";
 import { useLocation } from "@builder.io/qwik-city";
 import ImgAstronaut from "~/media/astronaut.avif?jsx";
 
-function classs(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
-}
-
 const navigation = [
   {
     name: "who am i",
@@ -19,7 +15,9 @@ const navigation = [
     href: "/projects/",
     current: false,
   },
+  { name: "tags", href: "/tags/", current: false, defaultHidden: true },
 ];
+type NavItemType = (typeof navigation)[number];
 
 const socials = [
   {
@@ -53,31 +51,11 @@ const Header = component$(() => {
           </div>
         </a>
         {navigation.map((item) => (
-          <a
-            key={item.name}
-            href={item.href}
-            class={classs(
-              item.current ? "border-2" : "",
-              "my-auto hidden rounded-md border border-slate-500 px-3 py-2 text-center text-sm font-medium sm:block",
-            )}
-            aria-current={item.current ? "page" : undefined}
-          >
-            {item.name}
-          </a>
+          <NavItem key={item.name} item={item} isMobile={false} />
         ))}
         <div class="grid grid-cols-2 gap-2">
           {navigation.map((item) => (
-            <a
-              key={item.name}
-              href={item.href}
-              class={classs(
-                item.current ? "border-2" : "",
-                "my-auto block rounded-md border border-slate-500 px-3 py-2 text-center text-sm font-medium sm:hidden",
-              )}
-              aria-current={item.current ? "page" : undefined}
-            >
-              {item.name}
-            </a>
+            <NavItem key={item.name} item={item} isMobile={true} />
           ))}
         </div>
       </nav>
@@ -101,5 +79,46 @@ const Header = component$(() => {
     </header>
   );
 });
+
+const NavItem = component$(
+  ({ item, isMobile = false }: { item: NavItemType; isMobile?: boolean }) => {
+    let mobileClass = " sm:block hidden";
+    if (isMobile) {
+      mobileClass = " block sm:hidden";
+    }
+
+    if (item.current) {
+      return (
+        <div class={"relative" + mobileClass}>
+          <div class="absolute inset-0 -translate-x-0.5 translate-y-0.5 rounded-lg bg-gradient-to-br from-pink-500 via-cyan-500 to-violet-500 blur"></div>
+          <a
+            key={item.name}
+            href={item.href}
+            class={
+              "relative my-auto rounded-md border-2 border-slate-500 bg-black p-4 px-3 py-2 text-center text-sm font-medium" +
+              mobileClass
+            }
+            aria-current={"page"}
+          >
+            {item.name}
+          </a>
+        </div>
+      );
+    }
+    if (item.defaultHidden) return;
+    return (
+      <a
+        key={item.name}
+        href={item.href}
+        class={
+          "my-auto rounded-md border border-slate-500 px-3 py-2 text-center text-sm font-medium" +
+          mobileClass
+        }
+      >
+        {item.name}
+      </a>
+    );
+  },
+);
 
 export default Header;

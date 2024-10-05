@@ -1,6 +1,7 @@
 import { component$, Slot } from "@builder.io/qwik";
 import { routeLoader$, useLocation } from "@builder.io/qwik-city";
 import Fourofour from "../404";
+import { FontmatterTagsList } from "~/components/tags-list";
 
 export type BlogType = {
   title: string;
@@ -45,6 +46,14 @@ export default component$(() => {
   const post = data.value.find((p) => path.includes(p.slug));
   if (post && post.published === false) {
     return <Fourofour />;
+  }
+  if (post) {
+    return (
+      <article class="prose mx-auto px-2 py-4 sm:px-0">
+        <Slot />
+        <FontmatterTagsList />
+      </article>
+    );
   }
   return <Slot />;
 });

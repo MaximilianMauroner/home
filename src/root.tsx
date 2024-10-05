@@ -3,7 +3,6 @@ import {
   QwikCityProvider,
   RouterOutlet,
   ServiceWorkerRegister,
-  useLocation,
 } from "@builder.io/qwik-city";
 import { RouterHead } from "./components/router-head/router-head";
 import { isDev } from "@builder.io/qwik/build";
@@ -27,7 +26,6 @@ export default component$(() => {
   return (
     <QwikCityProvider>
       <head>
-        <HandleLinkRelCanonical />
         <meta charset="utf-8" />
         {!isDev && (
           <>
@@ -47,9 +45,4 @@ export default component$(() => {
       </body>
     </QwikCityProvider>
   );
-});
-
-const HandleLinkRelCanonical = component$(() => {
-  const pathName = useLocation().url.pathname;
-  return <link rel="canonical" href={`https://www.mauroner.net${pathName}`} />;
 });

@@ -2,7 +2,9 @@ import { component$ } from "@builder.io/qwik";
 import { type DocumentHead } from "@builder.io/qwik-city";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear"; // ES 2015
-import { calculateRelativeDate, type Log, useLogLoader } from "./layout";
+import { type LogType, useLogLoader } from "./layout";
+import TagsList from "~/components/tags-list";
+import { calculateRelativeDate } from "~/components/utils";
 
 export const head: DocumentHead = {
   title: "dev log",
@@ -44,7 +46,8 @@ const Blog = component$(() => {
             {data.value
               .filter(
                 (e) =>
-                  (e.published === true && calculateRelativeDate(e) >= 0) ||
+                  (e.published === true &&
+                    calculateRelativeDate(e.releaseDate) >= 0) ||
                   process.env.NODE_ENV === "development",
               )
               .map((post) => (
@@ -57,13 +60,13 @@ const Blog = component$(() => {
   );
 });
 
-export const LogPreview = component$<{ post: Log }>(
-  ({ post }: { post: Log }) => {
-    const releaseDate = calculateRelativeDate(post);
+export const LogPreview = component$<{ post: LogType }>(
+  ({ post }: { post: LogType }) => {
+    const releaseDate = calculateRelativeDate(post.releaseDate);
     return (
       <article class="rounded-lg border border-gray-200 bg-card p-6 shadow-md">
-        <div class="mb-5 flex items-center justify-between">
-          <div class="inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium text-primary">
+        <div class="mb-5 flex items-center justify-between gap-1">
+          <div class="inline-flex items-center overflow-auto rounded px-2.5 py-0.5 text-xs font-medium text-primary">
             <svg
               class="mr-1 h-3 w-3"
               fill="currentColor"
@@ -72,20 +75,11 @@ export const LogPreview = component$<{ post: Log }>(
             >
               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
             </svg>
-
-            <div class="flex gap-1 overflow-ellipsis">
-              {post.tags.map((tag, index) => (
-                <a
-                  key={tag}
-                  class="whitespace-nowrap rounded-md text-sm font-medium text-primary hover:underline"
-                  href={"/blog/tags/" + tag}
-                >
-                  {tag + (index < post.tags.length - 1 ? "," : "")}
-                </a>
-              ))}
+            <div class="flex w-full overflow-auto">
+              <TagsList tags={post.tags} />
             </div>
           </div>
-          <span class="text-sm text-muted-foreground">
+          <span class="hidden text-sm text-muted-foreground sm:block">
             {releaseDate < 0
               ? `releases in ${Math.abs(releaseDate)} days`
               : `released ${releaseDate} days ago`}

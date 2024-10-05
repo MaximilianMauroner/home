@@ -1,31 +1,178 @@
-import { component$ } from "@builder.io/qwik";
-import { getBogs } from "../blog/layout";
-import { getLogs } from "../dev-log/layout";
-import { routeLoader$ } from "@builder.io/qwik-city";
+import {
+  component$,
+  type Signal,
+  useComputed$,
+  useSignal,
+} from "@builder.io/qwik";
+import { routeLoader$, useLocation } from "@builder.io/qwik-city";
+import { type BlogType, getBogs } from "../blog/layout";
+import { getLogs, type LogType } from "../dev-log/layout";
+import { calculateRelativeDate, kebabCase } from "~/components/utils";
+import { BlogPreview } from "../blog";
+import { LogPreview } from "../dev-log";
 
+type TagType = {
+  name: string;
+  blogCount: number;
+  logCount: number;
+};
 export const useTagLoader = routeLoader$(async () => {
-  const blogs = getBogs();
-  const logs = getLogs();
+  const blogs = getBogs().filter(
+    (b) => b.published && calculateRelativeDate(b.releaseDate) >= 0,
+  );
+  const logs = getLogs().filter(
+    (l) => l.published && calculateRelativeDate(l.releaseDate) >= 0,
+  );
 
-  const tags = new Map<string, number>();
+  const tags = new Map<string, { blogCount: number; logCount: number }>();
 
   blogs.forEach((b) => {
+    if (b.published === false) return;
+    if (calculateRelativeDate(b.releaseDate) < 0) return;
     b.tags.forEach((t) => {
-      tags.set(t, (tags.get(t) ?? 0) + 1);
+      const tagName = kebabCase(t);
+      const tt = tags.get(tagName);
+      if (tt) {
+        tt.blogCount++;
+        tags.set(tagName, tt);
+      } else {
+        tags.set(tagName, { blogCount: 1, logCount: 0 });
+      }
     });
   });
 
   logs.forEach((l) => {
+    if (l.published === false) return;
+    if (calculateRelativeDate(l.releaseDate) < 0) return;
     l.tags.forEach((t) => {
-      tags.set(t, (tags.get(t) ?? 0) + 1);
+      const tagName = kebabCase(t);
+      const tt = tags.get(tagName);
+      if (tt) {
+        tt.logCount++;
+        tags.set(tagName, tt);
+      } else {
+        tags.set(tagName, { blogCount: 0, logCount: 1 });
+      }
     });
   });
-  return Array.from(tags.keys());
+
+  const tagsArray = Array.from(tags.keys()).map((t) => {
+    return {
+      name: t,
+      blogCount: tags.get(t)?.blogCount ?? 0,
+      logCount: tags.get(t)?.logCount ?? 0,
+    };
+  });
+  tagsArray.sort((a, b) => a.name.localeCompare(b.name));
+
+  return { tags: tagsArray, blogs, logs };
 });
 
 export default component$(() => {
-  const tags = useTagLoader();
-
-  console.log(tags.value);
-  return <section></section>;
+  const urlsp = useLocation().url.searchParams;
+  const tag = urlsp.get("tag") ?? "";
+  const selectedTag = useSignal<string>(tag);
+  const { tags, blogs, logs } = useTagLoader().value;
+  const selectedBlogs = useComputed$(() => {
+    if (selectedTag.value === "") {
+      return blogs;
+    }
+    return blogs.filter((b) => b.tags.includes(selectedTag.value));
+  });
+  const selectedLogs = useComputed$(() => {
+    if (selectedTag.value === "") {
+      return logs;
+    }
+    return logs.filter((l) => l.tags.includes(selectedTag.value));
+  });
+  return (
+    <div class="grid grid-cols-6 gap-4 p-4">
+      <div class="col-span-6 sm:col-span-2">
+        <TagList tags={tags} selectedTag={selectedTag} />
+      </div>
+      <div class="col-span-6 sm:col-span-4">
+        <PostList blogs={selectedBlogs} logs={selectedLogs} />
+      </div>
+    </div>
+  );
 });
+
+const TagList = component$<{ tags: TagType[]; selectedTag: Signal<string> }>(
+  ({ tags, selectedTag }: { tags: TagType[]; selectedTag: Signal<string> }) => {
+    const urlsp = useLocation().url.searchParams;
+    const path = useLocation().url.pathname;
+    return (
+      <div class="sticky top-28">
+        <h2 class="mb-4 text-2xl font-bold">All Tags</h2>
+        <ul
+          class="flex flex-wrap gap-2 sm:gap-6 md:gap-3 lg:gap-4"
+          aria-label="All tags with blog post counts"
+        >
+          {tags.map((tag) => {
+            return (
+              <li key={tag.name}>
+                <button
+                  onClick$={() => {
+                    if (selectedTag.value === tag.name) {
+                      selectedTag.value = "";
+                      urlsp.delete("tag");
+                    } else {
+                      selectedTag.value = tag.name;
+                      urlsp.set("tag", tag.name);
+                    }
+                    const newUrl = `${path}?${urlsp.toString()}`;
+                    window.history.replaceState({}, "", newUrl);
+                  }}
+                  class={
+                    "relative inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold text-foreground" +
+                    (selectedTag.value === tag.name
+                      ? "outline-none ring-2 ring-ring"
+                      : "")
+                  }
+                >
+                  {tag.name}
+                  {selectedTag.value === tag.name && (
+                    <span class="absolute right-0 top-0 -translate-y-[50%] translate-x-[50%] rounded-full bg-black text-white">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-4"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M6 18 18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  },
+);
+
+const PostList = component$<{
+  blogs: Signal<BlogType[]>;
+  logs: Signal<LogType[]>;
+}>(
+  ({ blogs, logs }: { blogs: Signal<BlogType[]>; logs: Signal<LogType[]> }) => {
+    return (
+      <div class="space-y-4">
+        {blogs.value.map((blog) => {
+          return <BlogPreview key={blog.slug + "-post-list"} post={blog} />;
+        })}
+        {logs.value.map((log) => {
+          return <LogPreview key={log.title + "-post-list"} post={log} />;
+        })}
+      </div>
+    );
+  },
+);

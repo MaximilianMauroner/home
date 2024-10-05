@@ -5,8 +5,9 @@ import {
   useLocation,
 } from "@builder.io/qwik-city";
 import Fourofour from "../404";
+import { calculateRelativeDate } from "~/components/utils";
 
-export type Log = {
+export type LogType = {
   title: string;
   description: string;
   tags: string[];
@@ -18,7 +19,7 @@ export type Log = {
 export function getLogs() {
   const modules = import.meta.glob("./log/**/*.mdx", { eager: true });
 
-  const logs: Log[] = [];
+  const logs: LogType[] = [];
   for (const path in modules) {
     // @ts-ignore
     const fM = modules[path].frontmatter;
@@ -35,14 +36,6 @@ export function getLogs() {
   return logs;
 }
 
-export const calculateRelativeDate = (post: Log) => {
-  const date1 = new Date(post.releaseDate);
-  const date2 = new Date();
-  const diffTime = date2.getTime() - date1.getTime();
-  const days = diffTime / (1000 * 3600 * 24);
-  return Math.floor(days);
-};
-
 export const useLogLoader = routeLoader$(async () => {
   return getLogs();
 });
@@ -55,7 +48,7 @@ export default component$(() => {
   const post = data.value.find((p) => path.includes(p.url));
   if (
     post &&
-    (post.published === false || calculateRelativeDate(post) < 0) &&
+    (post.published === false || calculateRelativeDate(post.releaseDate) < 0) &&
     import.meta.env.DEV === false
   ) {
     return <Fourofour />;
