@@ -3,6 +3,7 @@ import {
   type Signal,
   useComputed$,
   useSignal,
+  useVisibleTask$,
 } from "@builder.io/qwik";
 import { routeLoader$, useLocation } from "@builder.io/qwik-city";
 import { type BlogType, getBogs } from "../blog/layout";
@@ -70,8 +71,14 @@ export const useTagLoader = routeLoader$(async () => {
 
 export default component$(() => {
   const urlsp = useLocation().url.searchParams;
+
   const tag = urlsp.get("tag") ?? "";
   const selectedTag = useSignal<string>(tag);
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(() => {
+    selectedTag.value = urlsp.get("tag") ?? "";
+  });
   const { tags, blogs, logs } = useTagLoader().value;
   const selectedBlogs = useComputed$(() => {
     if (selectedTag.value === "") {
