@@ -1,5 +1,5 @@
 import { component$ } from "@builder.io/qwik";
-import Astronaut from "/public/astronaut.avif?jsx";
+import Astronaut from "~/media/astronaut.avif?jsx";
 export default component$(() => {
   return (
     <div class="my-auto flex flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
