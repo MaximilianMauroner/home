@@ -30,9 +30,13 @@ export default component$(() => {
   );
 });
 
-export const onStaticGenerate: StaticGenerateHandler = () => {
+export const getProjectSlugs = () => {
   const ids = projects.map((project) => project.slug);
+  return ids;
+};
 
+export const onStaticGenerate: StaticGenerateHandler = () => {
+  const ids = getProjectSlugs();
   return {
     params: ids.map((slug) => {
       return { slug };

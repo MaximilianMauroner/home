@@ -1,7 +1,6 @@
 User-agent: *
 Allow: /
 
-Disallow: /blog/hello-world
 Disallow: /next-projects 
  
 Sitemap: https://www.mauroner.net/sitemap.xml

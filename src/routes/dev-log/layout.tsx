@@ -33,7 +33,7 @@ export function getLogs() {
       releaseDate: fM?.releaseDate ?? new Date().toISOString(),
     });
   }
-  return logs;
+  return logs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
 }
 
 export const useLogLoader = routeLoader$(async () => {

@@ -19,17 +19,25 @@ type TagType = {
 };
 export const useTagLoader = routeLoader$(async () => {
   const blogs = getBogs().filter(
-    (b) => b.published && calculateRelativeDate(b.releaseDate) >= 0,
+    (b) =>
+      import.meta.env.DEV ||
+      (b.published && calculateRelativeDate(b.releaseDate) >= 0),
   );
   const logs = getLogs().filter(
-    (l) => l.published && calculateRelativeDate(l.releaseDate) >= 0,
+    (l) =>
+      import.meta.env.DEV ||
+      (l.published && calculateRelativeDate(l.releaseDate) >= 0),
   );
 
   const tags = new Map<string, { blogCount: number; logCount: number }>();
 
   blogs.forEach((b) => {
-    if (b.published === false) return;
-    if (calculateRelativeDate(b.releaseDate) < 0) return;
+    if (
+      !import.meta.env.DEV &&
+      b.published === false &&
+      calculateRelativeDate(b.releaseDate) < 0
+    )
+      return;
     b.tags.forEach((t) => {
       const tagName = kebabCase(t);
       const tt = tags.get(tagName);
@@ -43,8 +51,12 @@ export const useTagLoader = routeLoader$(async () => {
   });
 
   logs.forEach((l) => {
-    if (l.published === false) return;
-    if (calculateRelativeDate(l.releaseDate) < 0) return;
+    if (
+      !import.meta.env.DEV &&
+      l.published === false &&
+      calculateRelativeDate(l.releaseDate) < 0
+    )
+      return;
     l.tags.forEach((t) => {
       const tagName = kebabCase(t);
       const tt = tags.get(tagName);
@@ -92,10 +104,21 @@ export default component$(() => {
     }
     return logs.filter((l) => l.tags.includes(selectedTag.value));
   });
+  const totalPostCount = useComputed$(() => {
+    return blogs.length + logs.length;
+  });
+  const activePostCount = useComputed$(() => {
+    return selectedBlogs.value.length + selectedLogs.value.length;
+  });
   return (
     <div class="grid grid-cols-6 gap-4 p-4">
       <div class="col-span-6 sm:col-span-2">
-        <TagList tags={tags} selectedTag={selectedTag} />
+        <TagList
+          tags={tags}
+          selectedTag={selectedTag}
+          activePostCount={activePostCount}
+          totalPostCount={totalPostCount}
+        />
       </div>
       <div class="col-span-6 sm:col-span-4">
         <PostList blogs={selectedBlogs} logs={selectedLogs} />
@@ -104,13 +127,33 @@ export default component$(() => {
   );
 });
 
-const TagList = component$<{ tags: TagType[]; selectedTag: Signal<string> }>(
-  ({ tags, selectedTag }: { tags: TagType[]; selectedTag: Signal<string> }) => {
+const TagList = component$<{
+  tags: TagType[];
+  selectedTag: Signal<string>;
+  totalPostCount: Signal<number>;
+  activePostCount: Signal<number>;
+}>(
+  ({
+    tags,
+    selectedTag,
+    totalPostCount,
+    activePostCount,
+  }: {
+    tags: TagType[];
+    selectedTag: Signal<string>;
+    totalPostCount: Signal<number>;
+    activePostCount: Signal<number>;
+  }) => {
     const urlsp = useLocation().url.searchParams;
     const path = useLocation().url.pathname;
     return (
       <div class="sticky top-28">
-        <h2 class="mb-4 text-2xl font-bold">All Tags</h2>
+        <div class="mb-4 flex items-center gap-2">
+          <h2 class="text-2xl font-bold">All Tags</h2>
+          <span class="font-mono text-2xl text-muted-foreground">
+            ({activePostCount.value}/{totalPostCount.value})
+          </span>
+        </div>
         <ul
           class="flex flex-wrap gap-2 sm:gap-6 md:gap-3 lg:gap-4"
           aria-label="All tags with blog post counts"
@@ -137,7 +180,10 @@ const TagList = component$<{ tags: TagType[]; selectedTag: Signal<string> }>(
                       : "")
                   }
                 >
-                  {tag.name}
+                  <span>{tag.name}</span>
+                  <span class="pl-1 text-sm text-muted-foreground">
+                    {tag.blogCount + tag.logCount}
+                  </span>
                   {selectedTag.value === tag.name && (
                     <span class="absolute right-0 top-0 -translate-y-[50%] translate-x-[50%] rounded-full bg-black text-white">
                       <svg

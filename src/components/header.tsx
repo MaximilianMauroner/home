@@ -90,18 +90,21 @@ const NavItem = component$(
     if (item.current) {
       return (
         <div class={"relative" + mobileClass}>
-          <div class="absolute inset-0 -translate-x-0.5 translate-y-0.5 rounded-lg bg-gradient-to-br from-pink-500 via-cyan-500 to-violet-500 blur"></div>
-          <a
-            key={item.name}
-            href={item.href}
-            class={
-              "relative my-auto rounded-md border-2 border-slate-500 bg-black p-4 px-3 py-2 text-center text-sm font-medium" +
-              mobileClass
-            }
-            aria-current={"page"}
-          >
-            {item.name}
-          </a>
+          {/* <div class="absolute inset-0 -translate-x-0.5 translate-y-0.5 rounded-lg bg-gradient-to-br from-pink-500 via-cyan-500 to-violet-500 blur"></div> */}
+          <div class="rotating-border-animation absolute inset-0 -translate-x-0.5 translate-y-0.5 rounded-lg blur"></div>
+          <div class="rotating-border-animation rounded-md !border-2">
+            <a
+              key={item.name}
+              href={item.href}
+              class={
+                "relative my-auto rounded-md bg-black p-4 px-3 py-2 text-center text-sm font-medium" +
+                mobileClass
+              }
+              aria-current={"page"}
+            >
+              {item.name}
+            </a>
+          </div>
         </div>
       );
     }
