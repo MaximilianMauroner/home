@@ -17,7 +17,7 @@ export default extendConfig(baseConfig, () => {
           exclude: ["/projects", "/dev-log/*", "/tags", "/sitemap.xml"],
           include: ["/*"],
           origin: "https://www.mauroner.net",
-          sitemapOutFile: "sitemap.xml",
+          sitemapOutFile: null,
         },
       }),
     ],
