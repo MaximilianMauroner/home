@@ -43,8 +43,6 @@ const Header = component$(() => {
           <div class={"my-auto flex h-20 w-20 items-center justify-center"}>
             <ImgAstronaut
               loading="eager"
-              decoding="sync"
-              srcset="/astronaut.avif"
               alt="Astronaut with laptop"
             />
             <span class="sr-only">Astronaut</span>
