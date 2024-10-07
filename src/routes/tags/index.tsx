@@ -17,7 +17,8 @@ type TagType = {
   blogCount: number;
   logCount: number;
 };
-export const useTagLoader = routeLoader$(async () => {
+
+export function getTagInformation() {
   const blogs = getBogs().filter(
     (b) =>
       import.meta.env.DEV ||
@@ -79,19 +80,41 @@ export const useTagLoader = routeLoader$(async () => {
   tagsArray.sort((a, b) => a.name.localeCompare(b.name));
 
   return { tags: tagsArray, blogs, logs };
+
+}
+export const useTagLoader = routeLoader$(async () => {
+  return getTagInformation();
 });
 
 export default component$(() => {
-  const urlsp = useLocation().url.searchParams;
 
-  const tag = urlsp.get("tag") ?? "";
-  const selectedTag = useSignal<string>(tag);
-
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(() => {
-    selectedTag.value = urlsp.get("tag") ?? "";
-  });
   const { tags, blogs, logs } = useTagLoader().value;
+  return (
+    <>
+      <TagView tags={tags} blogs={blogs} logs={logs} />
+    </>
+  );
+});
+
+
+export const TagView = component$<{
+  tags: TagType[];
+  blogs: BlogType[];
+  logs: LogType[];
+  preSelectedTag?: string
+}>(({
+  tags,
+  blogs,
+  logs,
+  preSelectedTag
+}: {
+  tags: TagType[];
+  blogs: BlogType[];
+  logs: LogType[]
+  preSelectedTag?: string
+}) => {
+  const selectedTag = useSignal<string>(preSelectedTag ?? "");
+
   const selectedBlogs = useComputed$(() => {
     if (selectedTag.value === "") {
       return blogs;
@@ -144,8 +167,6 @@ const TagList = component$<{
     totalPostCount: Signal<number>;
     activePostCount: Signal<number>;
   }) => {
-    const urlsp = useLocation().url.searchParams;
-    const path = useLocation().url.pathname;
     return (
       <div class="sticky top-28">
         <div class="mb-4 flex items-center gap-2">
@@ -165,13 +186,11 @@ const TagList = component$<{
                   onClick$={() => {
                     if (selectedTag.value === tag.name) {
                       selectedTag.value = "";
-                      urlsp.delete("tag");
+                      window.history.pushState({}, "", "/tags/");
                     } else {
                       selectedTag.value = tag.name;
-                      urlsp.set("tag", tag.name);
+                      window.history.pushState({}, "", `/tags/${selectedTag.value}`);
                     }
-                    const newUrl = `${path}?${urlsp.toString()}`;
-                    window.history.replaceState({}, "", newUrl);
                   }}
                   class={
                     "relative inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold text-foreground" +
@@ -228,4 +247,4 @@ const PostList = component$<{
       </div>
     );
   },
-);
+)
