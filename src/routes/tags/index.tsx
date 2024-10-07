@@ -3,9 +3,8 @@ import {
   type Signal,
   useComputed$,
   useSignal,
-  useVisibleTask$,
 } from "@builder.io/qwik";
-import { routeLoader$, useLocation } from "@builder.io/qwik-city";
+import { routeLoader$ } from "@builder.io/qwik-city";
 import { type BlogType, getBogs } from "../blog/layout";
 import { getLogs, type LogType } from "../dev-log/layout";
 import { calculateRelativeDate, kebabCase } from "~/components/utils";

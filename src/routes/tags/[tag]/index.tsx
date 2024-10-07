@@ -1,6 +1,6 @@
 import { component$ } from "@builder.io/qwik"
 import { TagView, getTagInformation } from ".."
-import { DocumentHead, routeLoader$, useLocation } from "@builder.io/qwik-city";
+import { type DocumentHead, routeLoader$, useLocation } from "@builder.io/qwik-city";
 
 
 export const useTagLoader = routeLoader$(async () => {
@@ -17,7 +17,7 @@ export default component$(() => {
     </>
   );
 })
-export const head: DocumentHead = ({ resolveValue, params }) => {
+export const head: DocumentHead = ({ params }) => {
   const tag = params.tag
   return {
     title: `<${tag}>`,
