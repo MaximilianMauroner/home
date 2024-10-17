@@ -12,6 +12,7 @@ const exclusions = [
   /^blog\/.+$/,
   /^dev-log\/.+$/,
   /^projects\/.+$/,
+  /^tags\/.+$/,
 ];
 export const onGet: RequestHandler = (ev) => {
   const siteRoutes = routes
