@@ -11,7 +11,7 @@ const TagsList = component$(({ tags }: { tags: string[] }) => {
         <a
           key={tag}
           class="whitespace-nowrap rounded-full border border-transparent bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground no-underline hover:bg-primary hover:text-primary-foreground"
-          href={"/tags/?tag=" + tag}
+          href={"/tags/" + tag}
         >
           {tag}
         </a>

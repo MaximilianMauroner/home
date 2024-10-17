@@ -3,8 +3,9 @@ import {
   type Signal,
   useComputed$,
   useSignal,
+  useVisibleTask$,
 } from "@builder.io/qwik";
-import { routeLoader$ } from "@builder.io/qwik-city";
+import { type DocumentHead, routeLoader$ } from "@builder.io/qwik-city";
 import { type BlogType, getBogs } from "../blog/layout";
 import { getLogs, type LogType } from "../dev-log/layout";
 import { calculateRelativeDate, kebabCase } from "~/components/utils";
@@ -79,14 +80,12 @@ export function getTagInformation() {
   tagsArray.sort((a, b) => a.name.localeCompare(b.name));
 
   return { tags: tagsArray, blogs, logs };
-
 }
 export const useTagLoader = routeLoader$(async () => {
   return getTagInformation();
 });
 
 export default component$(() => {
-
   const { tags, blogs, logs } = useTagLoader().value;
   return (
     <>
@@ -95,59 +94,75 @@ export default component$(() => {
   );
 });
 
-
 export const TagView = component$<{
   tags: TagType[];
   blogs: BlogType[];
   logs: LogType[];
-  preSelectedTag?: string
-}>(({
-  tags,
-  blogs,
-  logs,
-  preSelectedTag
-}: {
-  tags: TagType[];
-  blogs: BlogType[];
-  logs: LogType[]
-  preSelectedTag?: string
-}) => {
-  const selectedTag = useSignal<string>(preSelectedTag ?? "");
+  preSelectedTag?: string;
+}>(
+  ({
+    tags,
+    blogs,
+    logs,
+    preSelectedTag,
+  }: {
+    tags: TagType[];
+    blogs: BlogType[];
+    logs: LogType[];
+    preSelectedTag?: string;
+  }) => {
+    const selectedTag = useSignal<string>(preSelectedTag ?? "");
 
-  const selectedBlogs = useComputed$(() => {
-    if (selectedTag.value === "") {
-      return blogs;
-    }
-    return blogs.filter((b) => b.tags.includes(selectedTag.value));
-  });
-  const selectedLogs = useComputed$(() => {
-    if (selectedTag.value === "") {
-      return logs;
-    }
-    return logs.filter((l) => l.tags.includes(selectedTag.value));
-  });
-  const totalPostCount = useComputed$(() => {
-    return blogs.length + logs.length;
-  });
-  const activePostCount = useComputed$(() => {
-    return selectedBlogs.value.length + selectedLogs.value.length;
-  });
-  return (
-    <div class="grid grid-cols-6 gap-4 p-4">
-      <div class="col-span-6 sm:col-span-2">
-        <TagList
-          tags={tags}
-          selectedTag={selectedTag}
-          activePostCount={activePostCount}
-          totalPostCount={totalPostCount}
-        />
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(() => {
+      const handlePopState = () => {
+        const path = window.location.pathname.split("/tags/")[1];
+        selectedTag.value = path || ""; // Update the selectedTag based on URL
+      };
+
+      window.addEventListener("popstate", handlePopState);
+
+      // Clean up listener when component unmounts
+      return () => {
+        window.removeEventListener("popstate", handlePopState);
+      };
+    });
+
+    const selectedBlogs = useComputed$(() => {
+      if (selectedTag.value === "") {
+        return blogs;
+      }
+      return blogs.filter((b) => b.tags.includes(selectedTag.value));
+    });
+    const selectedLogs = useComputed$(() => {
+      if (selectedTag.value === "") {
+        return logs;
+      }
+      return logs.filter((l) => l.tags.includes(selectedTag.value));
+    });
+    const totalPostCount = useComputed$(() => {
+      return blogs.length + logs.length;
+    });
+    const activePostCount = useComputed$(() => {
+      return selectedBlogs.value.length + selectedLogs.value.length;
+    });
+    return (
+      <div class="grid grid-cols-6 gap-4 p-4">
+        <div class="col-span-6 sm:col-span-2">
+          <TagList
+            tags={tags}
+            selectedTag={selectedTag}
+            activePostCount={activePostCount}
+            totalPostCount={totalPostCount}
+          />
+        </div>
+        <div class="col-span-6 sm:col-span-4">
+          <PostList blogs={selectedBlogs} logs={selectedLogs} />
+        </div>
       </div>
-      <div class="col-span-6 sm:col-span-4">
-        <PostList blogs={selectedBlogs} logs={selectedLogs} />
-      </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 const TagList = component$<{
   tags: TagType[];
@@ -185,10 +200,14 @@ const TagList = component$<{
                   onClick$={() => {
                     if (selectedTag.value === tag.name) {
                       selectedTag.value = "";
-                      window.history.pushState({}, "", "/tags/");
+                      window.history.replaceState({}, "", "/tags/"); // Keep this as replace for clearing the tag
                     } else {
                       selectedTag.value = tag.name;
-                      window.history.pushState({}, "", `/tags/${selectedTag.value}`);
+                      window.history.pushState(
+                        {},
+                        "",
+                        `/tags/${selectedTag.value}`,
+                      ); // Switch to pushState for adding a new history entry
                     }
                   }}
                   class={
@@ -246,4 +265,10 @@ const PostList = component$<{
       </div>
     );
   },
-)
+);
+
+export const head: DocumentHead = () => {
+  return {
+    title: `<Tags>`,
+  };
+};

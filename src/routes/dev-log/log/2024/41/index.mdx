@@ -1,24 +1,50 @@
 ---
 title: Finally adding tags
 description: 
-tags: ["website", "homepage"] 
-published: false
+tags: ["website", "homepage", "tagging-system", "nvim"] 
+published: true
 releaseDate: 2024-10-12
 ---
+import TagsExample from '~/media/log/tags-example.png?jsx';
 
 
 # Getting tags working
 
 This week my main focus was on getting the tag system working.
-With the main idea being that I can work on more important stuff in the future and so that it's easier to search my site for more important information. 
+With the main idea being that I might want to search my own page in the future. In addition it's better to categorize the content.
 
-The main idea was to have a list of all available tags, with all blogs and dev-logs showing next to the tags.
+The concept was to have a list of all available tags, with all blogs and dev-logs showing next to the tags.
 Since the tags are supposed to be easiliy searchable and extractable from the markdown files themselves I had to work around those limitations a bit. 
 In addition I also wanted to revamp the styling as I didn't really like the old styling. So the styling also got a bit improved.
 
 Now the only thing that I had to do was make it so that each time you click a tag on 
-[https://www.mauroner.net/tags/](https://www.mauroner.net/tags/) it pushes the new "path" to the history so that navigation works.
+[https://www.mauroner.net/tags/](/tags/) it pushes the new "path" to the history so that navigation works. 
+Then the last remaining problem was that the `checked` status would not update correctly when switching between selected tags. 
+The fix for that was adding a `useVisibleTask$`  Then 
+to get the `window.location.pathname` information  on page load. 
 
-Tags solve problem
-Kurzgesagt people die video
+Now if you visite the [page](/tags/) it should work as expected.
 
+<TagsExample alt="Show the tags page that was described above"/>
+
+# NVIM
+
+So for some reason youtube decided to reccomend this video to me
+
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/yY9ppNh8DnU?si=g71t1q6J0EY1jtkB" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+which then made want to try out `nvim`. I knew some of the basics but I had never used vim outside of vi/vim and VSCode before.
+
+So the first thing I did afterwards was look if there was a quickstart and wouldn't you know it there was.
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/m8C0Cq9Uv9o?si=oJfznt1MA8IbDvaq" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+With this I set up my nvim config and started to play around with it. I also started to install my own plugins and configure some stuff.
+
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/2ipasAxK5H8?si=shWyWY3MOsTcTPs5" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+Afterwards I saw this video which explained some stuff in more detail and showed some of the cool parts of nvim.
+
+While working on this I was thinking that I would like to have a setup file which I download, execute and then I can just use it on any machine and have my setup completely configured.
+
+So I added it to the nvim config. It uses ansible to install the different packages needed. 
+This is the repo: [kickstart github](https://github.com/MaximilianMauroner/kickstart.nvim)
