@@ -41,13 +41,11 @@ const Header = component$(() => {
       <nav class="flex w-full items-center justify-around gap-2 sm:justify-center sm:gap-6">
         <a href="/" class="flex items-center gap-2 font-medium">
           <div class={"my-auto flex h-20 w-20 items-center justify-center"}>
-            <ImgAstronaut
-              loading="eager"
-              alt="Astronaut with laptop"
-            />
+            <ImgAstronaut loading="eager" alt="Astronaut with laptop" />
             <span class="sr-only">Astronaut</span>
           </div>
         </a>
+
         {navigation.map((item) => (
           <NavItem key={item.name} item={item} isMobile={false} />
         ))}

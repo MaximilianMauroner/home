@@ -1,8 +1,12 @@
 import {
+  $,
   component$,
+  type JSXOutput,
   type Signal,
   useComputed$,
   useSignal,
+  useStore,
+  useTask$,
   useVisibleTask$,
 } from "@builder.io/qwik";
 import { type DocumentHead, routeLoader$ } from "@builder.io/qwik-city";
@@ -11,6 +15,7 @@ import { getLogs, type LogType } from "../dev-log/layout";
 import { calculateRelativeDate, kebabCase } from "~/components/utils";
 import { BlogPreview } from "../blog";
 import { LogPreview } from "../dev-log";
+import Search from "~/components/search";
 
 type TagType = {
   name: string;
@@ -149,15 +154,15 @@ export const TagView = component$<{
     return (
       <div class="grid grid-cols-6 gap-4 p-4">
         <div class="col-span-6 sm:col-span-2">
-          <TagList
-            tags={tags}
-            selectedTag={selectedTag}
+          <TagList tags={tags} selectedTag={selectedTag} />
+        </div>
+        <div class="col-span-6 sm:col-span-4">
+          <PostList
+            blogs={selectedBlogs}
+            logs={selectedLogs}
             activePostCount={activePostCount}
             totalPostCount={totalPostCount}
           />
-        </div>
-        <div class="col-span-6 sm:col-span-4">
-          <PostList blogs={selectedBlogs} logs={selectedLogs} />
         </div>
       </div>
     );
@@ -167,26 +172,14 @@ export const TagView = component$<{
 const TagList = component$<{
   tags: TagType[];
   selectedTag: Signal<string>;
-  totalPostCount: Signal<number>;
-  activePostCount: Signal<number>;
 }>(
-  ({
-    tags,
-    selectedTag,
-    totalPostCount,
-    activePostCount,
-  }: {
-    tags: TagType[];
-    selectedTag: Signal<string>;
-    totalPostCount: Signal<number>;
-    activePostCount: Signal<number>;
-  }) => {
+  ({ tags, selectedTag }: { tags: TagType[]; selectedTag: Signal<string> }) => {
     return (
       <div class="sticky top-28">
         <div class="mb-4 flex items-center gap-2">
-          <h2 class="text-2xl font-bold">All Tags</h2>
+          <h2 class="text-2xl font-bold">Tags:</h2>
           <span class="font-mono text-2xl text-muted-foreground">
-            ({activePostCount.value}/{totalPostCount.value})
+            ({tags.length})
           </span>
         </div>
         <ul
@@ -249,20 +242,71 @@ const TagList = component$<{
   },
 );
 
+export type ItemsType = {
+  releaseDate: string;
+  url: string;
+  component: JSXOutput;
+};
+
 const PostList = component$<{
   blogs: Signal<BlogType[]>;
   logs: Signal<LogType[]>;
+  totalPostCount: Signal<number>;
+  activePostCount: Signal<number>;
 }>(
-  ({ blogs, logs }: { blogs: Signal<BlogType[]>; logs: Signal<LogType[]> }) => {
+  ({
+    blogs,
+    logs,
+    totalPostCount,
+    activePostCount,
+  }: {
+    blogs: Signal<BlogType[]>;
+    logs: Signal<LogType[]>;
+    totalPostCount: Signal<number>;
+    activePostCount: Signal<number>;
+  }) => {
+    const state = useStore<{ items: ItemsType[]; originalItems: ItemsType[] }>({
+      items: [
+        ...blogs.value.map((blog) => ({
+          releaseDate: blog.releaseDate,
+          url: blog.slug,
+          component: <BlogPreview key={blog.slug + "-post-list"} post={blog} />,
+        })),
+        ...logs.value.map((log) => ({
+          releaseDate: log.releaseDate,
+          url: log.url,
+          component: <LogPreview key={log.title + "-post-list"} post={log} />,
+        })),
+      ],
+      originalItems: [],
+    });
+    useTask$(() => {
+      state.items.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+      state.originalItems = [...state.items];
+    });
+
+    const updateItems = $((newItems: ItemsType[]) => {
+      state.items = newItems;
+    });
+
     return (
-      <div class="space-y-4">
-        {blogs.value.map((blog) => {
-          return <BlogPreview key={blog.slug + "-post-list"} post={blog} />;
-        })}
-        {logs.value.map((log) => {
-          return <LogPreview key={log.title + "-post-list"} post={log} />;
-        })}
-      </div>
+      <>
+        <div class="mb-4 flex justify-between gap-2">
+          <div class="flex items-center">
+            <h2 class="text-2xl font-bold">Tags:</h2>
+            <span class="font-mono text-2xl text-muted-foreground">
+              ({activePostCount.value + "/" + totalPostCount.value})
+            </span>
+          </div>
+          <div>
+            <Search
+              originalItems={state.originalItems}
+              updateItems={updateItems}
+            />
+          </div>
+        </div>
+        <div class="space-y-4">{state.items.map((item) => item.component)}</div>
+      </>
     );
   },
 );

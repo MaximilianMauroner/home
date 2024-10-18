@@ -11,6 +11,7 @@ export type BlogType = {
   image: string;
   slug: string;
   tags: string[];
+  headings: string;
 };
 
 export function getBogs() {
@@ -20,6 +21,8 @@ export function getBogs() {
   for (const path in modules) {
     // @ts-ignore
     const fM = modules[path].frontmatter;
+    // @ts-ignore
+    const headings = modules[path].headings;
     const url = path.replace("./", "").replace("/index.mdx", "");
     logs.push({
       title: fM?.title ?? "",
@@ -29,6 +32,7 @@ export function getBogs() {
       slug: url,
       tags: fM?.tags ?? [],
       image: fM?.image ?? "",
+      headings: headings.map(({ text }: { text: string }) => text).join(", "),
     });
   }
   return logs;

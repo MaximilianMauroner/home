@@ -14,6 +14,7 @@ export type LogType = {
   published: boolean;
   url: string;
   releaseDate: string;
+  headings: string;
 };
 
 export function getLogs() {
@@ -23,6 +24,8 @@ export function getLogs() {
   for (const path in modules) {
     // @ts-ignore
     const fM = modules[path].frontmatter;
+    // @ts-ignore
+    const headings = modules[path].headings;
     const url = path.replace("./", "/dev-log/").replace("/index.mdx", "");
     logs.push({
       title: fM?.title ?? "",
@@ -31,6 +34,7 @@ export function getLogs() {
       published: fM?.published ?? false,
       url,
       releaseDate: fM?.releaseDate ?? new Date().toISOString(),
+      headings: headings.map(({ text }: { text: string }) => text).join(", "),
     });
   }
   return logs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
