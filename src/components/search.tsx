@@ -1,4 +1,4 @@
-import { $, component$, useSignal } from "@builder.io/qwik";
+import { $, component$, useSignal, useTask$ } from "@builder.io/qwik";
 import { getBogs } from "~/routes/blog/layout";
 import { getLogs } from "~/routes/dev-log/layout";
 import { type ItemsType } from "~/routes/tags";
@@ -22,6 +22,13 @@ export const Search = component$<SearchProps>(
         filtered.some((option) => option.url === item.url),
       );
       updateItems(filteredItems);
+    });
+
+    useTask$(({ track }) => {
+      track(() => originalItems); // Track changes to originalItems
+
+      // Reapply filter based on current searchQuery when originalItems change
+      filterOptions(searchQuery.value);
     });
 
     return (

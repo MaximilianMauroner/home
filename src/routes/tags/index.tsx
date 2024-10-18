@@ -266,25 +266,39 @@ const PostList = component$<{
     activePostCount: Signal<number>;
   }) => {
     const state = useStore<{ items: ItemsType[]; originalItems: ItemsType[] }>({
-      items: [
-        ...blogs.value.map((blog) => ({
+      items: [], // initially empty
+      originalItems: [], // initially empty
+    });
+
+    // Track changes in blogs and logs, initialize and update state.items accordingly
+    useTask$(({ track }) => {
+      // Track both blogs and logs signals
+      const trackedBlogs = track(() => blogs.value);
+      const trackedLogs = track(() => logs.value);
+
+      // Generate updated items based on blogs and logs
+      const updatedItems = [
+        ...trackedBlogs.map((blog) => ({
           releaseDate: blog.releaseDate,
           url: blog.slug,
           component: <BlogPreview key={blog.slug + "-post-list"} post={blog} />,
         })),
-        ...logs.value.map((log) => ({
+        ...trackedLogs.map((log) => ({
           releaseDate: log.releaseDate,
           url: log.url,
           component: <LogPreview key={log.title + "-post-list"} post={log} />,
         })),
-      ],
-      originalItems: [],
-    });
-    useTask$(() => {
+      ];
+
+      // Update state with the new items and keep a copy in originalItems
+      state.items = updatedItems;
+      state.originalItems = [...updatedItems]; // keep original copy of items
+
+      // Sort the items by release date
       state.items.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
-      state.originalItems = [...state.items];
     });
 
+    // Function to update the displayed items, used by the Search component
     const updateItems = $((newItems: ItemsType[]) => {
       state.items = newItems;
     });
