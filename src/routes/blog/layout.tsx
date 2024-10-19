@@ -17,14 +17,14 @@ export type BlogType = {
 export function getBogs() {
   const modules = import.meta.glob("./**/*.mdx", { eager: true });
 
-  const logs: BlogType[] = [];
+  const blogs: BlogType[] = [];
   for (const path in modules) {
     // @ts-ignore
     const fM = modules[path].frontmatter;
     // @ts-ignore
     const headings = modules[path].headings;
     const url = path.replace("./", "").replace("/index.mdx", "");
-    logs.push({
+    blogs.push({
       title: fM?.title ?? "",
       description: fM?.description ?? "",
       releaseDate: fM?.releaseDate ?? new Date().toISOString(),
@@ -35,7 +35,7 @@ export function getBogs() {
       headings: headings.map(({ text }: { text: string }) => text).join(", "),
     });
   }
-  return logs;
+  return blogs;
 }
 
 export const useBlogLoader = routeLoader$(async () => {
