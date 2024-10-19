@@ -1,5 +1,4 @@
 import {
-  $,
   component$,
   type JSXOutput,
   type Signal,
@@ -21,6 +20,13 @@ type TagType = {
   name: string;
   blogCount: number;
   logCount: number;
+};
+
+type Option = {
+  title: string;
+  description: string;
+  url: string;
+  text: string;
 };
 
 export function getTagInformation() {
@@ -90,6 +96,39 @@ export const useTagLoader = routeLoader$(async () => {
   return getTagInformation();
 });
 
+function getAllOptions() {
+  const options: Option[] = [];
+  const blogs = getBogs();
+  for (const blog of blogs) {
+    options.push({
+      title: blog.title,
+      description: blog.description,
+      url: blog.slug,
+      text: [
+        blog.tags.join(", "),
+        blog.title,
+        blog.description,
+        blog.headings,
+      ].join(" "),
+    });
+  }
+  const logs = getLogs();
+  for (const log of logs) {
+    options.push({
+      title: log.title,
+      description: log.description,
+      url: log.url,
+      text: [
+        log.tags.join(", "),
+        log.title,
+        log.description,
+        log.headings,
+      ].join(" "),
+    });
+  }
+  return options;
+}
+
 export default component$(() => {
   const { tags, blogs, logs } = useTagLoader().value;
   return (
@@ -117,40 +156,65 @@ export const TagView = component$<{
     preSelectedTag?: string;
   }) => {
     const selectedTag = useSignal<string>(preSelectedTag ?? "");
+    const search = useSignal<string>("");
+    const options = getAllOptions();
 
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(() => {
       const handlePopState = () => {
         const path = window.location.pathname.split("/tags/")[1];
-        selectedTag.value = path || ""; // Update the selectedTag based on URL
+        selectedTag.value = path || "";
       };
 
       window.addEventListener("popstate", handlePopState);
 
-      // Clean up listener when component unmounts
       return () => {
         window.removeEventListener("popstate", handlePopState);
       };
     });
 
-    const selectedBlogs = useComputed$(() => {
+    const filteredBlogs = useComputed$(() => {
       if (selectedTag.value === "") {
         return blogs;
       }
       return blogs.filter((b) => b.tags.includes(selectedTag.value));
     });
-    const selectedLogs = useComputed$(() => {
+
+    const filteredLogs = useComputed$(() => {
       if (selectedTag.value === "") {
         return logs;
       }
       return logs.filter((l) => l.tags.includes(selectedTag.value));
     });
+
+    const selectedBlogs = useComputed$(() => {
+      const searchValue = search.value.toLowerCase();
+      const filtered = options.filter((option) => {
+        return option.text.toLowerCase().includes(searchValue.toLowerCase());
+      });
+      return filteredBlogs.value.filter((item) =>
+        filtered.some((option) => option.url === item.slug),
+      );
+    });
+
+    const selectedLogs = useComputed$(() => {
+      const searchValue = search.value.toLowerCase();
+      const filtered = options.filter((option) => {
+        return option.text.toLowerCase().includes(searchValue.toLowerCase());
+      });
+      return filteredLogs.value.filter((item) =>
+        filtered.some((option) => option.url === item.url),
+      );
+    });
+
     const totalPostCount = useComputed$(() => {
-      return blogs.length + logs.length;
+      return blogs.length + logs.length; // Total posts count
     });
+
     const activePostCount = useComputed$(() => {
-      return selectedBlogs.value.length + selectedLogs.value.length;
+      return selectedBlogs.value.length + selectedLogs.value.length; // Active posts count
     });
+
     return (
       <div class="grid grid-cols-6 gap-4 p-4">
         <div class="col-span-6 sm:col-span-2">
@@ -162,6 +226,7 @@ export const TagView = component$<{
             logs={selectedLogs}
             activePostCount={activePostCount}
             totalPostCount={totalPostCount}
+            search={search}
           />
         </div>
       </div>
@@ -253,30 +318,29 @@ const PostList = component$<{
   logs: Signal<LogType[]>;
   totalPostCount: Signal<number>;
   activePostCount: Signal<number>;
+  search: Signal<string>;
 }>(
   ({
     blogs,
     logs,
     totalPostCount,
     activePostCount,
+    search,
   }: {
     blogs: Signal<BlogType[]>;
     logs: Signal<LogType[]>;
     totalPostCount: Signal<number>;
     activePostCount: Signal<number>;
+    search: Signal<string>;
   }) => {
-    const state = useStore<{ items: ItemsType[]; originalItems: ItemsType[] }>({
-      items: [], // initially empty
-      originalItems: [], // initially empty
+    const state = useStore<{ items: ItemsType[] }>({
+      items: [],
     });
 
-    // Track changes in blogs and logs, initialize and update state.items accordingly
     useTask$(({ track }) => {
-      // Track both blogs and logs signals
       const trackedBlogs = track(() => blogs.value);
       const trackedLogs = track(() => logs.value);
 
-      // Generate updated items based on blogs and logs
       const updatedItems = [
         ...trackedBlogs.map((blog) => ({
           releaseDate: blog.releaseDate,
@@ -290,33 +354,21 @@ const PostList = component$<{
         })),
       ];
 
-      // Update state with the new items and keep a copy in originalItems
       state.items = updatedItems;
-      state.originalItems = [...updatedItems]; // keep original copy of items
-
-      // Sort the items by release date
       state.items.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
-    });
-
-    // Function to update the displayed items, used by the Search component
-    const updateItems = $((newItems: ItemsType[]) => {
-      state.items = newItems;
     });
 
     return (
       <>
         <div class="mb-4 flex justify-between gap-2">
           <div class="flex items-center">
-            <h2 class="text-2xl font-bold">Tags:</h2>
+            <h2 class="text-2xl font-bold">Posts:</h2>
             <span class="font-mono text-2xl text-muted-foreground">
               ({activePostCount.value + "/" + totalPostCount.value})
             </span>
           </div>
           <div>
-            <Search
-              originalItems={state.originalItems}
-              updateItems={updateItems}
-            />
+            <Search searchQuery={search} />
           </div>
         </div>
         <div class="space-y-4">{state.items.map((item) => item.component)}</div>
