@@ -2,7 +2,7 @@
 title: Search is surprisingly hard
 description: Implemented a search functionality for the tags page.
 tags: ["website", "homepage", "tagging-system", "search"] 
-published: false
+published: true
 releaseDate: 2024-10-19
 ---
 import SearchExample from '~/media/log/search-working.png?jsx';
@@ -19,20 +19,25 @@ Or, if you cleared a tag, the search wouldn't kick in to refresh the list.
 
 (Keep in mind that the numbers on the tags page currently don't update, that is a problem for another day)
 
-# The Solution
-
-Getting the Search to Behave
-The next thing was the search itself. I wanted it to filter results dynamically as you type, but also respect the active tags. 
-Qwik's `$()` and useTask$ helped here. By tracking changes to the search input and selected tags, I could make sure that the filtered items list was always up-to-date.
+# Getting the Search to Behave
+I wanted it to filter results dynamically as you type, but also respect the active tags. 
+Qwik's `$()` and `useTask$` helped here. By tracking changes to the search input and selected tags, I could make sure that the filtered items list was always up-to-date.
 
 There was also an issue where clearing the tags didn't reapply the search filter, so I had to track changes to originalItems and rerun the search logic each time the tag selection changed. 
-That way, you get an updated list whether you're typing or toggling tags.
+That way, you get an updated list whether you're typing or toggling tags. I'm sure my version right now is not that performant, but hey, it works.
 
-The search is now real-time, and it works alongside the tag filtering. You can search for any post or log entry while keeping the active tag filtering applied.
+The search is now real-time, and it works alongside the tag filtering. You can search for any post or log entry while keeping the active tag filtering applied. 
+The current search is limited to:
+- tags
+- title
+- description
+- headings inside the article
 
 <SearchExample alt="Tags and search system in action"/>
 
 # Final Thoughts
-Getting Qwik's reactivity to work exactly how I wanted was a bit of a learning curve, but I'm happy with how it turned out. Having both the search and tag system run smoothly has made navigating through content much easier.
+Getting Qwik's reactivity to work exactly how I wanted was a bit of a learning curve, but I'm happy with how it turned out. 
+Having both the search and tag system run smoothly has made navigating through content much easier.
 
-Next, I'm thinking about adding more filter options, maybe by date or category. For now, though, I'm just glad the search and tag system is functional and works without any hitches.
+Next, I'm thinking about adding more filter options, maybe filter for multiple tags. 
+For now, though, I'm just glad the search and tag system is functional and works without too many problems.
