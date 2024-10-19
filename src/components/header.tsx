@@ -3,19 +3,22 @@ import { useLocation } from "@builder.io/qwik-city";
 import ImgAstronaut from "~/media/astronaut.avif?jsx";
 
 const navigation = [
-  {
-    name: "who am i",
-    href: "/",
-    current: true,
-  },
-  { name: "blog", href: "/blog/", current: false },
-  { name: "dev log", href: "/dev-log/", current: false },
+  { name: "who am i", href: "/", regex: "^/$", current: true },
+  { name: "blog", href: "/blog/", regex: "^/blog/", current: false },
+  { name: "dev log", href: "/dev-log/", regex: "^/dev-log/", current: false },
   {
     name: "projects",
     href: "/projects/",
+    regex: "^/projects/",
     current: false,
   },
-  { name: "tags", href: "/tags/", current: false, defaultHidden: true },
+  {
+    name: "tags",
+    href: "/tags/",
+    regex: "^/tags",
+    current: false,
+    defaultHidden: true,
+  },
 ];
 type NavItemType = (typeof navigation)[number];
 
@@ -30,11 +33,8 @@ const socials = [
 const Header = component$(() => {
   const navigate = useLocation();
   for (const navItem of navigation) {
-    if (navItem.href === navigate.url.pathname) {
-      navItem.current = true;
-    } else {
-      navItem.current = false;
-    }
+    const regex = new RegExp(navItem.regex);
+    navItem.current = regex.test(navigate.url.pathname);
   }
   return (
     <header class="sticky top-0 z-10 flex items-center justify-center bg-primary px-2 py-2 text-primary-foreground sm:px-6 md:justify-between">
