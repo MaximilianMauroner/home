@@ -1,4 +1,9 @@
-import { component$, useStore, useVisibleTask$ } from "@builder.io/qwik";
+import {
+  component$,
+  useSignal,
+  useStore,
+  useVisibleTask$,
+} from "@builder.io/qwik";
 
 function prepareHeadings(headingsArr: string[]) {
   const ret = [];
@@ -13,6 +18,7 @@ function prepareHeadings(headingsArr: string[]) {
 
 export default component$(({ headingsArr }: { headingsArr: string[] }) => {
   const h = prepareHeadings(headingsArr);
+  const wrapperRef = useSignal<HTMLDivElement>();
   const state = useStore({
     activeHeading: h[0]?.name ?? "",
     isHovered: false,
@@ -22,15 +28,15 @@ export default component$(({ headingsArr }: { headingsArr: string[] }) => {
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Check if the clicked element is outside of our component
       if (
-        !event
-          .composedPath()
-          .some((el) => (el as HTMLElement).classList?.contains("hover-toggle"))
+        wrapperRef.value &&
+        !wrapperRef.value.contains(event.target as Node)
       ) {
+        // Click was outside of the referenced element
         state.isHovered = false;
       }
     };
+
     const handleScroll = () => {
       const offset = 80 + 16 + 1; // Adjust for sticky header height
       let activeHeading = "";
@@ -80,6 +86,7 @@ export default component$(({ headingsArr }: { headingsArr: string[] }) => {
       onMouseEnter$={() => (state.isHovered = true)}
       onMouseLeave$={() => (state.isHovered = false)}
       onTouchStart$={() => (state.isHovered = true)}
+      ref={wrapperRef}
     >
       {!state.isHovered && (
         <div class="relative">
