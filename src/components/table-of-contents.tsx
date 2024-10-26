@@ -85,11 +85,10 @@ export default component$(({ headingsArr }: { headingsArr: string[] }) => {
       class="fixed bottom-2 sm:left-2 sm:top-1/2 sm:-translate-y-1/2"
       onMouseEnter$={() => (state.isHovered = true)}
       onMouseLeave$={() => (state.isHovered = false)}
-      onTouchStart$={() => (state.isHovered = true)}
       ref={wrapperRef}
     >
       {!state.isHovered && (
-        <div class="relative">
+        <div class="relative" onTouchStart$={() => (state.isHovered = true)}>
           <div
             class={`absolute left-0 flex flex-col gap-3 rounded-lg border bg-white p-2 transition-opacity duration-300`}
           >
