@@ -108,7 +108,7 @@ function getAllOptions() {
         blog.tags.join(", "),
         blog.title,
         blog.description,
-        blog.headings,
+        blog.headings.join(", "),
       ].join(" "),
     });
   }
@@ -122,7 +122,7 @@ function getAllOptions() {
         log.tags.join(", "),
         log.title,
         log.description,
-        log.headings,
+        log.headings.join(", "),
       ].join(" "),
     });
   }

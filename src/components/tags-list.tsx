@@ -6,7 +6,7 @@ const TagsList = component$(({ tags }: { tags: string[] }) => {
   const kebabCasedTags = tags.map((tag: string) => kebabCase(tag));
 
   return (
-    <div class="flex gap-1">
+    <div class="flex flex-wrap gap-2 sm:flex-nowrap">
       {kebabCasedTags.map((tag) => (
         <a
           key={tag}

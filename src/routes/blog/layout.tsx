@@ -2,6 +2,7 @@ import { component$, Slot } from "@builder.io/qwik";
 import { routeLoader$, useLocation } from "@builder.io/qwik-city";
 import Fourofour from "../404";
 import { FontmatterTagsList } from "~/components/tags-list";
+import TableOfContents from "~/components/table-of-contents";
 
 export type BlogType = {
   title: string;
@@ -11,7 +12,7 @@ export type BlogType = {
   image: string;
   slug: string;
   tags: string[];
-  headings: string;
+  headings: string[];
 };
 
 export function getBogs() {
@@ -32,7 +33,7 @@ export function getBogs() {
       slug: url,
       tags: fM?.tags ?? [],
       image: fM?.image ?? "",
-      headings: headings.map(({ text }: { text: string }) => text).join(", "),
+      headings: headings.map(({ text }: { text: string }) => text),
     });
   }
   return blogs;
@@ -54,6 +55,7 @@ export default component$(() => {
   if (post) {
     return (
       <article class="prose mx-auto px-2 py-4 sm:px-0">
+        <TableOfContents headingsArr={post.headings} />
         <Slot />
         <FontmatterTagsList />
       </article>

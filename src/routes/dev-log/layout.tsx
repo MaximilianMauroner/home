@@ -6,6 +6,7 @@ import {
 } from "@builder.io/qwik-city";
 import Fourofour from "../404";
 import { calculateRelativeDate } from "~/components/utils";
+import TableOfContents from "~/components/table-of-contents";
 
 export type LogType = {
   title: string;
@@ -14,7 +15,7 @@ export type LogType = {
   published: boolean;
   url: string;
   releaseDate: string;
-  headings: string;
+  headings: string[];
 };
 
 export function getLogs() {
@@ -34,7 +35,7 @@ export function getLogs() {
       published: fM?.published ?? false,
       url,
       releaseDate: fM?.releaseDate ?? new Date().toISOString(),
-      headings: headings.map(({ text }: { text: string }) => text).join(", "),
+      headings: headings.map(({ text }: { text: string }) => text),
     });
   }
   return logs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
@@ -57,7 +58,12 @@ export default component$(() => {
   ) {
     return <Fourofour />;
   }
-  return <Slot />;
+  return (
+    <>
+      {post && <TableOfContents headingsArr={post.headings} />}
+      <Slot />
+    </>
+  );
 });
 
 const revalidate = 60 * 60 * 12;

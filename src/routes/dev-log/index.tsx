@@ -64,9 +64,9 @@ export const LogPreview = component$<{ post: LogType }>(
   ({ post }: { post: LogType }) => {
     const releaseDate = calculateRelativeDate(post.releaseDate);
     return (
-      <article class="rounded-lg border border-gray-200 bg-card p-6 shadow-md">
-        <div class="mb-5 flex items-center justify-between gap-1">
-          <div class="inline-flex items-center overflow-auto rounded px-2.5 py-0.5 text-xs font-medium text-primary">
+      <article class="rounded-lg border border-gray-200 bg-card p-4 shadow-md sm:p-6">
+        <div class="mb-5 flex flex-col items-center justify-between gap-1 sm:flex-row">
+          <div class="inline-flex items-center overflow-auto rounded px-2 py-0.5 text-xs font-medium text-primary">
             <svg
               class="mr-1 h-3 w-3"
               fill="currentColor"
@@ -75,11 +75,11 @@ export const LogPreview = component$<{ post: LogType }>(
             >
               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
             </svg>
-            <div class="flex w-full overflow-auto">
+            <div class="flex w-full overflow-x-auto">
               <TagsList tags={post.tags} />
             </div>
           </div>
-          <span class="hidden text-sm text-muted-foreground sm:block">
+          <span class="hidden text-xs text-muted-foreground sm:block sm:text-sm">
             {releaseDate < 0
               ? `releases in ${Math.abs(releaseDate)} days`
               : `released ${releaseDate} days ago`}
@@ -89,14 +89,14 @@ export const LogPreview = component$<{ post: LogType }>(
           <a href={post.url}>{post.title}</a>
         </h2>
         <p class="mb-5 font-light text-muted-foreground">{post.description}</p>
-        <div class="flex items-center justify-between text-sm font-medium text-primary ring-offset-background">
+        <div class="flex items-center justify-between text-xs font-medium text-primary ring-offset-background sm:text-sm">
           <a
             href={post.url}
             class="inline-flex items-center font-medium text-primary hover:underline"
           >
             Read more
             <svg
-              class="ml-2 h-4 w-4"
+              class="ml-1 h-3 w-3 sm:ml-2 sm:h-4 sm:w-4"
               fill="currentColor"
               viewBox="0 0 20 20"
               xmlns="http://www.w3.org/2000/svg"
