@@ -11,10 +11,13 @@ interface Item {
 
 // Item interface
 interface EloItem {
+  id: number;
   rating: number;
   round: number;
   lastDifference: number;
   item: Item;
+  winsAgainst: number[];
+  lossesAgainst: number[];
 }
 
 interface EloRankingStore {
@@ -68,16 +71,23 @@ function enforceTransitivity(items: EloItem[]) {
   const updatedItems = [...items];
 
   for (let i = 0; i < updatedItems.length; i++) {
-    for (let j = i + 1; j < updatedItems.length; j++) {
-      // If item A's rating is greater than item B's, ensure all items below B are less than A
-      if (updatedItems[i].rating > updatedItems[j].rating) {
-        for (let k = j + 1; k < updatedItems.length; k++) {
+    for (let j = 0; j < updatedItems[i].winsAgainst.length; j++) {
+      const winner = updatedItems[i];
+      const loser = updatedItems.find(
+        (item) => item.id === updatedItems[i].winsAgainst[j],
+      );
+
+      if (loser) {
+        for (let k = 0; k < loser.winsAgainst.length; k++) {
+          const transitiveLoser = updatedItems.find(
+            (item) => item.id === loser.winsAgainst[k],
+          );
           if (
-            updatedItems[j].rating > updatedItems[k].rating &&
-            updatedItems[i].rating <= updatedItems[k].rating
+            transitiveLoser &&
+            !winner.winsAgainst.includes(transitiveLoser.id)
           ) {
-            // Adjust C's rating to ensure A > C
-            updatedItems[k].rating = updatedItems[i].rating - 1;
+            winner.winsAgainst.push(transitiveLoser.id);
+            transitiveLoser.lossesAgainst.push(winner.id);
           }
         }
       }
@@ -87,14 +97,55 @@ function enforceTransitivity(items: EloItem[]) {
   return updatedItems;
 }
 
+// Add this function before getRandomItems
+function hasCompleteTransitiveRanking(items: EloItem[]): boolean {
+  // Create adjacency matrix for the graph
+  const n = items.length;
+  const graph: boolean[][] = Array(n)
+    .fill(null)
+    .map(() => Array(n).fill(false));
+
+  // Fill direct relationships
+  items.forEach((item) => {
+    item.winsAgainst.forEach((winnerId) => {
+      graph[item.id][winnerId] = true;
+    });
+  });
+
+  // Floyd-Warshall algorithm to find transitive relationships
+  for (let k = 0; k < n; k++) {
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (graph[i][k] && graph[k][j]) {
+          graph[i][j] = true;
+        }
+      }
+    }
+  }
+
+  // Check if every pair of items has a relationship
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (i !== j && !graph[i][j] && !graph[j][i]) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 // Custom hook to manage Elo ranking logic
 export function useEloRanking(initialItems: string[]) {
   const store = useStore<EloRankingStore>({
-    items: initialItems.map((name) => ({
+    items: initialItems.map((name, index) => ({
       item: { name },
+      id: index,
       rating: INITIAL_RATING,
       round: 0,
       lastDifference: 0,
+      winsAgainst: [],
+      lossesAgainst: [],
     })),
     itemOne: 0,
     itemTwo: 1,
@@ -102,6 +153,14 @@ export function useEloRanking(initialItems: string[]) {
   });
 
   const getRandomItems = $(() => {
+    // Check if we have complete transitive ranking
+    if (hasCompleteTransitiveRanking(store.items)) {
+      store.itemOne = -1;
+      store.itemTwo = -1;
+      return;
+    }
+
+    // Original weighted random selection logic continues...
     const weights = store.items.map((item) => 1 / Math.pow(item.round + 1, 2));
     const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
 
@@ -114,10 +173,25 @@ export function useEloRanking(initialItems: string[]) {
       return store.items.length - 1;
     };
 
-    const indexA = getWeightedRandomIndex();
+    let indexA = getWeightedRandomIndex();
     let indexB = getWeightedRandomIndex();
-    while (indexB === indexA) {
+    let attempts = 0;
+    const maxAttempts = 100;
+
+    // Ensure indexB is not the same as indexA and they do not have a history
+    while (
+      (indexB === indexA ||
+        store.items[indexA].winsAgainst.includes(store.items[indexB].id) ||
+        store.items[indexA].lossesAgainst.includes(store.items[indexB].id)) &&
+      attempts < maxAttempts
+    ) {
       indexB = getWeightedRandomIndex();
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+      indexA = -1;
+      indexB = -1;
     }
 
     store.itemOne = indexA;
@@ -139,6 +213,15 @@ export function useEloRanking(initialItems: string[]) {
           ? updatedB
           : { ...item, lastDifference: 0 },
     );
+
+    // Update winsAgainst and lossesAgainst
+    if (winner === 1) {
+      updatedA.winsAgainst.push(updatedB.id);
+      updatedB.lossesAgainst.push(updatedA.id);
+    } else {
+      updatedB.winsAgainst.push(updatedA.id);
+      updatedA.lossesAgainst.push(updatedB.id);
+    }
 
     store.round += 1;
 

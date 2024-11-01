@@ -22,21 +22,27 @@ export const RatingComponent = component$(() => {
       <h3 class="mb-3 text-xl font-semibold text-gray-700">Compare Items</h3>
 
       <div class="mb-6 space-y-2">
-        <div class="grid grid-cols-5 items-center justify-center space-x-2">
-          <button
-            onClick$={() => handleCompare(store.itemOne, store.itemTwo, 1)}
-            class="col-span-2 rounded-lg bg-blue-500 px-4 py-2 text-white transition hover:bg-blue-600"
-          >
-            {store.items[store.itemOne].item.name}
-          </button>
-          <span class="col-span-1 text-center">vs</span>
-          <button
-            onClick$={() => handleCompare(store.itemOne, store.itemTwo, 0)}
-            class="col-span-2 rounded-lg bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
-          >
-            {store.items[store.itemTwo].item.name}
-          </button>
-        </div>
+        {store.itemOne !== -1 && store.itemTwo !== -1 ? (
+          <div class="grid grid-cols-5 items-center justify-center space-x-2">
+            <button
+              onClick$={() => handleCompare(store.itemOne, store.itemTwo, 1)}
+              class="col-span-2 rounded-lg bg-blue-500 px-4 py-2 text-white transition hover:bg-blue-600"
+            >
+              {store.items[store.itemOne].item.name}
+            </button>
+            <span class="col-span-1 text-center">vs</span>
+            <button
+              onClick$={() => handleCompare(store.itemOne, store.itemTwo, 0)}
+              class="col-span-2 rounded-lg bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
+            >
+              {store.items[store.itemTwo].item.name}
+            </button>
+          </div>
+        ) : (
+          <div class="text-center text-gray-600">
+            Comparison complete! Check out the results below.
+          </div>
+        )}
       </div>
 
       <ol class="space-y-2">
