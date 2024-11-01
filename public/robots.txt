@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 
-Disallow: /blog/hello-world
 Disallow: /next-projects 
+Disallow: /ingest 
  
-Sitemap: https://www.mauroner.eu/sitemap.xml
+Sitemap: https://www.mauroner.net/sitemap.xml

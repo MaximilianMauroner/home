@@ -5,23 +5,28 @@ import {
   useLocation,
 } from "@builder.io/qwik-city";
 import Fourofour from "../404";
+import { calculateRelativeDate } from "~/components/utils";
+import TableOfContents from "~/components/table-of-contents";
 
-export type Log = {
+export type LogType = {
   title: string;
   description: string;
   tags: string[];
   published: boolean;
   url: string;
   releaseDate: string;
+  headings: string[];
 };
 
 export function getLogs() {
   const modules = import.meta.glob("./log/**/*.mdx", { eager: true });
 
-  const logs: Log[] = [];
+  const logs: LogType[] = [];
   for (const path in modules) {
     // @ts-ignore
     const fM = modules[path].frontmatter;
+    // @ts-ignore
+    const headings = modules[path].headings;
     const url = path.replace("./", "/dev-log/").replace("/index.mdx", "");
     logs.push({
       title: fM?.title ?? "",
@@ -30,18 +35,11 @@ export function getLogs() {
       published: fM?.published ?? false,
       url,
       releaseDate: fM?.releaseDate ?? new Date().toISOString(),
+      headings: headings.map(({ text }: { text: string }) => text),
     });
   }
-  return logs;
+  return logs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
 }
-
-export const calculateRelativeDate = (post: Log) => {
-  const date1 = new Date(post.releaseDate);
-  const date2 = new Date();
-  const diffTime = date2.getTime() - date1.getTime();
-  const days = diffTime / (1000 * 3600 * 24);
-  return Math.floor(days);
-};
 
 export const useLogLoader = routeLoader$(async () => {
   return getLogs();
@@ -55,15 +53,20 @@ export default component$(() => {
   const post = data.value.find((p) => path.includes(p.url));
   if (
     post &&
-    (post.published === false || calculateRelativeDate(post) < 0) &&
+    (post.published === false || calculateRelativeDate(post.releaseDate) < 0) &&
     import.meta.env.DEV === false
   ) {
     return <Fourofour />;
   }
-  return <Slot />;
+  return (
+    <>
+      {post && <TableOfContents headingsArr={post.headings} />}
+      <Slot />
+    </>
+  );
 });
 
-const revalidate = 60 * 60 * 24;
+const revalidate = 60 * 60 * 12;
 export const onGet: RequestHandler = async ({ cacheControl }) => {
   cacheControl({
     staleWhileRevalidate: revalidate,

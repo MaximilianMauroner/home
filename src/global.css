@@ -71,3 +71,32 @@
       "calt" 1;
   }
 }
+
+@keyframes rotate {
+  to {
+    --angle: 360deg;
+  }
+}
+
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.rotating-border-animation {
+  border: 5px solid #0000;
+  background:
+    linear-gradient(#131219, #131219) padding-box,
+    linear-gradient(var(--angle), #ec4899, #06b6d4, #8b5cf6) border-box;
+  animation: 8s rotate linear infinite;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  scroll-margin-top: calc(80px + 8px + 8px);
+}

@@ -1,6 +1,8 @@
 import { component$ } from "@builder.io/qwik";
 import { type DocumentHead } from "@builder.io/qwik-city";
 import { type BlogType, useBlogLoader } from "./layout";
+import TagsList from "~/components/tags-list";
+import { calculateRelativeDate } from "~/components/utils";
 
 export const head: DocumentHead = {
   title: "Blog",
@@ -46,17 +48,11 @@ export default Blog;
 
 export const BlogPreview = component$<{ post: BlogType }>(
   ({ post }: { post: BlogType }) => {
-    const calculateReleaseDate = () => {
-      const date1 = new Date(post.releaseDate);
-      const date2 = new Date();
-      const diffTime = date2.getTime() - date1.getTime();
-      const days = diffTime / (1000 * 3600 * 24);
-      return Math.floor(days);
-    };
+    const releaseDate = calculateRelativeDate(post.releaseDate);
     return (
       <article class="rounded-lg border border-gray-200 bg-card p-6 shadow-md">
         <div class="mb-5 flex items-center justify-between">
-          <div class="inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium text-primary">
+          <div class="inline-flex items-center overflow-auto rounded px-2.5 py-0.5 text-xs font-medium text-primary">
             <svg
               class="mr-1 h-3 w-3"
               fill="currentColor"
@@ -65,21 +61,14 @@ export const BlogPreview = component$<{ post: BlogType }>(
             >
               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
             </svg>
-
-            <div class="overflow-ellipsis">
-              {post.tags.map((tag, index) => (
-                <a
-                  key={tag}
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium text-primary underline-offset-4 ring-offset-background transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-                  href={"/blog/tags/" + tag}
-                >
-                  {tag + (index < post.tags.length - 1 ? ", " : "")}
-                </a>
-              ))}
+            <div class="flex w-full overflow-auto">
+              <TagsList tags={post.tags} />
             </div>
           </div>
-          <span class="text-sm text-muted-foreground">
-            {calculateReleaseDate()} days ago
+          <span class="hidden text-sm text-muted-foreground sm:block">
+            {releaseDate < 0
+              ? `releases in ${Math.abs(releaseDate)} days`
+              : `released ${releaseDate} days ago`}
           </span>
         </div>
         <h2 class="mb-2 text-2xl font-bold tracking-tight text-primary underline-offset-4 hover:underline">

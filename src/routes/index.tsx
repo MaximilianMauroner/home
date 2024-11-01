@@ -48,7 +48,7 @@ export default component$(() => {
         iteration += 1 / 3;
       }, 45);
     };
-    setTimeout(unmask, 500);
+    setTimeout(unmask, 50);
   });
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(() => {
