@@ -91,7 +91,7 @@ function enforceTransitivity(items: EloItem[]) {
 export function useEloRanking(initialItems: string[]) {
   const store = useStore<EloRankingStore>({
     items: initialItems.map((name) => ({
-      name,
+      item: { name },
       rating: INITIAL_RATING,
       round: 0,
       lastDifference: 0,

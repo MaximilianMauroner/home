@@ -27,14 +27,14 @@ export const RatingComponent = component$(() => {
             onClick$={() => handleCompare(store.itemOne, store.itemTwo, 1)}
             class="col-span-2 rounded-lg bg-blue-500 px-4 py-2 text-white transition hover:bg-blue-600"
           >
-            {store.items[store.itemOne].name}
+            {store.items[store.itemOne].item.name}
           </button>
           <span class="col-span-1 text-center">vs</span>
           <button
             onClick$={() => handleCompare(store.itemOne, store.itemTwo, 0)}
             class="col-span-2 rounded-lg bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
           >
-            {store.items[store.itemTwo].name}
+            {store.items[store.itemTwo].item.name}
           </button>
         </div>
       </div>
@@ -42,11 +42,11 @@ export const RatingComponent = component$(() => {
       <ol class="space-y-2">
         {store.items.map((i, index) => (
           <li
-            key={index + i.name}
+            key={index + i.item.name}
             class="flex items-center justify-between rounded-lg bg-white p-3 shadow"
           >
             <span class="font-medium text-gray-700">
-              {index + 1}. {i.name}
+              {index + 1}. {i.item.name}
             </span>
             <span class="font-semibold text-gray-900">
               {i.rating.toFixed(2)} / {i.lastDifference.toFixed(2)}
