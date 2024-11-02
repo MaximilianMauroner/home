@@ -43,7 +43,6 @@ export const onGet: RequestHandler = (ev) => {
   const response = new Response(sitemap, {
     status: 200,
     headers: {
-      "Content-Type": "application/xml",
       "Content-Type": "application/xml; charset=utf-8",
     },
   });
