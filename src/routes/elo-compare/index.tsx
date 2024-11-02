@@ -644,12 +644,12 @@ const ItemsHistory = component$(({ items }: { items: EloItem[] }) => {
   return (
     <div class="mt-8">
       <h3 class="mb-4 text-xl font-semibold text-gray-700">Match History</h3>
-      <div class="space-y-2">
+      <div class="max-h-[400px] space-y-2 overflow-y-auto">
         {items.map((item, index) => (
           <ItemHistoryAccordion
             key={index + item.item.name}
             item={item}
-            items={items} // Pass the items array to lookup names
+            items={items}
           />
         ))}
       </div>
