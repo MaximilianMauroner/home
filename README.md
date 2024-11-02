@@ -9,7 +9,7 @@
 ## Static Site Generator (Node.js)
 
 ```
-npm run build.server
+bun build.server
 ```
 
 ## Vercel Edge
@@ -32,10 +32,10 @@ Additionally, within the `package.json`, the `build.server` script will be updat
 
 ## Production build
 
-To build the application for production, use the `build` command, this command will automatically run `npm run build.server` and `npm run build.client`:
+To build the application for production, use the `build` command, this command will automatically run `bun build.server` and `bun build.client`:
 
 ```shell
-npm run build
+bun build
 ```
 
 [Read the full guide here](https://github.com/QwikDev/qwik/blob/main/starters/adapters/vercel-edge/README.md)
@@ -45,7 +45,7 @@ npm run build
 To deploy the application for development:
 
 ```shell
-npm run deploy
+bun deploy
 ```
 
 Notice that you might need a [Vercel account](https://docs.Vercel.com/get-started/) in order to complete this step!
@@ -55,3 +55,13 @@ Notice that you might need a [Vercel account](https://docs.Vercel.com/get-starte
 The project is ready to be deployed to Vercel. However, you will need to create a git repository and push the code to it.
 
 You can [deploy your site to Vercel](https://vercel.com/docs/concepts/deployments/overview) either via a Git provider integration or through the Vercel CLI.
+
+## Fastify Server
+
+This app has a minimal [Fastify server](https://fastify.dev/) implementation. After running a full build, you can preview the build using the command:
+
+```
+bun serve
+```
+
+Then visit [http://localhost:3000/](http://localhost:3000/)

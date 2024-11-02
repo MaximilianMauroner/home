@@ -1,16 +1,30 @@
+import Spotify from "@auth/core/providers/spotify";
 import { QwikAuth$ } from "@auth/qwik";
-import Spotify from "@auth/qwik/providers/spotify";
 
 export const { onRequest, useSession, useSignIn, useSignOut } = QwikAuth$(
-  () => ({
-    providers: [
-      Spotify({
-        clientId: import.meta.env.VITE_SPOTIFY_CLIENT_ID,
-        clientSecret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET,
+  ({ env }) => {
+    return {
+      providers: [Spotify({
+        clientId: env.get("SPOTIFY_CLIENT_ID"),
+        clientSecret: env.get("SPOTIFY_CLIENT_SECRET"),
         authorization: { params: { scope: "user-read-email user-library-read" } },
-      }),
-    ],
-    secret: import.meta.env.VITE_AUTH_SECRET,
-    trustHost: true,
-  }),
+      })],
+      secret: env.get("AUTH_SECRET"),
+      callbacks: {
+        jwt: async ({ token, account }) => {
+          if (account) {
+            token.accessToken = (account as any).access_token;
+          }
+          return token;
+        },
+        session: async ({ session, token }) => {
+          if (token) {
+
+            (session as any).accessToken = token.accessToken;
+          }
+          return session;
+        },
+      },
+    };
+  }
 );

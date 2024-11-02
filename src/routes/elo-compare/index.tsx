@@ -5,22 +5,84 @@ import {
   useStore,
   useVisibleTask$,
 } from "@builder.io/qwik";
-import { type EloItem, useEloRanking } from "~/components/handle-elo";
+import { useNavigate } from "@builder.io/qwik-city";
+import {
+  type EloItem,
+  type Item,
+  useEloRanking,
+} from "~/components/handle-elo";
 
 const STORAGE_KEY = "elo-compare-items";
+const GAME_STATE_KEY = "elo-compare-game-state";
+
+// Add TypeScript interface for Spotify track
+interface SpotifyTrack {
+  track: {
+    name: string;
+    id: string;
+    preview_url: string | null;
+    artists: Array<{
+      name: string;
+    }>;
+    album: {
+      images: Array<{
+        url: string;
+        height: number;
+        width: number;
+      }>;
+    };
+  };
+}
 
 export const RatingComponent = component$(() => {
+  const navigate = useNavigate();
   const gameStarted = useSignal(false);
   const newItem = useSignal("");
-  const items = useStore<string[]>([]);
+  const items = useStore<Item[]>([]);
+  const isSpotifyMode = useSignal(false);
+  const playlists = useStore<{ id: string; name: string }[]>([]);
+  const selectedPlaylist = useSignal<string>("");
+  const isLoading = useSignal(false);
+  const playingTrackId = useSignal<string | null>(null);
+  const audioElement = useSignal<HTMLAudioElement | null>(null);
+  const isItemListVisible = useSignal(true);
 
-  // Load items from localStorage on mount
+  const handleUnauthorized = $(() => {
+    navigate("/auth/signin");
+  });
+
+  const handleSignOut = $(() => {
+    navigate("/auth/signout");
+  });
+
+  const { store, handleCompare } = useEloRanking(
+    items.map((item) => ({
+      name: item.name,
+      spotifyId: item.spotifyId,
+      previewUrl: item.previewUrl,
+      albumImageUrl: item.albumImageUrl,
+    })),
+  );
+
+  // Load items and game state from localStorage on mount
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(() => {
     const storedItems = localStorage.getItem(STORAGE_KEY);
     if (storedItems) {
       const parsedItems = JSON.parse(storedItems);
       items.splice(0, items.length, ...parsedItems);
+    }
+
+    const storedGameState = localStorage.getItem(GAME_STATE_KEY);
+    if (storedGameState) {
+      const { isStarted, gameStore } = JSON.parse(storedGameState);
+      if (gameStore && isStarted) {
+        gameStarted.value = true;
+        store.items = gameStore.items;
+        store.itemOne = gameStore.itemOne;
+        store.itemTwo = gameStore.itemTwo;
+        store.round = gameStore.round;
+      }
     }
   });
 
@@ -32,7 +94,28 @@ export const RatingComponent = component$(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   });
 
-  const { store, handleCompare } = useEloRanking(items);
+  // Save game state to localStorage whenever it changes
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ track }) => {
+    track(() => gameStarted.value);
+    track(() => store.items);
+    track(() => store.round);
+    track(() => store.itemOne);
+    track(() => store.itemTwo);
+
+    if (gameStarted.value) {
+      const gameState = {
+        isStarted: gameStarted.value,
+        gameStore: {
+          items: store.items,
+          itemOne: store.itemOne,
+          itemTwo: store.itemTwo,
+          round: store.round,
+        },
+      };
+      localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
+    }
+  });
 
   const handleInput = $((e: Event) => {
     const target = e.target as HTMLInputElement;
@@ -40,10 +123,14 @@ export const RatingComponent = component$(() => {
     const lines = input.split("\n");
 
     if (lines.length > 1) {
-      // Handle multi-line input/paste
+      // handle spotify as multiline input
+
       const validItems = lines
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0);
+        .map((line) => {
+          return { name: line.trim() };
+        })
+        .filter((line) => line.name.length > 0);
+
       items.push(...validItems);
       target.value = "";
       newItem.value = "";
@@ -53,81 +140,282 @@ export const RatingComponent = component$(() => {
     }
   });
 
+  const fetchPlaylists = $(async () => {
+    try {
+      isLoading.value = true;
+      const response = await fetch("/api/spotify/playlist");
+
+      const data = await response.json();
+      if (response.status === 500 && data.error?.includes("Unauthorized")) {
+        handleUnauthorized();
+        return;
+      }
+
+      playlists.splice(0, playlists.length, ...data.items);
+    } catch (error) {
+      console.error("Failed to fetch playlists:", error);
+    } finally {
+      isLoading.value = false;
+    }
+  });
+
+  const handlePlaylistSelect = $(async (playlistId: string) => {
+    if (!playlistId) return;
+
+    try {
+      isLoading.value = true;
+      const response = await fetch(`/api/spotify/playlist/${playlistId}`);
+      const data = await response.json();
+
+      if (
+        response.status === 500 &&
+        data.message === "Spotify API error: Unauthorized"
+      ) {
+        handleUnauthorized();
+        return;
+      }
+
+      if (data?.items) {
+        // Add tracks to items
+        const tracks = data.items
+          .filter(
+            (item: SpotifyTrack) =>
+              item.track.name && item.track.artists?.[0]?.name,
+          )
+          .map((item: SpotifyTrack) => ({
+            name: `${item.track.name} - ${item.track.artists[0].name}`,
+            spotifyId: item.track.id,
+            previewUrl: item.track.preview_url,
+            albumImageUrl: item.track.album.images[0]?.url,
+          }));
+
+        if (tracks.length > 0) {
+          items.push(...tracks);
+          selectedPlaylist.value = "";
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch playlist tracks:", error);
+    } finally {
+      isLoading.value = false;
+    }
+  });
+
+  const togglePlayPause = $(
+    (previewUrl: string | undefined, trackId: string) => {
+      if (!previewUrl) return;
+
+      if (playingTrackId.value === trackId) {
+        // Stop current track
+        audioElement.value?.pause();
+        audioElement.value = null;
+        playingTrackId.value = null;
+      } else {
+        // Stop previous track if any
+        audioElement.value?.pause();
+
+        // Play new track
+        const audio = new Audio(previewUrl);
+        audio.addEventListener("ended", () => {
+          playingTrackId.value = null;
+          audioElement.value = null;
+        });
+        audio.play();
+        audioElement.value = audio;
+        playingTrackId.value = trackId;
+      }
+    },
+  );
+
   return (
     <div class="mx-auto my-2 max-w-2xl rounded-lg bg-gray-100 p-6 shadow-lg">
-      <h2 class="mb-4 text-center text-2xl font-bold text-gray-800">
-        {gameStarted.value ? "ELO Rating System" : "Setup Items for Comparison"}
-      </h2>
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-center text-2xl font-bold text-gray-800">
+          {gameStarted.value
+            ? "ELO Rating System"
+            : "Setup Items for Comparison"}
+        </h2>
+        <button
+          onClick$={handleSignOut}
+          class="rounded-lg bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
+        >
+          Sign Out
+        </button>
+      </div>
+
+      {!gameStarted.value && (
+        <div class="mb-4">
+          <div class="flex justify-center space-x-4">
+            <button
+              onClick$={() => {
+                isSpotifyMode.value = false;
+                playlists.splice(0, playlists.length);
+              }}
+              class={`rounded-lg px-4 py-2 ${
+                !isSpotifyMode.value ? "bg-blue-500 text-white" : "bg-gray-200"
+              }`}
+            >
+              Normal Mode
+            </button>
+            <button
+              onClick$={async () => {
+                isSpotifyMode.value = true;
+                await fetchPlaylists();
+              }}
+              class={`rounded-lg px-4 py-2 ${
+                isSpotifyMode.value ? "bg-blue-500 text-white" : "bg-gray-200"
+              }`}
+            >
+              Spotify Mode
+            </button>
+          </div>
+        </div>
+      )}
 
       {!gameStarted.value ? (
         <div class="space-y-4">
-          <div class="flex space-x-2">
-            <textarea
-              value={newItem.value}
-              onInput$={handleInput}
-              class="h-11 flex-1 resize-none rounded-lg border p-2 leading-normal"
-              placeholder="Enter item name (or paste multiple items)"
-            />
-            <button
-              onClick$={() => {
-                if (newItem.value.trim()) {
-                  items.push(newItem.value.trim());
-                  newItem.value = "";
-                }
-              }}
-              class="rounded-lg bg-green-500 px-4 py-2 text-white hover:bg-green-600"
-            >
-              Add Item
-            </button>
-          </div>
-
-          <div class="space-y-2">
-            <h3 class="text-lg font-semibold">Current Items:</h3>
-            {items.map((item, index) => (
-              <div
-                key={index}
-                class="flex items-center justify-between rounded-lg bg-white p-3 shadow"
-              >
-                <span>{item}</span>
-                <button
-                  onClick$={() => items.splice(index, 1)}
-                  class="text-red-500 hover:text-red-700"
+          {isSpotifyMode.value ? (
+            <div class="space-y-4">
+              {isLoading.value ? (
+                <div class="text-center">Loading...</div>
+              ) : (
+                <select
+                  value={selectedPlaylist.value}
+                  onChange$={(e) =>
+                    handlePlaylistSelect((e.target as HTMLSelectElement).value)
+                  }
+                  class="w-full rounded-lg border p-2"
                 >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div class="flex justify-between">
-            <button
-              onClick$={() => {
-                if (items.length >= 2) {
-                  gameStarted.value = true;
-                }
-              }}
-              disabled={items.length < 2}
-              class={`flex-1 rounded-lg p-3 text-white ${
-                items.length >= 2
-                  ? "bg-blue-500 hover:bg-blue-600"
-                  : "cursor-not-allowed bg-gray-400"
-              }`}
-            >
-              {items.length < 2
-                ? "Add at least 2 items to start"
-                : "Start Comparison Game"}
-            </button>
-            {items.length > 0 && (
+                  <option value="">Select a playlist</option>
+                  {playlists.map((playlist) => (
+                    <option key={playlist.id} value={playlist.id}>
+                      {playlist.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          ) : (
+            <div class="flex space-x-2">
+              <textarea
+                value={newItem.value}
+                onInput$={handleInput}
+                class="h-11 flex-1 resize-none rounded-lg border p-2 leading-normal"
+                placeholder="Enter item name (or paste multiple items)"
+              />
               <button
                 onClick$={() => {
-                  items.splice(0, items.length);
-                  localStorage.removeItem(STORAGE_KEY);
+                  if (newItem.value.trim()) {
+                    items.push({ name: newItem.value.trim() });
+                    newItem.value = "";
+                  }
                 }}
-                class="ml-2 rounded-lg bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                class="rounded-lg bg-green-500 px-4 py-2 text-white hover:bg-green-600"
               >
-                Clear All
+                Add Item
               </button>
-            )}
+            </div>
+          )}
+
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold">Current Items:</h3>
+              <button
+                onClick$={() =>
+                  (isItemListVisible.value = !isItemListVisible.value)
+                }
+                class="text-blue-500 hover:text-blue-700"
+              >
+                {isItemListVisible.value ? "▼" : "▶"}
+              </button>
+            </div>
+
+            <div
+              class={`space-y-2 transition-all ${isItemListVisible.value ? "block" : "hidden"}`}
+            >
+              {items.map((item, index) => (
+                <div
+                  key={index + "-" + item.spotifyId}
+                  class="flex items-center justify-between rounded-lg bg-white p-3 shadow"
+                >
+                  <div class="flex items-center gap-3">
+                    {item.albumImageUrl && (
+                      <img
+                        height={40}
+                        width={40}
+                        src={item.albumImageUrl}
+                        alt="Album cover"
+                        class="h-10 w-10 rounded-sm"
+                      />
+                    )}
+                    <span>{item.name}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    {item.previewUrl && (
+                      <button
+                        onClick$={() => {
+                          const audio = new Audio(item.previewUrl);
+                          audio.play();
+                        }}
+                        class="text-blue-500 hover:text-blue-700"
+                      >
+                        ▶
+                      </button>
+                    )}
+                    <button
+                      onClick$={() => items.splice(index, 1)}
+                      class="text-red-500 hover:text-red-700"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div class="sticky bottom-0 bg-gray-100 p-4">
+            <div class="flex justify-between">
+              <button
+                onClick$={() => {
+                  if (items.length >= 2) {
+                    store.items = items.map((item, index) => ({
+                      id: index,
+                      item: item,
+                      rating: 1000,
+                      round: 0,
+                      winsAgainst: [],
+                      lossesAgainst: [],
+                      lastDifference: 0,
+                    }));
+                    gameStarted.value = true;
+                  }
+                }}
+                disabled={items.length < 2}
+                class={`flex-1 rounded-lg p-3 text-white ${
+                  items.length >= 2
+                    ? "bg-blue-500 hover:bg-blue-600"
+                    : "cursor-not-allowed bg-gray-400"
+                }`}
+              >
+                {items.length < 2
+                  ? "Add at least 2 items to start"
+                  : "Start Comparison Game"}
+              </button>
+              {items.length > 0 && (
+                <button
+                  onClick$={() => {
+                    items.splice(0, items.length);
+                    localStorage.removeItem(STORAGE_KEY);
+                    localStorage.removeItem(GAME_STATE_KEY);
+                    gameStarted.value = false;
+                  }}
+                  class="ml-2 rounded-lg bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
           </div>
         </div>
       ) : (
@@ -141,24 +429,88 @@ export const RatingComponent = component$(() => {
           {/* Rest of the existing comparison UI */}
           <div class="mb-6 space-y-2">
             {store.itemOne !== -1 && store.itemTwo !== -1 ? (
-              <div class="grid grid-cols-5 items-center justify-center space-x-2">
-                <button
-                  onClick$={() =>
-                    handleCompare(store.itemOne, store.itemTwo, 1)
-                  }
-                  class="col-span-2 rounded-lg bg-blue-500 px-4 py-2 text-white transition hover:bg-blue-600"
-                >
-                  {store.items[store.itemOne].item.name}
-                </button>
-                <span class="col-span-1 text-center">vs</span>
-                <button
-                  onClick$={() =>
-                    handleCompare(store.itemOne, store.itemTwo, 0)
-                  }
-                  class="col-span-2 rounded-lg bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
-                >
-                  {store.items[store.itemTwo].item.name}
-                </button>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="flex flex-col items-center space-y-2">
+                  {store.items[store.itemOne].item.albumImageUrl && (
+                    <button
+                      onClick$={() =>
+                        togglePlayPause(
+                          store.items[store.itemOne].item.previewUrl,
+                          store.items[store.itemOne].item.spotifyId || "item1",
+                        )
+                      }
+                      class="relative h-48 w-48 overflow-hidden rounded-lg hover:opacity-90"
+                    >
+                      <img
+                        height={1280}
+                        width={1280}
+                        src={store.items[store.itemOne].item.albumImageUrl}
+                        alt="Album cover"
+                        class="h-full w-full object-cover"
+                      />
+                      {store.items[store.itemOne].item.previewUrl && (
+                        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                          <span class="text-4xl text-white">
+                            {playingTrackId.value ===
+                            (store.items[store.itemOne].item.spotifyId ||
+                              "item1")
+                              ? "⏸"
+                              : "▶"}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    onClick$={() =>
+                      handleCompare(store.itemOne, store.itemTwo, 1)
+                    }
+                    class="w-full rounded-lg bg-blue-500 px-4 py-2 text-white transition hover:bg-blue-600"
+                  >
+                    {store.items[store.itemOne].item.name}
+                  </button>
+                </div>
+
+                <div class="flex flex-col items-center space-y-2">
+                  {store.items[store.itemTwo].item.albumImageUrl && (
+                    <button
+                      onClick$={() =>
+                        togglePlayPause(
+                          store.items[store.itemTwo].item.previewUrl,
+                          store.items[store.itemTwo].item.spotifyId || "item2",
+                        )
+                      }
+                      class="relative h-48 w-48 overflow-hidden rounded-lg hover:opacity-90"
+                    >
+                      <img
+                        height={1280}
+                        width={1280}
+                        src={store.items[store.itemTwo].item.albumImageUrl}
+                        alt="Album cover"
+                        class="h-full w-full object-cover"
+                      />
+                      {store.items[store.itemTwo].item.previewUrl && (
+                        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                          <span class="text-4xl text-white">
+                            {playingTrackId.value ===
+                            (store.items[store.itemTwo].item.spotifyId ||
+                              "item2")
+                              ? "⏸"
+                              : "▶"}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    onClick$={() =>
+                      handleCompare(store.itemOne, store.itemTwo, 0)
+                    }
+                    class="w-full rounded-lg bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
+                  >
+                    {store.items[store.itemTwo].item.name}
+                  </button>
+                </div>
               </div>
             ) : (
               <div class="text-center text-gray-600">

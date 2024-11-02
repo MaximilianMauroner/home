@@ -4,13 +4,13 @@ import { $, useStore } from "@builder.io/qwik";
 const INITIAL_RATING = 1200;
 const K_FACTOR = 32;
 
-export interface Item {
+export type Item = {
   name: string;
   [key: string]: any;
-}
+};
 
 // Item interface
-export interface EloItem {
+export type EloItem = {
   id: number;
   rating: number;
   round: number;
@@ -18,14 +18,14 @@ export interface EloItem {
   item: Item;
   winsAgainst: number[];
   lossesAgainst: number[];
-}
+};
 
-export interface EloRankingStore {
+export type EloRankingStore = {
   items: EloItem[];
   itemOne: number;
   itemTwo: number;
   round: number;
-}
+};
 
 // Utility function to calculate the expected score
 function getExpectedScore(ratingA: number, ratingB: number): number {
@@ -136,10 +136,10 @@ function hasCompleteTransitiveRanking(items: EloItem[]): boolean {
 }
 
 // Custom hook to manage Elo ranking logic
-export function useEloRanking(initialItems: string[]) {
+export function useEloRanking(initialItems: Item[]) {
   const store = useStore<EloRankingStore>({
-    items: initialItems.map((name, index) => ({
-      item: { name },
+    items: initialItems.map((item, index) => ({
+      item: { ...item },
       id: index,
       rating: INITIAL_RATING,
       round: 0,
