@@ -27,11 +27,6 @@ export const { onRequest, useSession, useSignIn, useSignOut } = QwikAuth$(
           return session;
         },
       },
-      pages: {
-        signIn: "/auth/signin",
-        signOut: "/auth/signout",
-        error: "/auth/error",
-      }
     };
   }
 );
