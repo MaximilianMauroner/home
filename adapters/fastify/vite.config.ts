@@ -11,7 +11,8 @@ export default extendConfig(baseConfig, () => {
       },
     },
     plugins: [nodeServerAdapter({
-      name: "fastify",
+      // name: "fastify",
+
       // ssg: {
       //   include: ["/*"],
       //   exclude: [
