@@ -4,13 +4,13 @@ import { $, useStore } from "@builder.io/qwik";
 const INITIAL_RATING = 1200;
 const K_FACTOR = 32;
 
-interface Item {
+export interface Item {
   name: string;
   [key: string]: any;
 }
 
 // Item interface
-interface EloItem {
+export interface EloItem {
   id: number;
   rating: number;
   round: number;
@@ -20,7 +20,7 @@ interface EloItem {
   lossesAgainst: number[];
 }
 
-interface EloRankingStore {
+export interface EloRankingStore {
   items: EloItem[];
   itemOne: number;
   itemTwo: number;
