@@ -14,8 +14,8 @@ export default extendConfig(baseConfig, () => {
       name: "fastify",
       ssg: {
         include: ["/*"],
-        exclude: ["/projects", "/dev-log/*", "/tags", "/sitemap.xml", "/api/*"],
-      }
+        // exclude: ["/projects", "/dev-log/*", "/tags", "/sitemap.xml", "/api/*"],
+      },
     })],
   };
 });

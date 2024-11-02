@@ -5,12 +5,13 @@ import {
   useStore,
   useVisibleTask$,
 } from "@builder.io/qwik";
-import { useNavigate } from "@builder.io/qwik-city";
+import { Form, useNavigate } from "@builder.io/qwik-city";
 import {
   type EloItem,
   type Item,
   useEloRanking,
 } from "~/components/handle-elo";
+import { useSession, useSignIn, useSignOut } from "../plugin@auth";
 
 const STORAGE_KEY = "elo-compare-items";
 const GAME_STATE_KEY = "elo-compare-game-state";
@@ -46,13 +47,12 @@ export const RatingComponent = component$(() => {
   const playingTrackId = useSignal<string | null>(null);
   const audioElement = useSignal<HTMLAudioElement | null>(null);
   const isItemListVisible = useSignal(true);
+  const session = useSession();
+  const signIn = useSignIn();
+  const signOut = useSignOut();
 
   const handleUnauthorized = $(() => {
     navigate("/auth/signin");
-  });
-
-  const handleSignOut = $(() => {
-    navigate("/auth/signout");
   });
 
   const { store, handleCompare } = useEloRanking(
@@ -235,12 +235,19 @@ export const RatingComponent = component$(() => {
             ? "ELO Rating System"
             : "Setup Items for Comparison"}
         </h2>
-        <button
-          onClick$={handleSignOut}
-          class="rounded-lg bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
-        >
-          Sign Out
-        </button>
+        {session.value === null ? (
+          <Form action={signIn}>
+            <button class="rounded-lg bg-gray-500 px-4 py-2 text-white hover:bg-gray-600">
+              Sign In
+            </button>
+          </Form>
+        ) : (
+          <Form action={signOut}>
+            <button class="rounded-lg bg-gray-500 px-4 py-2 text-white hover:bg-gray-600">
+              Sign Out
+            </button>
+          </Form>
+        )}
       </div>
 
       {!gameStarted.value && (
