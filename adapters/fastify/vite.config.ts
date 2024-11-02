@@ -13,7 +13,8 @@ export default extendConfig(baseConfig, () => {
     plugins: [nodeServerAdapter({
       name: "fastify",
       ssg: {
-        include: ["/projects", "/dev-log/*", "/tags", "/sitemap.xml", "/api/*"],
+        include: ["/*"],
+        exclude: ["/projects", "/dev-log/*", "/tags", "/sitemap.xml", "/api/*"],
       }
     })],
   };
