@@ -14,7 +14,7 @@ export default extendConfig(baseConfig, () => {
       name: "fastify",
       ssg: {
         include: ["/*", "/api/*", "/auth/*"],
-        exclude: ["/tags/*", "/tags", "/sitemap.xml",],
+        exclude: ["/sitemap.xml",],
         origin: "https://www.mauroner.net",
       },
     })],
