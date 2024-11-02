@@ -520,8 +520,21 @@ export const RatingComponent = component$(() => {
                 </div>
               </div>
             ) : (
-              <div class="text-center text-gray-600">
-                Comparison complete! Check out the results below.
+              <div class="space-y-4 text-center">
+                <div class="text-gray-600">
+                  Comparison complete! Check out the results below.
+                </div>
+                <button
+                  onClick$={() => {
+                    items.splice(0, items.length);
+                    localStorage.removeItem(STORAGE_KEY);
+                    localStorage.removeItem(GAME_STATE_KEY);
+                    gameStarted.value = false;
+                  }}
+                  class="rounded-lg bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                >
+                  Reset Everything
+                </button>
               </div>
             )}
           </div>
