@@ -427,119 +427,152 @@ export const RatingComponent = component$(() => {
         </div>
       ) : (
         <>
-          {/* Existing game UI */}
-          <h3 class="mb-3 text-xl font-semibold text-gray-700">
-            Round {store.round} /{" "}
-            {store.items.reduce((sum, item) => sum + item.round, 0)}
-          </h3>
+          {/* Game UI */}
+          <div class="mb-3 flex items-center justify-between">
+            <div class="space-y-2">
+              <h3 class="text-xl font-semibold text-gray-700">
+                Round {store.round + 1}
+              </h3>
+              <div class="text-sm text-gray-600">
+                {(() => {
+                  const totalItems = store.items.length;
+                  const totalPossibleComparisons =
+                    (totalItems * (totalItems - 1)) / 2;
+                  const completedComparisons =
+                    store.items.reduce(
+                      (sum, item) =>
+                        sum +
+                        item.winsAgainst.length +
+                        item.lossesAgainst.length,
+                      0,
+                    ) / 2;
+                  const progressPercent =
+                    (completedComparisons / totalPossibleComparisons) * 100;
+                  return `Progress: ${progressPercent.toFixed(1)}% (${completedComparisons} of ${totalPossibleComparisons} comparisons)`;
+                })()}
+              </div>
+            </div>
+            <button
+              onClick$={() => {
+                items.splice(0, items.length);
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(GAME_STATE_KEY);
+                gameStarted.value = false;
+              }}
+              class="rounded-lg bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+            >
+              Reset Everything
+            </button>
+          </div>
 
           {/* Rest of the existing comparison UI */}
           <div class="mb-6 space-y-2">
             {store.itemOne !== -1 && store.itemTwo !== -1 ? (
               <div class="grid grid-cols-2 gap-4">
-                <div class="flex flex-col items-center space-y-2">
-                  {store.items[store.itemOne].item.albumImageUrl && (
+                <div class="flex flex-col space-y-4">
+                  <div class="flex flex-col items-center">
+                    {store.items[store.itemOne].item.albumImageUrl && (
+                      <button
+                        onClick$={() =>
+                          togglePlayPause(
+                            store.items[store.itemOne].item.previewUrl,
+                            store.items[store.itemOne].item.spotifyId ||
+                              "item1",
+                          )
+                        }
+                        class="relative aspect-square w-full max-w-[200px] overflow-hidden rounded-lg hover:opacity-90"
+                      >
+                        <img
+                          height={1280}
+                          width={1280}
+                          src={store.items[store.itemOne].item.albumImageUrl}
+                          alt="Album cover"
+                          class="h-full w-full object-cover"
+                        />
+                        {store.items[store.itemOne].item.previewUrl && (
+                          <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                            <span class="text-4xl text-white">
+                              {playingTrackId.value ===
+                              (store.items[store.itemOne].item.spotifyId ||
+                                "item1")
+                                ? "⏸"
+                                : "▶"}
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    )}
+                    <span class="mt-2 text-center">
+                      {store.items[store.itemOne].item.name}
+                    </span>
                     <button
                       onClick$={() =>
-                        togglePlayPause(
-                          store.items[store.itemOne].item.previewUrl,
-                          store.items[store.itemOne].item.spotifyId || "item1",
-                        )
+                        handleCompare(store.itemOne, store.itemTwo, 1)
                       }
-                      class="relative h-48 w-48 overflow-hidden rounded-lg hover:opacity-90"
+                      class="mt-4 w-full max-w-[200px] rounded-lg bg-blue-500 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-blue-600 sm:text-base"
                     >
-                      <img
-                        height={1280}
-                        width={1280}
-                        src={store.items[store.itemOne].item.albumImageUrl}
-                        alt="Album cover"
-                        class="h-full w-full object-cover"
-                      />
-                      {store.items[store.itemOne].item.previewUrl && (
-                        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
-                          <span class="text-4xl text-white">
-                            {playingTrackId.value ===
-                            (store.items[store.itemOne].item.spotifyId ||
-                              "item1")
-                              ? "⏸"
-                              : "▶"}
-                          </span>
-                        </div>
-                      )}
+                      Choose Left
                     </button>
-                  )}
-                  <button
-                    onClick$={() =>
-                      handleCompare(store.itemOne, store.itemTwo, 1)
-                    }
-                    class="w-full rounded-lg bg-blue-500 px-4 py-2 text-white transition hover:bg-blue-600"
-                  >
-                    {store.items[store.itemOne].item.name}
-                  </button>
+                  </div>
                 </div>
 
-                <div class="flex flex-col items-center space-y-2">
-                  {store.items[store.itemTwo].item.albumImageUrl && (
+                <div class="flex flex-col space-y-4">
+                  <div class="flex flex-col items-center">
+                    {store.items[store.itemTwo].item.albumImageUrl && (
+                      <button
+                        onClick$={() =>
+                          togglePlayPause(
+                            store.items[store.itemTwo].item.previewUrl,
+                            store.items[store.itemTwo].item.spotifyId ||
+                              "item2",
+                          )
+                        }
+                        class="relative aspect-square w-full max-w-[200px] overflow-hidden rounded-lg hover:opacity-90"
+                      >
+                        <img
+                          height={1280}
+                          width={1280}
+                          src={store.items[store.itemTwo].item.albumImageUrl}
+                          alt="Album cover"
+                          class="h-full w-full object-cover"
+                        />
+                        {store.items[store.itemTwo].item.previewUrl && (
+                          <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                            <span class="text-4xl text-white">
+                              {playingTrackId.value ===
+                              (store.items[store.itemTwo].item.spotifyId ||
+                                "item2")
+                                ? "⏸"
+                                : "▶"}
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    )}
+                    <span class="mt-2 text-center">
+                      {store.items[store.itemTwo].item.name}
+                    </span>
                     <button
                       onClick$={() =>
-                        togglePlayPause(
-                          store.items[store.itemTwo].item.previewUrl,
-                          store.items[store.itemTwo].item.spotifyId || "item2",
-                        )
+                        handleCompare(store.itemOne, store.itemTwo, 0)
                       }
-                      class="relative h-48 w-48 overflow-hidden rounded-lg hover:opacity-90"
+                      class="mt-4 w-full max-w-[200px] rounded-lg bg-red-500 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-red-600 sm:text-base"
                     >
-                      <img
-                        height={1280}
-                        width={1280}
-                        src={store.items[store.itemTwo].item.albumImageUrl}
-                        alt="Album cover"
-                        class="h-full w-full object-cover"
-                      />
-                      {store.items[store.itemTwo].item.previewUrl && (
-                        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
-                          <span class="text-4xl text-white">
-                            {playingTrackId.value ===
-                            (store.items[store.itemTwo].item.spotifyId ||
-                              "item2")
-                              ? "⏸"
-                              : "▶"}
-                          </span>
-                        </div>
-                      )}
+                      Choose Right
                     </button>
-                  )}
-                  <button
-                    onClick$={() =>
-                      handleCompare(store.itemOne, store.itemTwo, 0)
-                    }
-                    class="w-full rounded-lg bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
-                  >
-                    {store.items[store.itemTwo].item.name}
-                  </button>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div class="space-y-4 text-center">
+              <div class="text-center">
                 <div class="text-gray-600">
                   Comparison complete! Check out the results below.
                 </div>
-                <button
-                  onClick$={() => {
-                    items.splice(0, items.length);
-                    localStorage.removeItem(STORAGE_KEY);
-                    localStorage.removeItem(GAME_STATE_KEY);
-                    gameStarted.value = false;
-                  }}
-                  class="rounded-lg bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-                >
-                  Reset Everything
-                </button>
               </div>
             )}
           </div>
 
-          <ol class="space-y-2">
+          <ol class="max-h-[440px] space-y-2 overflow-y-auto">
             {store.items.map((i, index) => (
               <li
                 key={index + i.item.name}
@@ -549,7 +582,7 @@ export const RatingComponent = component$(() => {
                   {index + 1}. {i.item.name}
                 </span>
                 <span class="font-semibold text-gray-900">
-                  {i.rating.toFixed(2)} / {i.lastDifference.toFixed(2)}
+                  {i.rating.toFixed(2)}
                 </span>
               </li>
             ))}
@@ -585,9 +618,9 @@ const ItemHistoryAccordion = component$(
         </button>
 
         <div
-          class={`overflow-hidden transition-all ${isOpen.value ? "max-h-[500px] p-4" : "max-h-0"}`}
+          class={`overflow-hidden transition-all ${isOpen.value ? "h-[300px] p-4" : "h-0"}`}
         >
-          <div class="space-y-4">
+          <div class="h-full space-y-4 overflow-y-auto pr-2">
             <div>
               <h4 class="mb-2 font-semibold text-gray-700">Won Against:</h4>
               {item.winsAgainst.length > 0 ? (
