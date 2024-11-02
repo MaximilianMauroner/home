@@ -65,17 +65,24 @@ export const RatingComponent = component$(() => {
   );
 
   // Load items and game state from localStorage on mount
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(() => {
-    const storedItems = localStorage.getItem(STORAGE_KEY);
+  useVisibleTask$(async () => {
+    const [storedItems, storedGameState] = await Promise.all([
+      (async () => {
+        const items = localStorage.getItem(STORAGE_KEY);
+        return items ? JSON.parse(items) : null;
+      })(),
+      (async () => {
+        const gameState = localStorage.getItem(GAME_STATE_KEY);
+        return gameState ? JSON.parse(gameState) : null;
+      })(),
+    ]);
+
     if (storedItems) {
-      const parsedItems = JSON.parse(storedItems);
-      items.splice(0, items.length, ...parsedItems);
+      items.splice(0, items.length, ...storedItems);
     }
 
-    const storedGameState = localStorage.getItem(GAME_STATE_KEY);
     if (storedGameState) {
-      const { isStarted, gameStore } = JSON.parse(storedGameState);
+      const { isStarted, gameStore } = storedGameState;
       if (gameStore && isStarted) {
         gameStarted.value = true;
         store.items = gameStore.items;
@@ -87,15 +94,19 @@ export const RatingComponent = component$(() => {
   });
 
   // Save items to localStorage whenever they change
-  // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track }) => {
     track(() => items.length);
     track(() => [...items]); // track array content
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+
+    queueMicrotask(async () => {
+      await new Promise<void>((resolve) => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        resolve();
+      });
+    });
   });
 
   // Save game state to localStorage whenever it changes
-  // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track }) => {
     track(() => gameStarted.value);
     track(() => store.items);
@@ -113,7 +124,13 @@ export const RatingComponent = component$(() => {
           round: store.round,
         },
       };
-      localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
+
+      queueMicrotask(async () => {
+        await new Promise<void>((resolve) => {
+          localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
+          resolve();
+        });
+      });
     }
   });
 
