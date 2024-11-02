@@ -10,6 +10,7 @@ export const { onRequest, useSession, useSignIn, useSignOut } = QwikAuth$(
         authorization: { params: { scope: "user-read-email user-library-read" } },
       })],
       secret: env.get("AUTH_SECRET"),
+      origin: env.get("AUTH_ORIGIN"),
       callbacks: {
         jwt: async ({ token, account }) => {
           if (account) {
