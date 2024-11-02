@@ -4,6 +4,9 @@ import { $, useStore } from "@builder.io/qwik";
 const INITIAL_RATING = 1200;
 const K_FACTOR = 32;
 
+// Cache for expected score calculations
+const expectedScoreCache = new Map<string, number>();
+
 export type Item = {
   name: string;
   [key: string]: any;
@@ -16,8 +19,8 @@ export type EloItem = {
   round: number;
   lastDifference: number;
   item: Item;
-  winsAgainst: number[];
-  lossesAgainst: number[];
+  winsAgainst: Set<number>; // Changed to Set
+  lossesAgainst: Set<number>; // Changed to Set
 };
 
 export type EloRankingStore = {
@@ -29,7 +32,13 @@ export type EloRankingStore = {
 
 // Utility function to calculate the expected score
 function getExpectedScore(ratingA: number, ratingB: number): number {
-  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+  const key = `${ratingA}-${ratingB}`;
+  if (expectedScoreCache.has(key)) {
+    return expectedScoreCache.get(key)!;
+  }
+  const score = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+  expectedScoreCache.set(key, score);
+  return score;
 }
 
 // Return updated copies of items rather than mutating originals
@@ -38,29 +47,22 @@ function getUpdatedRatings(
   itemB: EloItem,
   result: number,
 ): { updatedA: EloItem; updatedB: EloItem } {
-  const newRoundA = itemA.round + 1;
-  const newRoundB = itemB.round + 1;
-
   const expectedA = getExpectedScore(itemA.rating, itemB.rating);
-  const expectedB = 1 - expectedA;
-
   const scoreA = result === 1 ? 1 : 0;
-  const scoreB = result === 1 ? 0 : 1;
-
   const diffA = K_FACTOR * (scoreA - expectedA);
-  const diffB = K_FACTOR * (scoreB - expectedB);
+  const diffB = K_FACTOR * (1 - scoreA - (1 - expectedA));
 
   return {
     updatedA: {
       ...itemA,
       rating: itemA.rating + diffA,
-      round: newRoundA,
+      round: itemA.round + 1,
       lastDifference: diffA,
     },
     updatedB: {
       ...itemB,
       rating: itemB.rating + diffB,
-      round: newRoundB,
+      round: itemB.round + 1,
       lastDifference: diffB,
     },
   };
@@ -68,26 +70,28 @@ function getUpdatedRatings(
 
 // Ensure transitive consistency
 function enforceTransitivity(items: EloItem[]) {
+  const length = items.length;
   const updatedItems = [...items];
+  const transitiveMatrix = new Uint8Array(length * length);
 
-  for (let i = 0; i < updatedItems.length; i++) {
-    for (let j = 0; j < updatedItems[i].winsAgainst.length; j++) {
-      const winner = updatedItems[i];
-      const loser = updatedItems.find(
-        (item) => item.id === updatedItems[i].winsAgainst[j],
-      );
+  // Build initial relationship matrix
+  for (let i = 0; i < length; i++) {
+    for (const winnerId of updatedItems[i].winsAgainst) {
+      transitiveMatrix[i * length + winnerId] = 1;
+    }
+  }
 
-      if (loser) {
-        for (let k = 0; k < loser.winsAgainst.length; k++) {
-          const transitiveLoser = updatedItems.find(
-            (item) => item.id === loser.winsAgainst[k],
-          );
-          if (
-            transitiveLoser &&
-            !winner.winsAgainst.includes(transitiveLoser.id)
-          ) {
-            winner.winsAgainst.push(transitiveLoser.id);
-            transitiveLoser.lossesAgainst.push(winner.id);
+  // Floyd-Warshall algorithm with optimized array access
+  for (let k = 0; k < length; k++) {
+    for (let i = 0; i < length; i++) {
+      const iOffset = i * length;
+      for (let j = 0; j < length; j++) {
+        if (transitiveMatrix[iOffset + k] && transitiveMatrix[k * length + j]) {
+          const idx = iOffset + j;
+          if (!transitiveMatrix[idx]) {
+            transitiveMatrix[idx] = 1;
+            updatedItems[i].winsAgainst.add(j);
+            updatedItems[j].lossesAgainst.add(i);
           }
         }
       }
@@ -99,34 +103,33 @@ function enforceTransitivity(items: EloItem[]) {
 
 // Add this function before getRandomItems
 function hasCompleteTransitiveRanking(items: EloItem[]): boolean {
-  // Create adjacency matrix for the graph
   const n = items.length;
-  const graph: boolean[][] = Array(n)
-    .fill(null)
-    .map(() => Array(n).fill(false));
+  const graph = new Uint8Array(n * n);
 
-  // Fill direct relationships
-  items.forEach((item) => {
-    item.winsAgainst.forEach((winnerId) => {
-      graph[item.id][winnerId] = true;
-    });
-  });
+  // Fill direct relationships more efficiently
+  for (let i = 0; i < n; i++) {
+    for (const winnerId of items[i].winsAgainst) {
+      graph[i * n + winnerId] = 1;
+    }
+  }
 
-  // Floyd-Warshall algorithm to find transitive relationships
+  // Optimized Floyd-Warshall
   for (let k = 0; k < n; k++) {
     for (let i = 0; i < n; i++) {
+      const iOffset = i * n;
       for (let j = 0; j < n; j++) {
-        if (graph[i][k] && graph[k][j]) {
-          graph[i][j] = true;
+        if (graph[iOffset + k] && graph[k * n + j]) {
+          graph[iOffset + j] = 1;
         }
       }
     }
   }
 
-  // Check if every pair of items has a relationship
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < n; j++) {
-      if (i !== j && !graph[i][j] && !graph[j][i]) {
+  // Optimized relationship check
+  for (let i = 0; i < n - 1; i++) {
+    const iOffset = i * n;
+    for (let j = i + 1; j < n; j++) {
+      if (!graph[iOffset + j] && !graph[j * n + i]) {
         return false;
       }
     }
@@ -144,8 +147,8 @@ export function useEloRanking(initialItems: Item[]) {
       rating: INITIAL_RATING,
       round: 0,
       lastDifference: 0,
-      winsAgainst: [],
-      lossesAgainst: [],
+      winsAgainst: new Set<number>(),
+      lossesAgainst: new Set<number>(),
     })),
     itemOne: 0,
     itemTwo: 1,
@@ -155,22 +158,27 @@ export function useEloRanking(initialItems: Item[]) {
   const getRandomItems = $(() => {
     // Check if we have complete transitive ranking
     if (hasCompleteTransitiveRanking(store.items)) {
-      store.itemOne = -1;
-      store.itemTwo = -1;
+      store.itemOne = store.itemTwo = -1;
       return;
     }
 
-    // Original weighted random selection logic continues...
-    const weights = store.items.map((item) => 1 / Math.pow(item.round + 1, 2));
-    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    const length = store.items.length;
+    const weights = new Float32Array(length);
+    let totalWeight = 0;
+
+    // Precalculate weights
+    for (let i = 0; i < length; i++) {
+      weights[i] = 1 / Math.pow(store.items[i].round + 1, 2);
+      totalWeight += weights[i];
+    }
 
     const getWeightedRandomIndex = () => {
       let rand = Math.random() * totalWeight;
-      for (let i = 0; i < store.items.length; i++) {
+      for (let i = 0; i < length; i++) {
         if (rand < weights[i]) return i;
         rand -= weights[i];
       }
-      return store.items.length - 1;
+      return length - 1;
     };
 
     let indexA = getWeightedRandomIndex();
@@ -181,8 +189,8 @@ export function useEloRanking(initialItems: Item[]) {
     // Ensure indexB is not the same as indexA and they do not have a history
     while (
       (indexB === indexA ||
-        store.items[indexA].winsAgainst.includes(store.items[indexB].id) ||
-        store.items[indexA].lossesAgainst.includes(store.items[indexB].id)) &&
+        store.items[indexA].winsAgainst.has(store.items[indexB].id) ||
+        store.items[indexA].lossesAgainst.has(store.items[indexB].id)) &&
       attempts < maxAttempts
     ) {
       indexB = getWeightedRandomIndex();
@@ -216,11 +224,11 @@ export function useEloRanking(initialItems: Item[]) {
 
     // Update winsAgainst and lossesAgainst
     if (winner === 1) {
-      updatedA.winsAgainst.push(updatedB.id);
-      updatedB.lossesAgainst.push(updatedA.id);
+      updatedA.winsAgainst.add(updatedB.id);
+      updatedB.lossesAgainst.add(updatedA.id);
     } else {
-      updatedB.winsAgainst.push(updatedA.id);
-      updatedA.lossesAgainst.push(updatedB.id);
+      updatedB.winsAgainst.add(updatedA.id);
+      updatedA.lossesAgainst.add(updatedB.id);
     }
 
     store.round += 1;

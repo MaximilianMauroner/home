@@ -35,6 +35,11 @@ interface SpotifyTrack {
   };
 }
 
+// Add helper functions at the top of the file
+function setToArray<T>(set: Set<T>): T[] {
+  return Array.from(set);
+}
+
 export const RatingComponent = component$(() => {
   const navigate = useNavigate();
   const gameStarted = useSignal(false);
@@ -408,8 +413,8 @@ export const RatingComponent = component$(() => {
                       item: item,
                       rating: 1000,
                       round: 0,
-                      winsAgainst: [],
-                      lossesAgainst: [],
+                      winsAgainst: new Set<number>(), // Changed to Set
+                      lossesAgainst: new Set<number>(), // Changed to Set
                       lastDifference: 0,
                     }));
                     gameStarted.value = true;
@@ -458,9 +463,7 @@ export const RatingComponent = component$(() => {
                   const completedComparisons =
                     store.items.reduce(
                       (sum, item) =>
-                        sum +
-                        item.winsAgainst.length +
-                        item.lossesAgainst.length,
+                        sum + item.winsAgainst.size + item.lossesAgainst.size,
                       0,
                     ) / 2;
                   const progressPercent =
@@ -620,6 +623,10 @@ const ItemHistoryAccordion = component$(
       return found ? found.item.name : id;
     };
 
+    // Convert Sets to Arrays for rendering
+    const wins = setToArray(item.winsAgainst);
+    const losses = setToArray(item.lossesAgainst);
+
     return (
       <div class="mt-2 rounded-lg bg-white shadow">
         <button
@@ -640,9 +647,9 @@ const ItemHistoryAccordion = component$(
           <div class="h-full space-y-4 overflow-y-auto pr-2">
             <div>
               <h4 class="mb-2 font-semibold text-gray-700">Won Against:</h4>
-              {item.winsAgainst.length > 0 ? (
+              {wins.length > 0 ? (
                 <ul class="ml-4 list-disc space-y-1">
-                  {item.winsAgainst.map((opponentId, idx) => (
+                  {wins.map((opponentId, idx) => (
                     <li key={idx} class="text-gray-600">
                       {getNameById(opponentId)}
                     </li>
@@ -655,9 +662,9 @@ const ItemHistoryAccordion = component$(
 
             <div>
               <h4 class="mb-2 font-semibold text-gray-700">Lost Against:</h4>
-              {item.lossesAgainst.length > 0 ? (
+              {losses.length > 0 ? (
                 <ul class="ml-4 list-disc space-y-1">
-                  {item.lossesAgainst.map((opponentId, idx) => (
+                  {losses.map((opponentId, idx) => (
                     <li key={idx} class="text-gray-600">
                       {getNameById(opponentId)}
                     </li>
@@ -670,15 +677,12 @@ const ItemHistoryAccordion = component$(
 
             <div class="flex justify-between border-t pt-2">
               <span class="text-sm text-gray-600">
-                Total Matches:{" "}
-                {item.winsAgainst.length + item.lossesAgainst.length}
+                Total Matches: {wins.length + losses.length}
               </span>
               <span class="text-sm text-gray-600">
                 Win Rate:{" "}
                 {(
-                  (item.winsAgainst.length /
-                    (item.winsAgainst.length + item.lossesAgainst.length)) *
-                    100 || 0
+                  (wins.length / (wins.length + losses.length)) * 100 || 0
                 ).toFixed(1)}
                 %
               </span>
