@@ -11,6 +11,7 @@ export const { onRequest, useSession, useSignIn, useSignOut } = QwikAuth$(
       })],
       secret: env.get("AUTH_SECRET"),
       origin: env.get("AUTH_ORIGIN"),
+      trustHost: true,
       callbacks: {
         jwt: async ({ token, account }) => {
           if (account) {
