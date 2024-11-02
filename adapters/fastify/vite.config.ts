@@ -11,17 +11,16 @@ export default extendConfig(baseConfig, () => {
       },
     },
     plugins: [nodeServerAdapter({
-      // name: "fastify",
-
-      // ssg: {
-      //   include: ["/*"],
-      //   exclude: [
-      //     "/sitemap.xml",
-      //     "/api/*",    // API routes should be dynamic
-      //     "/auth/*"    // Auth routes should be dynamic
-      //   ],
-      //   origin: "https://www.mauroner.net",
-      // },
+      name: "fastify",
+      ssg: {
+        include: ["/*"],
+        exclude: [
+          "/sitemap.xml",
+          "/api/*",    // API routes should be dynamic
+          "/auth/*"    // Auth routes should be dynamic
+        ],
+        origin: "https://www.mauroner.net",
+      },
     })],
   };
 });
