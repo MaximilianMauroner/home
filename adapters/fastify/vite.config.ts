@@ -13,8 +13,12 @@ export default extendConfig(baseConfig, () => {
     plugins: [nodeServerAdapter({
       name: "fastify",
       ssg: {
-        include: ["/*", "/api/*", "/auth/*"],
-        exclude: ["/sitemap.xml",],
+        include: ["/*"],
+        exclude: [
+          "/sitemap.xml",
+          "/api/*",    // API routes should be dynamic
+          "/auth/*"    // Auth routes should be dynamic
+        ],
         origin: "https://www.mauroner.net",
       },
     })],
