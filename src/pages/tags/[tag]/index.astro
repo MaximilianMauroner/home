@@ -1,0 +1,38 @@
+---
+import TagView from "@/components/TagView";
+import DefaultLayout from "@/layouts/DefaultLayout.astro";
+import { blogsFromMDX, getTags, logsFromMDX } from "@/utils/helpers";
+
+interface Props {
+  tag: string;
+}
+
+const { tag } = Astro.params;
+
+const allBogs = await Astro.glob("../../blog/**/*.mdx");
+
+const allLogs = await Astro.glob("../../dev-log/**/*.mdx");
+const tags = getTags(allBogs, allLogs);
+
+const blogs = blogsFromMDX(allBogs);
+const logs = logsFromMDX(allLogs);
+
+export async function getStaticPaths() {
+  const allBogs = await Astro.glob("../../blog/**/*.mdx");
+
+  const allLogs = await Astro.glob("../../dev-log/**/*.mdx");
+  const tags = getTags(allBogs, allLogs);
+  const allTagNames = tags.keys();
+  return [...allTagNames].map((tag) => ({ params: { tag } }));
+}
+---
+
+<DefaultLayout title={tag} description={tag}>
+  <TagView
+    tags={tags}
+    blogs={blogs}
+    logs={logs}
+    preSelectedTag={tag}
+    client:load
+  />
+</DefaultLayout>

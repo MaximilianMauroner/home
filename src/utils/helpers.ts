@@ -51,3 +51,24 @@ export const logsFromMDX = (logPostsData: MDXInstance<Record<string, any>>[]) =>
     }
     return logs;
 }
+
+export const getTags = (blogs: MDXInstance<Record<string, any>>[], logs: MDXInstance<Record<string, any>>[]) => {
+    const tagCounts = new Map<string, number>();
+
+    // Count tags from blogs
+    for (const fM of blogs) {
+        fM.frontmatter?.tags?.forEach((tag: string) => {
+            tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+        });
+    }
+
+    // Count tags from logs
+    for (const fM of logs) {
+        fM.frontmatter?.tags?.forEach((tag: string) => {
+            tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+        });
+    }
+
+    // Convert Map to plain object
+    return tagCounts;
+}

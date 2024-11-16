@@ -1,0 +1,19 @@
+---
+import DefaultLayout from "@/layouts/DefaultLayout.astro";
+import TagView from "@/components/TagView";
+import { getTags, blogsFromMDX, logsFromMDX } from "@/utils/helpers";
+
+const allBogs = await Astro.glob("../blog/**/*.mdx");
+const allLogs = await Astro.glob("../dev-log/**/*.mdx");
+
+const tags = getTags(allBogs, allLogs);
+const blogs = blogsFromMDX(allBogs);
+const logs = logsFromMDX(allLogs);
+---
+
+<DefaultLayout
+  title="Tags"
+  description="List of all tags that are in blogs and logs"
+>
+  <TagView tags={tags} blogs={blogs} logs={logs} client:load />
+</DefaultLayout>
