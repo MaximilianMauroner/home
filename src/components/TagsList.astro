@@ -1,0 +1,23 @@
+---
+import { kebabCase } from "@/utils/helpers";
+
+interface Props {
+  tags: string[];
+}
+
+const { tags } = Astro.props;
+const kebabCasedTags = tags.map((tag: string) => kebabCase(tag));
+---
+
+<div class="flex flex-wrap gap-2 sm:flex-nowrap">
+  {
+    kebabCasedTags.map((tag) => (
+      <a
+        class="whitespace-nowrap rounded-full border border-transparent bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground no-underline hover:bg-primary hover:text-primary-foreground"
+        href={"/tags/" + tag}
+      >
+        {tag}
+      </a>
+    ))
+  }
+</div>

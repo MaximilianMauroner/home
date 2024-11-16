@@ -15,11 +15,13 @@ const Homepage = () => {
   ) => {
     let iteration = 0;
 
-    const stringRemap = (str: string) => {
+    const stringRemap = (str: string, iteration: number) => {
       return str
         .split("")
-        .map((letter) => {
-          if (letter === " ") return " ";
+        .map((_, index) => {
+          if (index < iteration) {
+            return ogValue[index];
+          }
           return letters[Math.floor(Math.random() * 26)];
         })
         .join("");
@@ -27,10 +29,11 @@ const Homepage = () => {
 
     const unmask = () => {
       const interval = setInterval(() => {
-        setName((prev) => stringRemap(prev));
+        setName((prev) => stringRemap(prev, Math.floor(iteration)));
 
         if (iteration >= ogValue.length) {
           clearInterval(interval);
+          setName(ogValue); // Ensure final value is correct
         }
 
         iteration += 1 / 3;
@@ -144,17 +147,26 @@ const Homepage = () => {
 
 const AgeCalculator = () => {
   const birthday = new Date("2000-03-13 04:00:00");
-  const [age, setAge] = useState(
-    dayjs().diff(dayjs(birthday), "year", true).toString().substring(0, 12)
-  );
+
+  const getDiff = (precision = 9) => {
+    const now = dayjs();
+    const birth = dayjs(birthday);
+    const currentAge = now.diff(birth, "year", true).toFixed(precision);
+    return currentAge;
+  };
+  const [age, setAge] = useState(getDiff(7) + "00");
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAge(
-        dayjs().diff(dayjs(birthday), "year", true).toString().substring(0, 12)
-      );
-    }, 50);
-    return () => clearInterval(interval);
+    // Small delay for smoother transition
+    const timer = setTimeout(() => {
+      const interval = setInterval(() => {
+        setAge(getDiff());
+      }, 50);
+
+      return () => clearInterval(interval);
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return <>{age}</>;

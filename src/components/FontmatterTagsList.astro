@@ -1,0 +1,10 @@
+---
+import TagsList from "./TagsList.astro";
+
+const { tags } = Astro.props;
+---
+
+<div class="py-2 font-mono">
+  <h2 class="mb-2 text-lg font-semibold">Tags</h2>
+  <TagsList tags={tags} />
+</div>
