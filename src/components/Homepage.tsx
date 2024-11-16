@@ -154,7 +154,7 @@ const AgeCalculator = () => {
     const currentAge = now.diff(birth, "year", true).toFixed(precision);
     return currentAge;
   };
-  const [age, setAge] = useState(getDiff(7) + "00");
+  const [age, setAge] = useState(getDiff(2) + "0000000");
 
   useEffect(() => {
     // Small delay for smoother transition
