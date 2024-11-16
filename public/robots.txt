@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+Disallow: /next-projects 
+Disallow: /ingest 
+ 
+Sitemap: https://www.mauroner.net/sitemap.xml

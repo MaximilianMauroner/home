@@ -1,0 +1,28 @@
+---
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+interface Props {
+  title: string;
+  description: string;
+}
+const { title, description } = Astro.props;
+import "@/styles/globals.css";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="icon" type="image/ico" href="/public//favicon.ico" />
+  </head>
+  <body lang="en" class="flex min-h-dvh flex-col">
+    <Header />
+    <main class="flex-1">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>
