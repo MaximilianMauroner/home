@@ -156,7 +156,7 @@ const PostList = ({
       content: log,
     })),
   ];
-  items.sort((a, b) => a.releaseDate.localeCompare(b.releaseDate));
+  items.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
   return (
     <>
       <div className="mb-4 flex justify-between gap-2">

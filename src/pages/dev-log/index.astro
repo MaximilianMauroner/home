@@ -11,6 +11,7 @@ const logs = logsFromMDX(allLogs);
 dayjs.extend(weekOfYear);
 const currentWeek = dayjs().week(); // 26
 const currentYear = dayjs().year(); // 2024
+logs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
 ---
 
 <DefaultLayout

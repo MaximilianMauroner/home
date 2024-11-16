@@ -5,6 +5,7 @@ import DefaultLayout from "@/layouts/DefaultLayout.astro";
 import { blogsFromMDX } from "@/utils/helpers";
 
 const blogs = blogsFromMDX(allBlogs);
+blogs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
 ---
 
 <DefaultLayout
