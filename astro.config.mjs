@@ -11,5 +11,11 @@ import sitemap from "@astrojs/sitemap";
 
 // https://astro.build/config
 export default defineConfig({
-  integrations: [tailwind({ applyBaseStyles: false }), react(), mdx(), sitemap()],
+  site: "https://www.mauroner.net",
+  integrations: [
+    tailwind({ applyBaseStyles: false }),
+    react(),
+    mdx(),
+    sitemap(),
+  ],
 });
