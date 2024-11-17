@@ -1,23 +1,24 @@
-export type BlogType = {
-    title: string;
-    description: string;
-    releaseDate: string;
-    published: boolean;
-    image: string;
-    slug: string;
-    tags: string[];
-    headings: string[];
-};
+import { z } from 'astro:content';
 
-export type LogType = {
-    title: string;
-    description: string;
-    tags: string[];
-    published: boolean;
-    url: string;
-    releaseDate: string;
-    headings: string[];
-};
+export const blogType = z.object({
+    title: z.string(),
+    description: z.string(),
+    tags: z.array(z.string()),
+    image: z.string(),
+    published: z.boolean(),
+    releaseDate: z.date(),
+})
+
+
+export const logType = z.object({
+    title: z.string(),
+    description: z.string(),
+    tags: z.array(z.string()),
+    image: z.string(),
+    published: z.boolean(),
+    releaseDate: z.date(),
+})
+
 export type HeadingType = {
     depth: number;
     slug: string;

@@ -1,9 +1,13 @@
 import { calculateRelativeDate } from "@/utils/helpers";
-import type { BlogType } from "@/utils/types";
+import type { CollectionEntry } from "astro:content";
 import TagsList from "./TagsList";
 
-export default function BlogPreview({ blog }: { blog: BlogType }) {
-  const releaseDate = calculateRelativeDate(blog.releaseDate);
+export default function BlogPreview({
+  blog,
+}: {
+  blog: CollectionEntry<"blog">;
+}) {
+  const releaseDate = calculateRelativeDate(blog.data.releaseDate);
 
   return (
     <article className="rounded-lg border border-gray-200 bg-card p-6 shadow-md">
@@ -18,7 +22,7 @@ export default function BlogPreview({ blog }: { blog: BlogType }) {
             <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
           </svg>
           <div className="flex w-full overflow-auto">
-            <TagsList tags={blog.tags} />
+            <TagsList tags={blog.data.tags} />
           </div>
         </div>
         <span className="hidden text-sm text-muted-foreground sm:block">
@@ -28,10 +32,10 @@ export default function BlogPreview({ blog }: { blog: BlogType }) {
         </span>
       </div>
       <h2 className="mb-2 text-2xl font-bold tracking-tight text-primary underline-offset-4 hover:underline">
-        <a href={blog.slug}>{blog.title}</a>
+        <a href={blog.slug}>{blog.data.title}</a>
       </h2>
       <p className="mb-5 font-light text-muted-foreground">
-        {blog.description}
+        {blog.data.description}
       </p>
       <div className="flex items-center justify-between text-sm font-medium text-primary underline-offset-4 ring-offset-background transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
         <a

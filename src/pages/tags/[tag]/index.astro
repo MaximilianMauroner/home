@@ -1,7 +1,8 @@
 ---
 import TagView from "@/components/TagView";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { blogsFromMDX, getTags, logsFromMDX } from "@/utils/helpers";
+import { getTags } from "@/utils/helpers";
+import { getCollection } from "astro:content";
 
 interface Props {
   tag: string;
@@ -9,19 +10,23 @@ interface Props {
 
 const { tag } = Astro.params;
 
-const allBogs = await Astro.glob("../../blog/**/*.mdx");
+const blogs = await getCollection("blog", ({ data }) => {
+  return import.meta.env.PROD ? data.published === true : true;
+});
+const logs = await getCollection("log", ({ data }) => {
+  return import.meta.env.PROD ? data.published === true : true;
+});
 
-const allLogs = await Astro.glob("../../dev-log/**/*.mdx");
-const tags = getTags(allBogs, allLogs);
-
-const blogs = blogsFromMDX(allBogs);
-const logs = logsFromMDX(allLogs);
+const tags = getTags(blogs, logs);
 
 export async function getStaticPaths() {
-  const allBogs = await Astro.glob("../../blog/**/*.mdx");
-
-  const allLogs = await Astro.glob("../../dev-log/**/*.mdx");
-  const tags = getTags(allBogs, allLogs);
+  const blogs = await getCollection("blog", ({ data }) => {
+    return import.meta.env.PROD ? data.published === true : true;
+  });
+  const logs = await getCollection("log", ({ data }) => {
+    return import.meta.env.PROD ? data.published === true : true;
+  });
+  const tags = getTags(blogs, logs);
   const allTagNames = tags.keys();
   return [...allTagNames].map((tag) => ({ params: { tag } }));
 }
