@@ -2,7 +2,9 @@
 import { getCollection } from "astro:content";
 
 export async function getStaticPaths() {
-  const logEntries = await getCollection("log");
+  const logEntries = await getCollection("log", ({ data }) => {
+    return import.meta.env.PROD ? data.published === true : true;
+  });
   return logEntries.map((entry) => ({
     params: { slug: entry.slug },
     props: { entry },
