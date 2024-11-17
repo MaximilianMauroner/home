@@ -1,0 +1,46 @@
+---
+interface Props {
+  item: {
+    name: string;
+    href: string;
+    current: boolean;
+    defaultHidden?: boolean;
+  };
+  isMobile: boolean;
+}
+
+const { item, isMobile = false } = Astro.props;
+const mobileClass = isMobile ? " block sm:hidden" : " sm:block hidden";
+
+if (item.defaultHidden) return null;
+---
+
+{
+  item.current ? (
+    <div class={"relative" + mobileClass}>
+      <div class="rotating-border-animation absolute inset-0 -translate-x-0.5 translate-y-0.5 rounded-lg blur" />
+      <div class="rotating-border-animation rounded-md !border-2">
+        <a
+          href={item.href}
+          class={
+            "relative my-auto rounded-md bg-black p-4 px-3 py-2 text-center text-sm font-medium" +
+            mobileClass
+          }
+          aria-current="page"
+        >
+          {item.name}
+        </a>
+      </div>
+    </div>
+  ) : (
+    <a
+      href={item.href}
+      class={
+        "my-auto rounded-md border border-slate-500 px-3 py-2 text-center text-sm font-medium" +
+        mobileClass
+      }
+    >
+      {item.name}
+    </a>
+  )
+}

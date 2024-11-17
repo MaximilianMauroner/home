@@ -1,0 +1,84 @@
+---
+layout: ../../../../layouts/PostLayout.astro
+title: Building a calendar is kind of hard
+description: Created a free audio frequency generator after struggling to find one online. Also building a custom calendar app inspired by Reclaim and Akiflow
+tags: ["calendar", "website", "audio-helper", "homepage"]
+published: true
+releaseDate: 2024-09-21
+---
+# Audio Hell
+
+First things first is a audio app.
+
+I made this because my headphones were making odd noises at certain frequencies, and I could not find a good free online frequency generator for mono and stereo audio. <br/>
+**Soooo, I made one.** [Audio Helper](https://audio-helper.mauroner.net)
+
+While it is not perfect, it is a good start. I will be adding more features to it in the future, but for now it is a simple frequency generator. If you find problems or want to suggest features, [please let me know](https://github.com/MaximilianMauroner/audio-helper/issues).
+
+---
+
+# Making a Calendar is hard
+
+This one I've had in mind for a long time, as I wanted to make a calendar similar to [reclaim.ai](https://reclaim.ai) but with a few changes, and inspirations from [Akiflow](https://akiflow.com/)
+
+Since I've had some free time, I decided to start working on it.
+
+## The Stack
+
+- **Starter**: [create-t3-app](https://create.t3.gg/)
+- **Frontend**: React with Next.js
+- **Backend**: Next.js with Drizzle and Postgres
+- **Hosting**: probably Vercel, but I might play with [coolify](https://github.com/coollabsio/coolify) to allow for websocket connections
+- **UI**: TailwindCSS with shadcn/ui
+- **API**: tRPC and next server actions
+
+## The Features
+
+What I want to build, like the MVP of my calendar app:
+
+- an automatically generating calendar like [reclaim.ai](https://reclaim.ai)
+- a direct way to modify calendar events like [akiflow](https://akiflow.com/) so I don't need to use google calendar in addition to my calendar
+- CRUD for events
+- a way to add habits and routines
+- a way to tell the app that a day/time is to be considered blocked without showing up in my calendar (e.g. free time)
+- vacation mode
+- a better(and faster) algorithm than the one in reclaim
+- option to add tasks with start time, deadline, and specific hours
+
+## The Progress
+
+First I wanted to do everyting myself thinking "how hard can this be". How wrong I was. As soon as I started working on the drag and drop of the calendar the difficulty dawned on me. I had to rethink my approach and decided to use [react-big-calendar](https://github.com/jquense/react-big-calendar)
+
+So I gave up and selected a package that does most of the work for me. I first tried [react-big-calendar](https://github.com/jquense/react-big-calendar), but then after a bit more research I found [Schedule-X](https://schedule-x.dev/).
+And this calendar and it's ability to be customized is amazing. I can't wait to see how it will look in the end. Especially since I can use it with tRPC and next server actions and since it has the option to add plugins
+
+# Homepage
+
+i also updated my homepage, so the page you are currently reading this on. This page uses qwik and every "blog"-ish page uses mdx. 
+But there were some things i couldn't figure out, like dynamically loading tags for blogs, and dynamically loading blogs.
+
+But recently I found a github issue which solved this for me in a very nice way.
+
+```typescript
+export function getLogs() {
+  const modules = import.meta.glob("./log/**/*.mdx", { eager: true });
+
+  const logs: Log[] = [];
+  for (const path in modules) {
+    // @ts-ignore
+    const fM = modules[path].frontmatter;
+    const url = path.replace("./", "/dev-log/").replace("/index.mdx", "");
+    logs.push({
+      title: fM?.title ?? "",
+      description: fM?.description ?? "",
+      tags: fM?.tags ?? [],
+      published: fM?.published ?? false,
+      url,
+      releaseDate: fM?.releaseDate ?? new Date().toISOString(),
+    });
+  }
+  return logs;
+}
+```
+
+This code (while not perfect) is way better than anything else i've found, espescially considering that this works on serverless

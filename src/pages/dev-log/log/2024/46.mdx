@@ -1,0 +1,69 @@
+---
+layout: "../../../../layouts/PostLayout.astro"
+title: "Qwik and Astro: Where the Frustration Meets Potential"
+description: How/Why i migrated from qwik to Astro for my website.
+tags: ["website", "homepage", "astro", "qwik"] 
+published: true
+releaseDate: 2024-11-16
+---
+# Qwik and Astro: Where the Frustration Meets Potential
+Lately, I've been spending a lot of time with Qwik, and while there's a lot to like about its approach to reactivity and performance, 
+some issues have become more apparent the deeper I dive in. 
+At the same time, I've been exploring Astro, and while it's fantastic for content-heavy sites like blogs, it has its quirks too. 
+Here's the breakdown.
+
+## Problems with Qwik
+Qwik's reactivity is powerful, but it's also a bit of a double-edged sword, since it can be hard to predict when things will update. 
+And I noticed that as soon as a project gets a bit more complex, the reactivity can get a bit hard to manage, when you have to track down why a component isn't updating as expected.
+In addition I also noticed that sometimes my react-pilled brain could not comprehend the way qwik handles reactivity.
+
+Another thing that annoyed me is the `$()` syntax, which is used to indicated that `serializable data can cross a $ boundary`.
+Which is a bit of a pain to work with, especially when you're trying to pass data between components, and split things up to make them more easily understandable.
+
+Another bit of pain was auth, I tried to use authJS which is somehwat reccomended by qwik in their docs (i know it's in beta), 
+and I used the code that was shown to me and it just would not work at all, I tried to debug it but it was just not working. 
+At some point it started to work, but that was almost 4h of debugging.
+
+## Migration
+
+I have to say, the migration process was really smooth, since it was mostly just pure html, 
+and the only thing that was a bit of a pain was figuring out the data from the markdown files, but that was mostly because I didn't know how astro worked.
+The docs are well written and the community has a lot of cool integrations.
+
+## Astro's Potential
+
+Astro is a breath of fresh air in many ways, first of all, it's actually made for blog-content-heavy sites, 
+and the way it handles markdown is just fantastic, especially how it exposes functions for you to create custom components, for your markdown files.
+And there are a lot of integrations which work well, as well as the fact that i can use any other framework for a quick demo.
+
+But it's not without it's flaws, coming from NextJS it feels weird that I can't call an astro component from another framework file. 
+E.g. if i have a reusalbe astro component `tag-list.astro` which just takes a list of tags as `string[]` and displays them. 
+I can't use that in astro, since as soon as I have a single use of this file in a non-astro file, 
+the whole file has to be converted into the other framework, so it would end up being a `tag-list.tsx`.
+
+Another thing I didn't quite like is that the `astro dev` command is a bit slow to start.
+And the way imports work is a bit odd, since for some reason vscode doesn't help me with the auto-imports
+
+
+# Final Thoughts
+Both Qwik and Astro have their strengths and weaknesses, but I can confidently say that Astro is a better fit for my current needs for this website.
+And I'm excited to see how it evolves and what I can do with it.
+I've been thinking about how to use the `ViewTransition` api, and what I can use the ``astro.db`` for.
+
+Also for some reason the entire site feels a lot faster, but that might just be me. Could just be the animations.
+
+# Current Status
+Functionality migrated:
+- [x] homepage
+- [x] tags
+- [x] dev-log
+- [x] blog
+- [x] footer/header
+
+
+Remaining functionality to migrate:
+- [ ] search
+- [ ] compare-site
+- [ ] projects & i need to revamp the projects
+- [ ] custom sitemap
+

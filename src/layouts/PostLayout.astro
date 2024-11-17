@@ -1,0 +1,25 @@
+---
+import FontmatterTagsList from "@/components/FontmatterTagsList.astro";
+import DefaultLayout from "./DefaultLayout.astro";
+import TableOfContents from "@/components/TableOfContents";
+import { type HeadingType } from "@/utils/types";
+
+interface Props {
+  headings: HeadingType[];
+  frontmatter: any;
+}
+
+const { frontmatter, headings } = Astro.props;
+---
+
+<DefaultLayout description={frontmatter.description} title={frontmatter.title}>
+  {
+    headings.length > 0 && (
+      <TableOfContents headingsArr={headings} client:load />
+    )
+  }
+  <article class="prose mx-auto px-2 py-4 sm:px-0">
+    <slot />
+    <FontmatterTagsList tags={frontmatter.tags} />
+  </article>
+</DefaultLayout>
