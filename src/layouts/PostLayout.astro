@@ -51,6 +51,7 @@ const { frontmatter, headings, content } = Astro.props;
         </svg>
         <span>{content.minutesRead}</span>
       </div>
+      <FontmatterTagsList tags={frontmatter.tags} />
     </div>
   </div>
 
@@ -58,6 +59,5 @@ const { frontmatter, headings, content } = Astro.props;
 
   <article class="prose mx-auto px-2 py-4 sm:px-0">
     <slot />
-    <FontmatterTagsList tags={frontmatter.tags} />
   </article>
 </DefaultLayout>
