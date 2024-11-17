@@ -1,0 +1,22 @@
+---
+import DefaultLayout from "@/layouts/DefaultLayout.astro";
+import TagView from "@/components/TagView";
+import { getTags } from "@/utils/helpers";
+import { getCollection } from "astro:content";
+
+const blogs = await getCollection("blog", ({ data }) => {
+  return import.meta.env.PROD ? data.published === true : true;
+});
+const logs = await getCollection("log", ({ data }) => {
+  return import.meta.env.PROD ? data.published === true : true;
+});
+
+const tags = getTags(blogs, logs);
+---
+
+<DefaultLayout
+  title="Tags"
+  description="List of all tags that are in blogs and logs"
+>
+  <TagView tags={tags} blogs={blogs} logs={logs} client:load />
+</DefaultLayout>
