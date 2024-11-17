@@ -3,15 +3,15 @@ import LogPreview from "@/components/LogPreview";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
 import { getCollection } from "astro:content";
 import dayjs from "dayjs";
-import weekOfYear from "dayjs/plugin/weekOfYear"; // ES 2015
+import weekOfYear from "dayjs/plugin/weekOfYear";
 
 const logs = await getCollection("log", ({ data }) => {
   return import.meta.env.PROD ? data.published === true : true;
 });
 
 dayjs.extend(weekOfYear);
-const currentWeek = dayjs().week(); // 26
-const currentYear = dayjs().year(); // 2024
+const currentWeek = dayjs().week();
+const currentYear = dayjs().year();
 logs.sort((a, b) => {
   return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
 });

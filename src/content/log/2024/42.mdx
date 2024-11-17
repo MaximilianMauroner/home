@@ -7,6 +7,8 @@ image: "/astronaut.avif"
 published: true
 releaseDate: 2024-10-19
 ---
+import { Image } from 'astro:assets';
+import SearchWorkingImg from '@/assets/log/search-working.png';
 
 # Getting Search and Tags to Play Nicely
 This week's focus was getting search and tag filtering working together on this website. 
@@ -34,7 +36,7 @@ The current search is limited to:
 - description
 - headings inside the article
 
-![Tags and search system in action](/log/search-working.png)
+<Image src={SearchWorkingImg} alt="Tags and search system in action" />
 
 Check it out [here](/tags/) 
 

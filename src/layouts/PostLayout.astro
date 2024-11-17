@@ -7,9 +7,13 @@ import { type HeadingType } from "@/utils/types";
 interface Props {
   headings: HeadingType[];
   frontmatter: any;
+  content: {
+    title: string;
+    minutesRead: string;
+  };
 }
 
-const { frontmatter, headings } = Astro.props;
+const { frontmatter, headings, content } = Astro.props;
 ---
 
 <DefaultLayout description={frontmatter.description} title={frontmatter.title}>
@@ -19,6 +23,22 @@ const { frontmatter, headings } = Astro.props;
     )
   }
   <article class="prose mx-auto px-2 py-4 sm:px-0">
+    <div class="flex items-center gap-2 text-gray-600 text-sm mb-4">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-4 w-4"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>{content.minutesRead} read</span>
+    </div>
     <slot />
     <FontmatterTagsList tags={frontmatter.tags} />
   </article>

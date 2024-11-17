@@ -7,6 +7,9 @@ image: "/astronaut.avif"
 published: true
 releaseDate: 2024-10-12
 ---
+import { Image } from 'astro:assets';
+import TagsExampleImg from '@/assets/log/tags-example.png';
+import NvimImg from '@/assets/log/nvim.png';
 
 # Getting tags working
 
@@ -25,7 +28,7 @@ to get the `window.location.pathname` information  on page load.
 
 Now if you visite the [page](/tags/) it should work as expected.
 
-![Show the tags page that was described above](/log/tags-example.png)
+<Image src={TagsExampleImg} alt="Show the tags page that was described above" />
 
 # NVIM
 
@@ -51,4 +54,4 @@ So I added it to the nvim config. It uses ansible to install the different packa
 This is the repo: [kickstart github](https://github.com/MaximilianMauroner/kickstart.nvim)
 
 This is how it looks like now
-![how my nvim looks now](/log/nvim.png)
+<Image src={NvimImg} alt="How my nvim looks now" />

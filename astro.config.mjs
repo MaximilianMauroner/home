@@ -10,6 +10,9 @@ import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 
 import expressiveCode from "astro-expressive-code";
+import { remarkReadingTime } from "./plugins/remark-reading-time.mjs";
+
+import auth from "auth-astro";
 
 // https://astro.build/config
 export default defineConfig({
@@ -20,5 +23,9 @@ export default defineConfig({
     expressiveCode(),
     mdx(),
     sitemap(),
+    auth(),
   ],
+  markdown: {
+    remarkPlugins: [remarkReadingTime],
+  },
 });
