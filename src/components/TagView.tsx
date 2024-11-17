@@ -1,11 +1,11 @@
-import type { BlogType, LogType } from "@/utils/types";
 import { useEffect, useState } from "react";
 import BlogPreview from "./BlogPreview";
 import LogPreview from "./LogPreview";
+import type { CollectionEntry } from "astro:content";
 
 type TagViewProps = {
-  blogs: BlogType[];
-  logs: LogType[];
+  blogs: CollectionEntry<"blog">[];
+  logs: CollectionEntry<"log">[];
   tags: Map<string, number>;
   preSelectedTag?: string;
 };
@@ -18,8 +18,10 @@ export default function TagView({
   const [selectedTag, setSelectedTag] = useState<string | null>(
     preSelectedTag ?? null
   );
-  const [selectedBlogs, setSelectedBlogs] = useState<BlogType[]>(blogs);
-  const [selectedLogs, setSelectedLogs] = useState<LogType[]>(logs);
+  const [selectedBlogs, setSelectedBlogs] =
+    useState<CollectionEntry<"blog">[]>(blogs);
+  const [selectedLogs, setSelectedLogs] =
+    useState<CollectionEntry<"log">[]>(logs);
   const [search, setSearch] = useState<string>("");
   const activePostCount = selectedBlogs.length + selectedLogs.length;
   const totalPostCount = blogs.length + logs.length;
@@ -27,11 +29,13 @@ export default function TagView({
   useEffect(() => {
     setSelectedBlogs(
       selectedTag
-        ? blogs.filter((blog) => blog.tags.includes(selectedTag))
+        ? blogs.filter((blog) => blog.data.tags.includes(selectedTag))
         : blogs
     );
     setSelectedLogs(
-      selectedTag ? logs.filter((log) => log.tags.includes(selectedTag)) : logs
+      selectedTag
+        ? logs.filter((log) => log.data.tags.includes(selectedTag))
+        : logs
     );
   }, [selectedTag]);
 
@@ -136,8 +140,8 @@ const PostList = ({
   totalPostCount,
   search,
 }: {
-  blogs: BlogType[];
-  logs: LogType[];
+  blogs: CollectionEntry<"blog">[];
+  logs: CollectionEntry<"log">[];
   activePostCount: number;
   totalPostCount: number;
   search: string;
@@ -145,18 +149,23 @@ const PostList = ({
   const items = [
     ...blogs.map((blog) => ({
       type: "blog",
-      releaseDate: blog.releaseDate,
+      releaseDate: blog.data.releaseDate,
       url: blog.slug,
       content: blog,
     })),
     ...logs.map((log) => ({
       type: "log",
-      releaseDate: log.releaseDate,
-      url: log.url,
+      releaseDate: log.data.releaseDate,
+      url: log.slug,
       content: log,
     })),
   ];
-  items.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+  items.sort((a, b) => {
+    return (
+      b.content.data.releaseDate.getTime() -
+      a.content.data.releaseDate.getTime()
+    );
+  });
   return (
     <>
       <div className="mb-4 flex justify-between gap-2">
@@ -174,14 +183,14 @@ const PostList = ({
             return (
               <BlogPreview
                 key={item.url + "-post-list"}
-                blog={item.content as BlogType}
+                blog={item.content as CollectionEntry<"blog">}
               />
             );
           }
           return (
             <LogPreview
               key={item.url + "-post-list"}
-              log={item.content as LogType}
+              log={item.content as CollectionEntry<"log">}
             />
           );
         })}

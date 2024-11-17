@@ -1,10 +1,8 @@
-import type { MDXInstance } from "astro";
-import type { BlogType, LogType } from "./types";
+import type { CollectionEntry } from "astro:content";
 
-export const calculateRelativeDate = (releaseDate: string) => {
-    const date1 = new Date(releaseDate);
+export const calculateRelativeDate = (releaseDate: Date) => {
     const date2 = new Date();
-    const diffTime = date2.getTime() - date1.getTime();
+    const diffTime = date2.getTime() - releaseDate.getTime();
     const days = diffTime / (1000 * 3600 * 24);
     return Math.floor(days);
 };
@@ -15,60 +13,20 @@ export const kebabCase = (str: string) =>
         .replace(/[\s_]+/g, "-")
         .toLowerCase();
 
-
-
-export const blogsFromMDX = (blogPostsData: MDXInstance<Record<string, any>>[]) => {
-    const blogs: BlogType[] = [];
-
-    for (const fM of blogPostsData) {
-        blogs.push({
-            title: fM.frontmatter?.title ?? "",
-            description: fM.frontmatter?.description ?? "",
-            releaseDate: fM.frontmatter?.releaseDate ?? new Date().toISOString(),
-            published: fM.frontmatter?.published ?? false,
-            slug: fM.url ?? "",
-            tags: fM.frontmatter?.tags ?? [],
-            image: fM.frontmatter?.image ?? "",
-            headings: fM.getHeadings().map((heading) => heading.slug)
-        });
-    }
-    return blogs;
-}
-
-export const logsFromMDX = (logPostsData: MDXInstance<Record<string, any>>[]) => {
-    const logs: LogType[] = [];
-
-    for (const fM of logPostsData) {
-        logs.push({
-            title: fM.frontmatter?.title ?? "",
-            description: fM.frontmatter?.description ?? "",
-            releaseDate: fM.frontmatter?.releaseDate ?? new Date().toISOString(),
-            published: fM.frontmatter?.published ?? false,
-            url: fM.url ?? "",
-            tags: fM.frontmatter?.tags ?? [],
-            headings: fM.getHeadings().map((heading) => heading.slug)
-        });
-    }
-    return logs;
-}
-
-export const getTags = (blogs: MDXInstance<Record<string, any>>[], logs: MDXInstance<Record<string, any>>[]) => {
+export const getTags = (blogs: CollectionEntry<"blog">[], logs: CollectionEntry<"log">[]) => {
     const tagCounts = new Map<string, number>();
 
-    // Count tags from blogs
     for (const fM of blogs) {
-        fM.frontmatter?.tags?.forEach((tag: string) => {
+        fM.data.tags.forEach((tag: string) => {
             tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
         });
     }
 
-    // Count tags from logs
     for (const fM of logs) {
-        fM.frontmatter?.tags?.forEach((tag: string) => {
+        fM.data.tags.forEach((tag: string) => {
             tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
         });
     }
 
-    // Convert Map to plain object
     return tagCounts;
 }

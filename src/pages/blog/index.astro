@@ -1,11 +1,14 @@
 ---
-const allBlogs = await Astro.glob("./blogs/*.mdx");
 import BlogPreview from "@/components/BlogPreview";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { blogsFromMDX } from "@/utils/helpers";
+import { getCollection } from "astro:content";
 
-const blogs = blogsFromMDX(allBlogs);
-blogs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+const blogs = await getCollection("blog", ({ data }) => {
+  return import.meta.env.PROD ? data.published === true : true;
+});
+blogs.sort((a, b) => {
+  return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
+});
 ---
 
 <DefaultLayout
@@ -26,13 +29,7 @@ blogs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
         </p>
       </div>
       <div class="grid gap-8 lg:grid-cols-2">
-        {
-          blogs
-            .filter(
-              (e) => e.published || process.env.NODE_ENV === "development"
-            )
-            .map((post) => <BlogPreview blog={post} />)
-        }
+        {blogs.map((post) => <BlogPreview blog={post} />)}
       </div>
     </div>
   </section>

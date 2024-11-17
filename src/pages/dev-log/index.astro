@@ -1,17 +1,20 @@
 ---
 import LogPreview from "@/components/LogPreview";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { calculateRelativeDate, logsFromMDX } from "@/utils/helpers";
+import { getCollection } from "astro:content";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear"; // ES 2015
-const allLogs = await Astro.glob("./log/**/*.mdx");
 
-const logs = logsFromMDX(allLogs);
+const logs = await getCollection("log", ({ data }) => {
+  return import.meta.env.PROD ? data.published === true : true;
+});
 
 dayjs.extend(weekOfYear);
 const currentWeek = dayjs().week(); // 26
 const currentYear = dayjs().year(); // 2024
-logs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+logs.sort((a, b) => {
+  return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
+});
 ---
 
 <DefaultLayout
@@ -39,16 +42,7 @@ logs.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
         </p>
       </div>
       <div class="grid gap-8 lg:grid-cols-2">
-        {
-          logs
-            .filter(
-              (e) =>
-                (e.published === true &&
-                  calculateRelativeDate(e.releaseDate) >= 0) ||
-                process.env.NODE_ENV === "development"
-            )
-            .map((post) => <LogPreview log={post} />)
-        }
+        {logs.map((post) => <LogPreview log={post} />)}
       </div>
     </div>
   </section>
