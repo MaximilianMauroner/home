@@ -35,7 +35,7 @@ export default function LogPreview({ log }: { log: CollectionEntry<"log"> }) {
       </p>
       <div className="flex items-center justify-between text-xs font-medium text-primary ring-offset-background sm:text-sm">
         <a
-          href={"/" + log.slug}
+          href={log.slug}
           className="inline-flex items-center font-medium text-primary hover:underline"
         >
           Read more
