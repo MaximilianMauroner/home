@@ -33,15 +33,19 @@ export default function TagView({
     if (search == "") {
       return true;
     }
-    if (post.body.includes(search)) {
+    if (post.data.title.includes(search)) {
+      return true;
+    }
+    if (post.data.description.includes(search)) {
       return true;
     }
     if (post.data.tags.includes(search)) {
       return true;
     }
-    if (post.data.title.includes(search)) {
+    if (post.body.includes(search)) {
       return true;
     }
+
     return false;
   };
 
@@ -239,6 +243,12 @@ const Search = ({
 }) => {
   const [isActive, setIsActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isActive) {
+      setSearch("");
+    }
+  }, [isActive]);
   return (
     <div className="relative flex">
       <input
@@ -256,10 +266,10 @@ const Search = ({
       <button
         onClick={() => {
           setIsActive(!isActive);
-          if (isActive === true && inputRef.current) {
+          if (!isActive === true && inputRef.current) {
             setTimeout(() => {
               inputRef.current?.focus();
-            }, 100);
+            }, 50);
           }
         }}
         className="absolute right-2 top-2"
