@@ -2,7 +2,7 @@ import { calculateRelativeDate } from "@/utils/helpers";
 import type { CollectionEntry } from "astro:content";
 
 import TagsList from "./TagsList";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export default function LogPreview({
   log,
