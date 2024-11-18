@@ -42,7 +42,24 @@ logs.sort((a, b) => {
         </p>
       </div>
       <div class="grid gap-8 lg:grid-cols-2">
-        {logs.map((post) => <LogPreview log={post} />)}
+        {
+          logs.map((log) => (
+            <LogPreview log={log}>
+              <div
+                slot="image"
+                transition:name={"hero" + log.slug}
+                class="absolute inset-0 overflow-hidden rounded-lg"
+              >
+                <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />
+                <img
+                  src={log.data.image}
+                  alt={log.data.title}
+                  class="h-full w-full object-cover"
+                />
+              </div>
+            </LogPreview>
+          ))
+        }
       </div>
     </div>
   </section>

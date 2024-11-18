@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import BlogPreview from "./BlogPreview";
 import LogPreview from "./LogPreview";
 import type { CollectionEntry } from "astro:content";
@@ -26,18 +26,25 @@ export default function TagView({
   const activePostCount = selectedBlogs.length + selectedLogs.length;
   const totalPostCount = blogs.length + logs.length;
 
+  const filterFunction = () => {
+    const selBlogs = blogs
+      .filter((blog) =>
+        selectedTag ? blog.data.tags.includes(selectedTag) : true
+      )
+      .filter((blog) => (search !== "" ? blog.body.includes(search) : true));
+    const selLogs = logs
+      .filter((log) =>
+        selectedTag ? log.data.tags.includes(selectedTag) : true
+      )
+      .filter((log) => (search !== "" ? log.body.includes(search) : true));
+
+    setSelectedBlogs(selBlogs);
+    setSelectedLogs(selLogs);
+  };
+
   useEffect(() => {
-    setSelectedBlogs(
-      selectedTag
-        ? blogs.filter((blog) => blog.data.tags.includes(selectedTag))
-        : blogs
-    );
-    setSelectedLogs(
-      selectedTag
-        ? logs.filter((log) => log.data.tags.includes(selectedTag))
-        : logs
-    );
-  }, [selectedTag]);
+    filterFunction();
+  }, [selectedTag, search]);
 
   return (
     <>
@@ -56,6 +63,7 @@ export default function TagView({
             activePostCount={activePostCount}
             totalPostCount={totalPostCount}
             search={search}
+            setSearch={setSearch}
           />
         </div>
       </div>
@@ -139,12 +147,14 @@ const PostList = ({
   activePostCount,
   totalPostCount,
   search,
+  setSearch,
 }: {
   blogs: CollectionEntry<"blog">[];
   logs: CollectionEntry<"log">[];
   activePostCount: number;
   totalPostCount: number;
   search: string;
+  setSearch: (search: string) => void;
 }) => {
   const items = [
     ...blogs.map((blog) => ({
@@ -175,7 +185,9 @@ const PostList = ({
             ({activePostCount + "/" + totalPostCount})
           </span>
         </div>
-        <div>{/* <Search searchQuery={search} /> */}</div>
+        <div>
+          <Search search={search} setSearch={setSearch} />
+        </div>
       </div>
       <div className="space-y-4">
         {items.map((item) => {
@@ -196,5 +208,59 @@ const PostList = ({
         })}
       </div>
     </>
+  );
+};
+
+const Search = ({
+  search,
+  setSearch,
+}: {
+  search: string;
+  setSearch: (search: string) => void;
+}) => {
+  const [isActive, setIsActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="relative flex">
+      <input
+        id="search"
+        type="text"
+        ref={inputRef}
+        value={search}
+        onInput={(e) => setSearch(e.currentTarget.value)}
+        className={
+          "flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 pr-8 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 " +
+          (!isActive ? " hidden" : " ")
+        }
+        placeholder="Search"
+      />
+      <button
+        onClick={() => {
+          setIsActive(!isActive);
+          if (isActive === true && inputRef.current) {
+            setTimeout(() => {
+              inputRef.current?.focus();
+            }, 100);
+          }
+        }}
+        className="absolute right-2 top-2"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4 text-muted-foreground"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+      </button>
+    </div>
   );
 };
