@@ -26,17 +26,40 @@ export default function TagView({
   const activePostCount = selectedBlogs.length + selectedLogs.length;
   const totalPostCount = blogs.length + logs.length;
 
+  const searchQueryInPost = (
+    search: string,
+    post: CollectionEntry<"blog"> | CollectionEntry<"log">
+  ) => {
+    if (search == "") {
+      return true;
+    }
+    if (post.data.title.includes(search)) {
+      return true;
+    }
+    if (post.data.description.includes(search)) {
+      return true;
+    }
+    if (post.data.tags.includes(search)) {
+      return true;
+    }
+    if (post.body.includes(search)) {
+      return true;
+    }
+
+    return false;
+  };
+
   const filterFunction = () => {
     const selBlogs = blogs
       .filter((blog) =>
         selectedTag ? blog.data.tags.includes(selectedTag) : true
       )
-      .filter((blog) => (search !== "" ? blog.body.includes(search) : true));
+      .filter((blog) => searchQueryInPost(search, blog));
     const selLogs = logs
       .filter((log) =>
         selectedTag ? log.data.tags.includes(selectedTag) : true
       )
-      .filter((log) => (search !== "" ? log.body.includes(search) : true));
+      .filter((log) => searchQueryInPost(search, log));
 
     setSelectedBlogs(selBlogs);
     setSelectedLogs(selLogs);
@@ -220,6 +243,12 @@ const Search = ({
 }) => {
   const [isActive, setIsActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isActive) {
+      setSearch("");
+    }
+  }, [isActive]);
   return (
     <div className="relative flex">
       <input
@@ -237,10 +266,10 @@ const Search = ({
       <button
         onClick={() => {
           setIsActive(!isActive);
-          if (isActive === true && inputRef.current) {
+          if (!isActive === true && inputRef.current) {
             setTimeout(() => {
               inputRef.current?.focus();
-            }, 100);
+            }, 50);
           }
         }}
         className="absolute right-2 top-2"

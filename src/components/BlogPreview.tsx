@@ -32,14 +32,14 @@ export default function BlogPreview({
         </span>
       </div>
       <h2 className="mb-2 text-2xl font-bold tracking-tight text-primary underline-offset-4 hover:underline">
-        <a href={blog.slug}>{blog.data.title}</a>
+        <a href={"/blog/" + blog.slug}>{blog.data.title}</a>
       </h2>
       <p className="mb-5 font-light text-muted-foreground">
         {blog.data.description}
       </p>
       <div className="flex items-center justify-between text-sm font-medium text-primary underline-offset-4 ring-offset-background transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
         <a
-          href={blog.slug}
+          href={"/blog/" + blog.slug}
           className="inline-flex items-center font-medium text-primary hover:underline"
         >
           Read more
