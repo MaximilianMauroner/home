@@ -37,14 +37,14 @@ export default function LogPreview({
           </span>
         </div>
         <h2 className="mb-2 text-2xl font-bold tracking-tight text-primary underline-offset-4 hover:underline">
-          <a href={"/dev-log/" + log.slug}>{log.data.title}</a>
+          <a href={"/dev-log/" + log.id}>{log.data.title}</a>
         </h2>
         <p className="mb-5 font-light text-muted-foreground">
           {log.data.description}
         </p>
         <div className="flex items-center justify-between text-xs font-medium text-primary ring-offset-background sm:text-sm">
           <a
-            href={"/dev-log/" + log.slug}
+            href={"/dev-log/" + log.id}
             className="inline-flex items-center font-medium text-primary hover:underline"
           >
             Read more

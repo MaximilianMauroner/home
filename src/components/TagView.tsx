@@ -42,7 +42,7 @@ export default function TagView({
     if (post.data.tags.includes(search)) {
       return true;
     }
-    if (post.body.includes(search)) {
+    if (post.body?.includes(search)) {
       return true;
     }
 
@@ -183,13 +183,13 @@ const PostList = ({
     ...blogs.map((blog) => ({
       type: "blog",
       releaseDate: blog.data.releaseDate,
-      url: blog.slug,
+      url: blog.id,
       content: blog,
     })),
     ...logs.map((log) => ({
       type: "log",
       releaseDate: log.data.releaseDate,
-      url: log.slug,
+      url: log.id,
       content: log,
     })),
   ];

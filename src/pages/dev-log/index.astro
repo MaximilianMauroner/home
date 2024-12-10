@@ -16,9 +16,9 @@ const currentYear = dayjs().year();
 logs.sort((a, b) => {
   return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
 });
-const images = import.meta.glob<{ default: ImageMetadata }>(
-  "@/assets/log/*.{jpeg,jpg,png,gif}"
-);
+// const images = import.meta.glob<{ default: ImageMetadata }>(
+//   "@/assets/log/*.{jpeg,jpg,png,gif}"
+// );
 ---
 
 <DefaultLayout
@@ -51,7 +51,7 @@ const images = import.meta.glob<{ default: ImageMetadata }>(
             <LogPreview log={log}>
               <div
                 slot="image"
-                transition:name={"hero" + log.slug}
+                transition:name={"hero" + log.id}
                 class="absolute inset-0 overflow-hidden rounded-lg"
               >
                 <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />

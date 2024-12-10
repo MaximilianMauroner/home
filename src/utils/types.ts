@@ -21,6 +21,6 @@ export const logType = z.object({
 
 export type HeadingType = {
     depth: number;
-    slug: string;
+    id: string;
     text: string;
 };
