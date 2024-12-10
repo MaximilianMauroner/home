@@ -8,7 +8,7 @@ export default function TableOfContents({
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [headings, setHeadings] = useState(headingsArr);
-  const [currentHeading, setCurrentHeading] = useState(headings[0]?.id ?? "");
+  const [currentHeading, setCurrentHeading] = useState(headings[0]?.slug ?? "");
   const [isHovered, setIsHovered] = useState(false);
 
   const handleScroll = () => {
@@ -16,18 +16,20 @@ export default function TableOfContents({
     let activeHeading = "";
 
     if (window.scrollY === 0) {
-      activeHeading = headings[0].id;
+      activeHeading = headings[0].slug;
     } else if (
       window.innerHeight + window.scrollY >=
       document.body.offsetHeight - 2
     ) {
-      activeHeading = headings[headings.length - 1].id;
+      activeHeading = headings[headings.length - 1].slug;
     } else {
       for (let i = headings.length - 1; i >= 0; i--) {
         const heading = headings[i];
-        const headingElement = document.querySelector(`[id^="${heading.id}"]`);
+        const headingElement = document.querySelector(
+          `[id^="${heading.slug}"]`
+        );
         if (headingElement) {
-          if (headingElement.id !== heading.id) {
+          if (headingElement.id !== heading.slug) {
             setHeadings((prev) =>
               prev.map((h, idx) =>
                 idx === i ? { ...h, id: headingElement.id } : h
@@ -36,7 +38,7 @@ export default function TableOfContents({
           }
           const top = headingElement.getBoundingClientRect().top - offset;
           if (top <= 0) {
-            activeHeading = heading.id;
+            activeHeading = heading.slug;
             break;
           }
         }
@@ -84,7 +86,7 @@ export default function TableOfContents({
               <div
                 key={index}
                 className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
-                  currentHeading === heading.id
+                  currentHeading === heading.slug
                     ? "bg-blue-500"
                     : "bg-gray-200 dark:bg-gray-700"
                 }`}
@@ -103,9 +105,9 @@ export default function TableOfContents({
         {headings.map((heading, index) => (
           <a
             key={index}
-            href={`#${heading.id}`}
+            href={`#${heading.slug}`}
             className={`text-sm font-semibold ${
-              currentHeading === heading.id
+              currentHeading === heading.slug
                 ? "text-blue-500"
                 : "text-muted-foreground"
             } block scroll-mt-20 text-left`}
