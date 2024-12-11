@@ -74,7 +74,7 @@ export default function TableOfContents({
 
   return (
     <div
-      className="fixed bottom-2 sm:left-2 sm:top-1/2 sm:-translate-y-1/2"
+      className="fixed bottom-2 sm:left-2 sm:top-1/2 sm:-translate-y-1/2 z-10"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       ref={wrapperRef}
