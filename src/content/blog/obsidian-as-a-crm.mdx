@@ -1,0 +1,258 @@
+---
+layout: "@/layouts/PostLayout.astro"
+title: "Obsidian as a CRM - setup"
+description: How/Why i migrated from qwik to Astro for my website.
+tags: ["obsidian", "crm", "dataview", "diary"]
+image: "/src/assets/blog/2024-49.png"
+published: true
+releaseDate: 2024-12-11
+---
+import { Image } from 'astro:assets';
+import Johnnydecimal from '@/assets/blog/johnnydecimal.png';
+import Obsidiangraph from '@/assets/blog/obsidian-graph.png';
+import QuickAddExamplel from '@/assets/blog/quick-add-example.png';
+import ObsidianShimmering from '@/assets/blog/obsidian-shimmering.png';
+
+# Obsidian as a CRM - setup
+
+So first of all you neeed to start by downloading and installing [obisidan](https://obsidian.md/).
+Then you need to work on the way you want to organize your notes. I try to work using a modified version of the [johnnydecimal system](https://johnnydecimal.com/), combined with the para system.
+<Image src={Johnnydecimal} alt="Folder structure inside obsidian" />
+- Where i store Acive projects with task and everything related to them under Projects
+- Areas contain anything that is somewhat ongoing but not a project
+- Resources contain data i might reference later
+- Sprint is just there for me to manage my weeekly sprints(not the agile kind)
+
+
+
+## Why Obsidian
+I choose to use obsidian since it makes it easy to export as MD, and after I found out that how powerful the quick-add plugin is, it just seemed obvious to use it as a CRM.
+I tried:
+- notion
+- logseq
+- capacities
+- evernote
+- and a few others i already forgot
+
+and none of them had what I wanted, like this i control my data, but I don't give up the power of a database, I just have to trick obsidian into thinking it's a database.
+For developers obsidian might be the best tool there is, as you can directly modify it, more on that later.
+
+
+----
+
+But for the obsidian to work like I wanted it to, some things had to change.
+
+# Plugins:
+I tried to keep the list as small as possible and only include plugins I cannot live without, and I excluded the ones which are included with obsidian. This is community plugins only.
+
+
+## Dataview
+Dataview is plugin that allows you to query your notes, and it's the most powerful plugin I have ever used. It's like having a database in your notes. I use it to query my notes, and to create a CRM like system.
+And since you can use DataviewJs you can basically do anything:
+
+This is an example where I can figure out how often I mentioned each person throught the year in my diary.
+```js
+const folder = "20 Areas/20.6 Diary/2024"; // Replace with your folder path
+const pages = dv.pages(`"${folder}"`);
+const linkCounts = {};
+
+// Count unique links per page
+for (const page of pages) {
+    const uniqueLinks = new Set(page.file.outlinks.map(link => link.path)); // Collect unique links in the current page
+    uniqueLinks.forEach(linkPath => {
+        linkCounts[linkPath] = (linkCounts[linkPath] || 0) + 1;
+    });
+}
+
+// Convert to an array, sort by frequency, and take the top 3
+const sortedLinks = Object.entries(linkCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+// Display as a table
+dv.table(["Person Mentioned", "Amount of Times Mentioned"], sortedLinks);
+```
+## Diary - Data mangement
+On that note, one thing I found that was very important was the mindshift, into linking (tagging) everything whenever possible. If you have anything that should be linked, link it to a date.
+If you do it long enough you will end up with a graph of your life, and you can see how things are connected, and how/why/when you did what you did.
+<Image src={Obsidiangraph} alt="The graph inside obsidian after i migrated only a part of my CRM to obsidian" />
+Right now I have migrated not even 1/10th of my notion to obsidian, and it already looks like this. I can't wait to see how it will look like at the end.
+
+# QuickAdd
+Now to the meat of the subject, why I like obsidian so much, the quick add plugin.
+
+This plugin is made so that you can quickly add and fill templates how you want, but it can do soo mucht more.
+<Image src={QuickAddExamplel} alt="Shoing a modal pop-up where quick-add can be used to add movies" />
+
+Here is the link to the [documentation](https://quickadd.obsidian.guide/docs/)
+
+So scripts is the part where it clicked for me, how powerful this plugin really is. I wanted to create a new file (movie/show) and then autofill it's properties. As is shown in this video.
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/t-hKCgGhQuk?si=BlnOmXmrx6BF22cX&amp;controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+
+## Templates
+
+But I modified the tempalte a bit.
+```md
+---
+title: "{{VALUE:Title}}"
+franchise: 
+type: {{VALUE:typeLink}}
+genres: {{VALUE:genreLinks}}
+cover: 
+status: 
+rating: 
+progress: 
+total: 
+episodeLen:
+watchedDate: 
+year:
+---
+
+> [!question] # ⭐️ WHAT IT'S ABOUT
+> - ⭐️ {{VALUE:Plot}}
+
+> [!note] # 🌙 THOUGHTS AND FEELINGS
+> - 🌙 
+
+<image/>
+{{VALUE:Poster}}
+
+---
+
+> [!done] # ✨️ + EXTRAS
+> - ✨️ 
+
+---
+
+> [!tip] # 🪐 WHAT DID I FEEL WHEN FINISHED THE MOVIE/SHOW?
+> - 🪐
+```
+And as you can see, there is a random `{{VALUE:Poster}}` in there, which is a link to a cover image. But I need that image saved in the same folder as the note, so I created a script for that.
+
+## Scripts
+```js
+// Function to extract all links from file content
+async function getLinksFromContent(content) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const matches = [...content.matchAll(urlRegex)];
+  return matches.map((match) => match[0]); // Return an array of links
+}
+
+// Function to fetch media and verify it's an image
+async function fetchMedia(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Failed to fetch URL: ${url}`);
+      return null;
+    }
+
+    // Check if the content is an image
+    const contentType = response.headers.get("Content-Type");
+    if (!contentType || !contentType.startsWith("image/")) {
+      console.error(`URL is not an image: ${url}`);
+      return null;
+    }
+
+    // Get the image as a Blob
+    const blob = await response.blob();
+    const arrayBuffer = await blob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    return { uint8Array, contentType };
+  } catch (error) {
+    console.error(`Error fetching media from URL: ${url}`, error);
+    return null;
+  }
+}
+async function writeMediaToDisk(app, activeFile, links) {
+  // Determine the parent directory of the active file
+  const activeFilePath = activeFile.path;
+  const parentDir = activeFilePath.substring(
+    0,
+    activeFilePath.lastIndexOf("/")
+  );
+  const attachmentsPath = `${parentDir}/attachments`;
+
+  // Ensure the attachments folder exists
+  let folder = app.vault.getAbstractFileByPath(attachmentsPath);
+  if (!folder) {
+    await app.vault.createFolder(attachmentsPath);
+  }
+
+  let content = await app.vault.read(activeFile);
+
+  for (const url of links) {
+    const media = await fetchMedia(url);
+    if (!media) continue;
+
+    // Generate a unique file name
+    const ext = media.contentType.split("/")[1];
+    const fileName = `${Date.now()}.${ext}`;
+    const fullPath = `${attachmentsPath}/${fileName}`;
+
+    // Use Vault.create to write the image to the disk
+    try {
+      await app.vault.createBinary(fullPath, media.uint8Array);
+    } catch (error) {
+      console.error(`Error creating file at ${fullPath}:`, error);
+      continue;
+    }
+
+    // Replace the URL in the content with a local link
+    const localLink = `![[${fullPath}]]`;
+    content = content.replace(url, localLink);
+
+    content = content.replace("\ncover:", "\ncover: " + `${fileName}`);
+  }
+
+  // Update the active file with modified content
+  await app.vault.modify(activeFile, content);
+  new Notice("All images downloaded and linked successfully.");
+}
+
+async function processLinks(app) {
+  const activeFile = app.workspace.getActiveFile();
+  if (!activeFile) {
+    new Notice("No active file is currently open.");
+    return;
+  }
+
+  const content = await app.vault.read(activeFile);
+  const links = await getLinksFromContent(content);
+
+  if (links.length === 0) {
+    new Notice("No links found in the file.");
+    return;
+  }
+
+  await writeMediaToDisk(app, activeFile, links);
+}
+
+module.exports = {
+  entry: start,
+  settings: {
+    name: "Link to Image",
+    author: "Maximilian Mauroner",
+  },
+};
+
+async function start(params) {
+  const app = params.app;
+  await processLinks(app);
+}
+
+```
+
+This script basically fetches any link, tries to download them (if it's an image) and then saves it in the attachments folder. 
+Then it replaces the text of the link and adds the filename in the page properties
+
+## DIY
+This ability in combination with the ability to add any css to any page, means that I can basically turn obsidian into whatever I want, without having to create a public plguin.
+I can create my personal perfect system, while using a "somewhat" open source system underneath it(that being markdown, not obsidian).
+
+**And that is why I choose obsidian as my CRM.**
+
+# Shmmering Focus
+The last thing I'd like to mention or give a shoutout to is shimmering focus. This theme is, off all the themes i've used, the best and most useful theme.
+It does require some modifications but thankfully that can be done using the Style Settings plugin.
+<Image src={ObsidianShimmering} alt="Obsidian Shimmering Focus theme displayed via a templat file" />
