@@ -11,6 +11,7 @@ import sitemap from "@astrojs/sitemap";
 
 import expressiveCode from "astro-expressive-code";
 import { remarkReadingTime } from "./plugins/remark-reading-time.mjs";
+import { remarkModifiedTime } from "./plugins/remark-modified-time.mjs";
 
 // https://astro.build/config
 export default defineConfig({
@@ -23,6 +24,6 @@ export default defineConfig({
     sitemap(),
   ],
   markdown: {
-    remarkPlugins: [remarkReadingTime],
+    remarkPlugins: [remarkReadingTime, remarkModifiedTime],
   },
 });

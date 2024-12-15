@@ -106,7 +106,7 @@ const TagList = ({
   return (
     <div className="sticky top-28">
       <div className="mb-4 flex items-center gap-2">
-        <h2 className="text-2xl font-bold">Tags:</h2>
+        <h3 className="text-2xl font-bold">Tags:</h3>
         <span className="font-mono text-2xl text-muted-foreground">
           ({tags.size})
         </span>
