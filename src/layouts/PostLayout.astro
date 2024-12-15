@@ -4,12 +4,6 @@ import DefaultLayout from "./DefaultLayout.astro";
 import TableOfContents from "@/components/TableOfContents";
 import { type HeadingType } from "@/utils/types";
 import PostImageLoader from "@/components/PostImageLoader.astro";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import { late } from "astro:schema";
-
-dayjs.extend(utc);
-
 interface Props {
   headings: HeadingType[];
   frontmatter: any;
@@ -21,10 +15,6 @@ interface Props {
 }
 
 const { frontmatter, headings, content } = Astro.props;
-
-const lastModified = dayjs()
-  .utc(Astro.props.frontmatter.lastModified)
-  .format("HH:mm:ss DD MMMM YYYY UTC");
 ---
 
 <DefaultLayout description={frontmatter.description} title={frontmatter.title}>
@@ -60,7 +50,6 @@ const lastModified = dayjs()
             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         <span class="text-center">{content.minutesRead}</span>
-        <span class="invisible">{lastModified}</span>
       </div>
       <FontmatterTagsList tags={frontmatter.tags} />
     </div>
