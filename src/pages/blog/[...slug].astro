@@ -16,12 +16,16 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
+
+if (entry.data.published !== true) {
+  throw Astro.redirect("/404");
+}
+
 const { Content, remarkPluginFrontmatter } = await render(entry);
 const lastModified = dayjs(remarkPluginFrontmatter.lastModified)
   .utc()
   .format("HH:mm:ss DD MMMM YYYY UTC");
 
-console.log(entry);
 const schema = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
