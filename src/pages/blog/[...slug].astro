@@ -20,6 +20,8 @@ const { Content, remarkPluginFrontmatter } = await render(entry);
 const lastModified = dayjs(remarkPluginFrontmatter.lastModified)
   .utc()
   .format("HH:mm:ss DD MMMM YYYY UTC");
+
+console.log(entry);
 const schema = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
@@ -32,6 +34,7 @@ const schema = {
     url: "https://www.mauroner.net",
   },
   dateModified: lastModified,
+  datePublished: entry.data.releaseDate,
 };
 ---
 
