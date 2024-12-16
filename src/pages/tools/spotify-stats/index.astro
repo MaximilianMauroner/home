@@ -1,0 +1,31 @@
+---
+import SpotifyStats from "@/components/tools/SpotifyStats";
+import DefaultLayout from "@/layouts/DefaultLayout.astro";
+---
+
+<DefaultLayout
+  title="Spotify Stats"
+  description="A tool to visualize your Spotify listening habits"
+>
+  <section>
+    <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
+      <div class="space-y-4">
+        <div class="flex flex-col space-y-2">
+          <h1 class="text-3xl font-bold tracking-tight">Spotify Stats</h1>
+          <p class="text-muted-foreground">
+            Upload your Spotify data to see your listening statistics
+          </p>
+          <a
+            href="https://support.stats.fm/docs/import/spotify-import/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-primary hover:underline"
+          >
+            How to get your Spotify data →
+          </a>
+        </div>
+        <SpotifyStats client:load />
+      </div>
+    </div>
+  </section>
+</DefaultLayout>
