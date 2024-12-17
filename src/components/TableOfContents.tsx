@@ -75,12 +75,14 @@ export default function TableOfContents({
   return (
     <div
       className="fixed bottom-2 sm:left-2 sm:top-1/2 sm:-translate-y-1/2 z-10"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       ref={wrapperRef}
     >
       {!isHovered && (
-        <div className="relative" onTouchStart={() => setIsHovered(true)}>
+        <div
+          onMouseEnter={() => setIsHovered(true)}
+          className="relative"
+          onTouchStart={() => setIsHovered(true)}
+        >
           <div className="absolute left-0 flex flex-col gap-3 rounded-lg border bg-white p-2 transition-opacity duration-300">
             {headings.map((heading, index) => (
               <div
@@ -96,6 +98,7 @@ export default function TableOfContents({
         </div>
       )}
       <div
+        onMouseLeave={() => setIsHovered(false)}
         className={`flex flex-col gap-4 rounded-lg border bg-white p-2 transition-all duration-300 ${
           isHovered
             ? "-translate-x-0 opacity-100"
