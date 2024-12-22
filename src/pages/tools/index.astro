@@ -1,7 +1,7 @@
 ---
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
 
-const tools = await import.meta.glob("./*/*.astro"); // Get all tool pages in subdirectories
+const tools = import.meta.glob("./*/*.astro"); // Get all tool pages in subdirectories
 const toolPages = [];
 
 for (const path in tools) {

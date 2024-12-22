@@ -11,7 +11,7 @@ const Homepage = () => {
 
   const loadByName = (
     setName: Dispatch<SetStateAction<string>>,
-    ogValue: string
+    ogValue: string,
   ) => {
     let iteration = 0;
 

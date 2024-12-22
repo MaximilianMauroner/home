@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import JSZip from "jszip";
 import { type Track } from "@/types/spotify";
 
@@ -39,7 +39,7 @@ export default function SpotifyStats() {
   };
 
   const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file || !file.name.endsWith(".zip")) {
@@ -84,7 +84,7 @@ export default function SpotifyStats() {
   const processInChunks = async (
     tracks: Track[],
     startDate: Date,
-    endDate: Date | null
+    endDate: Date | null,
   ) => {
     const results = {
       tracks: new Map<string, Track[]>(),
@@ -136,7 +136,7 @@ export default function SpotifyStats() {
       setProgress(0);
 
       const allTracks: Track[] = files.flatMap((file) =>
-        JSON.parse(file.content)
+        JSON.parse(file.content),
       );
 
       const now = new Date();
@@ -184,25 +184,25 @@ export default function SpotifyStats() {
   // Memoize the sorted artists and tracks
   const sortedArtists = useMemo(
     () => [...artists.entries()].sort((a, b) => b[1] - a[1]),
-    [artists]
+    [artists],
   );
 
   const sortedTracks = useMemo(
     () => [...tracks.entries()].sort((a, b) => b[1].length - a[1].length),
-    [tracks]
+    [tracks],
   );
 
   // Memoize the artist list component
   const ArtistList = useMemo(
     () => (
-      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+      <div className="max-h-[500px] space-y-3 overflow-y-auto pr-2">
         {sortedArtists.map(([artist, count], index) => (
           <div
             key={artist}
             className="flex items-center justify-between text-sm"
           >
             <span className="flex items-center gap-2">
-              <span className="text-muted-foreground min-w-[2rem]">
+              <span className="min-w-[2rem] text-muted-foreground">
                 {index + 1}.
               </span>
               <span>{artist}</span>
@@ -214,17 +214,17 @@ export default function SpotifyStats() {
         ))}
       </div>
     ),
-    [sortedArtists]
+    [sortedArtists],
   );
 
   // Memoize the track list component
   const TrackList = useMemo(
     () => (
-      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+      <div className="max-h-[500px] space-y-3 overflow-y-auto pr-2">
         {sortedTracks.map(([uri, trackList], index) => (
           <div key={uri} className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2">
-              <span className="text-muted-foreground min-w-[2rem]">
+              <span className="min-w-[2rem] text-muted-foreground">
                 {index + 1}.
               </span>
               <div className="flex flex-col">
@@ -238,7 +238,7 @@ export default function SpotifyStats() {
         ))}
       </div>
     ),
-    [sortedTracks]
+    [sortedTracks],
   );
 
   return (
@@ -251,13 +251,13 @@ export default function SpotifyStats() {
             accept=".zip"
             onChange={handleFileUpload}
             disabled={isLoading}
-            className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-foreground file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           />
           {tracks.size > 0 && (
             <button
               onClick={resetData}
               disabled={isLoading}
-              className="h-10 px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 disabled:opacity-50"
+              className="h-10 rounded-md bg-destructive px-4 py-2 text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
             >
               Reset
             </button>
@@ -265,7 +265,7 @@ export default function SpotifyStats() {
         </div>
         <div className="flex items-center gap-2">
           {status && (
-            <p className="text-sm text-muted-foreground italic flex-1">
+            <p className="flex-1 text-sm italic text-muted-foreground">
               {status}
             </p>
           )}
@@ -276,13 +276,13 @@ export default function SpotifyStats() {
       </div>
 
       {tracks.size > 0 && (
-        <div className="space-y-4 relative">
+        <div className="relative space-y-4">
           {isLoading && (
-            <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex flex-col items-center justify-center gap-4 z-50">
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/50 backdrop-blur-sm">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
               {progress > 0 && (
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-2 w-48 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full bg-primary transition-all duration-300"
                       style={{ width: progress + "%" }}
@@ -371,21 +371,21 @@ export default function SpotifyStats() {
                   setDateRange(pendingDateRange);
                   handleProcessFile();
                 }}
-                className="w-full h-10 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                className="h-10 w-full rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
               >
                 Apply Range
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="rounded-lg border bg-card p-4">
-              <h2 className="text-xl font-semibold mb-4">Artists</h2>
+              <h2 className="mb-4 text-xl font-semibold">Artists</h2>
               {ArtistList}
             </div>
 
             <div className="rounded-lg border bg-card p-4">
-              <h2 className="text-xl font-semibold mb-4">Tracks</h2>
+              <h2 className="mb-4 text-xl font-semibold">Tracks</h2>
               {TrackList}
             </div>
           </div>

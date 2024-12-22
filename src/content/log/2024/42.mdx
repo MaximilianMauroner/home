@@ -7,30 +7,34 @@ image: "/src/assets/log/2024-42.png"
 published: true
 releaseDate: 2024-10-19
 ---
-import { Image } from 'astro:assets';
-import SearchWorkingImg from '@/assets/log/search-working.png';
+
+import { Image } from "astro:assets";
+import SearchWorkingImg from "@/assets/log/search-working.png";
 
 # Getting Search and Tags to Play Nicely
-This week's focus was getting search and tag filtering working together on this website. 
+
+This week's focus was getting search and tag filtering working together on this website.
 The goal was pretty straightforward: let users search blog posts and dev logs in real-time, while also filtering by tags.
 Which then results in easier navigation, better searchability.
 
 **Sounds simple enough, but there were a few hiccups along the way.**
 
-The biggest challenge was keeping the search and tag filters in sync. For example, you might select a tag, but then the search results wouldn't update as expected. 
-Or, if you cleared a tag, the search wouldn't kick in to refresh the list. 
+The biggest challenge was keeping the search and tag filters in sync. For example, you might select a tag, but then the search results wouldn't update as expected.
+Or, if you cleared a tag, the search wouldn't kick in to refresh the list.
 
 (Keep in mind that the numbers on the tags page currently don't update, that is a problem for another day)
 
 # Getting the Search to Behave
-I wanted it to filter results dynamically as you type, but also respect the active tags. 
+
+I wanted it to filter results dynamically as you type, but also respect the active tags.
 Qwik's `$()` and `useTask$` helped here. By tracking changes to the search input and selected tags, I could make sure that the filtered items list was always up-to-date.
 
-There was also an issue where clearing the tags didn't reapply the search filter, so I had to track changes to originalItems and rerun the search logic each time the tag selection changed. 
+There was also an issue where clearing the tags didn't reapply the search filter, so I had to track changes to originalItems and rerun the search logic each time the tag selection changed.
 That way, you get an updated list whether you're typing or toggling tags. I'm sure my version right now is not that performant, but hey, it works.
 
-The search is now real-time, and it works alongside the tag filtering. You can search for any post or log entry while keeping the active tag filtering applied. 
+The search is now real-time, and it works alongside the tag filtering. You can search for any post or log entry while keeping the active tag filtering applied.
 The current search is limited to:
+
 - tags
 - title
 - description
@@ -38,12 +42,12 @@ The current search is limited to:
 
 <Image src={SearchWorkingImg} alt="Tags and search system in action" />
 
-Check it out [here](/tags/) 
-
+Check it out [here](/tags/)
 
 # Final Thoughts
-Getting Qwik's reactivity to work exactly how I wanted was a bit of a learning curve, but I'm happy with how it turned out. 
+
+Getting Qwik's reactivity to work exactly how I wanted was a bit of a learning curve, but I'm happy with how it turned out.
 Having both the search and tag system run smoothly has made navigating through content much easier.
 
-Next, I'm thinking about adding more filter options, maybe filter for multiple tags. 
+Next, I'm thinking about adding more filter options, maybe filter for multiple tags.
 For now, though, I'm just glad the search and tag system is functional and works without too many problems.
