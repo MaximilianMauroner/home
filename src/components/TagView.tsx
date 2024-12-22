@@ -18,13 +18,6 @@ export default function TagView({
   const [selectedTag, setSelectedTag] = useState<string | null>(
     preSelectedTag ?? null
   );
-  const [selectedBlogs, setSelectedBlogs] =
-    useState<CollectionEntry<"blog">[]>(blogs);
-  const [selectedLogs, setSelectedLogs] =
-    useState<CollectionEntry<"log">[]>(logs);
-  const [search, setSearch] = useState<string>("");
-  const activePostCount = selectedBlogs.length + selectedLogs.length;
-  const totalPostCount = blogs.length + logs.length;
 
   const searchQueryInPost = (
     search: string,
@@ -49,6 +42,25 @@ export default function TagView({
     return false;
   };
 
+  const [search, setSearch] = useState<string>("");
+
+
+
+  const initialBlogs = blogs
+    .filter((blog) => selectedTag ? blog.data.tags.includes(selectedTag) : true)
+    .filter((blog) => searchQueryInPost(search, blog));
+
+  const initialLogs = logs
+    .filter((log) => selectedTag ? log.data.tags.includes(selectedTag) : true)
+    .filter((log) => searchQueryInPost(search, log));
+
+  const [selectedBlogs, setSelectedBlogs] = useState(initialBlogs);
+  const [selectedLogs, setSelectedLogs] = useState(initialLogs);
+  
+
+  const activePostCount = selectedBlogs.length + selectedLogs.length;
+  const totalPostCount = blogs.length + logs.length;
+
   const filterFunction = () => {
     const selBlogs = blogs
       .filter((blog) =>
@@ -68,6 +80,7 @@ export default function TagView({
   useEffect(() => {
     filterFunction();
   }, [selectedTag, search]);
+
 
   return (
     <>
@@ -115,16 +128,20 @@ const TagList = ({
         className="flex flex-wrap gap-2 sm:gap-6 md:gap-3 lg:gap-4"
         aria-label="All tags with blog post counts"
       >
-        {Array.from(tags).map(([tagName, count]) => (
+        {Array.from(tags)    .sort((a, b) => {
+            return a[0].localeCompare(b[0]);
+          }).map(([tagName, count]) => (
           <li key={tagName}>
             <button
               onClick={() => {
                 if (selectedTag === tagName) {
                   setSelectedTag(null);
                   window.history.replaceState({}, "", "/tags/");
+                  document.title = "Tags";
                 } else {
                   setSelectedTag(tagName);
                   window.history.pushState({}, "", `/tags/${tagName}`);
+                  document.title = tagName;
                 }
               }}
               className={
