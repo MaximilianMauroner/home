@@ -137,9 +137,11 @@ const TagList = ({
                 if (selectedTag === tagName) {
                   setSelectedTag(null);
                   window.history.replaceState({}, "", "/tags/");
+                  document.title = "Tags";
                 } else {
                   setSelectedTag(tagName);
                   window.history.pushState({}, "", `/tags/${tagName}`);
+                  document.title = tagName;
                 }
               }}
               className={
