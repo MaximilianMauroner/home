@@ -53,6 +53,11 @@ interface DateStats {
   [date: string]: number;
 }
 
+interface DateStatsWithYears {
+  stats: DateStats;
+  availableYears: number[];
+}
+
 interface WordStats {
   [participant: string]: number;
 }
@@ -72,6 +77,12 @@ interface MediaStats {
 }
 
 export default function WhatsappStats() {
+  // Add new state for raw messages
+  const [rawMessages, setRawMessages] = useState<string[]>([]);
+  // Add new state for selected year
+  const [selectedYear, setSelectedYear] = useState<number>(
+    new Date().getFullYear(),
+  );
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [content, setContent] = useState<string | null>(null);
@@ -86,14 +97,52 @@ export default function WhatsappStats() {
   const [mediaStats, setMediaStats] = useState<MediaStats>({});
   const [allWords, setAllWords] = useState<WordFrequency[]>([]);
   const [customWordLength, setCustomWordLength] = useState(8);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
 
+  // Combined getAvailableYears function to handle both input types
+  const getAvailableYears = (input: string[] | DateStats): number[] => {
+    const years = new Set<number>();
+
+    if (Array.isArray(input)) {
+      // Handle array of messages
+      input.forEach((msg) => {
+        const dateMatch = msg.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+        if (dateMatch) {
+          const year = parseInt(dateMatch[1].split("/")[2]);
+          if (!isNaN(year)) {
+            years.add(year);
+          }
+        }
+      });
+    } else {
+      // Handle DateStats object
+      Object.keys(input).forEach((date) => {
+        const year = parseInt(date.split("/")[2]);
+        if (!isNaN(year)) {
+          years.add(year);
+        }
+      });
+    }
+
+    return Array.from(years).sort((a, b) => b - a);
+  };
+
+  // Update processTextData to store raw messages first
   const processTextData = (text: string) => {
     const lines = text.split("\n");
     const participantsList = extractParticipants(lines);
     const filtered = filterMessages(lines, participantsList);
-    setFilteredMessages(filtered);
-    analyzeMessages(filtered, participantsList);
-    setContent(text);
+    setRawMessages(filtered); // Store raw messages
+    setParticipants(participantsList);
+
+    // Get available years and set initial year
+    const years = getAvailableYears(filtered);
+    setAvailableYears(years);
+    if (years.length > 0) {
+      setSelectedYear(years[0]);
+      const yearMessages = filterMessagesByYear(filtered, years[0]);
+      analyzeMessages(yearMessages, participantsList);
+    }
   };
 
   useEffect(() => {
@@ -153,6 +202,34 @@ export default function WhatsappStats() {
     });
   };
 
+  // Add utility functions for filtering data by year
+  const filterMessagesByYear = (messages: string[], year: number) => {
+    return messages.filter((msg) => {
+      const dateMatch = msg.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+      if (dateMatch) {
+        const msgYear = parseInt(dateMatch[1].split("/")[2]);
+        return msgYear === year;
+      }
+      return false;
+    });
+  };
+
+  // Update year change handler
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+    const yearMessages = filterMessagesByYear(rawMessages, year);
+    analyzeMessages(yearMessages, participants);
+  };
+
+  // Update useEffect for year changes
+  useEffect(() => {
+    if (rawMessages.length > 0) {
+      const yearMessages = filterMessagesByYear(rawMessages, selectedYear);
+      analyzeMessages(yearMessages, participants);
+    }
+  }, [selectedYear]);
+
+  // Remove year filtering from analyzeMessages as it now receives pre-filtered data
   const analyzeMessages = (messages: string[], participants: string[]) => {
     const stats: MessageStats = {};
     const hourStats: TimeStats = {};
@@ -393,13 +470,24 @@ export default function WhatsappStats() {
     [timeStats],
   );
 
+  // Add function to filter data by year
+  const filterDataByYear = (data: DateStats, year: number): DateStats => {
+    return Object.entries(data).reduce((filtered, [date, count]) => {
+      const dateYear = parseInt(date.split("/")[2]);
+      if (dateYear === year) {
+        filtered[date] = count;
+      }
+      return filtered;
+    }, {} as DateStats);
+  };
+
   const dailyChartData = useMemo(
     () => ({
-      labels: Object.keys(dateStats),
+      labels: Object.keys(filterDataByYear(dateStats, selectedYear)),
       datasets: [
         {
           label: "Messages per day",
-          data: Object.values(dateStats),
+          data: Object.values(filterDataByYear(dateStats, selectedYear)),
           fill: true,
           backgroundColor: "rgba(75, 192, 192, 0.2)",
           borderColor: "rgb(75, 192, 192)",
@@ -407,7 +495,7 @@ export default function WhatsappStats() {
         },
       ],
     }),
-    [dateStats],
+    [dateStats, selectedYear],
   );
 
   const topDaysChartData = useMemo(
@@ -578,7 +666,18 @@ export default function WhatsappStats() {
       )}
       {Object.keys(messageStats).length > 0 && (
         <>
-          <div className="mb-4 flex justify-end sm:mb-8">
+          <div className="mb-4 flex items-center justify-between sm:mb-8">
+            <select
+              value={selectedYear}
+              onChange={(e) => handleYearChange(Number(e.target.value))}
+              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+            >
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
             <button
               onClick={clearSavedData}
               className="rounded-md bg-destructive px-3 py-1.5 text-sm text-destructive-foreground hover:bg-destructive/90 sm:px-4 sm:py-2"
@@ -593,7 +692,10 @@ export default function WhatsappStats() {
                 Message Activity (Last Year)
               </h3>
               <div className="w-full overflow-x-auto">
-                <GitHubStyleChart data={dateStats} />
+                <GitHubStyleChart
+                  data={dateStats}
+                  selectedYear={selectedYear}
+                />
               </div>
             </div>
           </div>
@@ -708,6 +810,7 @@ export default function WhatsappStats() {
 
 interface GitHubStyleChartProps {
   data: DateStats;
+  selectedYear: number;
 }
 
 interface TooltipState {
@@ -715,13 +818,20 @@ interface TooltipState {
   x: number;
   y: number;
 }
-const GitHubStyleChart = ({ data }: GitHubStyleChartProps) => {
+const GitHubStyleChart = ({ data, selectedYear }: GitHubStyleChartProps) => {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
-  const colorScale = ["#9be9a8", "#40c463", "#30a14e", "#216e39"];
+  const colorScale = [
+    "#ebedf0", // 0 contributions
+    "#9be9a8", // level 1
+    "#40c463", // level 2
+    "#30a14e", // level 3
+    "#216e39", // level 4
+    "#1b4c2a", // level 5
+    "#0f2d19", // level 6
+  ];
 
-  const currentYear = new Date().getFullYear();
-  const startOfYear = new Date(currentYear, 0, 1);
-  const endOfYear = new Date(currentYear, 11, 31);
+  const startOfYear = new Date(selectedYear, 0, 1);
+  const endOfYear = new Date(selectedYear, 11, 31);
 
   const startDate = new Date(startOfYear);
   startDate.setDate(startDate.getDate() - startDate.getDay());
@@ -749,12 +859,14 @@ const GitHubStyleChart = ({ data }: GitHubStyleChartProps) => {
   const maxValue = Math.max(...Object.values(data));
 
   const getColor = (count: number) => {
-    if (count === 0) return "#ebedf0";
+    if (count === 0) return colorScale[0];
     const scale = count / maxValue;
-    if (scale <= 0.25) return colorScale[0];
-    if (scale <= 0.5) return colorScale[1];
-    if (scale <= 0.75) return colorScale[2];
-    return colorScale[3];
+    if (scale <= 0.15) return colorScale[1];
+    if (scale <= 0.3) return colorScale[2];
+    if (scale <= 0.45) return colorScale[3];
+    if (scale <= 0.6) return colorScale[4];
+    if (scale <= 0.75) return colorScale[5];
+    return colorScale[6];
   };
 
   const formatDate = (date: Date) => {
