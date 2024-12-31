@@ -586,17 +586,19 @@ export default function WhatsappStats() {
               Clear Data
             </button>
           </div>
-
-          <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 md:grid-cols-2">
+          <div className="mt-4 grid gap-4 overflow-x-scroll sm:mt-8 sm:gap-8 md:grid-cols-2">
             {/* Add this new section before other charts */}
             <div className="col-span-2 rounded-lg border p-1 sm:p-4">
               <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
                 Message Activity (Last Year)
               </h3>
-              <GitHubStyleChart data={dateStats} />
+              <div className="w-full overflow-x-auto">
+                <GitHubStyleChart data={dateStats} />
+              </div>
             </div>
+          </div>
 
-            {/* Pie Charts Section */}
+          <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 md:grid-cols-2">
             <div className="col-span-2 rounded-lg border p-1 sm:p-4 md:col-span-1">
               <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
                 Messages per Participant
@@ -713,33 +715,35 @@ interface TooltipState {
   x: number;
   y: number;
 }
-
 const GitHubStyleChart = ({ data }: GitHubStyleChartProps) => {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const colorScale = ["#9be9a8", "#40c463", "#30a14e", "#216e39"];
 
-  // Get the first and last day of the current year
   const currentYear = new Date().getFullYear();
-  const startOfYear = new Date(currentYear, 0, 1); // January 1st
-  const endOfYear = new Date(currentYear, 11, 31); // December 31st
+  const startOfYear = new Date(currentYear, 0, 1);
+  const endOfYear = new Date(currentYear, 11, 31);
 
-  // Calculate days between start and end of year
-  const daysInYear =
-    Math.round(
-      (endOfYear.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24),
-    ) + 1;
+  const startDate = new Date(startOfYear);
+  startDate.setDate(startDate.getDate() - startDate.getDay());
 
-  // Generate dates array for current year
-  const dates = Array.from({ length: daysInYear }, (_, i) => {
-    const date = new Date(startOfYear);
+  const endDate = new Date(endOfYear);
+  endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
 
-    date.setDate(date.getDate() + i);
-    const dateStr = date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
+  const totalWeeks = Math.ceil(
+    (endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000),
+  );
+
+  const weeks = Array.from({ length: totalWeeks }, (_, weekIndex) => {
+    return Array.from({ length: 7 }, (_, dayIndex) => {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + weekIndex * 7 + dayIndex);
+      const dateStr = date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      return { date, count: data[dateStr] || 0 };
     });
-    return { date, count: data[dateStr] || 0 };
   });
 
   const maxValue = Math.max(...Object.values(data));
@@ -781,22 +785,24 @@ const GitHubStyleChart = ({ data }: GitHubStyleChartProps) => {
   };
 
   return (
-    <div className="relative overflow-x-auto">
-      <div className="min-w-full p-4">
-        <div className="grid-cols-53 grid gap-1">
-          {dates.map((item) => {
-            const dateKey = item.date;
-            const count = item.count;
-            return (
-              <div
-                key={dateKey.toDateString()}
-                className="aspect-square w-3 cursor-pointer rounded-sm transition-colors duration-200 hover:opacity-80"
-                style={{ backgroundColor: getColor(count) }}
-                onMouseEnter={(e) => handleMouseEnter(e, item.date, count)}
-                onMouseLeave={handleMouseLeave}
-              />
-            );
-          })}
+    <div className="relative w-full overflow-x-auto">
+      <div className="flex justify-center gap-4">
+        <div className="grid-cols-53 grid w-max gap-1">
+          {weeks.map((week, weekIndex) => (
+            <div key={weekIndex} className="flex flex-col gap-1">
+              {week.map((item) => (
+                <div
+                  key={item.date.toISOString()}
+                  className="aspect-square w-3 cursor-pointer rounded-sm transition-colors duration-200 hover:opacity-80"
+                  style={{ backgroundColor: getColor(item.count) }}
+                  onMouseEnter={(e) =>
+                    handleMouseEnter(e, item.date, item.count)
+                  }
+                  onMouseLeave={handleMouseLeave}
+                />
+              ))}
+            </div>
+          ))}
         </div>
       </div>
       {tooltip && (
