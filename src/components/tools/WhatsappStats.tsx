@@ -13,6 +13,7 @@ import {
 } from "chart.js";
 import { Bar, Pie, Line } from "react-chartjs-2";
 import { COMMON_WORDS } from "@/lib/words";
+import JSZip from "jszip";
 
 ChartJS.register(
   CategoryScale,
@@ -340,10 +341,41 @@ export default function WhatsappStats() {
     setMediaStats(mediaCountStats);
   };
 
+  const extractTextFromZip = async (zipFile: File): Promise<string | null> => {
+    try {
+      const zip = new JSZip();
+      const contents = await zip.loadAsync(zipFile);
+
+      // Find the first .txt file in the zip
+      const txtFile = Object.values(contents.files).find(
+        (file) => !file.dir && file.name.endsWith(".txt"),
+      );
+
+      if (!txtFile) {
+        setError("No text file found in zip archive");
+        return null;
+      }
+
+      return await txtFile.async("text");
+    } catch (err) {
+      console.error("Error extracting zip:", err);
+      setError("Error extracting zip file");
+      return null;
+    }
+  };
+
   const readFileContent = async (file: File) => {
     try {
-      const text = await file.text();
-      localStorage.setItem("whatsapp-stats-raw", text); // Save raw text
+      let text: string;
+      if (file.name.endsWith(".zip")) {
+        const extractedText = await extractTextFromZip(file);
+        if (!extractedText) return;
+        text = extractedText;
+      } else {
+        text = await file.text();
+      }
+
+      localStorage.setItem("whatsapp-stats-raw", text);
       processTextData(text);
     } catch (err) {
       setError("Error reading file content");
@@ -355,8 +387,11 @@ export default function WhatsappStats() {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (!selectedFile.name.endsWith(".txt")) {
-      setError("Please upload a .txt file");
+    if (
+      !selectedFile.name.endsWith(".txt") &&
+      !selectedFile.name.endsWith(".zip")
+    ) {
+      setError("Please upload a .txt or .zip file");
       return;
     }
 
@@ -370,8 +405,11 @@ export default function WhatsappStats() {
     const droppedFile = e.dataTransfer.files[0];
     if (!droppedFile) return;
 
-    if (!droppedFile.name.endsWith(".txt")) {
-      setError("Please upload a .txt file");
+    if (
+      !droppedFile.name.endsWith(".txt") &&
+      !droppedFile.name.endsWith(".zip")
+    ) {
+      setError("Please upload a .txt or .zip file");
       return;
     }
 
@@ -632,7 +670,7 @@ export default function WhatsappStats() {
     >
       <input
         type="file"
-        accept=".txt"
+        accept=".txt,.zip"
         onChange={handleFileChange}
         className="hidden"
         id="file-upload"
