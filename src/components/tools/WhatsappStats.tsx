@@ -41,26 +41,50 @@ interface SavedState {
   fileName: string;
 }
 
+interface MessageStats {
+  [participant: string]: number;
+}
+
+interface TimeStats {
+  [hour: string]: number;
+}
+
+interface DateStats {
+  [date: string]: number;
+}
+
+interface WordStats {
+  [participant: string]: number;
+}
+
+interface WordFrequency {
+  word: string;
+  count: number;
+}
+
+interface DayActivity {
+  date: string;
+  count: number;
+}
+
+interface MediaStats {
+  [participant: string]: number;
+}
+
 export default function WhatsappStats() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [content, setContent] = useState<string | null>(null);
   const [participants, setParticipants] = useState<string[]>([]);
   const [filteredMessages, setFilteredMessages] = useState<string[]>([]);
-  const [messageStats, setMessageStats] = useState<{ [key: string]: number }>(
-    {},
-  );
-  const [timeStats, setTimeStats] = useState<{ [key: string]: number }>({});
-  const [dateStats, setDateStats] = useState<{ [key: string]: number }>({});
-  const [topDays, setTopDays] = useState<{ date: string; count: number }[]>([]);
-  const [wordStats, setWordStats] = useState<{ [key: string]: number }>({});
-  const [topWords, setTopWords] = useState<{ word: string; count: number }[]>(
-    [],
-  );
-  const [mediaStats, setMediaStats] = useState<{ [key: string]: number }>({});
-  const [allWords, setAllWords] = useState<{ word: string; count: number }[]>(
-    [],
-  );
+  const [messageStats, setMessageStats] = useState<MessageStats>({});
+  const [timeStats, setTimeStats] = useState<TimeStats>({});
+  const [dateStats, setDateStats] = useState<DateStats>({});
+  const [topDays, setTopDays] = useState<DayActivity[]>([]);
+  const [wordStats, setWordStats] = useState<WordStats>({});
+  const [topWords, setTopWords] = useState<WordFrequency[]>([]);
+  const [mediaStats, setMediaStats] = useState<MediaStats>({});
+  const [allWords, setAllWords] = useState<WordFrequency[]>([]);
   const [customWordLength, setCustomWordLength] = useState(8);
 
   const processTextData = (text: string) => {
@@ -130,12 +154,12 @@ export default function WhatsappStats() {
   };
 
   const analyzeMessages = (messages: string[], participants: string[]) => {
-    const stats: { [key: string]: number } = {};
-    const hourStats: { [key: string]: number } = {};
-    const dailyStats: { [key: string]: number } = {};
-    const wordCountStats: { [key: string]: number } = {};
-    const wordFrequency: { [key: string]: number } = {};
-    const mediaCountStats: { [key: string]: number } = {};
+    const stats: MessageStats = {};
+    const hourStats: TimeStats = {};
+    const dailyStats: DateStats = {};
+    const wordCountStats: WordStats = {};
+    const wordFrequency: { [word: string]: number } = {};
+    const mediaCountStats: MediaStats = {};
 
     participants.forEach((p) => (stats[p] = 0));
     for (let i = 0; i < 24; i++) {
@@ -564,6 +588,14 @@ export default function WhatsappStats() {
           </div>
 
           <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 md:grid-cols-2">
+            {/* Add this new section before other charts */}
+            <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+              <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
+                Message Activity (Last Year)
+              </h3>
+              <GitHubStyleChart data={dateStats} />
+            </div>
+
             {/* Pie Charts Section */}
             <div className="col-span-2 rounded-lg border p-1 sm:p-4 md:col-span-1">
               <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
@@ -671,3 +703,114 @@ export default function WhatsappStats() {
     </div>
   );
 }
+
+interface GitHubStyleChartProps {
+  data: DateStats;
+}
+
+interface TooltipState {
+  text: string;
+  x: number;
+  y: number;
+}
+
+const GitHubStyleChart = ({ data }: GitHubStyleChartProps) => {
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const colorScale = ["#9be9a8", "#40c463", "#30a14e", "#216e39"];
+
+  // Get the first and last day of the current year
+  const currentYear = new Date().getFullYear();
+  const startOfYear = new Date(currentYear, 0, 1); // January 1st
+  const endOfYear = new Date(currentYear, 11, 31); // December 31st
+
+  // Calculate days between start and end of year
+  const daysInYear =
+    Math.round(
+      (endOfYear.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24),
+    ) + 1;
+
+  // Generate dates array for current year
+  const dates = Array.from({ length: daysInYear }, (_, i) => {
+    const date = new Date(startOfYear);
+
+    date.setDate(date.getDate() + i);
+    const dateStr = date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    return { date, count: data[dateStr] || 0 };
+  });
+
+  const maxValue = Math.max(...Object.values(data));
+
+  const getColor = (count: number) => {
+    if (count === 0) return "#ebedf0";
+    const scale = count / maxValue;
+    if (scale <= 0.25) return colorScale[0];
+    if (scale <= 0.5) return colorScale[1];
+    if (scale <= 0.75) return colorScale[2];
+    return colorScale[3];
+  };
+
+  const formatDate = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    return date.toLocaleDateString(undefined, options);
+  };
+
+  const handleMouseEnter = (
+    e: React.MouseEvent<HTMLDivElement>,
+    date: Date,
+    count: number,
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltip({
+      text: `${formatDate(date)}: ${count} message${count !== 1 ? "s" : ""}`,
+      x: rect.left + rect.width / 2,
+      y: rect.top - 8,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTooltip(null);
+  };
+
+  return (
+    <div className="relative overflow-x-auto">
+      <div className="min-w-full p-4">
+        <div className="grid-cols-53 grid gap-1">
+          {dates.map((item) => {
+            const dateKey = item.date;
+            const count = item.count;
+            return (
+              <div
+                key={dateKey.toDateString()}
+                className="aspect-square w-3 cursor-pointer rounded-sm transition-colors duration-200 hover:opacity-80"
+                style={{ backgroundColor: getColor(count) }}
+                onMouseEnter={(e) => handleMouseEnter(e, item.date, count)}
+                onMouseLeave={handleMouseLeave}
+              />
+            );
+          })}
+        </div>
+      </div>
+      {tooltip && (
+        <div
+          className="pointer-events-none fixed z-50 rounded-md bg-black/90 px-2 py-1 text-xs text-white"
+          style={{
+            left: `${tooltip.x}px`,
+            top: `${tooltip.y}px`,
+            transform: "translate(-50%, -100%)",
+          }}
+        >
+          {tooltip.text}
+        </div>
+      )}
+    </div>
+  );
+};
