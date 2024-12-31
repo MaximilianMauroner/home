@@ -662,6 +662,15 @@ export default function WhatsappStats() {
     },
   };
 
+  // Add these helper functions
+  const getTotalMessages = () => {
+    return Object.values(messageStats).reduce((sum, count) => sum + count, 0);
+  };
+
+  const getTotalWords = () => {
+    return Object.values(wordStats).reduce((sum, count) => sum + count, 0);
+  };
+
   return (
     <div
       className="rounded-lg border-2 border-dashed p-4 text-center sm:p-8"
@@ -743,6 +752,9 @@ export default function WhatsappStats() {
               <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
                 Messages per Participant
               </h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Total Messages: {getTotalMessages().toLocaleString()}
+              </p>
               <div className="mx-auto aspect-square w-full">
                 <Pie data={chartData} />
               </div>
@@ -752,6 +764,9 @@ export default function WhatsappStats() {
               <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
                 Words per Participant
               </h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Total Words: {getTotalWords().toLocaleString()}
+              </p>
               <div className="mx-auto aspect-square w-full">
                 <Pie data={wordChartData} />
               </div>
