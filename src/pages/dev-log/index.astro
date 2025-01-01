@@ -11,8 +11,9 @@ const logs = await getCollection("log", ({ data }) => {
 });
 
 dayjs.extend(weekOfYear);
-const currentWeek = dayjs().week();
-const currentYear = dayjs().year();
+const saturday = dayjs().day(6);
+const currentWeek = saturday.week();
+const currentYear = saturday.year();
 logs.sort((a, b) => {
   return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
 });
