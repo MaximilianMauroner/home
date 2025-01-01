@@ -130,8 +130,8 @@ const Homepage = () => {
           </span>
           <span className="pt-3">
             i'm usually working on multiple&nbsp;
-            <TechStackItem href="/projects" name="Projects" />. for more info
-            check them out on&nbsp;
+            <TechStackItem href="/tools" name="Tools" />. for more info check
+            them out on&nbsp;
             <TechStackItem
               href="https://github.com/MaximilianMauroner"
               name="GitHub"
