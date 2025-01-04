@@ -29,18 +29,7 @@ ChartJS.register(
 
 // Add emoji regex pattern at the top of the file
 const EMOJI_PATTERN =
-  /[\p{Emoji_Presentation}\p{Emoji}\u{20E3}\u{FE0F}\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/gu;
-
-interface SavedState {
-  participants: string[];
-  messageStats: { [key: string]: number };
-  timeStats: { [key: string]: number };
-  dateStats: { [key: string]: number };
-  topDays: { date: string; count: number }[];
-  wordStats: { [key: string]: number };
-  topWords: { word: string; count: number }[];
-  fileName: string;
-}
+  /(?<!\d)[\p{Emoji_Presentation}\p{Emoji}\u{20E3}\u{FE0F}\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}](?!\d)/gu;
 
 interface MessageStats {
   [participant: string]: number;
@@ -77,6 +66,11 @@ interface MediaStats {
   [participant: string]: number;
 }
 
+interface EmojiStats {
+  emoji: string;
+  count: number;
+}
+
 export default function WhatsappStats() {
   // Add new state for raw messages
   const [rawMessages, setRawMessages] = useState<string[]>([]);
@@ -99,6 +93,7 @@ export default function WhatsappStats() {
   const [allWords, setAllWords] = useState<WordFrequency[]>([]);
   const [customWordLength, setCustomWordLength] = useState(8);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [emojiStats, setEmojiStats] = useState<EmojiStats[]>([]);
 
   // Combined getAvailableYears function to handle both input types
   const getAvailableYears = (input: string[] | DateStats): number[] => {
@@ -238,6 +233,7 @@ export default function WhatsappStats() {
     const wordCountStats: WordStats = {};
     const wordFrequency: { [word: string]: number } = {};
     const mediaCountStats: MediaStats = {};
+    const emojiFrequency: { [emoji: string]: number } = {};
 
     participants.forEach((p) => (stats[p] = 0));
     for (let i = 0; i < 24; i++) {
@@ -246,42 +242,33 @@ export default function WhatsappStats() {
     participants.forEach((p) => (mediaCountStats[p] = 0));
 
     messages.forEach((msg) => {
+      const [datePlusUser, messageContent] = msg.split(": ");
+
       // Count messages per user
-      const [datePlusUser] = msg.split(": ");
       if (datePlusUser && datePlusUser.includes(" - ")) {
         const user = datePlusUser.split(" - ")[1].trim();
         stats[user] = (stats[user] || 0) + 1;
-      }
 
-      // Count messages per hour
-      try {
-        const timeMatch = msg.match(/\d{1,2}:\d{2}/);
-        if (timeMatch) {
-          const hour = parseInt(timeMatch[0].split(":")[0]);
-          hourStats[hour] = (hourStats[hour] || 0) + 1;
+        // Count emojis
+        if (messageContent) {
+          const emojis =
+            messageContent
+              .match(EMOJI_PATTERN)
+              ?.map((item) => {
+                if (item.length > 1) {
+                  return item;
+                }
+                if (item.charCodeAt(0) < 127) return null;
+                return item;
+              })
+              .filter((e) => e !== null) || [];
+          emojis.forEach((emoji) => {
+            emojiFrequency[emoji] = (emojiFrequency[emoji] || 0) + 1;
+          });
         }
-      } catch (e) {
-        console.error("Error parsing time:", e);
-      }
 
-      // Count messages per day
-      try {
-        const dateMatch = msg.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
-        if (dateMatch) {
-          const date = dateMatch[1];
-          dailyStats[date] = (dailyStats[date] || 0) + 1;
-        }
-      } catch (e) {
-        console.error("Error parsing date:", e);
-      }
-
-      // Update word counting logic with enhanced filtering
-      const [userInfo, messageContent] = msg.split(": ");
-      if (userInfo && messageContent && userInfo.includes(" - ")) {
-        const user = userInfo.split(" - ")[1].trim();
-
-        // Skip media messages and filter out emojis
-        if (!messageContent.includes("<Media omitted>")) {
+        // Skip media messages and filter out emojis for word counting
+        if (messageContent && !messageContent.includes("<Media omitted>")) {
           const cleanMessage = messageContent
             .replace(EMOJI_PATTERN, "")
             .replace("<This message was edited>", "");
@@ -303,20 +290,32 @@ export default function WhatsappStats() {
             );
 
           wordCountStats[user] = (wordCountStats[user] || 0) + words.length;
-
           words.forEach((word) => {
             wordFrequency[word] = (wordFrequency[word] || 0) + 1;
           });
         }
-      }
 
-      // Count media messages per user
-      if (msg.includes("<Media omitted>")) {
-        const [userInfo] = msg.split(": ");
-        if (userInfo && userInfo.includes(" - ")) {
-          const user = userInfo.split(" - ")[1].trim();
+        // Count media messages
+        if (messageContent && messageContent.includes("<Media omitted>")) {
           mediaCountStats[user] = (mediaCountStats[user] || 0) + 1;
         }
+      }
+
+      // Count messages per hour and day
+      try {
+        const timeMatch = msg.match(/\d{1,2}:\d{2}/);
+        if (timeMatch) {
+          const hour = parseInt(timeMatch[0].split(":")[0]);
+          hourStats[hour] = (hourStats[hour] || 0) + 1;
+        }
+
+        const dateMatch = msg.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+        if (dateMatch) {
+          const date = dateMatch[1];
+          dailyStats[date] = (dailyStats[date] || 0) + 1;
+        }
+      } catch (e) {
+        console.error("Error parsing time/date:", e);
       }
     });
 
@@ -331,6 +330,12 @@ export default function WhatsappStats() {
       .sort(([, a], [, b]) => b - a)
       .map(([word, count]) => ({ word, count }));
 
+    // Sort and set emoji stats
+    const sortedEmojis = Object.entries(emojiFrequency)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 20)
+      .map(([emoji, count]) => ({ emoji, count }));
+
     setAllWords(sortedWords);
     setTopWords(sortedWords.slice(0, 10));
     setMessageStats(stats);
@@ -339,6 +344,7 @@ export default function WhatsappStats() {
     setTopDays(sortedDays);
     setWordStats(wordCountStats);
     setMediaStats(mediaCountStats);
+    setEmojiStats(sortedEmojis);
   };
 
   const extractTextFromZip = async (zipFile: File): Promise<string | null> => {
@@ -634,6 +640,23 @@ export default function WhatsappStats() {
     [allWords, customWordLength],
   );
 
+  // Add emoji chart data
+  const emojiChartData = useMemo(
+    () => ({
+      labels: emojiStats.map((item) => item.emoji),
+      datasets: [
+        {
+          label: "Emoji frequency",
+          data: emojiStats.map((item) => item.count),
+          backgroundColor: "rgba(139, 92, 246, 0.5)",
+          borderColor: "rgb(139, 92, 246)",
+          borderWidth: 1,
+        },
+      ],
+    }),
+    [emojiStats],
+  );
+
   // Add shared chart options for better mobile display
   const sharedBarChartOptions = {
     indexAxis: "y" as const,
@@ -796,6 +819,19 @@ export default function WhatsappStats() {
               </h3>
               <div>
                 <Line data={dailyChartData} options={sharedLineChartOptions} />
+              </div>
+            </div>
+
+            {/* Add this before other charts */}
+            <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+              <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
+                Most Used Emojis
+              </h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Top {emojiStats.length} emojis used in chat
+              </p>
+              <div>
+                <Bar data={emojiChartData} options={sharedBarChartOptions} />
               </div>
             </div>
 
