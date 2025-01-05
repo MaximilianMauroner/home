@@ -1,6 +1,13 @@
 # Personal Website
 
-My personal website built with Astro where I share blogs, development logs, and useful tools.
+My personal website and blog, built with Astro. Visit at [mauroner.net](https://www.mauroner.net/)
+
+## 👋 About
+
+This is where I document my journey, share technical insights, and build useful tools. Feel free to explore my:
+- Development logs tracking my projects' progress
+- Blog posts about tech, programming, and personal experiences
+- Tools I've built to solve specific problems
 
 ## 🚀 Features
 
@@ -50,3 +57,9 @@ My personal website built with Astro where I share blogs, development logs, and 
 - Blog posts go in `src/content/blog/`
 - Dev logs go in `src/content/log/`
 - New tools can be added to `src/pages/tools/`
+
+## 📫 Contact
+
+Feel free to reach out or follow my work:
+- Website: [mauroner.net](https://www.mauroner.net)
+- GitHub: [@mauroner](https://github.com/mauroner)
