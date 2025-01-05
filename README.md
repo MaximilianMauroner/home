@@ -62,4 +62,4 @@ This is where I document my journey, share technical insights, and build useful 
 
 Feel free to reach out or follow my work:
 - Website: [mauroner.net](https://www.mauroner.net)
-- GitHub: [@mauroner](https://github.com/mauroner)
+- GitHub: [@maximilianmauroner](https://github.com/MaximilianMauroner)
