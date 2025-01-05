@@ -12,7 +12,7 @@ interface Props {
 const { item, isMobile = false } = Astro.props;
 const mobileClass = isMobile ? " block sm:hidden" : " sm:block hidden";
 
-if (item.defaultHidden) return null;
+if (item.defaultHidden && !item.current) return null;
 ---
 
 {
