@@ -3,13 +3,40 @@ layout: "@/layouts/PostLayout.astro"
 title: "Spotify Stats Export"
 description: How to visualize your entire spotify history.
 tags: ["website", "tools", "spotify", "data-analisys"]
-image: "/src/assets/log/2024-46.png"
+image: "/src/assets/log/2024-51.png"
 published: true
 releaseDate: 2024-12-21
 ---
 
-- Created the option to visiualize your entire spoitify history, and stats (with possible additions in the future)
-- explain how to export data from spotify
-- added tools tab, where you can see all the tools i've created 
-- plans for the future
-- merry christmas
+# Spotify Stats Visualizer
+I was having the problem that [last.fm/](https://www.last.fm/) was not tracking my spotify history correctly, 
+or rather did not have the full history that spotify has.
+So I decided to create a tool that would allow me to visualize my entire spotify history. [spotify-stats](http://localhost:4321/tools/spotify-stats)
+
+Right now it's just a small tool that 
+allows you to upload the spotify export and then visualize your favorite artists and songs, but I plan to add more features in the future.
+
+The main pain point is that everything is done in memory on the client, which is not ideal for the filering and sorting of the data, 
+but that was the fastest way to get it done. Later on I plan on trying to use some browser based databse to store the data.
+
+## How do you get the data?
+Well since another spotify related tool called stats.fm already has an article I will point you to that article. [Spotify Import Guide](https://support.stats.fm/docs/import/spotify-import/)
+
+And if you like it please consider supporting them, as their app is very cool and the inspiration for this tool. The only diffeerence is that I wanted to make it free and open source.
+
+# Tools tab
+I added a tools tab where you can see all the tools I've created, and I plan to add more tools in the future.
+For now I will only add the tools that are part of my website, but in the future I might just put tools and projects both under the same category.
+
+# Plans for the future
+For the next year the main focus is to get the website redisigned. I want to make it more user friendly and add more features.
+
+Then I also want to make sure that the `projects` and `tools` tabs are up to date and that I have a good way to show all the projects and tools I've created. 
+With any additional information that explains the use-case for the tool or project.
+
+Other than that I finally need to find a solution to the google crawling issue, as I'm not sure why it's not crawling the correct domain right now.
+But that sounds like a problem for future me.
+
+---
+
+***Merry Christmas and have a nice holiday season.***
