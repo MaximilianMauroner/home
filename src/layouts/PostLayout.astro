@@ -15,7 +15,6 @@ interface Props {
 }
 
 const { frontmatter, headings, content } = Astro.props;
-console.log(Astro.props)
 ---
 
 <DefaultLayout description={frontmatter.description} title={frontmatter.title}>
@@ -23,9 +22,9 @@ console.log(Astro.props)
     {
       frontmatter.image && (
         <div
-         class="w-full h-full object-cover"           
+          class="w-full h-full object-cover"           
           transition:name={"hero-" + frontmatter.image}
-          data-transition-name={"hero-" + frontmatter.image}>
+          >
           <PostImageLoader
             imagePath={frontmatter.image}
             altText={frontmatter.title}
