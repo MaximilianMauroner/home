@@ -26,14 +26,14 @@ export default function TableOfContents({
       for (let i = headings.length - 1; i >= 0; i--) {
         const heading = headings[i];
         const headingElement = document.querySelector(
-          `[id^="${heading.slug}"]`
+          `[id^="${heading.slug}"]`,
         );
         if (headingElement) {
           if (headingElement.id !== heading.slug) {
             setHeadings((prev) =>
               prev.map((h, idx) =>
-                idx === i ? { ...h, id: headingElement.id } : h
-              )
+                idx === i ? { ...h, id: headingElement.id } : h,
+              ),
             );
           }
           const top = headingElement.getBoundingClientRect().top - offset;
@@ -74,7 +74,7 @@ export default function TableOfContents({
 
   return (
     <div
-      className="fixed bottom-2 sm:left-2 sm:top-1/2 sm:-translate-y-1/2 z-10"
+      className="fixed bottom-2 z-10 sm:left-2 sm:top-1/2 sm:-translate-y-1/2"
       ref={wrapperRef}
     >
       {!isHovered && (

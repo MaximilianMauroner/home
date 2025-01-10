@@ -4,17 +4,10 @@ import ImgAstronaut from "/public/astronaut.avif";
 import { Picture } from "astro:assets";
 
 const navigation = [
-  { name: "who am i", href: "/", regex: "^/$", current: false },
-  { name: "blog", href: "/blog/", regex: "^/blog/", current: false },
+  // { name: "who am i", href: "/", regex: "^/$", current: false },
   { name: "dev log", href: "/dev-log/", regex: "^/dev-log/", current: false },
+  { name: "blog", href: "/blog/", regex: "^/blog/", current: false },
   { name: "tools", href: "/tools/", regex: "^/tools/", current: false },
-  {
-    name: "projects",
-    href: "/projects/",
-    regex: "^/projects/",
-    current: false,
-    defaultHidden: true,
-  },
   {
     name: "tags",
     href: "/tags/",

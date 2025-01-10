@@ -2,62 +2,77 @@
 layout: "@/layouts/PostLayout.astro"
 title: "Obsidian as a CMS - setup"
 description: How/Why i migrated from qwik to Astro for my website.
-tags: ["obsidian", "cms", "dataview", "diary", "quick-add", "templates", "scripts", "shimmering-focus"]
+tags:
+  [
+    "obsidian",
+    "cms",
+    "dataview",
+    "diary",
+    "quick-add",
+    "templates",
+    "scripts",
+    "shimmering-focus",
+  ]
 image: "/src/assets/blog/2024-49.png"
 published: true
 releaseDate: 2024-12-11
 ---
-import { Image } from 'astro:assets';
-import Johnnydecimal from '@/assets/blog/johnnydecimal.png';
-import Obsidiangraph from '@/assets/blog/obsidian-graph.png';
-import QuickAddExamplel from '@/assets/blog/quick-add-example.png';
-import ObsidianShimmering from '@/assets/blog/obsidian-shimmering.png';
+
+import { Image } from "astro:assets";
+import Johnnydecimal from "@/assets/blog/johnnydecimal.png";
+import Obsidiangraph from "@/assets/blog/obsidian-graph.png";
+import QuickAddExamplel from "@/assets/blog/quick-add-example.png";
+import ObsidianShimmering from "@/assets/blog/obsidian-shimmering.png";
 
 # Introduction
-After literal years of trying to find a solution that combines notions ability to handle data 
-and logseqs ability to handle graphs I think I've finally found a solution. Obsidian.
 
+After literal years of trying to find a solution that combines notions ability to handle data
+and logseqs ability to handle graphs I think I've finally found a solution. Obsidian.
 
 ## Setting Up Obsidian
 
 ### Step 1: Download and Install
+
 Start by downloading and installing [Obsidian](https://obsidian.md/).
 
 ### Step 2: Organizing Your Notes
+
 Decide on an organizational system for your notes. I use a modified version of the [Johnny.Decimal System](https://johnnydecimal.com/) combined with the PARA system:
 
 - **Projects**: Active projects with tasks and related materials.
 - **Areas**: Ongoing areas of responsibility that aren't projects.
 - **Resources**: Reference materials you might need later.
 - **Sprint**: Weekly sprint planning and task management.
-<Image src={Johnnydecimal} alt="Folder structure inside obsidian" />
-
-
+  <Image src={Johnnydecimal} alt="Folder structure inside obsidian" />
 
 ## Why Obsidian
-I choose Obsidian because it allows you to control your data while providing database-like power through plugins and customization. 
-After trying other tools like Notion, Logseq, Capacities, and Evernote, I found Obsidian to be the best. 
+
+I choose Obsidian because it allows you to control your data while providing database-like power through plugins and customization.
+After trying other tools like Notion, Logseq, Capacities, and Evernote, I found Obsidian to be the best.
 As you can always use the markdown as a basis and integrate it with powerful plugins. Your data is always yours, and you can always export it.
 
 ### Key Advantages
+
 - **Data Ownership**: Your notes are stored locally in Markdown format.
 - **Customizability**: Obsidian can be tailored to fit your specific needs.
 - **Developer-Friendly**: Directly modify and script your workflow.
 
-----
+---
 
 But for the obsidian to work like I wanted it to, some things had to change.
 
 # Plugins:
+
 I tried to keep the list as small as possible and only include plugins I cannot live without, and I excluded the ones which are included with obsidian. This is community plugins only.
 
-
 ## Dataview
-Dataview is plugin that allows you to query your notes, and it's the most powerful plugin I have ever used. 
+
+Dataview is plugin that allows you to query your notes, and it's the most powerful plugin I have ever used.
 It's like having a database in your notes. I use it to query my notes, and to create a CMS like system.
 And since you can use DataviewJs you can basically do anything:
 
 This is an example where I can figure out how often I mentioned each person throught the year in my diary.
+
 ```js
 const folder = "20 Areas/20.6 Diary/2024"; // Replace with your folder path
 const pages = dv.pages(`"${folder}"`);
@@ -65,32 +80,57 @@ const linkCounts = {};
 
 // Count unique links per page
 for (const page of pages) {
-    const uniqueLinks = new Set(page.file.outlinks.map(link => link.path)); // Collect unique links in the current page
-    uniqueLinks.forEach(linkPath => {
-        linkCounts[linkPath] = (linkCounts[linkPath] || 0) + 1;
-    });
+  const uniqueLinks = new Set(page.file.outlinks.map((link) => link.path)); // Collect unique links in the current page
+  uniqueLinks.forEach((linkPath) => {
+    linkCounts[linkPath] = (linkCounts[linkPath] || 0) + 1;
+  });
 }
 
 // Convert to an array, sort by frequency, and take the top 3
-const sortedLinks = Object.entries(linkCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+const sortedLinks = Object.entries(linkCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 5);
 
 // Display as a table
 dv.table(["Person Mentioned", "Amount of Times Mentioned"], sortedLinks);
 ```
+
 ## Diary - Data mangement
+
 On that note, one thing I found that was very important was the mindshift, into linking (tagging) everything whenever possible. If you have anything that should be linked, link it to a date.
 If you do it long enough you will end up with a graph of your life, and you can see how things are connected, and how/why/when you did what you did.
-<Image src={Obsidiangraph} alt="The graph inside obsidian after i migrated only a part of my CMS to obsidian" />
-Right now I have migrated not even 1/10th of my notion to obsidian, and it already looks like this. I can't wait to see how it will look like at the end.
+
+<Image
+  src={Obsidiangraph}
+  alt="The graph inside obsidian after i migrated only a part of my CMS to obsidian"
+/>
+Right now I have migrated not even 1/10th of my notion to obsidian, and it
+already looks like this. I can't wait to see how it will look like at the end.
 
 # QuickAdd
+
 Now to the meat of the subject, why I like obsidian so much, the QuickAdd plugin.
 QuickAdd enhances note creation with templates and scripts. For instance, you can use it to create a new note (e.g., for a movie) and autofill its properties:
-<Image src={QuickAddExamplel} alt="Shoing a modal pop-up where quick-add can be used to add movies" />
+
+<Image
+  src={QuickAddExamplel}
+  alt="Shoing a modal pop-up where quick-add can be used to add movies"
+/>
 
 So scripts is the part where it clicked for me, how powerful this plugin really is. I wanted to create a new file (movie/show) and then autofill it's properties. As is shown in this video.
+
 <div class="relative w-full pb-[56.25%]">
-<iframe  class="absolute top-0 left-0 w-full h-full" width="560" height="315" src="https://www.youtube-nocookie.com/embed/t-hKCgGhQuk?si=BlnOmXmrx6BF22cX&amp;controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+  <iframe
+    class="absolute left-0 top-0 h-full w-full"
+    width="560"
+    height="315"
+    src="https://www.youtube-nocookie.com/embed/t-hKCgGhQuk?si=BlnOmXmrx6BF22cX&amp;controls=0"
+    title="YouTube video player"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allowfullscreen
+  ></iframe>
 </div>
 
 For more details, check the [documentation](https://quickadd.obsidian.guide/docs/)
@@ -98,27 +138,30 @@ For more details, check the [documentation](https://quickadd.obsidian.guide/docs
 ## Templates
 
 But I modified the tempalte a bit.
+
 ```md
 ---
 title: "{{VALUE:Title}}"
-franchise: 
+franchise:
 type: {{VALUE:typeLink}}
 genres: {{VALUE:genreLinks}}
-cover: 
-status: 
-rating: 
-progress: 
-total: 
+cover:
+status:
+rating:
+progress:
+total:
 episodeLen:
-watchedDate: 
+watchedDate:
 year:
 ---
 
 > [!question] # ⭐️ WHAT IT'S ABOUT
+>
 > - ⭐️ {{VALUE:Plot}}
 
 > [!note] # 🌙 THOUGHTS AND FEELINGS
-> - 🌙 
+>
+> - 🌙
 
 <image/>
 {{VALUE:Poster}}
@@ -126,16 +169,20 @@ year:
 ---
 
 > [!done] # ✨️ + EXTRAS
-> - ✨️ 
+>
+> - ✨️
 
 ---
 
 > [!tip] # 🪐 WHAT DID I FEEL WHEN FINISHED THE MOVIE/SHOW?
+>
 > - 🪐
 ```
+
 And as you can see, there is a random `{{VALUE:Poster}}` in there, which is a link to a cover image. But I need that image saved in the same folder as the note, so I created a script for that.
 
 ## Scripts
+
 ```js
 // Function to extract all links from file content
 async function getLinksFromContent(content) {
@@ -176,7 +223,7 @@ async function writeMediaToDisk(app, activeFile, links) {
   const activeFilePath = activeFile.path;
   const parentDir = activeFilePath.substring(
     0,
-    activeFilePath.lastIndexOf("/")
+    activeFilePath.lastIndexOf("/"),
   );
   const attachmentsPath = `${parentDir}/attachments`;
 
@@ -247,20 +294,25 @@ async function start(params) {
   const app = params.app;
   await processLinks(app);
 }
-
 ```
 
-This script basically fetches any link, tries to download them (if it's an image) and then saves it in the attachments folder. 
+This script basically fetches any link, tries to download them (if it's an image) and then saves it in the attachments folder.
 Then it replaces the text of the link and adds the filename in the page properties
 
 # Why Obsidian is Ideal for Developers
 
 Obsidian's flexibility allows developers to:
+
 - Automate workflows with scripts.
 - Customize UI with CSS.
 
 **And that is why I choose obsidian as my CMS.**
 
 # Shmmering Focus
+
 Finally, the Shimmering Focus theme deserves a special mention. It’s the most polished and useful theme I’ve used. You can tweak it with the Style Settings plugin to make it your own.
-<Image src={ObsidianShimmering} alt="Obsidian Shimmering Focus theme displayed via a templat file" />
+
+<Image
+  src={ObsidianShimmering}
+  alt="Obsidian Shimmering Focus theme displayed via a templat file"
+/>

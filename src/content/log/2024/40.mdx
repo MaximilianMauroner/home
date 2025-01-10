@@ -7,34 +7,43 @@ image: "/src/assets/log/2024-40.png"
 published: true
 releaseDate: 2024-10-05
 ---
-import { Image } from 'astro:assets';
-import IFTTTFirstImg from '@/assets/log/ifttt_1.png';
-import IFTTTSecondImg from '@/assets/log/ifttt_2.png';
-import IFTTTThirdImg from '@/assets/log/ifttt_3.png';
-import ReclaimImg from '@/assets/log/reclaim.png';
-import TodoistImg from '@/assets/log/todoist.png';
-import UniversityImg from '@/assets/log/university.png';
+
+import { Image } from "astro:assets";
+import IFTTTFirstImg from "@/assets/log/ifttt_1.png";
+import IFTTTSecondImg from "@/assets/log/ifttt_2.png";
+import IFTTTThirdImg from "@/assets/log/ifttt_3.png";
+import ReclaimImg from "@/assets/log/reclaim.png";
+import TodoistImg from "@/assets/log/todoist.png";
+import UniversityImg from "@/assets/log/university.png";
 
 # Integrate Reclaim with TickTick
+
 ## The Problem ⚠️
-Well since I'm a big fan of [TickTick](https://ticktick.com/) 
+
+Well since I'm a big fan of [TickTick](https://ticktick.com/)
 and have been using it for like almost 10 years I would like to somehow
-integrate it with my other favourite productivity app [reclaim.ai](https://reclaim.ai/). 
+integrate it with my other favourite productivity app [reclaim.ai](https://reclaim.ai/).
 And since currently there is no reclaim integration for ticktick I thought I might as well "make" one.
 
 ## The Plan 💡
 
 Prerequisites:
+
 - You need to have a [TickTick](https://ticktick.com/) account
 - You need to have a [Reclaim](https://reclaim.ai/) account and a subscription if you want to use Todoist
 - You need to have a [Todoist](https://todoist.com/) account
 - You need to have an [IFTTT](https://ifttt.com/) account
 
 Caveats:
+
 - If you don't have a IFTTT account it will run only once per hour ...
+
 ---
+
 ## The Execution ✅
+
 I've got a folder for everything University related inside TickTick (which are the tasks I want to sync)
+
 <Image src={UniversityImg} alt="University folder in TickTick" />
 
 Then I create a project in Todoist where all my tasks are synced to.
@@ -48,25 +57,29 @@ If a new task is created in TickTick, inside the university folder create a new 
 <Image src={IFTTTFirstImg} alt="IFTTT applet summary" />
 
 ### TickTick Setup 🛠️
+
 <Image src={IFTTTSecondImg} alt="TickTick setup for the hook inside IFTTT" />
 
 ### Todoist Setup 🛠️
+
 <Image src={IFTTTThirdImg} alt="Todoist setup for the action inside IFTTT" />
 
 ## The Result
 
 The last thing you need to do is setup the integration inside Reclaim
+
 <Image src={ReclaimImg} alt="TickTick integration setup inside Reclaim" />
 🎉
 
 ---
 
-
 # Conclusion 🤝
-This is a very simple integration, but it works very well, the only problem is that it runs only once per hour. 
+
+This is a very simple integration, but it works very well, the only problem is that it runs only once per hour.
 Maybe there are alternatives to IFTTT that work better but for now this should work well enough.
 
-PS: I sent a message to reclaim support about this, and they said 
+PS: I sent a message to reclaim support about this, and they said
+
 > We don't currently have an integration with TickTick, but I do see that we have a feature request for this though
 
 Which could mean that they are already working on it. 🙏

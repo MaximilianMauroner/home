@@ -25,9 +25,9 @@ export const GET: APIRoute = async ({ site }) => {
         });
     });
     return rss({
-        title: 'Maximilians Blog/Log feed',
-        description: 'This contains all the blog and log posts from my page',
+        title: "Maximilians Blog/Log feed",
+        description: "This contains all the blog and log posts from my page",
         site: site,
         items: posts,
     });
-}
+};

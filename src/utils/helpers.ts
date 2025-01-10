@@ -13,7 +13,10 @@ export const kebabCase = (str: string) =>
         .replace(/[\s_]+/g, "-")
         .toLowerCase();
 
-export const getTags = (blogs: CollectionEntry<"blog">[], logs: CollectionEntry<"log">[]) => {
+export const getTags = (
+    blogs: CollectionEntry<"blog">[],
+    logs: CollectionEntry<"log">[],
+) => {
     const tagCounts = new Map<string, number>();
 
     for (const fM of blogs) {

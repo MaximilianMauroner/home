@@ -16,12 +16,12 @@ export default function TagView({
   preSelectedTag,
 }: TagViewProps) {
   const [selectedTag, setSelectedTag] = useState<string | null>(
-    preSelectedTag ?? null
+    preSelectedTag ?? null,
   );
 
   const searchQueryInPost = (
     search: string,
-    post: CollectionEntry<"blog"> | CollectionEntry<"log">
+    post: CollectionEntry<"blog"> | CollectionEntry<"log">,
   ) => {
     if (search == "") {
       return true;
@@ -44,19 +44,18 @@ export default function TagView({
 
   const [search, setSearch] = useState<string>("");
 
-
-
   const initialBlogs = blogs
-    .filter((blog) => selectedTag ? blog.data.tags.includes(selectedTag) : true)
+    .filter((blog) =>
+      selectedTag ? blog.data.tags.includes(selectedTag) : true,
+    )
     .filter((blog) => searchQueryInPost(search, blog));
 
   const initialLogs = logs
-    .filter((log) => selectedTag ? log.data.tags.includes(selectedTag) : true)
+    .filter((log) => (selectedTag ? log.data.tags.includes(selectedTag) : true))
     .filter((log) => searchQueryInPost(search, log));
 
   const [selectedBlogs, setSelectedBlogs] = useState(initialBlogs);
   const [selectedLogs, setSelectedLogs] = useState(initialLogs);
-  
 
   const activePostCount = selectedBlogs.length + selectedLogs.length;
   const totalPostCount = blogs.length + logs.length;
@@ -64,12 +63,12 @@ export default function TagView({
   const filterFunction = () => {
     const selBlogs = blogs
       .filter((blog) =>
-        selectedTag ? blog.data.tags.includes(selectedTag) : true
+        selectedTag ? blog.data.tags.includes(selectedTag) : true,
       )
       .filter((blog) => searchQueryInPost(search, blog));
     const selLogs = logs
       .filter((log) =>
-        selectedTag ? log.data.tags.includes(selectedTag) : true
+        selectedTag ? log.data.tags.includes(selectedTag) : true,
       )
       .filter((log) => searchQueryInPost(search, log));
 
@@ -80,7 +79,6 @@ export default function TagView({
   useEffect(() => {
     filterFunction();
   }, [selectedTag, search]);
-
 
   return (
     <>
@@ -128,54 +126,56 @@ const TagList = ({
         className="flex flex-wrap gap-2 sm:gap-6 md:gap-3 lg:gap-4"
         aria-label="All tags with blog post counts"
       >
-        {Array.from(tags)    .sort((a, b) => {
+        {Array.from(tags)
+          .sort((a, b) => {
             return a[0].localeCompare(b[0]);
-          }).map(([tagName, count]) => (
-          <li key={tagName}>
-            <button
-              onClick={() => {
-                if (selectedTag === tagName) {
-                  setSelectedTag(null);
-                  window.history.replaceState({}, "", "/tags/");
-                  document.title = "Tags";
-                } else {
-                  setSelectedTag(tagName);
-                  window.history.pushState({}, "", `/tags/${tagName}`);
-                  document.title = tagName;
+          })
+          .map(([tagName, count]) => (
+            <li key={tagName}>
+              <button
+                onClick={() => {
+                  if (selectedTag === tagName) {
+                    setSelectedTag(null);
+                    window.history.replaceState({}, "", "/tags/");
+                    document.title = "Tags";
+                  } else {
+                    setSelectedTag(tagName);
+                    window.history.pushState({}, "", `/tags/${tagName}`);
+                    document.title = tagName;
+                  }
+                }}
+                className={
+                  "relative inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold text-foreground" +
+                  (selectedTag === tagName
+                    ? " outline-none ring-2 ring-ring"
+                    : "")
                 }
-              }}
-              className={
-                "relative inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold text-foreground" +
-                (selectedTag === tagName
-                  ? " outline-none ring-2 ring-ring"
-                  : "")
-              }
-            >
-              <span>{tagName}</span>
-              <span className="pl-1 text-sm text-muted-foreground">
-                {count}
-              </span>
-              {selectedTag === tagName && (
-                <span className="absolute right-0 top-0 -translate-y-[50%] translate-x-[50%] rounded-full bg-black text-white">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="1.5"
-                    stroke="currentColor"
-                    className="size-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18 18 6M6 6l12 12"
-                    />
-                  </svg>
+              >
+                <span>{tagName}</span>
+                <span className="pl-1 text-sm text-muted-foreground">
+                  {count}
                 </span>
-              )}
-            </button>
-          </li>
-        ))}
+                {selectedTag === tagName && (
+                  <span className="absolute right-0 top-0 -translate-y-[50%] translate-x-[50%] rounded-full bg-black text-white">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.5"
+                      stroke="currentColor"
+                      className="size-4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18 18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
       </ul>
     </div>
   );
