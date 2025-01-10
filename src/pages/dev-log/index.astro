@@ -43,7 +43,8 @@ const logs = await getLogs();
             <LogPreview log={log}>
               <div
                 slot="image"
-                transition:name={"hero" + log.id}
+                data-transition-name={"hero-" + log.data.image}
+                transition:name={"hero-" + log.data.image}
                 class="absolute inset-0 overflow-hidden rounded-lg"
               >
                 <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />

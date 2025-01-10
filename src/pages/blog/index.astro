@@ -33,7 +33,8 @@ blogs.sort((a, b) => {
             <BlogPreview blog={blog}>
               <div
                 slot="image"
-                transition:name={"hero" + blog.id}
+                data-transition-name={"hero-" + blog.data.image}
+                transition:name={"hero-" + blog.data.image}
                 class="absolute inset-0 overflow-hidden rounded-lg"
               >
                 <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />
