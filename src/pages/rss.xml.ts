@@ -1,4 +1,4 @@
-import { getBlogs, getLogs } from '@/utils/helpers';
+import { getBlogs, getLogs } from '@/utils/server/content';
 import rss from '@astrojs/rss';
 import type { APIRoute } from 'astro';
 

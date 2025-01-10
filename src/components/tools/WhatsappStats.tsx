@@ -43,11 +43,6 @@ interface DateStats {
   [date: string]: number;
 }
 
-interface DateStatsWithYears {
-  stats: DateStats;
-  availableYears: number[];
-}
-
 interface WordStats {
   [participant: string]: number;
 }
@@ -80,9 +75,7 @@ export default function WhatsappStats() {
   );
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [content, setContent] = useState<string | null>(null);
   const [participants, setParticipants] = useState<string[]>([]);
-  const [filteredMessages, setFilteredMessages] = useState<string[]>([]);
   const [messageStats, setMessageStats] = useState<MessageStats>({});
   const [timeStats, setTimeStats] = useState<TimeStats>({});
   const [dateStats, setDateStats] = useState<DateStats>({});
@@ -158,9 +151,7 @@ export default function WhatsappStats() {
     localStorage.removeItem("whatsapp-stats-raw");
     setFile(null);
     setError(null);
-    setContent(null);
     setParticipants([]);
-    setFilteredMessages([]);
     setMessageStats({});
     setTimeStats({});
     setDateStats({});

@@ -1,7 +1,7 @@
 ---
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
 import TagView from "@/components/TagView";
-import { getBlogs, getLogs, getTags } from "@/utils/helpers";
+import { getBlogs, getLogs, getTags } from "@/utils/server/content";
 
 const blogs = await getBlogs();
 const logs = await getLogs();

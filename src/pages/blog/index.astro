@@ -2,7 +2,7 @@
 import BlogPreview from "@/components/BlogPreview";
 import PostImageLoader from "@/components/PostImageLoader.astro";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { getBlogs } from "@/utils/helpers";
+import { getBlogs } from "@/utils/server/content";
 
 const blogs = await getBlogs();
 blogs.sort((a, b) => {
