@@ -2,21 +2,15 @@
 import LogPreview from "@/components/LogPreview";
 import PostImageLoader from "@/components/PostImageLoader.astro";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { getCollection } from "astro:content";
-import dayjs from "dayjs";
-import weekOfYear from "dayjs/plugin/weekOfYear";
+import { getLogs } from "@/utils/server/content";
+// import dayjs from "dayjs";
+// import weekOfYear from "dayjs/plugin/weekOfYear";
 
-const logs = await getCollection("log", ({ data }) => {
-  return import.meta.env.PROD ? data.published === true : true;
-});
+const logs = await getLogs();
 
-dayjs.extend(weekOfYear);
-const saturday = dayjs().day(6);
-const currentWeek = saturday.week();
-const currentYear = saturday.year();
-logs.sort((a, b) => {
-  return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
-});
+// dayjs.extend(weekOfYear);
+// const currentWeek = dayjs().week();
+// const currentYear = dayjs().year();
 ---
 
 <DefaultLayout
@@ -49,7 +43,7 @@ logs.sort((a, b) => {
             <LogPreview log={log}>
               <div
                 slot="image"
-                transition:name={"hero" + log.id}
+                transition:name={"hero-" + log.data.image}
                 class="absolute inset-0 overflow-hidden rounded-lg"
               >
                 <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />

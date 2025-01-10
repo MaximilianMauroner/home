@@ -1,7 +1,7 @@
-import { calculateRelativeDate } from "@/utils/helpers";
 import type { CollectionEntry } from "astro:content";
 import TagsList from "./TagsList";
 import type { ReactNode } from "react";
+import { calculateRelativeDate } from "@/utils/helpers";
 
 export default function BlogPreview({
   blog,

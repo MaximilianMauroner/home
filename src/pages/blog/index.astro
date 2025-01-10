@@ -2,11 +2,9 @@
 import BlogPreview from "@/components/BlogPreview";
 import PostImageLoader from "@/components/PostImageLoader.astro";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { getCollection } from "astro:content";
+import { getBlogs } from "@/utils/server/content";
 
-const blogs = await getCollection("blog", ({ data }) => {
-  return import.meta.env.PROD ? data.published === true : true;
-});
+const blogs = await getBlogs();
 blogs.sort((a, b) => {
   return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
 });
@@ -35,7 +33,7 @@ blogs.sort((a, b) => {
             <BlogPreview blog={blog}>
               <div
                 slot="image"
-                transition:name={"hero" + blog.id}
+                transition:name={"hero-" + blog.data.image}
                 class="absolute inset-0 overflow-hidden rounded-lg"
               >
                 <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />

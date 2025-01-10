@@ -83,9 +83,6 @@ const Homepage = () => {
 
   return (
     <>
-      <h1 className="invisible">
-        {firstname} <br /> {lastname}
-      </h1>
       <div className="mx-auto max-w-7xl">
         <div className="my-10 grid w-full grid-flow-col grid-cols-5 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
           {firstname.split("").map((letter, index) => (

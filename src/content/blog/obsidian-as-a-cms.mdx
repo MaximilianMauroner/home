@@ -130,6 +130,7 @@ So scripts is the part where it clicked for me, how powerful this plugin really 
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
     referrerpolicy="strict-origin-when-cross-origin"
     allowfullscreen
+    loading="lazy"
   ></iframe>
 </div>
 
@@ -143,8 +144,8 @@ But I modified the tempalte a bit.
 ---
 title: "{{VALUE:Title}}"
 franchise:
-type: {{VALUE:typeLink}}
-genres: {{VALUE:genreLinks}}
+type: { { VALUE:typeLink } }
+genres: { { VALUE:genreLinks } }
 cover:
 status:
 rating:

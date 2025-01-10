@@ -1,14 +1,13 @@
 ---
-import { getCollection, render } from "astro:content";
+import { getBlogs } from "@/utils/server/content";
+import { render } from "astro:content";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 
 dayjs.extend(utc);
 
 export async function getStaticPaths() {
-  const blogEntries = await getCollection("blog", ({ data }) => {
-    return import.meta.env.PROD ? data.published === true : true;
-  });
+  const blogEntries = await getBlogs();
   return blogEntries.map((entry) => ({
     params: { slug: entry.id },
     props: { entry },
@@ -17,7 +16,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 
-if (entry.data.published !== true) {
+if (entry.data.published !== true && import.meta.env.PROD) {
   throw Astro.redirect("/404");
 }
 

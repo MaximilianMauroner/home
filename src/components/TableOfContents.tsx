@@ -8,10 +8,13 @@ export default function TableOfContents({
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [headings, setHeadings] = useState(headingsArr);
+
   const [currentHeading, setCurrentHeading] = useState(headings[0]?.slug ?? "");
   const [isHovered, setIsHovered] = useState(false);
 
   const handleScroll = () => {
+    if (headings.length === 0) return null;
+
     const offset = 80 + 16 + 1;
     let activeHeading = "";
 
@@ -71,6 +74,8 @@ export default function TableOfContents({
   useEffect(() => {
     handleScroll();
   });
+
+  if (headings.length === 0) return null;
 
   return (
     <div

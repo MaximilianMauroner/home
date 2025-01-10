@@ -1,7 +1,7 @@
 ---
 import NavItem from "./NavItem.astro";
 import ImgAstronaut from "/public/astronaut.avif";
-import { Picture } from "astro:assets";
+import { Image } from "astro:assets";
 
 const navigation = [
   // { name: "who am i", href: "/", regex: "^/$", current: false },
@@ -41,9 +41,8 @@ navigation.forEach((item) => {
   >
     <a href="/" class="flex items-center gap-2 font-medium">
       <div class="my-auto flex h-20 w-20 items-center justify-center">
-        <Picture
+        <Image
           src={ImgAstronaut}
-          formats={["avif"]}
           loading="eager"
           alt="Astronaut with laptop"
         />
