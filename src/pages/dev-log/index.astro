@@ -2,20 +2,15 @@
 import LogPreview from "@/components/LogPreview";
 import PostImageLoader from "@/components/PostImageLoader.astro";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { getCollection } from "astro:content";
+import { getLogs } from "@/utils/helpers";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 
-const logs = await getCollection("log", ({ data }) => {
-  return import.meta.env.PROD ? data.published === true : true;
-});
+const logs = await getLogs();
 
 dayjs.extend(weekOfYear);
 const currentWeek = dayjs().week();
 const currentYear = dayjs().year();
-logs.sort((a, b) => {
-  return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
-});
 ---
 
 <DefaultLayout
