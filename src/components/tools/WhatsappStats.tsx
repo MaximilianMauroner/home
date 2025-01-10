@@ -67,6 +67,8 @@ interface EmojiStats {
 }
 
 export default function WhatsappStats() {
+  // Add new state for showing/hiding names
+  const [showNames, setShowNames] = useState(false);
   // Add new state for raw messages
   const [rawMessages, setRawMessages] = useState<string[]>([]);
   // Add new state for selected year
@@ -122,6 +124,7 @@ export default function WhatsappStats() {
     const participantsList = extractParticipants(lines);
     const filtered = filterMessages(lines, participantsList);
     setRawMessages(filtered); // Store raw messages
+
     setParticipants(participantsList);
 
     // Get available years and set initial year
@@ -161,6 +164,12 @@ export default function WhatsappStats() {
     setMediaStats({});
   };
 
+  // Add function to anonymize participant names
+  const anonymizeParticipant = (name: string, index: number) => {
+    return showNames ? name : `Participant ${index + 1}`;
+  };
+
+  // Update extractParticipants to store original names but display anonymized ones
   const extractParticipants = (lines: string[]) => {
     const uniqueParticipants = new Set<string>();
 
@@ -443,7 +452,9 @@ export default function WhatsappStats() {
   const chartData = useMemo(() => {
     const colorMap = getParticipantColors(participants);
     return {
-      labels: Object.keys(messageStats),
+      labels: Object.keys(messageStats).map((p, i) =>
+        anonymizeParticipant(p, i),
+      ),
       datasets: [
         {
           label: "Messages per user",
@@ -454,12 +465,12 @@ export default function WhatsappStats() {
         },
       ],
     };
-  }, [messageStats, participants]);
+  }, [messageStats, participants, showNames]);
 
   const wordChartData = useMemo(() => {
     const colorMap = getParticipantColors(participants);
     return {
-      labels: Object.keys(wordStats),
+      labels: Object.keys(wordStats).map((p, i) => anonymizeParticipant(p, i)),
       datasets: [
         {
           label: "Words per user",
@@ -470,12 +481,12 @@ export default function WhatsappStats() {
         },
       ],
     };
-  }, [wordStats, participants]);
+  }, [wordStats, participants, showNames]);
 
   const mediaChartData = useMemo(() => {
     const colorMap = getParticipantColors(participants);
     return {
-      labels: Object.keys(mediaStats),
+      labels: Object.keys(mediaStats).map((p, i) => anonymizeParticipant(p, i)),
       datasets: [
         {
           label: "Media messages per user",
@@ -486,7 +497,7 @@ export default function WhatsappStats() {
         },
       ],
     };
-  }, [mediaStats, participants]);
+  }, [mediaStats, participants, showNames]);
 
   const timeChartData = useMemo(
     () => ({
@@ -715,11 +726,19 @@ export default function WhatsappStats() {
       )}
       {participants.length > 0 && (
         <div className="mt-4 text-left">
-          <h3 className="font-semibold">Chat Participants:</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Chat Participants:</h3>
+            <button
+              onClick={() => setShowNames(!showNames)}
+              className="text-sm text-primary hover:underline"
+            >
+              {showNames ? "Hide Names" : "Show Names"}
+            </button>
+          </div>
           <ul className="mt-2 list-disc pl-5">
             {participants.map((participant, index) => (
               <li key={index} className="text-sm">
-                {participant}
+                {anonymizeParticipant(participant, index)}
               </li>
             ))}
           </ul>

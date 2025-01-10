@@ -55,7 +55,7 @@ const { frontmatter, headings, content } = Astro.props;
     </div>
   </div>
 
-  <TableOfContents headingsArr={headings} client:load />
+  <TableOfContents headingsArr={headings} client:only="react" />
 
   <article class="prose mx-auto px-2 py-4 sm:px-0">
     <slot />
