@@ -1,6 +1,5 @@
 ---
 // src/components/posthog.astro
-const key = import.meta.env.POSTHOG_KEY;
 ---
 
 <script is:inline>
@@ -52,7 +51,8 @@ const key = import.meta.env.POSTHOG_KEY;
       (e.__SV = 1));
   })(document, window.posthog || []);
   posthog.init("phc_Ek2fQN3iUjaD7rgTTsGg1qAv9PrYWUa3PopmiZraElK", {
-    api_host: "/ingest",
+    // api_host: "/ingest",
+    api_host: "https://eu.i.posthog.com",
     persistence: "memory",
   });
 </script>
