@@ -1,4 +1,5 @@
 ---
+import DarkModeToggle from "./DarkModeToggle";
 import NavItem from "./NavItem.astro";
 import ImgAstronaut from "/public/astronaut.avif";
 import { Image } from "astro:assets";
@@ -34,18 +35,14 @@ navigation.forEach((item) => {
 ---
 
 <header
-  class="sticky top-0 z-50 flex items-center justify-center bg-primary px-2 py-2 text-primary-foreground sm:px-6 md:justify-between"
+  class="sticky top-0 z-50 flex items-center justify-center bg-primary px-2 py-2 text-primary-foreground sm:px-6 md:justify-between dark:bg-background dark:border-b dark:border-primary-foreground"
 >
   <nav
     class="flex w-full items-center justify-around gap-2 sm:justify-center sm:gap-6"
   >
     <a href="/" class="flex items-center gap-2 font-medium">
       <div class="my-auto flex h-20 w-20 items-center justify-center">
-        <Image
-          src={ImgAstronaut}
-          loading="eager"
-          alt="Astronaut with laptop"
-        />
+        <Image src={ImgAstronaut} loading="eager" alt="Astronaut with laptop" />
 
         <span class="sr-only">Astronaut</span>
       </div>
@@ -71,5 +68,6 @@ navigation.forEach((item) => {
         </a>
       ))
     }
+    <DarkModeToggle client:load />
   </div>
 </header>
