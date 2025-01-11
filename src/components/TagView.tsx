@@ -163,6 +163,7 @@ const TagList = ({
                 onClick={() => {
                   if (selectedTag === tagName) {
                     setSelectedTag(null);
+                    setIsExpanded(true);
                     window.history.replaceState({}, "", "/tags/");
                     document.title = "Tags";
                   } else {
