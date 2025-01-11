@@ -116,7 +116,6 @@ const TagList = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(selectedTag == null);
 
-  console.log(isExpanded);
   return (
     <div className="sticky top-28">
       <div className="mb-4 flex items-center justify-between gap-2">
