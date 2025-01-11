@@ -77,16 +77,6 @@ export default function TableOfContents({
 
   if (headings.length === 0) return null;
 
-  console.log("headings", headings);
-
-  const getHeadersPreText = (depth: number) => {
-    let preText = "";
-    for (let i = 0; i < depth; i++) {
-      preText += "#";
-    }
-    return preText;
-  };
-
   return (
     <div
       className="fixed bottom-2 z-10 sm:left-2 sm:top-1/2 sm:-translate-y-1/2"
