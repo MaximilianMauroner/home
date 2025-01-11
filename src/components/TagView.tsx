@@ -114,19 +114,47 @@ const TagList = ({
   selectedTag: string | null;
   setSelectedTag: (tag: string | null) => void;
 }) => {
+  const [isExpanded, setIsExpanded] = useState(selectedTag == null);
+
+  console.log(isExpanded);
   return (
     <div className="sticky top-28">
-      <div className="mb-4 flex items-center gap-2">
-        <h3 className="text-2xl font-bold">Tags:</h3>
-        <span className="font-mono text-2xl text-muted-foreground">
-          ({tags.size})
-        </span>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-2xl font-bold">Tags:</h3>
+          <span className="font-mono text-2xl text-muted-foreground">
+            ({tags.size})
+          </span>
+        </div>
+        <button
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="rounded-full p-1 hover:bg-accent"
+          aria-label={isExpanded ? "Collapse tag list" : "Expand tag list"}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+            className={
+              "size-4 transition-transform " + (isExpanded ? "rotate-180" : "")
+            }
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m19.5 8.25-7.5 7.5-7.5-7.5"
+            />
+          </svg>
+        </button>
       </div>
       <ul
         className="flex flex-wrap gap-2 sm:gap-6 md:gap-3 lg:gap-4"
         aria-label="All tags with blog post counts"
       >
         {Array.from(tags)
+          .filter(([tag]) => isExpanded || tag === selectedTag)
           .sort((a, b) => {
             return a[0].localeCompare(b[0]);
           })
