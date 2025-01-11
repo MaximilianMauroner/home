@@ -1,0 +1,199 @@
+---
+layout: "@/layouts/PostLayout.astro"
+title: WhatsApp Analyser and Obsidian yearly setup
+description:
+  "WhatsApp analyzer for chat data insights and an Obsidian setup using Dataview to
+  link daily, weekly, and quarterly notes for better organization."
+tags:
+  - data-analysis
+  - obsidian
+  - dataview
+  - productivity
+  - whatsapp
+  - chat-analysis
+  - diary-management
+  - tools
+  - yearly-setup
+image: "/src/assets/log/2025-01.webp"
+published: true
+releaseDate: 2025-01-05
+---
+
+import { Image } from "astro:assets";
+import DiaryExample from "@/assets/log/2025-01_diary_example.png";
+import WeeklyExample from "@/assets/log/2025-01_weekly_example.png";
+import QuarterlyExample from "@/assets/log/2025-01_quarterly_example.png";
+import WhatsappExample from "@/assets/log/2025-01_whatsapp_example.png";
+
+# Whatsapp Analyser
+
+Since the year 2025 just started I wanted to create a tool that makes it possible for me to visualize the data from my WhatsApp chats.
+Since whatsapp is the main form of communication for me, I wanted to see how my communication with others has changed over the years.
+And since I saw a few tools online which did that I thought I could just do it myself and improve some stuff which I didn't like about them.
+E.g. filter yearly, show emoji usage and filter popular words and stuff like that.
+
+<Image
+  src={WhatsappExample}
+  alt="Example of the my Whatsapp Analyser tool"
+  class={"relative hover:z-20 hover:scale-150 hover:cursor-zoom-in"}
+  loading={"eager"}
+/>
+
+# Obsidian
+
+So I wanted to have some way to quickly move through my recent diary entries, in a simple way. And there was no way to automatically navigate between the daily notes, weekly notes, and quarterly notes without installing multiple additional plugins.
+Which I did not want to do, since I already have quite a few plugins installed, so I used dataview and chatgpt to figure something out that works for me.
+
+The main idea is that I keep track of what I want to do, so I don't forget about it, and then remind myself Quarterly, Weekly and then Daily about it.
+The idea is inspired/taken from this video [6 Habits to Make 2025 Your Best Year Yet](https://youtu.be/W2afI0n8pUk?si=C0F-BtqRJJWSq7Cm)
+
+## Diary Dataview display
+
+<Image
+  src={DiaryExample}
+  alt="Example of the Dataview Query for the Diary visualized"
+  class={
+    "rouned-lg relative hover:z-20 hover:scale-[300%] hover:cursor-zoom-in"
+  }
+/>
+
+```js
+// Get the current file's name and check if it's a valid date in YYYY-MM-DD format
+const currentFileName = dv.current().file.name;
+
+if (moment(currentFileName, "YYYY-MM-DD", true).isValid()) {
+  const currentDate = moment(currentFileName, "YYYY-MM-DD"); // Parse the daily note's name
+
+  // Calculate Yesterday, Tomorrow, Quarterly Note, and Weekly Note
+  const yesterday = currentDate.clone().subtract(1, "day").format("YYYY-MM-DD");
+  const tomorrow = currentDate.clone().add(1, "day").format("YYYY-MM-DD");
+  const quarterlyNote = currentDate.clone().format("YYYY-[Q]Q"); // Format as "YYYY-QX"
+  const weeklyNote = currentDate
+    .clone()
+    .startOf("isoWeek")
+    .format("YYYY-[W]ww"); // Weekly note in "YYYY-Www"
+
+  // Render the navigation bar
+  const navigationBar = `###### << [[${yesterday}|Yesterday]] | [[${tomorrow}|Tomorrow]] >> 🗓️ [[${quarterlyNote}|Quarterly Note]] | 📆 [[${weeklyNote}|Weekly Note]]`;
+
+  // Output the final Markdown text
+  dv.el("div", navigationBar, { cls: "nav-bar" });
+} else {
+  dv.el("div", "This file's name is not a valid date format (YYYY-MM-DD).");
+}
+```
+
+## Weekly Dataview display
+
+<Image
+  src={WeeklyExample}
+  alt="Example of the Dataview Query for the Weekly Review visualized"
+  class={
+    "rouned-lg relative hover:z-20 hover:scale-[300%] hover:cursor-zoom-in"
+  }
+/>
+
+```js
+// Get the current file's name and check if it's a valid ISO week format
+const currentFileName = dv.current().file.name;
+
+if (moment(currentFileName, "YYYY-[W]ww", true).isValid()) {
+  const currentWeek = moment(currentFileName, "YYYY-[W]ww"); // Parse the weekly note's name
+
+  // Calculate Last Week, Next Week, and the Quarterly Note
+  const lastWeek = currentWeek.clone().subtract(1, "week").format("YYYY-[W]ww");
+  const nextWeek = currentWeek.clone().add(1, "week").format("YYYY-[W]ww");
+  const quarterlyNote = currentWeek.clone().format("YYYY-[Q]Q"); // Format as "YYYY-QX"
+
+  // Generate links for all days in the week
+  const daysOfWeek = Array.from(
+    { length: 7 },
+    (_, i) =>
+      `[[${currentWeek.clone().startOf("isoWeek").add(i, "day").format("YYYY-MM-DD")}|${currentWeek
+        .clone()
+        .startOf("isoWeek")
+        .add(i, "day")
+        .format("dd")}]]`,
+  ).join(" | ");
+
+  // Render the navigation bar
+  const navigationBar = `###### ⬅️ [[${lastWeek}|Last Week]] | 🗓️ [[${quarterlyNote}|Quarterly Note]] | [[${nextWeek}|Next Week]] ➡️
+${daysOfWeek}`;
+
+  // Output the final Markdown text
+  dv.el("div", navigationBar, { cls: "nav-bar" });
+} else {
+  dv.el("div", "This file's name is not a valid ISO week format (YYYY-Www).");
+}
+```
+
+## Quarterly Dataview display
+
+<Image
+  src={QuarterlyExample}
+  alt="Example of the Dataview Query for the Quarterly Review visualized"
+  class={
+    "rouned-lg relative hover:z-20 hover:scale-[300%] hover:cursor-zoom-in"
+  }
+/>
+
+```js
+// Get the current file's name and check if it's a valid ISO quarter format
+const currentFileName = dv.current().file.name;
+
+if (moment(currentFileName, "YYYY-[Q]Q", true).isValid()) {
+  const currentQuarter = moment(currentFileName, "YYYY-[Q]Q"); // Parse the quarterly note's name
+
+  // Calculate Last Quarter, Next Quarter, and the Last Year
+  const lastQuarter = currentQuarter
+    .clone()
+    .subtract(1, "quarter")
+    .format("YYYY-[Q]Q");
+  const nextQuarter = currentQuarter
+    .clone()
+    .add(1, "quarter")
+    .format("YYYY-[Q]Q");
+  const lastYear = currentQuarter.clone().subtract(1, "year").format("YYYY");
+
+  // Render the navigation bar
+  const navigationBar = `###### ⬅️ [[${lastQuarter}|Last Quarter]] | 📅 [[${lastYear}|Last Year]] | [[${nextQuarter}|Next Quarter]] ➡️`;
+
+  // Output the final Markdown text
+  dv.el("div", navigationBar, { cls: "nav-bar" });
+} else {
+  dv.el("div", "This file's name is not a valid ISO quarter format (YYYY-QX).");
+}
+```
+
+The Template can be downloaded here:
+
+- [Diary Template](/files/90.2.6_Diary.md)
+- [Weekly Template](/files/90.2.7_Weekly_Note.md)
+- [Quarterly Template](/files/90.2.8_Quarterly_Note.md)
+
+## Journals
+
+Then I use Journals to keep track and easily view my calendar, which contains the Daily, Weekly and Quarterly template.
+
+I do this by setting the root folder and then subdirectories
+
+- Root folder
+  - `Year {{date:YYYY}}`
+    - `{{date:YYYY}}`
+      - 2025-01-01.md
+    - weekly
+      - 2025-W01.md
+    - quarterly
+      - 2025-Q1.md
+
+And using this structure which I also configured in the Journals settings, where the folders for Diary, Weekly and Quarterly are set to:
+
+- `Year {{date:YYYY}}/{{date:YYYY}}`
+- `Year {{date:YYYY}}/quarterly`
+- `Year {{date:YYYY}}/weekly`
+
+With the name template values:
+
+- `{{date}}`
+- Default value for Weekly Notes
+- Default value for Quarterly Notes

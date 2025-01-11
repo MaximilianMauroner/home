@@ -16,19 +16,12 @@ export default function TagView({
   preSelectedTag,
 }: TagViewProps) {
   const [selectedTag, setSelectedTag] = useState<string | null>(
-    preSelectedTag ?? null
+    preSelectedTag ?? null,
   );
-  const [selectedBlogs, setSelectedBlogs] =
-    useState<CollectionEntry<"blog">[]>(blogs);
-  const [selectedLogs, setSelectedLogs] =
-    useState<CollectionEntry<"log">[]>(logs);
-  const [search, setSearch] = useState<string>("");
-  const activePostCount = selectedBlogs.length + selectedLogs.length;
-  const totalPostCount = blogs.length + logs.length;
 
   const searchQueryInPost = (
     search: string,
-    post: CollectionEntry<"blog"> | CollectionEntry<"log">
+    post: CollectionEntry<"blog"> | CollectionEntry<"log">,
   ) => {
     if (search == "") {
       return true;
@@ -42,22 +35,40 @@ export default function TagView({
     if (post.data.tags.includes(search)) {
       return true;
     }
-    if (post.body.includes(search)) {
+    if (post.body?.includes(search)) {
       return true;
     }
 
     return false;
   };
 
+  const [search, setSearch] = useState<string>("");
+
+  const initialBlogs = blogs
+    .filter((blog) =>
+      selectedTag ? blog.data.tags.includes(selectedTag) : true,
+    )
+    .filter((blog) => searchQueryInPost(search, blog));
+
+  const initialLogs = logs
+    .filter((log) => (selectedTag ? log.data.tags.includes(selectedTag) : true))
+    .filter((log) => searchQueryInPost(search, log));
+
+  const [selectedBlogs, setSelectedBlogs] = useState(initialBlogs);
+  const [selectedLogs, setSelectedLogs] = useState(initialLogs);
+
+  const activePostCount = selectedBlogs.length + selectedLogs.length;
+  const totalPostCount = blogs.length + logs.length;
+
   const filterFunction = () => {
     const selBlogs = blogs
       .filter((blog) =>
-        selectedTag ? blog.data.tags.includes(selectedTag) : true
+        selectedTag ? blog.data.tags.includes(selectedTag) : true,
       )
       .filter((blog) => searchQueryInPost(search, blog));
     const selLogs = logs
       .filter((log) =>
-        selectedTag ? log.data.tags.includes(selectedTag) : true
+        selectedTag ? log.data.tags.includes(selectedTag) : true,
       )
       .filter((log) => searchQueryInPost(search, log));
 
@@ -103,62 +114,96 @@ const TagList = ({
   selectedTag: string | null;
   setSelectedTag: (tag: string | null) => void;
 }) => {
+  const [isExpanded, setIsExpanded] = useState(selectedTag == null);
+
   return (
     <div className="sticky top-28">
-      <div className="mb-4 flex items-center gap-2">
-        <h2 className="text-2xl font-bold">Tags:</h2>
-        <span className="font-mono text-2xl text-muted-foreground">
-          ({tags.size})
-        </span>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-2xl font-bold">Tags:</h3>
+          <span className="font-mono text-2xl text-muted-foreground">
+            ({tags.size})
+          </span>
+        </div>
+        <button
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="rounded-full p-1 hover:bg-accent"
+          aria-label={isExpanded ? "Collapse tag list" : "Expand tag list"}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+            className={
+              "size-4 transition-transform " + (isExpanded ? "rotate-180" : "")
+            }
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m19.5 8.25-7.5 7.5-7.5-7.5"
+            />
+          </svg>
+        </button>
       </div>
       <ul
         className="flex flex-wrap gap-2 sm:gap-6 md:gap-3 lg:gap-4"
         aria-label="All tags with blog post counts"
       >
-        {Array.from(tags).map(([tagName, count]) => (
-          <li key={tagName}>
-            <button
-              onClick={() => {
-                if (selectedTag === tagName) {
-                  setSelectedTag(null);
-                  window.history.replaceState({}, "", "/tags/");
-                } else {
-                  setSelectedTag(tagName);
-                  window.history.pushState({}, "", `/tags/${tagName}`);
+        {Array.from(tags)
+          .filter(([tag]) => isExpanded || tag === selectedTag)
+          .sort((a, b) => {
+            return a[0].localeCompare(b[0]);
+          })
+          .map(([tagName, count]) => (
+            <li key={tagName}>
+              <button
+                onClick={() => {
+                  if (selectedTag === tagName) {
+                    setSelectedTag(null);
+                    setIsExpanded(true);
+                    window.history.replaceState({}, "", "/tags/");
+                    document.title = "Tags";
+                  } else {
+                    setSelectedTag(tagName);
+                    window.history.pushState({}, "", `/tags/${tagName}`);
+                    document.title = tagName;
+                  }
+                }}
+                className={
+                  "relative inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold text-foreground" +
+                  (selectedTag === tagName
+                    ? " outline-none ring-2 ring-ring"
+                    : "")
                 }
-              }}
-              className={
-                "relative inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold text-foreground" +
-                (selectedTag === tagName
-                  ? " outline-none ring-2 ring-ring"
-                  : "")
-              }
-            >
-              <span>{tagName}</span>
-              <span className="pl-1 text-sm text-muted-foreground">
-                {count}
-              </span>
-              {selectedTag === tagName && (
-                <span className="absolute right-0 top-0 -translate-y-[50%] translate-x-[50%] rounded-full bg-black text-white">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="1.5"
-                    stroke="currentColor"
-                    className="size-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18 18 6M6 6l12 12"
-                    />
-                  </svg>
+              >
+                <span>{tagName}</span>
+                <span className="pl-1 text-sm text-muted-foreground">
+                  {count}
                 </span>
-              )}
-            </button>
-          </li>
-        ))}
+                {selectedTag === tagName && (
+                  <span className="absolute right-0 top-0 -translate-y-[50%] translate-x-[50%] rounded-full bg-black text-white">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.5"
+                      stroke="currentColor"
+                      className="size-4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18 18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
       </ul>
     </div>
   );
@@ -183,13 +228,13 @@ const PostList = ({
     ...blogs.map((blog) => ({
       type: "blog",
       releaseDate: blog.data.releaseDate,
-      url: blog.slug,
+      url: blog.id,
       content: blog,
     })),
     ...logs.map((log) => ({
       type: "log",
       releaseDate: log.data.releaseDate,
-      url: log.slug,
+      url: log.id,
       content: log,
     })),
   ];

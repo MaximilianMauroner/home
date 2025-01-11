@@ -3,7 +3,7 @@ import { kebabCase } from "@/utils/helpers";
 export default function TagsList({ tags }: { tags: string[] }) {
   const kebabCasedTags = tags.map((e) => kebabCase(e));
   return (
-    <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+    <div className="flex flex-wrap gap-2">
       {kebabCasedTags.map((tag) => (
         <a
           key={tag}

@@ -1,8 +1,8 @@
-import { calculateRelativeDate } from "@/utils/helpers";
 import type { CollectionEntry } from "astro:content";
 
 import TagsList from "./TagsList";
 import type { ReactNode } from "react";
+import { calculateRelativeDate } from "@/utils/helpers";
 
 export default function LogPreview({
   log,
@@ -18,14 +18,6 @@ export default function LogPreview({
       <div className="relative z-20">
         <div className="mb-5 flex flex-col items-center justify-between gap-1 sm:flex-row">
           <div className="inline-flex items-center overflow-auto rounded px-2 py-0.5 text-xs font-medium text-primary">
-            <svg
-              className="mr-1 h-3 w-3"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"></path>
-            </svg>
             <div className="flex w-full overflow-x-auto">
               <TagsList tags={log.data.tags} />
             </div>
@@ -37,14 +29,14 @@ export default function LogPreview({
           </span>
         </div>
         <h2 className="mb-2 text-2xl font-bold tracking-tight text-primary underline-offset-4 hover:underline">
-          <a href={"/dev-log/" + log.slug}>{log.data.title}</a>
+          <a href={"/dev-log/" + log.id}>{log.data.title}</a>
         </h2>
         <p className="mb-5 font-light text-muted-foreground">
           {log.data.description}
         </p>
         <div className="flex items-center justify-between text-xs font-medium text-primary ring-offset-background sm:text-sm">
           <a
-            href={"/dev-log/" + log.slug}
+            href={"/dev-log/" + log.id}
             className="inline-flex items-center font-medium text-primary hover:underline"
           >
             Read more

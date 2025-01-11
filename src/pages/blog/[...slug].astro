@@ -1,18 +1,49 @@
 ---
-import { getCollection } from "astro:content";
+import { getBlogs } from "@/utils/server/content";
+import { render } from "astro:content";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
 
 export async function getStaticPaths() {
-  const blogEntries = await getCollection("blog", ({ data }) => {
-    return import.meta.env.PROD ? data.published === true : true;
-  });
+  const blogEntries = await getBlogs();
   return blogEntries.map((entry) => ({
-    params: { slug: entry.slug },
+    params: { slug: entry.id },
     props: { entry },
   }));
 }
 
 const { entry } = Astro.props;
-const { Content } = await entry.render();
+
+if (entry.data.published !== true && import.meta.env.PROD) {
+  throw Astro.redirect("/404");
+}
+
+const { Content, remarkPluginFrontmatter } = await render(entry);
+const lastModified = dayjs(remarkPluginFrontmatter.lastModified)
+  .utc()
+  .format("HH:mm:ss DD MMMM YYYY UTC");
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  headline: entry.data.title,
+  description: entry.data.description,
+  keywords: entry.data.tags.join(", "),
+  author: {
+    "@type": "Person",
+    name: "Maximilian Mauroner",
+    url: "https://www.mauroner.net",
+  },
+  dateModified: lastModified,
+  datePublished: entry.data.releaseDate,
+};
 ---
 
+<script
+  is:inline
+  type="application/ld+json"
+  set:html={JSON.stringify(schema)}
+/>
 <Content />

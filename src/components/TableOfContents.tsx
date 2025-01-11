@@ -8,10 +8,13 @@ export default function TableOfContents({
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [headings, setHeadings] = useState(headingsArr);
+
   const [currentHeading, setCurrentHeading] = useState(headings[0]?.slug ?? "");
   const [isHovered, setIsHovered] = useState(false);
 
   const handleScroll = () => {
+    if (headings.length === 0) return null;
+
     const offset = 80 + 16 + 1;
     let activeHeading = "";
 
@@ -26,14 +29,14 @@ export default function TableOfContents({
       for (let i = headings.length - 1; i >= 0; i--) {
         const heading = headings[i];
         const headingElement = document.querySelector(
-          `[id^="${heading.slug}"]`
+          `[id^="${heading.slug}"]`,
         );
         if (headingElement) {
           if (headingElement.id !== heading.slug) {
             setHeadings((prev) =>
               prev.map((h, idx) =>
-                idx === i ? { ...h, id: headingElement.id } : h
-              )
+                idx === i ? { ...h, id: headingElement.id } : h,
+              ),
             );
           }
           const top = headingElement.getBoundingClientRect().top - offset;
@@ -72,15 +75,19 @@ export default function TableOfContents({
     handleScroll();
   });
 
+  if (headings.length === 0) return null;
+
   return (
     <div
-      className="fixed bottom-2 sm:left-2 sm:top-1/2 sm:-translate-y-1/2"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="fixed bottom-2 z-10 sm:left-2 sm:top-1/2 sm:-translate-y-1/2"
       ref={wrapperRef}
     >
       {!isHovered && (
-        <div className="relative" onTouchStart={() => setIsHovered(true)}>
+        <div
+          onMouseEnter={() => setIsHovered(true)}
+          className="relative"
+          onTouchStart={() => setIsHovered(true)}
+        >
           <div className="absolute left-0 flex flex-col gap-3 rounded-lg border bg-white p-2 transition-opacity duration-300">
             {headings.map((heading, index) => (
               <div
@@ -96,6 +103,7 @@ export default function TableOfContents({
         </div>
       )}
       <div
+        onMouseLeave={() => setIsHovered(false)}
         className={`flex flex-col gap-4 rounded-lg border bg-white p-2 transition-all duration-300 ${
           isHovered
             ? "-translate-x-0 opacity-100"
@@ -106,13 +114,25 @@ export default function TableOfContents({
           <a
             key={index}
             href={`#${heading.slug}`}
-            className={`text-sm font-semibold ${
+            className={`relative text-sm font-semibold ${
               currentHeading === heading.slug
                 ? "text-blue-500"
                 : "text-muted-foreground"
-            } block scroll-mt-20 text-left`}
+            } block scroll-mt-20 text-left transition-colors hover:text-blue-400`}
           >
-            <span className="w-20 overflow-hidden text-ellipsis whitespace-nowrap md:w-48">
+            {heading.depth > 1 && (
+              <span
+                className="absolute border-l-2 border-gray-200 dark:border-gray-700"
+                style={{
+                  height: "100%",
+                  left: `${(heading.depth - 1) * 1.5 - 0.75}rem`,
+                }}
+              />
+            )}
+            <span
+              style={{ marginLeft: `${(heading.depth - 1) * 1.5}rem` }}
+              className="w-20 overflow-hidden text-ellipsis whitespace-nowrap md:w-48"
+            >
               {heading.text}
             </span>
           </a>

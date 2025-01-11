@@ -2,27 +2,19 @@
 import LogPreview from "@/components/LogPreview";
 import PostImageLoader from "@/components/PostImageLoader.astro";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { getCollection } from "astro:content";
-import dayjs from "dayjs";
-import weekOfYear from "dayjs/plugin/weekOfYear";
+import { getLogs } from "@/utils/server/content";
+// import dayjs from "dayjs";
+// import weekOfYear from "dayjs/plugin/weekOfYear";
 
-const logs = await getCollection("log", ({ data }) => {
-  return import.meta.env.PROD ? data.published === true : true;
-});
+const logs = await getLogs();
 
-dayjs.extend(weekOfYear);
-const currentWeek = dayjs().week();
-const currentYear = dayjs().year();
-logs.sort((a, b) => {
-  return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
-});
-const images = import.meta.glob<{ default: ImageMetadata }>(
-  "@/assets/log/*.{jpeg,jpg,png,gif}"
-);
+// dayjs.extend(weekOfYear);
+// const currentWeek = dayjs().week();
+// const currentYear = dayjs().year();
 ---
 
 <DefaultLayout
-  title="Blog"
+  title="Dev-Blog"
   description="Trying to get my blog started so future historians can have my genius thoughts preserved for eternity /s"
 >
   <section>
@@ -36,14 +28,14 @@ const images = import.meta.glob<{ default: ImageMetadata }>(
         <p class="l font-light text-gray-500 sm:text-xl">
           weekly summary of what i've been working on
         </p>
-        <p>
+        <!-- <p>
           next log:&nbsp;
           <b>
             <a href={`/dev-log/log/${currentYear}/${currentWeek}`}>
               {currentYear + "/" + currentWeek}
             </a>
           </b>
-        </p>
+        </p> -->
       </div>
       <div class="grid gap-8 lg:grid-cols-2">
         {
@@ -51,7 +43,7 @@ const images = import.meta.glob<{ default: ImageMetadata }>(
             <LogPreview log={log}>
               <div
                 slot="image"
-                transition:name={"hero" + log.slug}
+                transition:name={"hero-" + log.data.image}
                 class="absolute inset-0 overflow-hidden rounded-lg"
               >
                 <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />

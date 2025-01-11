@@ -11,6 +11,7 @@ import sitemap from "@astrojs/sitemap";
 
 import expressiveCode from "astro-expressive-code";
 import { remarkReadingTime } from "./plugins/remark-reading-time.mjs";
+import { remarkModifiedTime } from "./plugins/remark-modified-time.mjs";
 
 import vercel from "@astrojs/vercel/serverless";
 
@@ -27,6 +28,6 @@ export default defineConfig({
     sitemap(),
   ],
   markdown: {
-    remarkPlugins: [remarkReadingTime],
+    remarkPlugins: [remarkReadingTime, remarkModifiedTime],
   },
 });

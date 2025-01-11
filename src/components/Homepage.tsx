@@ -11,7 +11,7 @@ const Homepage = () => {
 
   const loadByName = (
     setName: Dispatch<SetStateAction<string>>,
-    ogValue: string
+    ogValue: string,
   ) => {
     let iteration = 0;
 
@@ -83,9 +83,6 @@ const Homepage = () => {
 
   return (
     <>
-      <h1 className="invisible">
-        {firstname} <br /> {lastname}
-      </h1>
       <div className="mx-auto max-w-7xl">
         <div className="my-10 grid w-full grid-flow-col grid-cols-5 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-5xl font-extrabold sm:text-7xl md:text-9xl">
           {firstname.split("").map((letter, index) => (
@@ -130,8 +127,8 @@ const Homepage = () => {
           </span>
           <span className="pt-3">
             i'm usually working on multiple&nbsp;
-            <TechStackItem href="/projects" name="Projects" />. for more info
-            check them out on&nbsp;
+            <TechStackItem href="/tools" name="Tools" />. for more info check
+            them out on&nbsp;
             <TechStackItem
               href="https://github.com/MaximilianMauroner"
               name="GitHub"

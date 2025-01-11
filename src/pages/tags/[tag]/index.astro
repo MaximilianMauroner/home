@@ -1,8 +1,7 @@
 ---
 import TagView from "@/components/TagView";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
-import { getTags } from "@/utils/helpers";
-import { getCollection } from "astro:content";
+import { getBlogs, getLogs, getTags } from "@/utils/server/content";
 
 interface Props {
   tag: string;
@@ -10,22 +9,14 @@ interface Props {
 
 const { tag } = Astro.params;
 
-const blogs = await getCollection("blog", ({ data }) => {
-  return import.meta.env.PROD ? data.published === true : true;
-});
-const logs = await getCollection("log", ({ data }) => {
-  return import.meta.env.PROD ? data.published === true : true;
-});
+const blogs = await getBlogs();
+const logs = await getLogs();
 
 const tags = getTags(blogs, logs);
 
 export async function getStaticPaths() {
-  const blogs = await getCollection("blog", ({ data }) => {
-    return import.meta.env.PROD ? data.published === true : true;
-  });
-  const logs = await getCollection("log", ({ data }) => {
-    return import.meta.env.PROD ? data.published === true : true;
-  });
+  const blogs = await getBlogs();
+  const logs = await getLogs();
   const tags = getTags(blogs, logs);
   const allTagNames = tags.keys();
   return [...allTagNames].map((tag) => ({ params: { tag } }));

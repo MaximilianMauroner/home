@@ -3,4 +3,4 @@ Allow: /
 
 Disallow: /next-projects 
 
-Sitemap: https://www.mauroner.net/sitemap.xml
+Sitemap: https://www.mauroner.net/sitemap-index.xml

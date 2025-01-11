@@ -7,7 +7,9 @@ interface Props {
 }
 const { title, description } = Astro.props;
 import "@/styles/globals.css";
-import { ViewTransitions } from "astro:transitions";
+import { ClientRouter } from "astro:transitions";
+import Posthog from "@/components/Posthog.astro";
+const cannonicalUrl = new URL(Astro.url.pathname, Astro.site);
 ---
 
 <html lang="en">
@@ -16,10 +18,19 @@ import { ViewTransitions } from "astro:transitions";
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
+    <link rel="canonical" href={cannonicalUrl} />
     <title>{title}</title>
+    <ClientRouter />
     <link rel="icon" type="image/ico" href="/favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="sitemap" href="/sitemap-index.xml" />
-    <ViewTransitions />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Maximilian Mauroner's Blog"
+      href={new URL("rss.xml", Astro.site)}
+    />
+    <Posthog />
   </head>
   <body lang="en" class="flex min-h-dvh flex-col">
     <Header />

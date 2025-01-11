@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -78,7 +79,8 @@
 
 .rotating-border-animation {
   border: 5px solid #0000;
-  background: linear-gradient(#131219, #131219) padding-box,
+  background:
+    linear-gradient(#131219, #131219) padding-box,
     linear-gradient(var(--angle), #ec4899, #06b6d4, #8b5cf6) border-box;
   animation: 8s rotate linear infinite;
 }
@@ -90,4 +92,10 @@ h4,
 h5,
 h6 {
   scroll-margin-top: calc(80px + 8px + 8px);
+}
+
+@layer utilities {
+  .grid-cols-53 {
+    grid-template-columns: repeat(53, minmax(0, 1fr));
+  }
 }
