@@ -7,7 +7,8 @@ interface Props {
 }
 const { title, description } = Astro.props;
 import "@/styles/globals.css";
-import { ClientRouter } from 'astro:transitions';
+import { ClientRouter } from "astro:transitions";
+import Posthog from "@/components/Posthog.astro";
 const cannonicalUrl = new URL(Astro.url.pathname, Astro.site);
 ---
 
@@ -29,6 +30,7 @@ const cannonicalUrl = new URL(Astro.url.pathname, Astro.site);
       title="Your Site's Title"
       href={new URL("rss.xml", Astro.site)}
     />
+    <Posthog />
   </head>
   <body lang="en" class="flex min-h-dvh flex-col">
     <Header />
