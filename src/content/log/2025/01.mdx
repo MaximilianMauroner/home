@@ -164,3 +164,36 @@ if (moment(currentFileName, "YYYY-[Q]Q", true).isValid()) {
   dv.el("div", "This file's name is not a valid ISO quarter format (YYYY-QX).");
 }
 ```
+
+The Template can be downloaded here:
+
+- [Diary Template](/files/90.2.6_Diary.md)
+- [Weekly Template](/files/90.2.7_Weekly_Note.md)
+- [Quarterly Template](/files/90.2.8_Quarterly_Note.md)
+
+## Journals
+
+Then I use Journals to keep track and easily view my calendar, which contains the Daily, Weekly and Quarterly template.
+
+I do this by setting the root folder and then subdirectories
+
+- Root folder
+  - `Year {{date:YYYY}}`
+    - `{{date:YYYY}}`
+      - 2025-01-01.md
+    - weekly
+      - 2025-W01.md
+    - quarterly
+      - 2025-Q1.md
+
+And using this structure which I also configured in the Journals settings, where the folders for Diary, Weekly and Quarterly are set to:
+
+- `Year {{date:YYYY}}/{{date:YYYY}}`
+- `Year {{date:YYYY}}/quarterly`
+- `Year {{date:YYYY}}/weekly`
+
+With the name template values:
+
+- `{{date}}`
+- Default value for Weekly Notes
+- Default value for Quarterly Notes

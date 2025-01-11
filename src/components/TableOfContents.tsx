@@ -77,6 +77,16 @@ export default function TableOfContents({
 
   if (headings.length === 0) return null;
 
+  console.log("headings", headings);
+
+  const getHeadersPreText = (depth: number) => {
+    let preText = "";
+    for (let i = 0; i < depth; i++) {
+      preText += "#";
+    }
+    return preText;
+  };
+
   return (
     <div
       className="fixed bottom-2 z-10 sm:left-2 sm:top-1/2 sm:-translate-y-1/2"
@@ -114,13 +124,25 @@ export default function TableOfContents({
           <a
             key={index}
             href={`#${heading.slug}`}
-            className={`text-sm font-semibold ${
+            className={`relative text-sm font-semibold ${
               currentHeading === heading.slug
                 ? "text-blue-500"
                 : "text-muted-foreground"
-            } block scroll-mt-20 text-left`}
+            } block scroll-mt-20 text-left transition-colors hover:text-blue-400`}
           >
-            <span className="w-20 overflow-hidden text-ellipsis whitespace-nowrap md:w-48">
+            {heading.depth > 1 && (
+              <span
+                className="absolute border-l-2 border-gray-200 dark:border-gray-700"
+                style={{
+                  height: "100%",
+                  left: `${(heading.depth - 1) * 1.5 - 0.75}rem`,
+                }}
+              />
+            )}
+            <span
+              style={{ marginLeft: `${(heading.depth - 1) * 1.5}rem` }}
+              className="w-20 overflow-hidden text-ellipsis whitespace-nowrap md:w-48"
+            >
               {heading.text}
             </span>
           </a>
