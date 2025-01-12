@@ -13,7 +13,7 @@ tags:
   - chat-analysis
   - diary-management
   - tools
-  - yearly-setup
+  - templater
 image: "/src/assets/log/2025-01.webp"
 published: true
 releaseDate: 2025-01-05
@@ -57,6 +57,8 @@ The idea is inspired/taken from this video [6 Habits to Make 2025 Your Best Year
   }
 />
 
+_careful this is not my reccomended solution anymore, see the end of the post_
+
 ```js
 // Get the current file's name and check if it's a valid date in YYYY-MM-DD format
 const currentFileName = dv.current().file.name;
@@ -92,6 +94,8 @@ if (moment(currentFileName, "YYYY-MM-DD", true).isValid()) {
     "rouned-lg relative hover:z-20 hover:scale-[300%] hover:cursor-zoom-in"
   }
 />
+
+_careful this is not my reccomended solution anymore, see the end of the post_
 
 ```js
 // Get the current file's name and check if it's a valid ISO week format
@@ -137,6 +141,8 @@ ${daysOfWeek}`;
   }
 />
 
+_careful this is not my reccomended solution anymore, see the end of the post_
+
 ```js
 // Get the current file's name and check if it's a valid ISO quarter format
 const currentFileName = dv.current().file.name;
@@ -166,6 +172,8 @@ if (moment(currentFileName, "YYYY-[Q]Q", true).isValid()) {
 ```
 
 The Template can be downloaded here:
+
+_careful this is not my reccomended solution anymore, see the end of the post_
 
 - [Diary Template](/files/90.2.6_Diary.md)
 - [Weekly Template](/files/90.2.7_Weekly_Note.md)
@@ -197,3 +205,91 @@ With the name template values:
 - `{{date}}`
 - Default value for Weekly Notes
 - Default value for Quarterly Notes
+
+# PS: 2025-01-12
+
+I had to change the setup of the dataview templates since it toook sooo long for dataview to load, and then it would be a performance bottleneck and I didn't like that I saw the "loading" state while the graph was being built.
+So the new template is using [Tempalter](https://silentvoid13.github.io/Templater/) with the following template
+
+Diary/Daily note
+
+```js
+<%*
+const currentFileName = tp.file.title;
+
+if (moment(currentFileName, "YYYY-MM-DD", true).isValid()) {
+  const currentDate = moment(currentFileName, "YYYY-MM-DD");
+
+  // Calculate Yesterday, Tomorrow, Quarterly Note, and Weekly Note
+  const yesterday = currentDate.clone().subtract(1, "day").format("YYYY-MM-DD");
+  const tomorrow = currentDate.clone().add(1, "day").format("YYYY-MM-DD");
+  const quarterlyNote = currentDate.clone().format("YYYY-[Q]Q"); // Format as "YYYY-QX"
+  const weeklyNote = currentDate.clone().startOf("isoWeek").format("YYYY-[W]ww"); // Weekly note in "YYYY-Www"
+
+  // Render the navigation bar
+  const navigationBar = `###### << [[${yesterday}|Yesterday]] | [[${tomorrow}|Tomorrow]] >> 🗓️ [[${quarterlyNote}|Quarterly Note]] | 📆 [[${weeklyNote}|Weekly Note]]`;
+
+  tR += navigationBar;
+}
+%>
+```
+
+Weekly Note
+
+```js
+<%*
+const currentFileName = tp.file.title;
+
+if (moment(currentFileName, "YYYY-[W]ww", true).isValid()) {
+  const currentWeek = moment(currentFileName, "YYYY-[W]ww"); // Parse the weekly note's name
+
+  // Calculate Last Week, Next Week, and the Quarterly Note
+  const lastWeek = currentWeek.clone().subtract(1, "week").format("YYYY-[W]ww");
+  const nextWeek = currentWeek.clone().add(1, "week").format("YYYY-[W]ww");
+  const quarterlyNote = currentWeek.clone().format("YYYY-[Q]Q"); // Format as "YYYY-QX"
+
+  // Generate links for all days in the week
+  const daysOfWeek = Array.from({ length: 7 }, (_, i) =>
+    `[[${currentWeek.clone().startOf("isoWeek").add(i, "day").format("YYYY-MM-DD")}|${currentWeek
+      .clone()
+      .startOf("isoWeek")
+      .add(i, "day")
+      .format("dd")}]]`
+  ).join(" | ");
+
+  // Render the navigation bar
+  const navigationBar = `###### ⬅️ [[${lastWeek}|Last Week]] | 🗓️ [[${quarterlyNote}|Quarterly Note]] | [[${nextWeek}|Next Week]] ➡️
+${daysOfWeek}`;
+
+  // Output the final Markdown text
+  tR += navigationBar;
+}
+%>
+```
+
+Quarterly
+
+```js
+<%*
+const currentFileName = tp.file.title;
+
+if (moment(currentFileName, "YYYY-[Q]Q", true).isValid()) {
+  const currentQuarter = moment(currentFileName, "YYYY-[Q]Q"); // Parse the quarterly note's name
+
+  // Calculate Last Quarter, Next Quarter, and the Last Year
+  const lastQuarter = currentQuarter.clone().subtract(1, "quarter").format("YYYY-[Q]Q");
+  const nextQuarter = currentQuarter.clone().add(1, "quarter").format("YYYY-[Q]Q");
+  const lastYear = currentQuarter.clone().subtract(1, "year").format("YYYY");
+
+  // Render the navigation bar
+  const navigationBar = `###### ⬅️ [[${lastQuarter}|Last Quarter]] | 📅 [[${lastYear}|Last Year]] | [[${nextQuarter}|Next Quarter]] ➡️`;
+
+  // Output the final Markdown text
+  tR += navigationBar;
+} else {
+  tR += "This file's name is not a valid ISO quarter format (YYYY-QX).";
+}
+%>
+```
+
+Make sure that you don't use the default daily note template from obisidan, as that seems to not execute the templater script, use the journal plugin instead.
