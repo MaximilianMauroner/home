@@ -31,6 +31,7 @@ const schema = {
   headline: entry.data.title,
   description: entry.data.description,
   keywords: entry.data.tags.join(", "),
+  image: entry.data.image ? new URL(entry.data.image, Astro.site) : undefined,
   author: {
     "@type": "Person",
     name: "Maximilian Mauroner",
@@ -38,6 +39,10 @@ const schema = {
   },
   dateModified: lastModified,
   datePublished: entry.data.releaseDate,
+  mainEntityOfPage: {
+    "@type": "WebPage",
+    "@id": new URL(Astro.url.pathname, Astro.site),
+  },
 };
 ---
 

@@ -21,7 +21,17 @@ export default defineConfig({
     react(),
     expressiveCode(),
     mdx(),
-    sitemap(),
+    sitemap({
+      changefreq: "weekly",
+      priority: 0.7,
+      lastmod: new Date(),
+      i18n: {
+        defaultLocale: "en",
+        locales: {
+          en: "en-US",
+        },
+      },
+    }),
   ],
   markdown: {
     remarkPlugins: [remarkReadingTime, remarkModifiedTime],
