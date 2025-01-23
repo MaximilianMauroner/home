@@ -1,17 +1,36 @@
 ---
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
+import type { ImageMetadata } from "astro";
+import { getImage } from "astro:assets";
 interface Props {
   title: string;
   description: string;
   image?: string;
 }
 const { title, description, image } = Astro.props;
-const imageFile = image ?? "/astronaut.avif";
 import "@/styles/globals.css";
 import { ClientRouter } from "astro:transitions";
 import Posthog from "@/components/Posthog.astro";
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+
+const images = import.meta.glob<{ default: ImageMetadata }>(
+  "/src/assets/**/*.{jpeg,jpg,png,gif,webp,avif}"
+);
+let img;
+if (image && images[image]) {
+  img = await getImage({
+    src: images[image](),
+    width: 1024,
+    height: 1024,
+  });
+} else {
+  img = await getImage({
+    src: "/astronaut.avif",
+    width: 1024,
+    height: 1024,
+  });
+}
 ---
 
 <html lang="en">
@@ -31,14 +50,14 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={new URL(imageFile, Astro.site)} />
+    <meta property="og:image" content={new URL(img.src, Astro.site)} />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content={canonicalURL} />
     <meta property="twitter:title" content={title} />
     <meta property="twitter:description" content={description} />
-    <meta property="twitter:image" content={new URL(imageFile, Astro.site)} />
+    <meta property="twitter:image" content={new URL(img.src, Astro.site)} />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
