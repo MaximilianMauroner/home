@@ -13,13 +13,9 @@ import expressiveCode from "astro-expressive-code";
 import { remarkReadingTime } from "./plugins/remark-reading-time.mjs";
 import { remarkModifiedTime } from "./plugins/remark-modified-time.mjs";
 
-import vercel from "@astrojs/vercel/serverless";
-
 // https://astro.build/config
 export default defineConfig({
   site: "https://www.mauroner.net",
-  adapter: vercel(),
-  output: "hybrid",
   integrations: [
     tailwind({ applyBaseStyles: false }),
     react(),

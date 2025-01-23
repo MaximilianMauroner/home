@@ -29,7 +29,7 @@ export default function DarkModeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="group/toggle inline-flex h-8 w-8 items-center justify-center gap-2 whitespace-nowrap rounded-md px-0 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="group/toggle inline-flex h-8 w-8 items-center justify-center gap-2 whitespace-nowrap rounded-md px-0 py-2 text-sm font-medium transition-colors hover:bg-primary-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
