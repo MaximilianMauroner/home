@@ -16,6 +16,7 @@ import { remarkModifiedTime } from "./plugins/remark-modified-time.mjs";
 // https://astro.build/config
 export default defineConfig({
   site: "https://www.mauroner.net",
+  trailingSlash: "always",
   integrations: [
     tailwind({ applyBaseStyles: false }),
     react(),

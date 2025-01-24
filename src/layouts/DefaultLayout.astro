@@ -12,6 +12,7 @@ const { title, description, image } = Astro.props;
 import "@/styles/globals.css";
 import { ClientRouter } from "astro:transitions";
 import Posthog from "@/components/Posthog.astro";
+
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
 const images = import.meta.glob<{ default: ImageMetadata }>(
