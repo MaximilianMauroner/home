@@ -24,18 +24,18 @@ import Obsidiangraph from "@/assets/blog/obsidian-graph.png";
 import QuickAddExamplel from "@/assets/blog/quick-add-example.png";
 import ObsidianShimmering from "@/assets/blog/obsidian-shimmering.png";
 
-# Introduction
+## Introduction
 
 After literal years of trying to find a solution that combines notions ability to handle data
 and logseqs ability to handle graphs I think I've finally found a solution. Obsidian.
 
-## Setting Up Obsidian
+### Setting Up Obsidian
 
-### Step 1: Download and Install
+#### Step 1: Download and Install
 
 Start by downloading and installing [Obsidian](https://obsidian.md/).
 
-### Step 2: Organizing Your Notes
+#### Step 2: Organizing Your Notes
 
 Decide on an organizational system for your notes. I use a modified version of the [Johnny.Decimal System](https://johnnydecimal.com/) combined with the PARA system:
 
@@ -45,13 +45,13 @@ Decide on an organizational system for your notes. I use a modified version of t
 - **Sprint**: Weekly sprint planning and task management.
   <Image src={Johnnydecimal} alt="Folder structure inside obsidian" />
 
-## Why Obsidian
+### Why Obsidian
 
 I choose Obsidian because it allows you to control your data while providing database-like power through plugins and customization.
 After trying other tools like Notion, Logseq, Capacities, and Evernote, I found Obsidian to be the best.
 As you can always use the markdown as a basis and integrate it with powerful plugins. Your data is always yours, and you can always export it.
 
-### Key Advantages
+#### Key Advantages
 
 - **Data Ownership**: Your notes are stored locally in Markdown format.
 - **Customizability**: Obsidian can be tailored to fit your specific needs.
@@ -61,11 +61,11 @@ As you can always use the markdown as a basis and integrate it with powerful plu
 
 But for the obsidian to work like I wanted it to, some things had to change.
 
-# Plugins:
+## Plugins:
 
 I tried to keep the list as small as possible and only include plugins I cannot live without, and I excluded the ones which are included with obsidian. This is community plugins only.
 
-## Dataview
+### Dataview
 
 Dataview is plugin that allows you to query your notes, and it's the most powerful plugin I have ever used.
 It's like having a database in your notes. I use it to query my notes, and to create a CMS like system.
@@ -95,7 +95,7 @@ const sortedLinks = Object.entries(linkCounts)
 dv.table(["Person Mentioned", "Amount of Times Mentioned"], sortedLinks);
 ```
 
-## Diary - Data mangement
+### Diary - Data mangement
 
 On that note, one thing I found that was very important was the mindshift, into linking (tagging) everything whenever possible. If you have anything that should be linked, link it to a date.
 If you do it long enough you will end up with a graph of your life, and you can see how things are connected, and how/why/when you did what you did.
@@ -107,7 +107,7 @@ If you do it long enough you will end up with a graph of your life, and you can 
 Right now I have migrated not even 1/10th of my notion to obsidian, and it
 already looks like this. I can't wait to see how it will look like at the end.
 
-# QuickAdd
+## QuickAdd
 
 Now to the meat of the subject, why I like obsidian so much, the QuickAdd plugin.
 QuickAdd enhances note creation with templates and scripts. For instance, you can use it to create a new note (e.g., for a movie) and autofill its properties:
@@ -136,7 +136,7 @@ So scripts is the part where it clicked for me, how powerful this plugin really 
 
 For more details, check the [documentation](https://quickadd.obsidian.guide/docs/)
 
-## Templates
+### Templates
 
 But I modified the tempalte a bit.
 
@@ -182,7 +182,7 @@ year:
 
 And as you can see, there is a random `{{VALUE:Poster}}` in there, which is a link to a cover image. But I need that image saved in the same folder as the note, so I created a script for that.
 
-## Scripts
+### Scripts
 
 ```js
 // Function to extract all links from file content
@@ -300,7 +300,7 @@ async function start(params) {
 This script basically fetches any link, tries to download them (if it's an image) and then saves it in the attachments folder.
 Then it replaces the text of the link and adds the filename in the page properties
 
-# Why Obsidian is Ideal for Developers
+## Why Obsidian is Ideal for Developers
 
 Obsidian's flexibility allows developers to:
 
@@ -309,7 +309,7 @@ Obsidian's flexibility allows developers to:
 
 **And that is why I choose obsidian as my CMS.**
 
-# Shmmering Focus
+## Shmmering Focus
 
 Finally, the Shimmering Focus theme deserves a special mention. It’s the most polished and useful theme I’ve used. You can tweak it with the Style Settings plugin to make it your own.
 
