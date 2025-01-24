@@ -3,7 +3,10 @@ import Homepage from "@/components/Homepage";
 import DefaultLayout from "@/layouts/DefaultLayout.astro";
 ---
 
-<DefaultLayout title="Home" description="Welcome to my Homepage">
+<DefaultLayout
+  title="Home"
+  description="My Homepage technical blog posts, development logs, and tools and other stuff I find interesting."
+>
   <h1 class="sr-only">Home</h1>
   <Homepage client:load />
 </DefaultLayout>
