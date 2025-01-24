@@ -29,14 +29,14 @@ export default function BlogPreview({
           </span>
         </div>
         <h2 className="mb-2 text-2xl font-bold tracking-tight text-primary underline-offset-4 hover:underline">
-          <a href={"/blog/" + blog.id}>{blog.data.title}</a>
+          <a href={`/blog/${blog.id}/`}>{blog.data.title}</a>
         </h2>
         <p className="mb-5 font-light text-muted-foreground">
           {blog.data.description}
         </p>
         <div className="flex items-center justify-between text-xs font-medium text-primary ring-offset-background sm:text-sm">
           <a
-            href={"/blog/" + blog.id}
+            href={`/blog/${blog.id}/`}
             className="inline-flex items-center font-medium text-primary hover:underline"
           >
             Read more
