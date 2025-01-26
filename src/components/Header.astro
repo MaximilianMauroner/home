@@ -35,7 +35,7 @@ navigation.forEach((item) => {
 ---
 
 <header
-  class="sticky top-0 z-50 flex items-center justify-center bg-primary px-2 py-2 text-primary-foreground sm:px-6 md:justify-between dark:bg-background dark:border-b dark:border-primary-foreground"
+  class="sticky top-0 z-50 flex items-center justify-center bg-primary px-2 py-2 text-primary-foreground sm:px-6 md:justify-between dark:bg-background/80 dark:backdrop-blur-sm dark:border-b dark:border-primary-foreground"
 >
   <nav
     class="flex w-full items-center justify-around gap-2 sm:justify-center sm:gap-6"
@@ -53,14 +53,14 @@ navigation.forEach((item) => {
       {navigation.map((item) => <NavItem item={item} isMobile={true} />)}
     </div>
   </nav>
-  <div class="flex gap-4">
+  <div class="flex gap-2">
     {
       socials.map((item) => (
         <a
           href={item.href}
           title={item.name}
           target="_blank"
-          class="hidden items-center gap-2 text-sm font-medium underline-offset-4 hover:underline md:flex"
+          class="hidden items-center gap-1 text-sm font-medium underline-offset-4 hover:underline md:flex rounded-lg p-2 text-white/90 hover:bg-white/10 dark:hover:bg-primary/10"
         >
           <div class="h-6 w-6">
             <img src={item.icon} alt={item.name} width={1000} height={1000} />

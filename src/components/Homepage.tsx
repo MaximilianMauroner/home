@@ -15,7 +15,7 @@ const ogLast = "mauroner";
 interface ContentItem {
   id: string;
   slug: string;
-  collection: "blog" | "log";
+  collection: "blog" | "dev-log";
   data: {
     title: string;
     description: string;
@@ -52,23 +52,42 @@ const LetterCard = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Store the selected content index to maintain stability
-  const [selectedIndex, setSelectedIndex] = useState<number>(0);
-
   useEffect(() => {
-    // Combine and filter content that includes the letter in the title
-    const allContent = [...blogs, ...logs].filter((item) =>
-      item.data.title.toLowerCase().includes(letter.toLowerCase()),
-    );
+    const allContent = [...blogs, ...logs];
 
     if (allContent.length > 0) {
-      // Use the stored index or reset if out of bounds
-      const index = Math.min(selectedIndex, allContent.length - 1);
-      setContent(allContent[index]);
+      // Create a deterministic hash based on the letter
+      const getHash = (str: string) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          const char = str.charCodeAt(i);
+          hash = (hash << 5) - hash + char;
+          hash = hash & hash; // Convert to 32-bit integer
+        }
+        return Math.abs(hash);
+      };
+
+      // Use just the letter for hashing to get a random but consistent selection
+      const hash = getHash(letter);
+
+      // Try to distribute items evenly by using the letter's position in the name
+      // as an offset into different sections of the content
+      const letterPosition = (ogFirst + ogLast).indexOf(letter.toLowerCase());
+      const sectionSize = Math.ceil(
+        allContent.length / (ogFirst + ogLast).length,
+      );
+      const sectionStart = (letterPosition * sectionSize) % allContent.length;
+
+      // Use the hash to select within the section
+      const sectionOffset =
+        hash % Math.min(sectionSize, allContent.length - sectionStart);
+      const selectedIndex = (sectionStart + sectionOffset) % allContent.length;
+
+      setContent(allContent[selectedIndex]);
     } else {
       setContent(null);
     }
-  }, [letter, blogs, logs, selectedIndex]); // Remove position from dependencies
+  }, [letter, blogs, logs]);
 
   const handleMouseDown = (event: React.MouseEvent) => {
     setIsDragging(true);
@@ -137,7 +156,13 @@ const LetterCard = ({
     >
       <div className="flex items-center justify-between border-b border-indigo-500/30 p-2">
         <span className="text-sm text-indigo-300">
-          Found in: {content.slug.startsWith("blog") ? "Blog" : "Log"}
+          Found in:{" "}
+          <a
+            href={content.slug.startsWith("blog") ? "/blog/" : "/dev-log/"}
+            className="hover:text-indigo-200 hover:underline"
+          >
+            {content.slug.startsWith("blog") ? "blog" : "dev-log"}
+          </a>
         </span>
         <button
           onClick={onClose}
@@ -169,6 +194,7 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
     letter: string;
     position: { x: number; y: number };
   } | null>(null);
+  const [showHint, setShowHint] = useState(true);
 
   // Transform the entries to match ContentItem format
   const transformedBlogs: ContentItem[] = blogs.map((blog) => ({
@@ -180,7 +206,7 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
   const transformedLogs: ContentItem[] = logs.map((log) => ({
     ...log,
     slug: `dev-log/${log.id}`,
-    collection: "log",
+    collection: "dev-log",
   }));
 
   const handleLetterClick = useCallback(
@@ -199,27 +225,6 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
               },
             },
       );
-
-      // Existing scramble effect
-      const randomChar = () =>
-        letters[Math.floor(Math.random() * letters.length)];
-      let iterations = 0;
-      const interval = setInterval(() => {
-        if (iterations >= 3) {
-          clearInterval(interval);
-          return;
-        }
-        const elem = document.querySelectorAll(`[data-letter="${letter}"]`);
-        elem.forEach((el) => {
-          el.textContent = randomChar();
-        });
-        iterations += 1;
-        if (iterations === 3) {
-          elem.forEach((el) => {
-            el.textContent = letter;
-          });
-        }
-      }, 100);
     },
     [],
   );
@@ -260,6 +265,10 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
   useEffect(() => {
     loadByName(setFirstname, ogFirst);
     loadByName(setLastname, ogLast);
+
+    // Hide the hint after first interaction or after 10 seconds
+    const timer = setTimeout(() => setShowHint(false), 10000);
+    return () => clearTimeout(timer);
   }, []);
 
   const downArrow = (
@@ -296,24 +305,6 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
     </svg>
   );
 
-  const terminalCursor = (
-    <div className="pointer-events-none fixed inset-0 z-10 overflow-hidden">
-      <div className="animate-terminal-cursor absolute h-6 w-3 bg-indigo-500/30">
-        <div className="animate-blink absolute inset-0 bg-violet-400/60"></div>
-      </div>
-    </div>
-  );
-
-  const starField = (
-    <div className="fixed inset-0 h-screen w-screen overflow-hidden bg-gray-50 dark:bg-black">
-      <div className="hidden dark:block">
-        <div className="stars-small absolute inset-0"></div>
-        <div className="stars-medium absolute inset-0"></div>
-        <div className="stars-large absolute inset-0"></div>
-      </div>
-    </div>
-  );
-
   const handlePositionChange = useCallback(
     (newPosition: { x: number; y: number }) => {
       setActiveCard((prev) =>
@@ -324,108 +315,115 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
   );
 
   return (
-    <>
-      {starField}
-      <div className="relative min-h-screen bg-transparent text-indigo-700 dark:text-indigo-300">
-        {activeCard && (
-          <LetterCard
-            letter={activeCard.letter}
-            position={activeCard.position}
-            onClose={() => setActiveCard(null)}
-            blogs={transformedBlogs}
-            logs={transformedLogs}
-            onPositionChange={handlePositionChange}
-          />
-        )}
-        <div className="relative z-10 mx-auto max-w-7xl px-4">
-          <div className="py-1">
-            <div className="my-10 grid w-full grid-flow-col grid-cols-5 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-4xl font-extrabold [text-shadow:_0_0_10px_#818cf8] sm:text-6xl md:text-8xl">
-              {firstname.split("").map((letter, index) => (
+    <div className="relative min-h-screen bg-transparent text-indigo-700 dark:text-indigo-300">
+      {activeCard && (
+        <LetterCard
+          letter={activeCard.letter}
+          position={activeCard.position}
+          onClose={() => {
+            setActiveCard(null);
+            setShowHint(false);
+          }}
+          blogs={transformedBlogs}
+          logs={transformedLogs}
+          onPositionChange={handlePositionChange}
+        />
+      )}
+      <div className="relative z-10 mx-auto max-w-7xl px-4">
+        <div className="py-1">
+          <div className="my-10 grid w-full grid-flow-col grid-cols-5 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-4xl font-extrabold [text-shadow:_0_0_10px_#818cf8] sm:text-6xl md:text-8xl">
+            {firstname.split("").map((letter, index) => (
+              <span
+                key={index}
+                className="relative text-center transition-all hover:text-indigo-200"
+              >
                 <span
-                  key={index}
-                  className="relative text-center transition-all hover:text-indigo-200"
+                  data-letter={letter}
+                  onClick={(e) => {
+                    handleLetterClick(letter, e);
+                    setShowHint(false);
+                  }}
+                  className={`cursor-pointer transition-all hover:scale-110 hover:text-violet-300 ${
+                    index === 0 && showHint
+                      ? "relative before:absolute before:-inset-6 before:animate-wave-pulse-delayed before:rounded-full before:border before:border-violet-400/10 after:absolute after:-inset-3 after:animate-wave-pulse after:rounded-full after:border after:border-violet-400/20"
+                      : ""
+                  }`}
                 >
-                  <span
-                    data-letter={letter}
-                    onClick={(e) => handleLetterClick(letter, e)}
-                    className="cursor-pointer transition-all hover:scale-110 hover:text-violet-300"
-                  >
-                    {letter}
-                  </span>
-                  {index % 2 === 0 ? (
-                    <div className="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] text-indigo-600 md:-bottom-4">
-                      {downArrow}
-                    </div>
-                  ) : index !== firstname.length - 1 ? (
-                    <div className="absolute right-0 top-0 text-indigo-600">
-                      {rightUpArrow}
-                    </div>
-                  ) : null}
+                  {letter}
                 </span>
-              ))}
-            </div>
-            <div className="my-10 grid w-full grid-flow-col grid-cols-4 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-4xl font-extrabold [text-shadow:_0_0_10px_#818cf8] sm:text-6xl md:text-8xl">
-              {lastname.split("").map((letter, index) => (
-                <span
-                  key={index}
-                  className="relative text-center transition-all hover:text-indigo-200"
-                >
-                  <span
-                    data-letter={letter}
-                    onClick={(e) => handleLetterClick(letter, e)}
-                    className="cursor-pointer transition-all hover:scale-110 hover:text-violet-300"
-                  >
-                    {letter}
-                  </span>
-                  {index % 2 === 0 ? (
-                    <div className="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] text-indigo-600 md:-bottom-4">
-                      {downArrow}
-                    </div>
-                  ) : index !== lastname.length - 1 ? (
-                    <div className="absolute right-0 top-0 text-indigo-600">
-                      {rightUpArrow}
-                    </div>
-                  ) : null}
-                </span>
-              ))}
-            </div>
+                {index % 2 === 0 ? (
+                  <div className="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] text-indigo-600 md:-bottom-4">
+                    {downArrow}
+                  </div>
+                ) : index !== firstname.length - 1 ? (
+                  <div className="absolute right-0 top-0 text-indigo-600">
+                    {rightUpArrow}
+                  </div>
+                ) : null}
+              </span>
+            ))}
           </div>
+          <div className="my-10 grid w-full grid-flow-col grid-cols-4 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-4xl font-extrabold [text-shadow:_0_0_10px_#818cf8] sm:text-6xl md:text-8xl">
+            {lastname.split("").map((letter, index) => (
+              <span
+                key={index}
+                className="relative text-center transition-all hover:text-indigo-200"
+              >
+                <span
+                  data-letter={letter}
+                  onClick={(e) => handleLetterClick(letter, e)}
+                  className="cursor-pointer transition-all hover:scale-110 hover:text-violet-300"
+                >
+                  {letter}
+                </span>
+                {index % 2 === 0 ? (
+                  <div className="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] text-indigo-600 md:-bottom-4">
+                    {downArrow}
+                  </div>
+                ) : index !== lastname.length - 1 ? (
+                  <div className="absolute right-0 top-0 text-indigo-600">
+                    {rightUpArrow}
+                  </div>
+                ) : null}
+              </span>
+            ))}
+          </div>
+        </div>
 
-          <div className="flex flex-col items-center justify-center py-8">
-            <div className="relative max-w-prose rounded-lg border border-indigo-500/20 bg-white/70 p-6 font-mono text-indigo-700 shadow-[0_0_15px_rgba(99,102,241,0.1)] backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/70 dark:text-indigo-300 dark:shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-              <div className="absolute -top-3 left-4 bg-black px-2 text-sm text-indigo-400">
-                <span className="text-violet-400">$</span> cat{" "}
-                <span className="text-indigo-300">profile.txt</span>
-              </div>
-              <div className="block space-y-4">
-                <p className="typing-animation relative">
-                  <span className="animate-terminal-blink absolute -left-3">
-                    ▌
-                  </span>
-                  hi, i'm a <AgeCalculator /> year-old developer. currently
-                  studying software engineering at the&nbsp;
-                  <TechStackItem href="https://tuwien.at/" name="TU Wien" />.
-                </p>
-                <p className="typing-animation-delayed">
-                  i'm usually working on multiple&nbsp;
-                  <TechStackItem href="/tools" name="Tools" />. for more info
-                  check them out on&nbsp;
-                  <TechStackItem
-                    href="https://github.com/MaximilianMauroner"
-                    name="GitHub"
-                  />
-                  &nbsp;or send me a message via&nbsp;
-                  <TechStackItem
-                    href="mailto:home@relay.mauroner.net"
-                    name="Email"
-                  />
-                </p>
-              </div>
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="relative max-w-prose rounded-lg border border-indigo-500/20 bg-white/70 p-6 font-mono text-indigo-700 shadow-[0_0_15px_rgba(99,102,241,0.1)] backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/70 dark:text-indigo-300 dark:shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+            <div className="absolute -top-3 left-4 bg-black px-2 text-sm text-indigo-400">
+              <span className="text-violet-400">$</span> cat{" "}
+              <span className="text-indigo-300">profile.txt</span>
+            </div>
+            <div className="block space-y-4">
+              <p className="typing-animation relative">
+                <span className="animate-terminal-blink absolute -left-3">
+                  ▌
+                </span>
+                hi, i'm a <AgeCalculator /> year-old developer. currently
+                studying software engineering at the&nbsp;
+                <TechStackItem href="https://tuwien.at/" name="TU Wien" />.
+              </p>
+              <p className="typing-animation-delayed">
+                i'm usually working on multiple&nbsp;
+                <TechStackItem href="/tools" name="Tools" />. for more info
+                check them out on&nbsp;
+                <TechStackItem
+                  href="https://github.com/MaximilianMauroner"
+                  name="GitHub"
+                />
+                &nbsp;or send me a message via&nbsp;
+                <TechStackItem
+                  href="mailto:home@relay.mauroner.net"
+                  name="Email"
+                />
+              </p>
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
