@@ -11,13 +11,17 @@ export const getBlogs = async () => {
     return filteredBlog;
 }
 
-export const getLogs = async () => {
+export type BlogType = CollectionEntry<"blog">;
+
+export const getLogs = async (): Promise<CollectionEntry<"log">[]> => {
     const log = await getCollection('log');
     const filteredLog = log.filter(filterFunction).sort((a, b) => {
         return new Date(b.data.releaseDate).getTime() - new Date(a.data.releaseDate).getTime();
     });
     return filteredLog;
 }
+
+export type LogType = CollectionEntry<"log">;
 
 export const getTags = (
     blogs: CollectionEntry<"blog">[],

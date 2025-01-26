@@ -29,6 +29,7 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    @apply transition-colors duration-300;
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -98,4 +99,122 @@ h6 {
   .grid-cols-53 {
     grid-template-columns: repeat(53, minmax(0, 1fr));
   }
+}
+
+@keyframes typing {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.typing-animation {
+  opacity: 0;
+  animation: typing 0.5s forwards;
+}
+
+.typing-animation-delayed {
+  opacity: 0;
+  animation: typing 0.5s forwards;
+  animation-delay: 0.5s;
+}
+
+@keyframes terminal-cursor {
+  0% {
+    transform: translate(10%, 10%);
+  }
+  25% {
+    transform: translate(90%, 20%);
+  }
+  50% {
+    transform: translate(90%, 80%);
+  }
+  75% {
+    transform: translate(10%, 90%);
+  }
+  100% {
+    transform: translate(10%, 10%);
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-terminal-cursor {
+  animation: terminal-cursor 15s infinite linear;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+}
+
+.animate-blink {
+  animation: blink 1s infinite ease-in-out;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.stars-small,
+.stars-medium,
+.stars-large {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  pointer-events: none;
+}
+
+.stars-small {
+  background-image: radial-gradient(1px 1px at 20% 30%, white, rgba(0, 0, 0, 0)),
+    radial-gradient(1px 1px at 40% 70%, white, rgba(0, 0, 0, 0)),
+    radial-gradient(1px 1px at 60% 20%, white, rgba(0, 0, 0, 0)),
+    radial-gradient(1px 1px at 80% 40%, white, rgba(0, 0, 0, 0));
+  background-size: 100px 100px;
+  animation: twinkle 3s infinite ease-in-out;
+}
+
+.stars-medium {
+  background-image: radial-gradient(2px 2px at 20% 50%, #818cf8, rgba(0, 0, 0, 0)),
+    radial-gradient(2px 2px at 40% 60%, #818cf8, rgba(0, 0, 0, 0)),
+    radial-gradient(2px 2px at 60% 30%, #818cf8, rgba(0, 0, 0, 0)),
+    radial-gradient(2px 2px at 80% 70%, #818cf8, rgba(0, 0, 0, 0));
+  background-size: 200px 200px;
+  animation: twinkle 5s infinite ease-in-out;
+}
+
+.stars-large {
+  background-image: radial-gradient(3px 3px at 10% 40%, #a78bfa, rgba(0, 0, 0, 0)),
+    radial-gradient(3px 3px at 30% 80%, #a78bfa, rgba(0, 0, 0, 0)),
+    radial-gradient(3px 3px at 70% 50%, #a78bfa, rgba(0, 0, 0, 0)),
+    radial-gradient(3px 3px at 90% 20%, #a78bfa, rgba(0, 0, 0, 0));
+  background-size: 300px 300px;
+  animation: twinkle 7s infinite ease-in-out;
+}
+
+@keyframes terminal-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-terminal-blink {
+  animation: terminal-blink 1s infinite step-end;
+  color: currentColor;
 }
