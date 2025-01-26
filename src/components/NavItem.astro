@@ -11,6 +11,7 @@ interface Props {
 
 const { item, isMobile = false } = Astro.props;
 const mobileClass = isMobile ? " block sm:hidden" : " sm:block hidden";
+const mobileStyles = isMobile ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm";
 
 if (item.defaultHidden && !item.current) return null;
 ---
@@ -23,7 +24,7 @@ if (item.defaultHidden && !item.current) return null;
         <a
           href={item.href}
           class={
-            "relative my-auto rounded-md border border-slate-500 px-3 py-2 text-center text-sm font-medium text-white/90 hover:bg-white/10 dark:hover:bg-primary/10" +
+            `relative my-auto rounded-md border border-slate-500 font-medium text-white hover:bg-white/10 ${mobileStyles}` +
             mobileClass
           }
           aria-current="page"
@@ -36,7 +37,7 @@ if (item.defaultHidden && !item.current) return null;
     <a
       href={item.href}
       class={
-        "my-auto rounded-md border border-slate-500 px-3 py-2 text-center text-sm font-medium text-white/90 hover:bg-white/10 dark:hover:bg-primary/10" +
+        `my-auto rounded-md border border-slate-500 font-medium text-white hover:bg-white/10 ${mobileStyles}` +
         mobileClass
       }
     >

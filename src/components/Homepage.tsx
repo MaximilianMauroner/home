@@ -89,39 +89,72 @@ const LetterCard = ({
     }
   }, [letter, blogs, logs]);
 
-  const handleMouseDown = (event: React.MouseEvent) => {
+  const handleDragStart = (event: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
+    const clientX =
+      "touches" in event ? event.touches[0].clientX : event.clientX;
+    const clientY =
+      "touches" in event ? event.touches[0].clientY : event.clientY;
+
     setDragOffset({
-      x: event.clientX - position.x,
-      y: event.clientY - position.y,
+      x: clientX - position.x,
+      y: clientY - position.y,
     });
   };
 
-  const handleMouseMove = useCallback(
-    (event: MouseEvent) => {
+  const handleDragMove = useCallback(
+    (event: MouseEvent | TouchEvent) => {
       if (isDragging) {
-        const newX = event.clientX - dragOffset.x;
-        const newY = event.clientY - dragOffset.y;
+        const clientX =
+          "touches" in event ? event.touches[0].clientX : event.clientX;
+        const clientY =
+          "touches" in event ? event.touches[0].clientY : event.clientY;
+
+        let newX = clientX - dragOffset.x;
+        let newY = clientY - dragOffset.y;
+
+        // Get viewport dimensions
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        // Get card dimensions (assuming width is 384px from w-96)
+        const cardWidth = 384;
+        const cardHeight = 300; // Approximate height, adjust as needed
+
+        // Calculate boundaries to keep at least 50% of card visible
+        const minX = -(cardWidth / 2);
+        const maxX = viewportWidth - cardWidth / 2;
+        const minY = 0; // Keep top of card always visible
+        const maxY = viewportHeight - cardHeight / 2;
+
+        // Clamp position within boundaries
+        newX = Math.max(minX, Math.min(maxX, newX));
+        newY = Math.max(minY, Math.min(maxY, newY));
+
         onPositionChange({ x: newX, y: newY });
       }
     },
     [isDragging, dragOffset, onPositionChange],
   );
 
-  const handleMouseUp = () => {
+  const handleDragEnd = () => {
     setIsDragging(false);
   };
 
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("mousemove", handleDragMove);
+      window.addEventListener("mouseup", handleDragEnd);
+      window.addEventListener("touchmove", handleDragMove);
+      window.addEventListener("touchend", handleDragEnd);
       return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
+        window.removeEventListener("mousemove", handleDragMove);
+        window.removeEventListener("mouseup", handleDragEnd);
+        window.removeEventListener("touchmove", handleDragMove);
+        window.removeEventListener("touchend", handleDragEnd);
       };
     }
-  }, [isDragging, handleMouseMove]);
+  }, [isDragging, handleDragMove]);
 
   if (!content) {
     return (
@@ -131,7 +164,8 @@ const LetterCard = ({
           top: `${position.y}px`,
           left: `${position.x + 40}px`,
         }}
-        onMouseDown={handleMouseDown}
+        onMouseDown={handleDragStart}
+        onTouchStart={handleDragStart}
       >
         <p>No content found for letter: {letter}</p>
         <button
@@ -151,8 +185,10 @@ const LetterCard = ({
         top: `${position.y}px`,
         left: `${position.x + 40}px`,
         cursor: isDragging ? "grabbing" : "grab",
+        touchAction: "none", // Prevents scrolling while dragging on mobile
       }}
-      onMouseDown={handleMouseDown}
+      onMouseDown={handleDragStart}
+      onTouchStart={handleDragStart}
     >
       <div className="flex items-center justify-between border-b border-indigo-500/30 p-2">
         <span className="text-sm text-indigo-300">
@@ -211,8 +247,17 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
 
   const handleLetterClick = useCallback(
     (letter: string, event: React.MouseEvent) => {
-      // Get click position for card placement
       const rect = event.currentTarget.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const cardWidth = 384;
+
+      // Calculate initial X position
+      let initialX = rect.left;
+
+      // Adjust if card would be more than 50% off-screen
+      if (initialX + cardWidth > viewportWidth - cardWidth / 2) {
+        initialX = viewportWidth - cardWidth - 40; // 40px buffer from right edge
+      }
 
       setActiveCard((current) =>
         current?.letter === letter
@@ -220,7 +265,7 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
           : {
               letter,
               position: {
-                x: rect.left,
+                x: initialX,
                 y: rect.top,
               },
             },
