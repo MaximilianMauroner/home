@@ -1,6 +1,6 @@
 ---
-import DefaultLayout from "@/layouts/DefaultLayout.astro";
 import { Pattern } from "@/components/Pattern";
+import StarLayout from "@/layouts/StarLayout.astro";
 
 const tools = import.meta.glob("./*/*.astro");
 const toolPages = [];
@@ -37,7 +37,7 @@ const dynamicColor = (index: number) => {
 };
 ---
 
-<DefaultLayout
+<StarLayout
   title="Tools"
   description="A collection of useful tools and utilities I've built"
 >
@@ -45,19 +45,19 @@ const dynamicColor = (index: number) => {
     <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
       <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">
         <h2
-          class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl"
+          class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-400 lg:text-4xl"
         >
-          Tools
+          tools
         </h2>
         <p class="font-light text-gray-500 sm:text-xl">
-          A collection of useful tools and utilities I've built
+          a collection of useful tools and utilities I've built
         </p>
       </div>
       <div class="grid gap-8 lg:grid-cols-2">
         {
           toolPages.map((tool, index) => (
             <a
-              href={tool.url}
+              href={tool.url + "/"}
               class="group relative block h-48 overflow-hidden rounded-lg bg-card transition-all hover:shadow-lg hover:scale-[1.02]"
             >
               <Pattern
@@ -83,4 +83,4 @@ const dynamicColor = (index: number) => {
       </div>
     </div>
   </section>
-</DefaultLayout>
+</StarLayout>

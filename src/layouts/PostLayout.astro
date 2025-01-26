@@ -63,7 +63,9 @@ const { frontmatter, headings, content } = Astro.props;
 
   <TableOfContents headingsArr={headings} client:idle />
 
-  <article class="prose mx-auto px-2 py-4 sm:px-0">
+  <article
+    class="prose mx-auto px-2 py-4 sm:px-0 dark:prose-invert dark:prose-headings:text-white dark:prose-p:text-gray-100 dark:prose-strong:text-white dark:prose-a:text-blue-300 dark:hover:prose-a:text-blue-200 dark:prose-code:text-gray-100 dark:prose-li:text-gray-100"
+  >
     <slot />
   </article>
 </DefaultLayout>

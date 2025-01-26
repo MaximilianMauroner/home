@@ -1,12 +1,15 @@
 ---
-import Homepage from "@/components/Homepage";
-import DefaultLayout from "@/layouts/DefaultLayout.astro";
+import { getBlogs, getLogs } from "@/utils/server/content";
+import Homepage from "../components/Homepage";
+import StarLayout from "@/layouts/StarLayout.astro";
+const blogs = await getBlogs();
+const logs = await getLogs();
 ---
 
-<DefaultLayout
-  title="Home"
-  description="My Homepage technical blog posts, development logs, and tools and other stuff I find interesting."
+<StarLayout
+  title="Maximilian Mauroner"
+  description="Just a dev sharing cool stuff: code snippets that work, dev stories that might help, and random tech tools I think are neat. Nothing fancy, just things I find interesting in the world of programming."
 >
-  <h1 class="sr-only">Home</h1>
-  <Homepage client:load />
-</DefaultLayout>
+  <h1 class="sr-only">Maximilian Mauroner</h1>
+  <Homepage blogs={blogs} logs={logs} client:load />
+</StarLayout>

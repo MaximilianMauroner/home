@@ -1,7 +1,7 @@
 ---
-import DefaultLayout from "@/layouts/DefaultLayout.astro";
 import TagView from "@/components/TagView";
 import { getBlogs, getLogs, getTags } from "@/utils/server/content";
+import StarLayout from "@/layouts/StarLayout.astro";
 
 const blogs = await getBlogs();
 const logs = await getLogs();
@@ -9,9 +9,9 @@ const logs = await getLogs();
 const tags = getTags(blogs, logs);
 ---
 
-<DefaultLayout
+<StarLayout
   title="Tags"
   description="List of all tags that are in blogs and logs"
 >
   <TagView tags={tags} blogs={blogs} logs={logs} client:load />
-</DefaultLayout>
+</StarLayout>

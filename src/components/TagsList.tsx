@@ -8,7 +8,7 @@ export default function TagsList({ tags }: { tags: string[] }) {
         <a
           key={tag}
           className="whitespace-nowrap rounded-full border border-transparent bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground no-underline hover:bg-primary hover:text-primary-foreground"
-          href={"/tags/" + tag}
+          href={"/tags/" + tag + "/"}
         >
           {tag}
         </a>

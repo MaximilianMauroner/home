@@ -3,7 +3,7 @@
 const { fontFamily } = require("tailwindcss/defaultTheme");
 
 export default {
-  darkMode: ["class"],
+  darkMode: ["selector"],
   content: ["./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}"],
   theme: {
     container: {
@@ -101,6 +101,26 @@ export default {
             backgroundPosition: "0% 50%",
           },
         },
+        "wave-pulse": {
+          "0%": {
+            transform: "scale(1)",
+            opacity: "0.4",
+          },
+          "100%": {
+            transform: "scale(1.5)",
+            opacity: "0",
+          },
+        },
+        "wave-pulse-delayed": {
+          "0%": {
+            transform: "scale(1)",
+            opacity: "0.3",
+          },
+          "100%": {
+            transform: "scale(1.7)",
+            opacity: "0",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -110,6 +130,8 @@ export default {
           "background-pan 3s linear infinite, underline-width .25s linear",
         "animated-background":
           "animation: animated-background 3s ease infinite background-size-400",
+        "wave-pulse": "wave-pulse 2s ease-out infinite",
+        "wave-pulse-delayed": "wave-pulse-delayed 2s ease-out infinite 0.5s",
       },
     },
   },

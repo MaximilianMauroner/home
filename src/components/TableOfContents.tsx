@@ -95,7 +95,7 @@ export default function TableOfContents({
                 className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
                   currentHeading === heading.slug
                     ? "bg-blue-500"
-                    : "bg-gray-200 dark:bg-gray-700"
+                    : "bg-gray-200"
                 }`}
               />
             ))}
@@ -122,7 +122,7 @@ export default function TableOfContents({
           >
             {heading.depth > 1 && (
               <span
-                className="absolute border-l-2 border-gray-200 dark:border-gray-700"
+                className="absolute border-l-2 border-gray-200"
                 style={{
                   height: "100%",
                   left: `${(heading.depth - 1) * 1.5 - 0.75}rem`,

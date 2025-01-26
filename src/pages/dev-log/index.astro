@@ -1,19 +1,13 @@
 ---
 import LogPreview from "@/components/LogPreview";
 import PostImageLoader from "@/components/PostImageLoader.astro";
-import DefaultLayout from "@/layouts/DefaultLayout.astro";
+import StarLayout from "@/layouts/StarLayout.astro";
 import { getLogs } from "@/utils/server/content";
-// import dayjs from "dayjs";
-// import weekOfYear from "dayjs/plugin/weekOfYear";
 
 const logs = await getLogs();
-
-// dayjs.extend(weekOfYear);
-// const currentWeek = dayjs().week();
-// const currentYear = dayjs().year();
 ---
 
-<DefaultLayout
+<StarLayout
   title="Dev-Blog"
   description="Trying to get my blog started so future historians can have my genius thoughts preserved for eternity /s"
 >
@@ -21,21 +15,13 @@ const logs = await getLogs();
     <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
       <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">
         <h2
-          class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl"
+          class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-400 lg:text-4xl"
         >
           dev log
         </h2>
         <p class="l font-light text-gray-500 sm:text-xl">
           weekly summary of what i've been working on
         </p>
-        <!-- <p>
-          next log:&nbsp;
-          <b>
-            <a href={`/dev-log/log/${currentYear}/${currentWeek}`}>
-              {currentYear + "/" + currentWeek}
-            </a>
-          </b>
-        </p> -->
       </div>
       <div class="grid gap-8 lg:grid-cols-2">
         {
@@ -59,4 +45,4 @@ const logs = await getLogs();
       </div>
     </div>
   </section>
-</DefaultLayout>
+</StarLayout>

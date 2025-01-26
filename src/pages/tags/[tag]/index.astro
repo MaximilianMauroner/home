@@ -1,6 +1,6 @@
 ---
 import TagView from "@/components/TagView";
-import DefaultLayout from "@/layouts/DefaultLayout.astro";
+import StarLayout from "@/layouts/StarLayout.astro";
 import { getBlogs, getLogs, getTags } from "@/utils/server/content";
 
 interface Props {
@@ -23,7 +23,7 @@ export async function getStaticPaths() {
 }
 ---
 
-<DefaultLayout title={tag} description={tag}>
+<StarLayout title={tag} description={tag}>
   <TagView
     tags={tags}
     blogs={blogs}
@@ -31,4 +31,4 @@ export async function getStaticPaths() {
     preSelectedTag={tag}
     client:load
   />
-</DefaultLayout>
+</StarLayout>

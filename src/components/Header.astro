@@ -1,4 +1,5 @@
 ---
+import DarkModeToggle from "./DarkModeToggle";
 import NavItem from "./NavItem.astro";
 import ImgAstronaut from "/public/astronaut.avif";
 import { Image } from "astro:assets";
@@ -34,42 +35,131 @@ navigation.forEach((item) => {
 ---
 
 <header
-  class="sticky top-0 z-50 flex items-center justify-center bg-primary px-2 py-2 text-primary-foreground sm:px-6 md:justify-between"
+  class="sticky top-0 z-50 flex flex-col bg-primary px-2 py-2 text-white sm:px-6 dark:bg-background/80 dark:backdrop-blur-sm dark:border-b dark:border-primary-foreground"
 >
-  <nav
-    class="flex w-full items-center justify-around gap-2 sm:justify-center sm:gap-6"
-  >
+  <div class="flex items-center justify-between md:justify-between">
     <a href="/" class="flex items-center gap-2 font-medium">
-      <div class="my-auto flex h-20 w-20 items-center justify-center">
-        <Image
-          src={ImgAstronaut}
-          loading="eager"
-          alt="Astronaut with laptop"
-        />
-
+      <div
+        class="my-auto flex h-12 w-12 sm:h-20 sm:w-20 items-center justify-center"
+      >
+        <Image src={ImgAstronaut} loading="eager" alt="Astronaut with laptop" />
         <span class="sr-only">Astronaut</span>
       </div>
     </a>
 
-    {navigation.map((item) => <NavItem item={item} isMobile={false} />)}
-    <div class="grid grid-cols-2 gap-2">
-      {navigation.map((item) => <NavItem item={item} isMobile={true} />)}
+    <div class="hidden sm:flex gap-4">
+      {navigation.map((item) => <NavItem item={item} isMobile={false} />)}
     </div>
-  </nav>
-  <div class="flex gap-4">
-    {
-      socials.map((item) => (
-        <a
-          href={item.href}
-          title={item.name}
-          target="_blank"
-          class="hidden items-center gap-2 text-sm font-medium underline-offset-4 hover:underline md:flex"
+
+    <div class="flex sm:hidden items-center gap-2">
+      {/* Show only current page on mobile */}
+      {
+        navigation.map(
+          (item) => item.current && <NavItem item={item} isMobile={true} />
+        )
+      }
+
+      <button
+        id="menu-toggle"
+        class="rounded-lg p-2 text-white hover:bg-white/10"
+        aria-label="Toggle Navigation Menu"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="w-6 h-6"
         >
-          <div class="h-6 w-6">
-            <img src={item.icon} alt={item.name} width={1000} height={1000} />
-          </div>
-        </a>
-      ))
-    }
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="hidden md:flex gap-2">
+      {
+        socials.map((item) => (
+          <a
+            href={item.href}
+            title={item.name}
+            target="_blank"
+            class="flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline rounded-lg p-2 text-white hover:bg-white/10"
+          >
+            <div class="h-6 w-6">
+              <img src={item.icon} alt={item.name} width={1000} height={1000} />
+            </div>
+          </a>
+        ))
+      }
+      <DarkModeToggle client:load />
+    </div>
+  </div>
+
+  {/* Expandable Mobile Navigation */}
+  <div
+    id="mobile-menu"
+    class="sm:hidden h-0 overflow-hidden transition-[height] duration-300 ease-in-out"
+  >
+    <div class="flex flex-col gap-2 py-4">
+      {
+        navigation.map((item) => (
+          <a
+            href={item.href}
+            class="text-lg font-medium py-2 hover:bg-white/10 rounded-lg px-4 text-white"
+          >
+            {item.name}
+          </a>
+        ))
+      }
+      <div class="flex items-center justify-between mt-2 px-4">
+        <div class="flex gap-2">
+          {
+            socials.map((item) => (
+              <a
+                href={item.href}
+                title={item.name}
+                target="_blank"
+                class="flex items-center gap-1 text-sm font-medium rounded-lg p-2 text-white hover:bg-white/10"
+              >
+                <div class="h-5 w-5">
+                  <img
+                    src={item.icon}
+                    alt={item.name}
+                    width={1000}
+                    height={1000}
+                  />
+                </div>
+              </a>
+            ))
+          }
+        </div>
+        <DarkModeToggle client:load />
+      </div>
+    </div>
   </div>
 </header>
+
+<script>
+  const menuToggle = document.getElementById("menu-toggle");
+  const mobileMenu = document.getElementById("mobile-menu");
+  let isOpen = false;
+
+  menuToggle?.addEventListener("click", () => {
+    isOpen = !isOpen;
+    if (mobileMenu) {
+      // Set explicit height for animation
+      mobileMenu.style.height = isOpen ? `${mobileMenu.scrollHeight}px` : "0";
+    }
+  });
+</script>
+
+<style>
+  /* Optional: Add some animation styles */
+  #mobile-menu {
+    z-index: 100;
+  }
+</style>
