@@ -16,12 +16,23 @@ import { remarkModifiedTime } from "./plugins/remark-modified-time.mjs";
 // https://astro.build/config
 export default defineConfig({
   site: "https://www.mauroner.net",
+  trailingSlash: "always",
   integrations: [
     tailwind({ applyBaseStyles: false }),
     react(),
     expressiveCode(),
     mdx(),
-    sitemap(),
+    sitemap({
+      changefreq: "weekly",
+      priority: 0.7,
+      lastmod: new Date(),
+      i18n: {
+        defaultLocale: "en",
+        locales: {
+          en: "en-US",
+        },
+      },
+    }),
   ],
   markdown: {
     remarkPlugins: [remarkReadingTime, remarkModifiedTime],

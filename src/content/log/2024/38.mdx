@@ -8,24 +8,24 @@ published: true
 releaseDate: 2024-09-21
 ---
 
-# Audio Hell
+## Audio Hell
 
-First things first is a audio app.
+First things first, an audio app.
 
 I made this because my headphones were making odd noises at certain frequencies, and I could not find a good free online frequency generator for mono and stereo audio. <br/>
 **Soooo, I made one.** [Audio Helper](https://audio-helper.mauroner.net)
 
-While it is not perfect, it is a good start. I will be adding more features to it in the future, but for now it is a simple frequency generator. If you find problems or want to suggest features, [please let me know](https://github.com/MaximilianMauroner/audio-helper/issues).
+While it is not perfect, it is a good start. I will be adding more features to it in the future, but for now, it is a simple frequency generator. If you find problems or want to suggest features, [please let me know](https://github.com/MaximilianMauroner/audio-helper/issues).
 
 ---
 
-# Making a Calendar is hard
+## Making a Calendar is hard
 
-This one I've had in mind for a long time, as I wanted to make a calendar similar to [reclaim.ai](https://reclaim.ai) but with a few changes, and inspirations from [Akiflow](https://akiflow.com/)
+I've had this in mind for a long time, as I wanted to make a calendar similar to [reclaim.ai](https://reclaim.ai) but with a few changes, and inspirations from [Akiflow](https://akiflow.com/)
 
 Since I've had some free time, I decided to start working on it.
 
-## The Stack
+### The Stack
 
 - **Starter**: [create-t3-app](https://create.t3.gg/)
 - **Frontend**: React with Next.js
@@ -34,7 +34,7 @@ Since I've had some free time, I decided to start working on it.
 - **UI**: TailwindCSS with shadcn/ui
 - **API**: tRPC and next server actions
 
-## The Features
+### The Features
 
 What I want to build, like the MVP of my calendar app:
 
@@ -44,22 +44,22 @@ What I want to build, like the MVP of my calendar app:
 - a way to add habits and routines
 - a way to tell the app that a day/time is to be considered blocked without showing up in my calendar (e.g. free time)
 - vacation mode
-- a better(and faster) algorithm than the one in reclaim
+- a better (and faster) algorithm than the one in reclaim
 - option to add tasks with start time, deadline, and specific hours
 
-## The Progress
+### The Progress
 
-First I wanted to do everyting myself thinking "how hard can this be". How wrong I was. As soon as I started working on the drag and drop of the calendar the difficulty dawned on me. I had to rethink my approach and decided to use [react-big-calendar](https://github.com/jquense/react-big-calendar)
+First I wanted to do everything myself thinking "how hard can this be". How wrong I was. As soon as I started working on the drag and drop of the calendar the difficulty dawned on me. I had to rethink my approach and decided to use [react-big-calendar](https://github.com/jquense/react-big-calendar)
 
 So I gave up and selected a package that does most of the work for me. I first tried [react-big-calendar](https://github.com/jquense/react-big-calendar), but then after a bit more research I found [Schedule-X](https://schedule-x.dev/).
-And this calendar and it's ability to be customized is amazing. I can't wait to see how it will look in the end. Especially since I can use it with tRPC and next server actions and since it has the option to add plugins
+And this calendar and its ability to be customized is amazing. I can't wait to see how it will look in the end. Especially since I can use it with tRPC and next server actions and since it has the option to add plugins
 
-# Homepage
+## Homepage
 
-i also updated my homepage, so the page you are currently reading this on. This page uses qwik and every "blog"-ish page uses mdx.
-But there were some things i couldn't figure out, like dynamically loading tags for blogs, and dynamically loading blogs.
+I also updated my homepage, so the page you are currently reading this on. This page uses Qwik and every "blog"-ish page uses MDX.
+But there were some things I couldn't figure out, like dynamically loading tags for blogs, and dynamically loading blogs.
 
-But recently I found a github issue which solved this for me in a very nice way.
+But recently I found a GitHub issue which solved this for me in a very nice way.
 
 ```typescript
 export function getLogs() {
@@ -83,4 +83,4 @@ export function getLogs() {
 }
 ```
 
-This code (while not perfect) is way better than anything else i've found, espescially considering that this works on serverless
+This code (while not perfect) is way better than anything else I've found, especially considering that this works on serverless

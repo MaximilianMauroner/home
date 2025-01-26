@@ -7,8 +7,9 @@ const logs = await getLogs();
 ---
 
 <DefaultLayout
-  description="My Homepage technical blog posts, development logs, and tools and other stuff I find interesting."
   title="Home"
+  description="My Homepage technical blog posts, development logs, and tools and other stuff I find interesting."
 >
+  <h1 class="sr-only">Home</h1>
   <Homepage blogs={blogs} logs={logs} client:load />
 </DefaultLayout>

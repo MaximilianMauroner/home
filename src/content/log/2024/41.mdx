@@ -12,13 +12,13 @@ import { Image } from "astro:assets";
 import TagsExampleImg from "@/assets/log/tags-example.png";
 import NvimImg from "@/assets/log/nvim.png";
 
-# Getting tags working
+## Getting tags working
 
 This week my main focus was on getting the tag system working.
 With the main idea being that I might want to search my own page in the future. In addition it's better to categorize the content.
 
 The concept was to have a list of all available tags, with all blogs and dev-logs showing next to the tags.
-Since the tags are supposed to be easiliy searchable and extractable from the markdown files themselves I had to work around those limitations a bit.
+Since the tags are supposed to be easily searchable and extractable from the markdown files themselves I had to work around those limitations a bit.
 In addition I also wanted to revamp the styling as I didn't really like the old styling. So the styling also got a bit improved.
 
 Now the only thing that I had to do was make it so that each time you click a tag on
@@ -27,13 +27,13 @@ Then the last remaining problem was that the `checked` status would not update c
 The fix for that was adding a `useVisibleTask$` Then
 to get the `window.location.pathname` information on page load.
 
-Now if you visite the [page](/tags/) it should work as expected.
+Now if you visit the [page](/tags/) it should work as expected.
 
 <Image src={TagsExampleImg} alt="Show the tags page that was described above" />
 
-# NVIM
+## NVIM
 
-So for some reason youtube decided to reccomend this video to me
+So for some reason youtube decided to recommend this video to me
 
 <div class="relative w-full pb-[56.25%]">
   <iframe
@@ -48,7 +48,7 @@ So for some reason youtube decided to reccomend this video to me
   ></iframe>
 </div>
 
-which then made want to try out `nvim`. I knew some of the basics but I had never used vim outside of vi/vim and VSCode before.
+which then made me want to try out `nvim`. I knew some of the basics but I had never used vim outside of vi/vim and VSCode before.
 
 So the first thing I did afterwards was look if there was a quickstart and wouldn't you know it there was.
 

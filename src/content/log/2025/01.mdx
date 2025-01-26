@@ -1,9 +1,7 @@
 ---
 layout: "@/layouts/PostLayout.astro"
-title: WhatsApp Analyser and Obsidian yearly setup
-description:
-  "WhatsApp analyzer for chat data insights and an Obsidian setup using Dataview to
-  link daily, weekly, and quarterly notes for better organization."
+title: "Data Analysis: WhatsApp Insights & Obsidian Organization"
+description: "How to analyze WhatsApp chat patterns and set up an efficient Obsidian knowledge management system using Dataview."
 tags:
   - data-analysis
   - obsidian
@@ -25,7 +23,7 @@ import WeeklyExample from "@/assets/log/2025-01_weekly_example.png";
 import QuarterlyExample from "@/assets/log/2025-01_quarterly_example.png";
 import WhatsappExample from "@/assets/log/2025-01_whatsapp_example.png";
 
-# Whatsapp Analyser
+## Whatsapp Analyser
 
 Since the year 2025 just started I wanted to create a tool that makes it possible for me to visualize the data from my WhatsApp chats.
 Since whatsapp is the main form of communication for me, I wanted to see how my communication with others has changed over the years.
@@ -39,7 +37,7 @@ E.g. filter yearly, show emoji usage and filter popular words and stuff like tha
   loading={"eager"}
 />
 
-# Obsidian
+## Obsidian
 
 So I wanted to have some way to quickly move through my recent diary entries, in a simple way. And there was no way to automatically navigate between the daily notes, weekly notes, and quarterly notes without installing multiple additional plugins.
 Which I did not want to do, since I already have quite a few plugins installed, so I used dataview and chatgpt to figure something out that works for me.
@@ -47,7 +45,7 @@ Which I did not want to do, since I already have quite a few plugins installed, 
 The main idea is that I keep track of what I want to do, so I don't forget about it, and then remind myself Quarterly, Weekly and then Daily about it.
 The idea is inspired/taken from this video [6 Habits to Make 2025 Your Best Year Yet](https://youtu.be/W2afI0n8pUk?si=C0F-BtqRJJWSq7Cm)
 
-## Diary Dataview display
+### Diary Dataview display
 
 <Image
   src={DiaryExample}
@@ -57,7 +55,7 @@ The idea is inspired/taken from this video [6 Habits to Make 2025 Your Best Year
   }
 />
 
-_careful this is not my reccomended solution anymore, see the end of the post_
+_careful this is not my recommended solution anymore, see the end of the post_
 
 ```js
 // Get the current file's name and check if it's a valid date in YYYY-MM-DD format
@@ -85,7 +83,7 @@ if (moment(currentFileName, "YYYY-MM-DD", true).isValid()) {
 }
 ```
 
-## Weekly Dataview display
+### Weekly Dataview display
 
 <Image
   src={WeeklyExample}
@@ -95,7 +93,7 @@ if (moment(currentFileName, "YYYY-MM-DD", true).isValid()) {
   }
 />
 
-_careful this is not my reccomended solution anymore, see the end of the post_
+_careful this is not my recommended solution anymore, see the end of the post_
 
 ```js
 // Get the current file's name and check if it's a valid ISO week format
@@ -131,7 +129,7 @@ ${daysOfWeek}`;
 }
 ```
 
-## Quarterly Dataview display
+### Quarterly Dataview display
 
 <Image
   src={QuarterlyExample}
@@ -141,7 +139,7 @@ ${daysOfWeek}`;
   }
 />
 
-_careful this is not my reccomended solution anymore, see the end of the post_
+_careful this is not my recommended solution anymore, see the end of the post_
 
 ```js
 // Get the current file's name and check if it's a valid ISO quarter format
@@ -173,13 +171,13 @@ if (moment(currentFileName, "YYYY-[Q]Q", true).isValid()) {
 
 The Template can be downloaded here:
 
-_careful this is not my reccomended solution anymore, see the end of the post_
+_careful this is not my recommended solution anymore, see the end of the post_
 
 - [Diary Template](/files/90.2.6_Diary.md)
 - [Weekly Template](/files/90.2.7_Weekly_Note.md)
 - [Quarterly Template](/files/90.2.8_Quarterly_Note.md)
 
-## Journals
+### Journals
 
 Then I use Journals to keep track and easily view my calendar, which contains the Daily, Weekly and Quarterly template.
 
@@ -206,10 +204,10 @@ With the name template values:
 - Default value for Weekly Notes
 - Default value for Quarterly Notes
 
-# Edit: 2025-01-12
+## Edit: 2025-01-12
 
-I had to change the setup of the dataview templates since it toook sooo long for dataview to load, and then it would be a performance bottleneck and I didn't like that I saw the "loading" state while the graph was being built.
-So the new template is using [Tempalter](https://silentvoid13.github.io/Templater/) with the following template
+I had to change the setup of the dataview templates since it took sooo long for dataview to load, and then it would be a performance bottleneck and I didn't like that I saw the "loading" state while the graph was being built.
+So the new template is using [Templater](https://silentvoid13.github.io/Templater/) with the following template
 
 Diary/Daily note
 
@@ -292,4 +290,4 @@ if (moment(currentFileName, "YYYY-[Q]Q", true).isValid()) {
 %>
 ```
 
-Make sure that you don't use the default daily note template from obisidan, as that seems to not execute the templater script, use the journal plugin instead.
+Make sure that you don't use the default daily note template from Obsidian, as that seems to not execute the templater script, use the journal plugin instead.
