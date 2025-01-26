@@ -1,18 +1,15 @@
 ---
 export const prerender = false;
-import DefaultLayout from "@/layouts/DefaultLayout.astro";
 import EloCompareGame from "@/components/other/EloCompareGame";
 import { getSpotifyAuthorizationUrl } from "@/utils/spotify";
+import StarLayout from "@/layouts/StarLayout.astro";
 const authUrl = getSpotifyAuthorizationUrl();
 
 const accessToken = Astro.cookies.get("spotify_access_token")?.value;
 const currentPath = Astro.url.pathname;
 ---
 
-<DefaultLayout
-  title="Elo Compare"
-  description="Compare Different Items in a list"
->
+<StarLayout title="Elo Compare" description="Compare Different Items in a list">
   <div class="mx-auto my-2 max-w-2xl rounded-lg bg-gray-100 p-6 shadow-lg">
     <div class="mb-4 flex items-center justify-between">
       {
@@ -35,4 +32,4 @@ const currentPath = Astro.url.pathname;
     </div>
     <EloCompareGame client:load />
   </div>
-</DefaultLayout>
+</StarLayout>
