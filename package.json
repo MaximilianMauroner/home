@@ -17,6 +17,7 @@
     "@astrojs/rss": "^4.0.10",
     "@astrojs/sitemap": "^3.2.1",
     "@astrojs/tailwind": "5.1.4",
+    "@astrojs/vercel": "^8.0.4",
     "@auth/core": "^0.37.4",
     "@tailwindcss/typography": "^0.5.15",
     "@types/react": "^18.3.12",
