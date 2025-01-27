@@ -6,6 +6,8 @@ import {
   type SetStateAction,
 } from "react";
 import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear";
+dayjs.extend(weekOfYear);
 import type { BlogType, LogType } from "@/utils/server/content";
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*";
@@ -62,28 +64,41 @@ const LetterCard = ({
         for (let i = 0; i < str.length; i++) {
           const char = str.charCodeAt(i);
           hash = (hash << 5) - hash + char;
-          hash = hash & hash; // Convert to 32-bit integer
+          hash = hash & hash;
         }
         return Math.abs(hash);
       };
 
-      // Use just the letter for hashing to get a random but consistent selection
+      // Get all letters in the name
+      const allLetters = (ogFirst + ogLast).split("");
+      const letterIndex = allLetters.indexOf(letter.toLowerCase());
+
+      // Calculate how many items each letter should get
+      const itemsPerLetter = Math.ceil(allContent.length / allLetters.length);
+
+      // Get a slice of content for this letter
+      let start = letterIndex * itemsPerLetter;
+      let end = start + itemsPerLetter;
+
+      // If we're at the end of the content array, wrap around
+      if (start >= allContent.length) {
+        start = start % allContent.length;
+        end = Math.min(start + itemsPerLetter, allContent.length);
+      }
+
+      // Get available content for this letter
+      let availableContent = allContent.slice(start, end);
+
+      // If we don't have enough content, get some from the beginning
+      if (availableContent.length === 0) {
+        availableContent = allContent.slice(0, itemsPerLetter);
+      }
+
+      // Use hash to select from available content
       const hash = getHash(letter);
+      const selectedIndex = hash % availableContent.length;
 
-      // Try to distribute items evenly by using the letter's position in the name
-      // as an offset into different sections of the content
-      const letterPosition = (ogFirst + ogLast).indexOf(letter.toLowerCase());
-      const sectionSize = Math.ceil(
-        allContent.length / (ogFirst + ogLast).length,
-      );
-      const sectionStart = (letterPosition * sectionSize) % allContent.length;
-
-      // Use the hash to select within the section
-      const sectionOffset =
-        hash % Math.min(sectionSize, allContent.length - sectionStart);
-      const selectedIndex = (sectionStart + sectionOffset) % allContent.length;
-
-      setContent(allContent[selectedIndex]);
+      setContent(availableContent[selectedIndex]);
     } else {
       setContent(null);
     }
@@ -178,6 +193,10 @@ const LetterCard = ({
     );
   }
 
+  const year = dayjs(content.data.releaseDate).format("YY");
+  const week = dayjs(content.data.releaseDate).week();
+  const formattedDate = `${year}-W${week}`;
+
   return (
     <div
       className="fixed z-50 w-96 select-none rounded-lg border border-indigo-500/20 bg-white/95 p-4 text-indigo-700 shadow-lg backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/95 dark:text-indigo-300"
@@ -185,21 +204,26 @@ const LetterCard = ({
         top: `${position.y}px`,
         left: `${position.x + 40}px`,
         cursor: isDragging ? "grabbing" : "grab",
-        touchAction: "none", // Prevents scrolling while dragging on mobile
+        touchAction: "none",
       }}
       onMouseDown={handleDragStart}
       onTouchStart={handleDragStart}
     >
-      <div className="flex items-center justify-between border-b border-indigo-500/30 p-2">
-        <span className="text-sm text-indigo-300">
-          Found in:{" "}
-          <a
-            href={content.slug.startsWith("blog") ? "/blog/" : "/dev-log/"}
-            className="hover:text-indigo-200 hover:underline"
-          >
-            {content.slug.startsWith("blog") ? "blog" : "dev-log"}
-          </a>
-        </span>
+      <div className="flex items-center justify-between gap-2 border-b border-indigo-500/30">
+        <div className="flex w-full flex-row items-center justify-between">
+          <span className="text-sm text-indigo-300">
+            Found in:{" "}
+            <a
+              href={content.slug.startsWith("blog") ? "/blog/" : "/dev-log/"}
+              className="hover:text-indigo-200 hover:underline"
+            >
+              {content.slug.startsWith("blog") ? "blog" : "dev-log"}
+            </a>
+          </span>
+          <span className="ml-2 text-xs text-indigo-400/70">
+            {formattedDate}
+          </span>
+        </div>
         <button
           onClick={onClose}
           className="text-indigo-400 hover:text-indigo-200 dark:text-indigo-600 dark:hover:text-indigo-800"
