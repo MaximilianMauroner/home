@@ -1,9 +1,9 @@
 ---
 import FontmatterTagsList from "@/components/FontmatterTagsList.astro";
-import DefaultLayout from "./DefaultLayout.astro";
 import TableOfContents from "@/components/TableOfContents";
 import { type HeadingType } from "@/utils/types";
 import PostImageLoader from "@/components/PostImageLoader.astro";
+import StarLayout from "./StarLayout.astro";
 interface Props {
   headings: HeadingType[];
   frontmatter: any;
@@ -17,7 +17,7 @@ interface Props {
 const { frontmatter, headings, content } = Astro.props;
 ---
 
-<DefaultLayout
+<StarLayout
   description={frontmatter.description}
   title={frontmatter.title}
   image={frontmatter.image}
@@ -68,4 +68,4 @@ const { frontmatter, headings, content } = Astro.props;
   >
     <slot />
   </article>
-</DefaultLayout>
+</StarLayout>
