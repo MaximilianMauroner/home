@@ -3,9 +3,9 @@ import { defineConfig } from "astro/config";
 
 import tailwind from "@astrojs/tailwind";
 
-import mdx from "@astrojs/mdx";
-
 import react from "@astrojs/react";
+
+import mdx from "@astrojs/mdx";
 
 import sitemap from "@astrojs/sitemap";
 
@@ -20,9 +20,9 @@ export default defineConfig({
   site: "https://www.mauroner.net",
   integrations: [
     tailwind({ applyBaseStyles: false }),
+    react(),
     expressiveCode(),
     mdx(),
-    react(),
     sitemap({
       changefreq: "weekly",
       priority: 0.7,
