@@ -1,0 +1,57 @@
+---
+layout: "@/layouts/PostLayout.astro"
+title: "Study Helper"
+description: "AI-powered study assistant for better learning."
+tags:
+  - ai
+  - education
+  - study
+image: "/src/assets/log/2025-06.png"
+published: true
+releaseDate: 2025-02-08
+---
+
+import { Image } from "astro:assets";
+import StudyHelper from "@/assets/log/study-helper.png";
+
+## 🤖 Study Helper
+
+I've been starting to work on the study-helper, which is an AI-powered study assistant for better learning.
+While using a pay as you go plan by allowing for your own AI key or use the one provided if you pay a subscription.
+
+<Image
+  src={StudyHelper}
+  alt="AI Chat app visaul representation of the study helper"
+  class={"relative hover:z-20 hover:scale-150 hover:cursor-zoom-in"}
+  loading={"eager"}
+/>
+
+This is more or less how it will look like, but I will continue to work on the design and the features.
+Like the emojis will be replaced with icons, and right now it's not functional beside the chat.
+And the sidebar links and text will also get changed.
+
+### 🎯 Key Features
+
+- bring your own KEY, to make sure that you don't pay for what you don't use
+- choose your own model, right now only GEMINI is supported, but later on openai and others will come
+- support for file-uploads and image uploads and projects
+- create flashcard from your notes and files which you upload
+- create summaries from your notes and files which you upload
+
+### 💡 How It Works
+
+Right now it only supports non persistent data, meaning that once you refresh the page the chat is gone.
+This will continue to be the case, as a default I don't save the information, and you can save it if you want to.
+Additionally I will offer two options, either you can use the free version, where you can bring your own and all the information will be stored in the browser.
+Or you can use the paid version where I will store the files and information in the db, and you can then access the AI either via your API-key or via the one we provide.
+
+### 🛠️ Technical Implementation
+
+The project is built with the following technologies:
+
+- [create-t3-app](https://create.t3.gg/) to create the boilerplate for the project.
+- [AI SDK](https://sdk.vercel.ai/) to interact with the AI and handle all the streaming processes for me
+- [Tailwind CSS](https://tailwindcss.com) - Styling
+- [Katex](https://katex.org/) for math rendering
+
+### 📝 Conclusion
