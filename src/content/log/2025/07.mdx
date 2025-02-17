@@ -1,0 +1,86 @@
+---
+layout: "@/layouts/PostLayout.astro"
+title: "Study Helper Progress: File Management"
+description: "Study Helper file management systems, and upcoming technical challenges. Plus some cool finds in tech and anime."
+tags:
+  - ai
+  - education
+  - study
+  - productivity
+  - file-uploads
+image: "/src/assets/log/2025-07.webp"
+published: true
+releaseDate: 2025-02-17
+---
+
+import { Image } from "astro:assets";
+import StudyHelperDesign from "@/assets/log/study-helper-screenshot-20250217.png";
+
+# 📝 The last Week
+
+In [the last dev log](/dev-log/2025/06) I said would continue, but I found a really cool open source github repo which helped a lot.
+
+- [chat.vercel](https://chat.vercel.ai/) - actual ai chat app with image upload and a bunch of stuff other stuff, such as "tools"
+- [repo](https://github.com/vercel/ai-chatbot) -
+  the open source repo for the chat app mentioned above
+
+# 🚀 This Week
+
+Then I continued with this process by working on the creation of the flashcards and saving them to projcts.
+And then I worked on the process of saving the entire chat(including file-uploads).
+The former was a bit tricky, but for the latter I used [uploadthing](https://uploadthing.com/).
+
+Meaning that right now you can select between different conversations, and AI models, with the option to upload any file and pass it to the ai
+(some models can handle files better than others, but that is something I still have to work on).
+
+## 🎨 The Design Changes
+
+The design is basically a copy from the vercel app with additions from shadcn/ui
+(which the vercel app also uses)
+
+<Image
+  src={StudyHelperDesign}
+  alt="AI Chat app visaul representation of the study helper"
+  class={"relative hover:z-20 hover:scale-150 hover:cursor-zoom-in"}
+  loading={"eager"}
+/>
+
+## 🔧 Technical challenges ahead
+
+- how to handle long chats where the ai token count is exceeded
+- how to handle multiple project files that exceed the ai token count
+- manage files, and assign them to projects
+- create flashcards with sources attached if possible, ideall the page and file where it's from so that I can quickly show it
+- the entire process of handling the flashcard algorithm
+- integration of more models and user ai keys
+- usage data and subscription options via stripe
+- and importat, by default I need to make it so that a user can not use my keys, and instead has to use his key unless "enabled" to do so by me
+
+# 📌 Week Gems
+
+- I saw this really interesting article about writing blogs and stuff in general [Advice for a friend who wants to start a blog](https://www.henrikkarlsson.xyz/p/start-a-blog)
+- I also found a video about a platform doing something similar to what I'm doing called [Opennote](https://www.youtube.com/watch?v=QtmAYsCBgQY)
+- Also the DANDADAN opening is straight fucking fire, so here are a few cool videos
+
+<div class="flex gap-2">
+  <iframe
+    width="560"
+    height="315"
+    src="https://www.youtube-nocookie.com/embed/8PPBwH72eFg?si=bgm8JMo_qpGqOwRO"
+    title="YouTube video player"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allowfullscreen
+  ></iframe>
+  <iframe
+    width="560"
+    height="315"
+    src="https://www.youtube-nocookie.com/embed/jKcXljelQKk?si=sOykSuU7o3v8gRlP"
+    title="YouTube video player"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allowfullscreen
+  ></iframe>
+</div>
