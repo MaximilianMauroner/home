@@ -22,7 +22,9 @@ export default defineConfig({
     tailwind({ applyBaseStyles: false }),
     react(),
     expressiveCode(),
-    mdx(),
+    mdx({
+      remarkRehype: { footnoteLabel: "Footnotes" },
+    }),
     sitemap({
       changefreq: "weekly",
       priority: 0.7,
