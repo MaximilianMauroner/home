@@ -95,7 +95,7 @@ navigation.forEach((item) => {
           </a>
         ))
       }
-      <DarkModeToggle client:load />
+      <DarkModeToggle client:idle />
     </div>
   </div>
 
@@ -137,7 +137,7 @@ navigation.forEach((item) => {
             ))
           }
         </div>
-        <DarkModeToggle client:load />
+        <DarkModeToggle client:idle />
       </div>
     </div>
   </div>
@@ -147,14 +147,22 @@ navigation.forEach((item) => {
   const menuToggle = document.getElementById("menu-toggle");
   const mobileMenu = document.getElementById("mobile-menu");
   let isOpen = false;
+  let isRunning = false;
 
-  menuToggle?.addEventListener("click", () => {
+  const handleOpen = (e: Event) => {
+    e.preventDefault();
+
+    if (isRunning) return;
+    isRunning = true;
     isOpen = !isOpen;
     if (mobileMenu) {
       // Set explicit height for animation
       mobileMenu.style.height = isOpen ? `${mobileMenu.scrollHeight}px` : "0";
     }
-  });
+    isRunning = false;
+  };
+  menuToggle?.addEventListener("click", handleOpen);
+  menuToggle?.addEventListener("touchstart", handleOpen);
 </script>
 
 <style>

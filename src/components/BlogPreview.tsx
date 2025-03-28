@@ -1,7 +1,7 @@
 import type { CollectionEntry } from "astro:content";
 import TagsList from "./TagsList";
 import type { ReactNode } from "react";
-import { calculateRelativeDate } from "@/utils/helpers";
+import { timeAgo } from "@/utils/helpers";
 
 export default function BlogPreview({
   blog,
@@ -10,22 +10,18 @@ export default function BlogPreview({
   blog: CollectionEntry<"blog">;
   image?: ReactNode; // Make image prop optional
 }) {
-  const releaseDate = calculateRelativeDate(blog.data.releaseDate);
-
   return (
     <article className="relative rounded-lg border border-gray-200 bg-card p-4 shadow-md sm:p-6">
       {image && image} {/* Only render image if it exists */}
       <div className="relative z-20">
         <div className="mb-5 flex flex-col items-center justify-between gap-1 sm:flex-row">
-          <div className="inline-flex items-center overflow-auto rounded px-2 py-0.5 text-xs font-medium text-primary">
-            <div className="flex w-full overflow-x-auto">
+          <div className="inline-flex items-center overflow-hidden rounded px-2 py-0.5 text-xs font-medium text-primary">
+            <div className="flex flex-nowrap overflow-hidden">
               <TagsList tags={blog.data.tags} />
             </div>
           </div>
-          <span className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-            {releaseDate < 0
-              ? `releases in ${Math.abs(releaseDate)} days`
-              : `released ${releaseDate} days ago`}
+          <span className="shrink-0 whitespace-nowrap text-right text-xs text-muted-foreground sm:text-sm">
+            {timeAgo(blog.data.releaseDate)}
           </span>
         </div>
         <h2 className="mb-2 text-2xl font-bold tracking-tight text-primary underline-offset-4 hover:underline">

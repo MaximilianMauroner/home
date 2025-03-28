@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 dayjs.extend(weekOfYear);
 import type { BlogType, LogType } from "@/utils/server/content";
+import { Queue } from "@/utils/queue";
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*";
 const ogFirst = "maximilian";
@@ -29,11 +30,9 @@ interface ContentItem {
 }
 
 interface LetterCardProps {
-  letter: string;
   position: { x: number; y: number };
   onClose: () => void;
-  blogs: ContentItem[];
-  logs: ContentItem[];
+  content: ContentItem | null;
   onPositionChange: (position: { x: number; y: number }) => void;
 }
 
@@ -43,66 +42,13 @@ interface HomepageProps {
 }
 
 const LetterCard = ({
-  letter,
   position,
   onClose,
-  blogs,
-  logs,
+  content,
   onPositionChange,
 }: LetterCardProps) => {
-  const [content, setContent] = useState<ContentItem | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const allContent = [...blogs, ...logs];
-
-    if (allContent.length > 0) {
-      // Create a deterministic hash based on the letter
-      const getHash = (str: string) => {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-          const char = str.charCodeAt(i);
-          hash = (hash << 5) - hash + char;
-          hash = hash & hash;
-        }
-        return Math.abs(hash);
-      };
-
-      // Get all letters in the name
-      const allLetters = (ogFirst + ogLast).split("");
-      const letterIndex = allLetters.indexOf(letter.toLowerCase());
-
-      // Calculate how many items each letter should get
-      const itemsPerLetter = Math.ceil(allContent.length / allLetters.length);
-
-      // Get a slice of content for this letter
-      let start = letterIndex * itemsPerLetter;
-      let end = start + itemsPerLetter;
-
-      // If we're at the end of the content array, wrap around
-      if (start >= allContent.length) {
-        start = start % allContent.length;
-        end = Math.min(start + itemsPerLetter, allContent.length);
-      }
-
-      // Get available content for this letter
-      let availableContent = allContent.slice(start, end);
-
-      // If we don't have enough content, get some from the beginning
-      if (availableContent.length === 0) {
-        availableContent = allContent.slice(0, itemsPerLetter);
-      }
-
-      // Use hash to select from available content
-      const hash = getHash(letter);
-      const selectedIndex = hash % availableContent.length;
-
-      setContent(availableContent[selectedIndex]);
-    } else {
-      setContent(null);
-    }
-  }, [letter, blogs, logs]);
 
   const handleDragStart = (event: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
@@ -182,7 +128,7 @@ const LetterCard = ({
         onMouseDown={handleDragStart}
         onTouchStart={handleDragStart}
       >
-        <p>No content found for letter: {letter}</p>
+        <p>No content found</p>
         <button
           onClick={onClose}
           className="mt-2 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200"
@@ -251,7 +197,7 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
   const [firstname, setFirstname] = useState(ogFirst);
   const [lastname, setLastname] = useState(ogLast);
   const [activeCard, setActiveCard] = useState<{
-    letter: string;
+    content: ContentItem | null;
     position: { x: number; y: number };
   } | null>(null);
   const [showHint, setShowHint] = useState(true);
@@ -269,8 +215,22 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
     collection: "dev-log",
   }));
 
+  const maxLen = Math.max(transformedBlogs.length, transformedLogs.length);
+
+  const queue = new Queue<ContentItem>();
+  for (let i = 0; i < maxLen; i++) {
+    if (i < transformedBlogs.length) {
+      queue.enqueue(transformedBlogs[i]);
+    }
+    if (i < transformedLogs.length) {
+      queue.enqueue(transformedLogs[i]);
+    }
+  }
+
+  const items = queue.toArray();
+
   const handleLetterClick = useCallback(
-    (letter: string, event: React.MouseEvent) => {
+    (index: number, event: React.MouseEvent) => {
       const rect = event.currentTarget.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const cardWidth = 384;
@@ -282,12 +242,20 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
       if (initialX + cardWidth > viewportWidth - cardWidth / 2) {
         initialX = viewportWidth - cardWidth - 40; // 40px buffer from right edge
       }
+      let activeCard = items[0];
+
+      if (index < items.length) {
+        activeCard = items[index];
+      } else {
+        const randomItem = items[Math.floor(Math.random() * items.length)];
+        activeCard = randomItem;
+      }
 
       setActiveCard((current) =>
-        current?.letter === letter
+        current?.content?.id === activeCard.slug
           ? null
           : {
-              letter,
+              content: activeCard,
               position: {
                 x: initialX,
                 y: rect.top,
@@ -387,14 +355,12 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
     <div className="relative min-h-screen bg-transparent text-indigo-700 dark:text-indigo-300">
       {activeCard && (
         <LetterCard
-          letter={activeCard.letter}
+          content={activeCard.content}
           position={activeCard.position}
           onClose={() => {
             setActiveCard(null);
             setShowHint(false);
           }}
-          blogs={transformedBlogs}
-          logs={transformedLogs}
           onPositionChange={handlePositionChange}
         />
       )}
@@ -409,7 +375,7 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
                 <span
                   data-letter={letter}
                   onClick={(e) => {
-                    handleLetterClick(letter, e);
+                    handleLetterClick(index, e);
                     setShowHint(false);
                   }}
                   className={`cursor-pointer transition-all hover:scale-110 hover:text-violet-300 ${
@@ -440,7 +406,9 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
               >
                 <span
                   data-letter={letter}
-                  onClick={(e) => handleLetterClick(letter, e)}
+                  onClick={(e) =>
+                    handleLetterClick(firstname.length + index, e)
+                  }
                   className="cursor-pointer transition-all hover:scale-110 hover:text-violet-300"
                 >
                   {letter}

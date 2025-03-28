@@ -68,6 +68,21 @@ if (image && images[image]) {
     <meta name="generator" content={Astro.generator} />
     <ClientRouter />
     <Posthog />
+    <script is:inline>
+      // improve performance so that it doesn't switch to dark mode after the loading of the script
+      const storedTheme = localStorage.getItem("theme");
+      if (storedTheme) {
+        document.documentElement.classList.toggle(
+          "dark",
+          storedTheme === "dark"
+        );
+      } else {
+        const systemDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        document.documentElement.classList.toggle("dark", systemDark);
+      }
+    </script>
   </head>
   <body lang="en" class="flex min-h-dvh flex-col">
     <Header />

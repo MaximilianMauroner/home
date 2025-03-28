@@ -1,0 +1,240 @@
+---
+import Layout from "@/layouts/StarLayout.astro";
+import ProjectsList from "@/components/ProjectsList";
+
+const p = [
+  {
+    name: "Danger Radar",
+    slug: "danger-radar",
+    description: "A web app to show the danger of a location",
+    github: "https://github.com/MaximilianMauroner/danger-radar",
+    website: "https://danger-radar.mauroner.eu",
+    progress: 0.66,
+    contributors: [
+      {
+        name: "Maximilian Mauroner",
+        href: "https://github.com/MaximilianMauroner",
+      },
+    ],
+    technologies: [
+      { name: "React", href: "https://reactjs.org" },
+      {
+        name: "TypeScript",
+        href: "https://www.typescriptlang.org",
+      },
+      { name: "Leaflet", href: "https://leafletjs.com" },
+      { name: "Vercel", href: "https://vercel.com" },
+      { name: "Pusher", href: "https://pusher.com" },
+      { name: "Next-Auth", href: "https://next-auth.js.org" },
+      { name: "tRPC", href: "https://trpc.io" },
+      { name: "Prisma", href: "https://www.prisma.io" },
+      { name: "tailwindcss", href: "https://tailwindcss.com" },
+    ],
+    images: {
+      primary: {
+        src: "/danger-radar/danger-radar-first.jpg",
+        alt: "Alt text",
+      },
+      secondary: {
+        src: "/danger-radar/danger-radar-second.jpg",
+        alt: "Alt text 2",
+      },
+      tertiary: {
+        src: "/danger-radar/danger-radar-third.jpg",
+        alt: "Alt text 3",
+      },
+    },
+  },
+  {
+    name: "League Lore Reader",
+    slug: "league-lore-reader",
+    description:
+      "A website which reads the lore of League of Legends and displays it with the option to let it get read to you",
+    github: "https://github.com/MaximilianMauroner/LeagueLoreReader",
+    website: "https://lorereader.mauroner.eu",
+    progress: 0.8,
+    contributors: [
+      {
+        name: "Maximilian Mauroner",
+        href: "https://github.com/MaximilianMauroner",
+      },
+    ],
+    technologies: [
+      { name: "React", href: "https://reactjs.org" },
+      {
+        name: "TypeScript",
+        href: "https://www.typescriptlang.org",
+      },
+      { name: "Vercel", href: "https://vercel.com" },
+      { name: "tRPC", href: "https://trpc.io" },
+      { name: "Prisma", href: "https://www.prisma.io" },
+      { name: "tailwindcss", href: "https://tailwindcss.com" },
+    ],
+    images: {
+      primary: {
+        src: "/lorereader/lorereader-first.jpg",
+        alt: "Alt text",
+      },
+      secondary: {
+        src: "/lorereader/lorereader-second.webp",
+        alt: "Alt text 2",
+      },
+      tertiary: {
+        src: "/lorereader/lorereader-third.webp",
+        alt: "Alt text 3",
+      },
+    },
+  },
+  {
+    name: "Colour Game",
+    slug: "colour-game",
+    description: "A simple game to test your colour perception",
+    github: "https://github.com/MaximilianMauroner/colour-game",
+    website: "https://colour-game.mauroner.eu",
+    progress: 0.95,
+    contributors: [
+      {
+        name: "Maximilian Mauroner",
+        href: "https://github.com/MaximilianMauroner",
+      },
+    ],
+    technologies: [
+      { name: "SolidJS", href: "https://www.solidjs.com" },
+      { name: "tailwindcss", href: "https://tailwindcss.com" },
+    ],
+    images: {
+      primary: { src: "/colour-game/first.avif", alt: "Alt text" },
+      secondary: { src: "/colour-game/second.avif", alt: "Alt text 2" },
+      tertiary: { src: "/colour-game/third.avif", alt: "Alt text 3" },
+    },
+  },
+  {
+    name: "Website",
+    slug: "www.mauroner-net",
+    description: "This current website",
+    github: "https://github.com/MaximilianMauroner/home",
+    progress: 0.54,
+    website: "https://www.mauroner.net",
+    contributors: [
+      {
+        name: "Maximilian Mauroner",
+        href: "https://github.com/MaximilianMauroner",
+      },
+    ],
+    technologies: [
+      { name: "qwik", href: "https://qwik.dev" },
+      { name: "tailwindcss", href: "https://tailwindcss.com" },
+    ],
+  },
+  {
+    name: "Highlights to Snipd",
+    slug: "highlights-to-snipd",
+    description:
+      "A tool to help migrate highlights (that export from audible via Liberate) to Snipd",
+    github: "https://github.com/MaximilianMauroner/highlights_to_snipd",
+    progress: 0.95,
+    contributors: [
+      {
+        name: "Maximilian Mauroner",
+        href: "https://github.com/MaximilianMauroner",
+      },
+    ],
+    technologies: [
+      { name: "typescript", href: "https://www.typescriptlang.org" },
+    ],
+  },
+  {
+    name: "Liberate Bookmarks",
+    slug: "liberate-bookmarks",
+    description:
+      "A programm to export bookmarks using Libarate from Audible and to then summarize them for easy export to Notion/Excel/Sheets",
+    github: "https://github.com/MaximilianMauroner/liberate_bookmarks",
+    progress: 0.75,
+    contributors: [
+      {
+        name: "Maximilian Mauroner",
+        href: "https://github.com/MaximilianMauroner",
+      },
+    ],
+    technologies: [
+      { name: "tauri", href: "https://tauri.app" },
+      { name: "svelte", href: "https://svelte.dev" },
+      { name: "tailwindcss", href: "https://tailwindcss.com" },
+      { name: "typescript", href: "https://www.typescriptlang.org" },
+    ],
+  },
+  {
+    name: "Ring Tracker",
+    slug: "ring-tracker",
+    description:
+      "A tool to help women that use menstrual discs track the times they have to remove and insert them",
+    github: "https://github.com/MaximilianMauroner/ring-tracker",
+    progress: 0.2,
+  },
+  {
+    name: "SyncTime",
+    slug: "synctime",
+    description:
+      "A lightweight tool that allows you to track the time you spend on phone and laptop and sync it between devices.",
+    github: "https://github.com/MaximilianMauroner/synctime",
+    progress: 0.05,
+  },
+  {
+    name: "Subscription Manager",
+    slug: "subscription-manager",
+    description:
+      "A tool to help you manage your subscriptions and calculate how much you are spending and overspending",
+    github: "https://github.com/MaximilianMauroner/subscription-manager",
+    progress: 0.15,
+  },
+  {
+    name: "Race Pace Cheatsheet",
+    slug: "race-pace-cheatsheet",
+    description:
+      "A website to help you calculate your pace for different units and to convert your speed into pace",
+    github: "https://github.com/MaximilianMauroner/race-pace-cheatsheet",
+    progress: 0.85,
+  },
+  {
+    name: "TikTok Friend Downloader",
+    slug: "tt-friend-dl",
+    description:
+      "A chrome extension that allows you to download all videos you recieved from a Friend on TikTok and watch (and track) them",
+    github: "https://github.com/MaximilianMauroner/tt-friend-dl",
+    progress: 0.15,
+  },
+  {
+    name: "Duplifinder",
+    slug: "duplifinder",
+    description: "A tool to find duplicate passwords in your password manager",
+    github: "https://github.com/MaximilianMauroner/duplifinder",
+    progress: 0.55,
+  },
+  {
+    name: "Personal Notion Manager",
+    slug: "personal-notion-manager",
+    description:
+      "A tool to help you manage your notion, this includes imports from various sources into notion",
+    github: "https://github.com/Lab4Code/PersonalNotionManager",
+    progress: 0.02,
+  },
+  {
+    name: "Camera Roll Formater",
+    slug: "camera-roll-formater",
+    description:
+      "A tool to format your images into the format which is used by the onedrive cameraroll since the onedrive app is somewhat broken",
+    github: "https://github.com/Lab4Code/camera-roll-formater",
+    progress: 0.9,
+  },
+];
+
+// Sort projects by progress for initial display
+const sortedProjects = [...p].sort((a, b) => b.progress - a.progress);
+---
+
+<Layout
+  title="Projects | Maximilian Mauroner"
+  description="A list of projects I have worked on"
+>
+  <ProjectsList projects={sortedProjects} client:load />
+</Layout>

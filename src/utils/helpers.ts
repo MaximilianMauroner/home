@@ -1,3 +1,4 @@
+
 export const calculateRelativeDate = (releaseDate: Date) => {
     const date2 = new Date();
     const diffTime = date2.getTime() - releaseDate.getTime();
@@ -11,3 +12,10 @@ export const kebabCase = (str: string) =>
         .replace(/[\s_]+/g, "-")
         .toLowerCase();
 
+export const timeAgo = (date: Date) => {
+    const releaseDate = calculateRelativeDate(date);
+    const days = Math.floor(releaseDate);
+    if (days > 0) return `${days}d${days === 1 ? '' : ''} ago`
+    else if (days < 0) return `in ${Math.abs(days)}d`
+    else return 'today'
+};
