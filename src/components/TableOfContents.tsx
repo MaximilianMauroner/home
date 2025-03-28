@@ -1,5 +1,5 @@
 import type { HeadingType } from "@/utils/types";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function TableOfContents({
   headingsArr,
@@ -8,12 +8,12 @@ export default function TableOfContents({
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [headings, setHeadings] = useState(headingsArr);
-
   const [currentHeading, setCurrentHeading] = useState(headings[0]?.slug ?? "");
   const [isHovered, setIsHovered] = useState(false);
 
-  const handleScroll = () => {
-    if (headings.length === 0) return null;
+  // Memoize handleScroll with useCallback
+  const handleScroll = useCallback(() => {
+    if (headings.length === 0) return;
 
     const offset = 80 + 16 + 1;
     let activeHeading = "";
@@ -51,7 +51,7 @@ export default function TableOfContents({
     if (currentHeading !== activeHeading) {
       setCurrentHeading(activeHeading);
     }
-  };
+  }, [headings, currentHeading]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -69,12 +69,11 @@ export default function TableOfContents({
       window.removeEventListener("scroll", handleScroll);
       document.removeEventListener("click", handleClickOutside);
     };
-  }, [headings, currentHeading]);
+  }, [handleScroll]); // Only depend on the memoized function
 
   useEffect(() => {
     handleScroll();
-  });
-
+  }, [handleScroll]); // Now this correctly depends on the memoized function
   if (headings.length === 0) return null;
 
   return (
