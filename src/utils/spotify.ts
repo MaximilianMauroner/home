@@ -23,7 +23,7 @@ export const getSpotifyTokens = async (code: string) => {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': `Basic ${btoa(`${import.meta.env.SPOTIFY_CLIENT_ID}:${import.meta.env.SPOTIFY_CLIENT_SECRET}`)}`
+            // 'Authorization': `Basic ${btoa(`${import.meta.env.SPOTIFY_CLIENT_ID}:${import.meta.env.SPOTIFY_CLIENT_SECRET}`)}`
         },
         body: new URLSearchParams({
             grant_type: 'authorization_code',
