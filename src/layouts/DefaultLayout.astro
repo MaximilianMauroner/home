@@ -35,7 +35,7 @@ if (image && images[image]) {
 ---
 
 <html lang="en">
-  <head>
+  <>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="canonical" href={canonicalURL} />
@@ -67,7 +67,7 @@ if (image && images[image]) {
     <link rel="alternate" type="application/rss+xml" href="/rss.xml" />
     <meta name="generator" content={Astro.generator} />
     <ClientRouter />
-    <Posthog />
+    {import.meta.env.PROD && <Posthog />}
     <script is:inline>
       // improve performance so that it doesn't switch to dark mode after the loading of the script
       const storedTheme = localStorage.getItem("theme");
@@ -83,7 +83,7 @@ if (image && images[image]) {
         document.documentElement.classList.toggle("dark", systemDark);
       }
     </script>
-  </head>
+  </>
   <body lang="en" class="flex min-h-dvh flex-col">
     <Header />
     <main class="flex-1">
