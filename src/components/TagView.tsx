@@ -83,14 +83,14 @@ export default function TagView({
   return (
     <>
       <div className="grid grid-cols-6 gap-4 p-4">
-        <div className="col-span-6 sm:col-span-2">
+        <div className="col-span-6 md:col-span-2">
           <TagList
             tags={tags}
             selectedTag={selectedTag}
             setSelectedTag={setSelectedTag}
           />
         </div>
-        <div className="col-span-6 sm:col-span-4">
+        <div className="col-span-6 md:col-span-4">
           <PostList
             blogs={selectedBlogs}
             logs={selectedLogs}

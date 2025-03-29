@@ -23,23 +23,25 @@ const logs = await getLogs();
           weekly summary of what i've been working on
         </p>
       </div>
-      <div class="grid gap-8 lg:grid-cols-2">
+      <div class="grid gap-4 lg:grid-cols-2 p-4">
         {
           logs.map((log) => (
-            <LogPreview log={log}>
-              <div
-                slot="image"
-                transition:name={"hero-" + log.data.image}
-                class="absolute inset-0 overflow-hidden rounded-lg"
-              >
-                <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />
-                <PostImageLoader
-                  className="h-full w-full object-cover"
-                  imagePath={log.data.image}
-                  altText={log.data.title}
-                />
-              </div>
-            </LogPreview>
+            <div class="col-span-2 lg:col-span-1 min-w-[-webkit-fill-available]">
+              <LogPreview log={log}>
+                <div
+                  slot="image"
+                  transition:name={"hero-" + log.data.image}
+                  class="absolute inset-0 overflow-hidden rounded-lg"
+                >
+                  <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />
+                  <PostImageLoader
+                    className="h-full w-full object-cover"
+                    imagePath={log.data.image}
+                    altText={log.data.title}
+                  />
+                </div>
+              </LogPreview>
+            </div>
           ))
         }
       </div>

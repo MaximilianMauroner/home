@@ -30,20 +30,22 @@ blogs.sort((a, b) => {
       <div class="grid gap-8 lg:grid-cols-2">
         {
           blogs.map((blog) => (
-            <BlogPreview blog={blog}>
-              <div
-                slot="image"
-                transition:name={"hero-" + blog.data.image}
-                class="absolute inset-0 overflow-hidden rounded-lg"
-              >
-                <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />
-                <PostImageLoader
-                  className="h-full w-full object-cover"
-                  imagePath={blog.data.image}
-                  altText={blog.data.title}
-                />
-              </div>
-            </BlogPreview>
+            <div class="col-span-2 lg:col-span-1 min-w-[-webkit-fill-available]">
+              <BlogPreview blog={blog}>
+                <div
+                  slot="image"
+                  transition:name={"hero-" + blog.data.image}
+                  class="absolute inset-0 overflow-hidden rounded-lg"
+                >
+                  <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />
+                  <PostImageLoader
+                    className="h-full w-full object-cover"
+                    imagePath={blog.data.image}
+                    altText={blog.data.title}
+                  />
+                </div>
+              </BlogPreview>
+            </div>
           ))
         }
       </div>

@@ -11,16 +11,16 @@ export default function BlogPreview({
   image?: ReactNode; // Make image prop optional
 }) {
   return (
-    <article className="relative rounded-lg border border-gray-200 bg-card p-4 shadow-md sm:p-6">
+    <article className="relative h-full rounded-lg border border-gray-200 bg-card p-4 shadow-md sm:p-6">
       {image && image} {/* Only render image if it exists */}
       <div className="relative z-20">
-        <div className="mb-5 flex flex-col items-center justify-between gap-1 sm:flex-row">
-          <div className="inline-flex items-center overflow-hidden rounded px-2 py-0.5 text-xs font-medium text-primary">
-            <div className="flex flex-nowrap overflow-hidden">
+        <div className="mb-5 flex flex-row items-center justify-between gap-1">
+          <div className="relative flex-1 overflow-hidden">
+            <div className="h-6 w-full overflow-hidden overflow-y-clip text-ellipsis whitespace-nowrap">
               <TagsList tags={blog.data.tags} />
             </div>
           </div>
-          <span className="shrink-0 whitespace-nowrap text-right text-xs text-muted-foreground sm:text-sm">
+          <span className="flex-shrink-0 whitespace-nowrap text-right text-xs text-muted-foreground sm:text-sm">
             {timeAgo(blog.data.releaseDate)}
           </span>
         </div>

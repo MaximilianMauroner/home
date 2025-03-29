@@ -13,7 +13,7 @@ export default function LogPreview({
   image?: ReactNode; // Make image prop optional
 }) {
   return (
-    <article className="relative rounded-lg border border-gray-200 bg-card p-4 shadow-md sm:p-6">
+    <article className="relative h-full rounded-lg border border-gray-200 bg-card p-4 shadow-md sm:p-6">
       {image && image} {/* Only render image if it exists */}
       <div className="relative z-20">
         <div className="mb-5 flex flex-row items-center justify-between gap-1">
