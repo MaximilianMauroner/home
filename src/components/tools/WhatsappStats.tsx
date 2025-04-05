@@ -14,6 +14,7 @@ import {
 import { Bar, Pie, Line } from "react-chartjs-2";
 import { COMMON_WORDS } from "@/lib/words";
 import JSZip from "jszip";
+import { whatsappDB } from "./db";
 
 ChartJS.register(
   CategoryScale,
@@ -119,11 +120,28 @@ export default function WhatsappStats() {
   };
 
   // Update processTextData to store raw messages first
-  const processTextData = (text: string) => {
+  const processTextData = async (text: string) => {
     const lines = text.split("\n");
     const participantsList = extractParticipants(lines);
+    whatsappDB.persons.clear();
+    whatsappDB.persons.bulkAdd(participantsList.map((name) => ({ name })));
+    const persons = await whatsappDB.persons.toArray();
     const filtered = filterMessages(lines, participantsList);
     setRawMessages(filtered); // Store raw messages
+
+    whatsappDB.chats.clear();
+    whatsappDB.chats.bulkAdd(
+      filtered.map((msg) => {
+        const [datePlusUser, messageContent] = msg.split(": ");
+        const date = datePlusUser.split(" - ")[0].trim();
+        const user = datePlusUser.split(" - ")[1].trim();
+        return {
+          time: date,
+          personId: persons.find((p) => p.name === user)?.id || 0,
+          text: messageContent,
+        };
+      }),
+    );
 
     setParticipants(participantsList);
 
@@ -138,20 +156,31 @@ export default function WhatsappStats() {
   };
 
   useEffect(() => {
-    // If no analyzed data, try to load raw text
-    const savedText = localStorage.getItem("whatsapp-stats-raw");
-    if (savedText) {
+    // Create an async function inside useEffect
+    const loadSavedData = async () => {
       try {
-        processTextData(savedText);
-      } catch (e) {
-        console.error("Error processing saved text:", e);
-        localStorage.removeItem("whatsapp-stats-raw");
+        // Await the chat count
+        const chatcount = await whatsappDB.chats.toArray();
+        const personCount = await whatsappDB.persons.toArray();
+      } catch (error) {
+        console.error("Error loading saved data:", error);
+        setError("Failed to load saved data");
       }
-    }
-  }, []);
+    };
+
+    // Call the async function
+    loadSavedData();
+
+    // Optional: Return cleanup function if needed
+    return () => {
+      // Cleanup code here if necessary
+    };
+  }, []); // Empty dependency array means this runs once on mount
 
   const clearSavedData = () => {
     localStorage.removeItem("whatsapp-stats-raw");
+    whatsappDB.chats.clear();
+    whatsappDB.persons.clear();
     setFile(null);
     setError(null);
     setParticipants([]);
@@ -381,7 +410,6 @@ export default function WhatsappStats() {
         text = await file.text();
       }
 
-      localStorage.setItem("whatsapp-stats-raw", text);
       processTextData(text);
     } catch (err) {
       setError("Error reading file content");
