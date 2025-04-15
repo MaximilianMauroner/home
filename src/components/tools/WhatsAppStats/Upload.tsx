@@ -40,7 +40,11 @@ export function HandlewhatsappData() {
         text = await file.text();
       }
 
-      processTextData(text);
+      const chatId = await whatsappDB.chats.add({
+        name: file.name + " - " + new Date().toDateString(),
+      });
+
+      processTextData(text, chatId);
     } catch (err) {
       setError("Error reading file content");
       console.error("Error reading file:", err);
@@ -113,28 +117,28 @@ export function HandlewhatsappData() {
       return participants.includes(user);
     });
   };
-  const processTextData = async (text: string) => {
+  const processTextData = async (text: string, chatId: number) => {
     const lines = text.split("\n");
     const participantsList = extractParticipants(lines);
     whatsappDB.persons.clear();
-    whatsappDB.persons.bulkAdd(participantsList.map((name) => ({ name })));
+    whatsappDB.persons.bulkAdd(
+      participantsList.map((name) => ({ name, chatId })),
+    );
     const persons = await whatsappDB.persons.toArray();
     const filtered = filterMessages(lines, participantsList);
 
-    whatsappDB.chats.clear();
-    whatsappDB.chats.bulkAdd(
+    whatsappDB.messages.clear();
+    whatsappDB.messages.bulkAdd(
       filtered.map((msg: string) => {
         const [datePlusUser, messageContent] = msg.split(": ");
         const [dateTime, user] = datePlusUser.split(" - ").map((s) => s.trim());
         const [date, time] = dateTime.split(", ");
-        console.log("date", date);
-        console.log("time", time);
-
         return {
           personId: persons.find((p) => p.name === user)?.id || 0,
           time: time,
           date: date,
           text: messageContent,
+          chatId: chatId,
         };
       }),
     );
@@ -150,11 +154,7 @@ export function HandlewhatsappData() {
   }, []);
 
   if (hasMessages) {
-    return (
-      <div>
-        <p className="text-green-500">Data processed successfully!</p>
-      </div>
-    );
+    return null;
   }
 
   return (
