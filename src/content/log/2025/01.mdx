@@ -171,7 +171,8 @@ if (moment(currentFileName, "YYYY-[Q]Q", true).isValid()) {
 
 The Template can be downloaded here:
 
-_careful this is not my recommended solution anymore, see the end of the post_
+~~_careful this is not my recommended solution anymore, see the end of the post_~~
+They got updated in the last change (see [the last edit](#edit-2025-04-15))
 
 - [Diary Template](/files/90.2.6_Diary.md)
 - [Weekly Template](/files/90.2.7_Weekly_Note.md)
@@ -204,7 +205,7 @@ With the name template values:
 - Default value for Weekly Notes
 - Default value for Quarterly Notes
 
-## Edit: 2025-01-12
+### Edit: 2025-01-12
 
 I had to change the setup of the dataview templates since it took sooo long for dataview to load, and then it would be a performance bottleneck and I didn't like that I saw the "loading" state while the graph was being built.
 So the new template is using [Templater](https://silentvoid13.github.io/Templater/) with the following template
@@ -291,3 +292,7 @@ if (moment(currentFileName, "YYYY-[Q]Q", true).isValid()) {
 ```
 
 Make sure that you don't use the default daily note template from Obsidian, as that seems to not execute the templater script, use the journal plugin instead.
+
+### Edit: 2025-04-15
+
+i updated the obisidan files to reflect my current usage, which was mostly just the change inside the weekly to add a reference to the quarterly goals in addition to the last edit
