@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
+import { atom } from 'jotai';
 
 interface Message {
     id: number;
@@ -6,6 +7,7 @@ interface Message {
     chatId: number;
     time: string;
     date: string;
+    year: number;
     text: string,
 }
 
@@ -28,10 +30,17 @@ const whatsappDB = new Dexie('ChatsDatabase') as Dexie & {
 
 // Schema declaration:
 whatsappDB.version(3).stores({
-    messages: '++id, personId, chatId, time, date, text',
+    messages: '++id, personId, chatId, year, [chatId+year]',
     persons: '++id, name, chatId',
     chats: '++id, name'
 });
 
 export type { Message, Person, Chat };
 export { whatsappDB };
+
+
+
+
+export const isClearedAtom = atom(false);
+export const isDataUploadedAtom = atom(false);
+export const showNamesAtom = atom(false);

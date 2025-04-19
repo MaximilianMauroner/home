@@ -1,8 +1,11 @@
 import JSZip from "jszip";
 import { useEffect, useState } from "react";
-import { whatsappDB } from "../db";
+import { isClearedAtom, isDataUploadedAtom, whatsappDB } from "./db";
+import { useAtom } from "jotai";
 
 export function HandlewhatsappData() {
+  const [isCleared, setIsCleared] = useAtom(isClearedAtom);
+  const [isDataUploaded, setIsDataUploaded] = useAtom(isDataUploadedAtom);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasMessages, setHasMessages] = useState(false);
@@ -120,14 +123,14 @@ export function HandlewhatsappData() {
   const processTextData = async (text: string, chatId: number) => {
     const lines = text.split("\n");
     const participantsList = extractParticipants(lines);
-    whatsappDB.persons.clear();
     whatsappDB.persons.bulkAdd(
       participantsList.map((name) => ({ name, chatId })),
     );
-    const persons = await whatsappDB.persons.toArray();
+    const persons = await whatsappDB.persons
+      .where({ chatId: chatId })
+      .toArray();
     const filtered = filterMessages(lines, participantsList);
 
-    whatsappDB.messages.clear();
     whatsappDB.messages.bulkAdd(
       filtered.map((msg: string) => {
         const [datePlusUser, messageContent] = msg.split(": ");
@@ -138,11 +141,23 @@ export function HandlewhatsappData() {
           time: time,
           date: date,
           text: messageContent,
+          year: Number(date.slice(-4)),
           chatId: chatId,
         };
       }),
     );
+    setIsDataUploaded(true);
   };
+
+  useEffect(() => {
+    if (isCleared) {
+      setFile(null);
+      setError(null);
+      setIsCleared(false);
+      setHasMessages(false);
+      setIsDataUploaded(false);
+    }
+  }, [isCleared]);
 
   useEffect(() => {
     const messageCount = whatsappDB.chats.count();
@@ -152,10 +167,6 @@ export function HandlewhatsappData() {
     };
     fetchMessageCount();
   }, []);
-
-  if (hasMessages) {
-    return null;
-  }
 
   return (
     <div>
