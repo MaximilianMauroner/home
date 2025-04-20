@@ -21,16 +21,14 @@ import StarLayout from "@/layouts/StarLayout.astro";
               style="transition-property: max-height;"
             >
               All data is processed locally on your device and stays in your
-              browser. No information leaves your device. All of the processing
-              happens on device.
+              browser. No information leaves your device; this is a purely
+              client-side application. All chat data is processed locally in
+              your browser and is not collected, stored, or transmitted to any
+              server.
             </span>
           </p>
         </div>
       </div>
-      <!-- <script
-          cross-origin="anonymous"
-          src="//unpkg.com/react-scan/dist/auto.global.js"></script> -->
-
       <WhatsappIndex client:load />
     </div>
   </div>
