@@ -1,27 +1,37 @@
 ---
 export const title = "WhatsApp Stats";
 export const description = "A tool to visualize your WhatsApp chat habits";
-import WhatsappStats from "@/components/tools/WhatsappStats";
+import WhatsappIndex from "@/components/tools/WhatsAppStats/Index";
 import StarLayout from "@/layouts/StarLayout.astro";
 ---
 
 <StarLayout title={title} description={description}>
-  <section>
-    <div class="mx-auto max-w-screen-xl px-2 md:px-4 md:py-8 lg:px-6 lg:py-16">
-      <div class="space-y-4">
-        <div class="flex flex-col space-y-2 mb-4">
-          <h1 class="text-3xl font-bold tracking-tight">WhatsApp Stats</h1>
-          <p class="text-muted-foreground">
-            Upload your WhatsApp chat export to analyze your messaging patterns
-          </p>
-          <p class="text-sm text-muted-foreground">
-            Your privacy is important. All data is processed locally on your
-            device and stays in your browser. This website does not collect or
-            store any of your chat data.
+  <div class="mx-auto max-w-screen-xl px-2 md:px-4 md:py-8 lg:px-6 lg:py-16">
+    <div class="space-y-4">
+      <div class="flex flex-col space-y-2 mb-4">
+        <h1 class="text-3xl font-bold tracking-tight">WhatsApp Stats</h1>
+        <p class="text-muted-foreground">
+          Upload your WhatsApp chat export to analyze your messaging patterns
+        </p>
+        <div class="relative inline-block">
+          <p class="group text-xs text-muted-foreground">
+            Your privacy is important.
+            <span
+              class="block max-h-0 overflow-hidden transition-all duration-300 group-hover:max-h-40"
+              style="transition-property: max-height;"
+            >
+              All data is processed locally on your device and stays in your
+              browser. No information leaves your device. All of the processing
+              happens on device.
+            </span>
           </p>
         </div>
-        <WhatsappStats client:load />
       </div>
+      <!-- <script
+          cross-origin="anonymous"
+          src="//unpkg.com/react-scan/dist/auto.global.js"></script> -->
+
+      <WhatsappIndex client:load />
     </div>
-  </section>
+  </div>
 </StarLayout>

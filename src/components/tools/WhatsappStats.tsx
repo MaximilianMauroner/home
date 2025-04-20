@@ -119,7 +119,7 @@ export default function WhatsappStats() {
   };
 
   // Update processTextData to store raw messages first
-  const processTextData = (text: string) => {
+  const processTextData = async (text: string) => {
     const lines = text.split("\n");
     const participantsList = extractParticipants(lines);
     const filtered = filterMessages(lines, participantsList);
@@ -138,17 +138,24 @@ export default function WhatsappStats() {
   };
 
   useEffect(() => {
-    // If no analyzed data, try to load raw text
-    const savedText = localStorage.getItem("whatsapp-stats-raw");
-    if (savedText) {
+    // Create an async function inside useEffect
+    const loadSavedData = async () => {
       try {
-        processTextData(savedText);
-      } catch (e) {
-        console.error("Error processing saved text:", e);
-        localStorage.removeItem("whatsapp-stats-raw");
+        // Await the chat count
+      } catch (error) {
+        console.error("Error loading saved data:", error);
+        setError("Failed to load saved data");
       }
-    }
-  }, []);
+    };
+
+    // Call the async function
+    loadSavedData();
+
+    // Optional: Return cleanup function if needed
+    return () => {
+      // Cleanup code here if necessary
+    };
+  }, []); // Empty dependency array means this runs once on mount
 
   const clearSavedData = () => {
     localStorage.removeItem("whatsapp-stats-raw");
@@ -381,7 +388,6 @@ export default function WhatsappStats() {
         text = await file.text();
       }
 
-      localStorage.setItem("whatsapp-stats-raw", text);
       processTextData(text);
     } catch (err) {
       setError("Error reading file content");
