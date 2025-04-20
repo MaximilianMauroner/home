@@ -6,9 +6,10 @@ import { useAtom } from "jotai";
 export function HandlewhatsappData() {
   const [isCleared, setIsCleared] = useAtom(isClearedAtom);
   const [isDataUploaded, setIsDataUploaded] = useAtom(isDataUploadedAtom);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hasMessages, setHasMessages] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const extractTextFromZip = async (zipFile: File): Promise<string | null> => {
     try {
@@ -32,12 +33,15 @@ export function HandlewhatsappData() {
       return null;
     }
   };
+
   const readFileContent = async (file: File) => {
     try {
       let text: string;
       if (file.name.endsWith(".zip")) {
         const extractedText = await extractTextFromZip(file);
-        if (!extractedText) return;
+        if (!extractedText) {
+          return;
+        }
         text = extractedText;
       } else {
         text = await file.text();
@@ -47,7 +51,7 @@ export function HandlewhatsappData() {
         name: file.name + " - " + new Date().toDateString(),
       });
 
-      processTextData(text, chatId);
+      await processTextData(text, chatId);
     } catch (err) {
       setError("Error reading file content");
       console.error("Error reading file:", err);
@@ -55,45 +59,58 @@ export function HandlewhatsappData() {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
 
-    if (
-      !selectedFile.name.endsWith(".txt") &&
-      !selectedFile.name.endsWith(".zip")
-    ) {
-      setError("Please upload a .txt or .zip file");
+    const validFiles: File[] = [];
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      if (file.name.endsWith(".txt") || file.name.endsWith(".zip")) {
+        validFiles.push(file);
+      }
+    }
+
+    if (validFiles.length === 0) {
+      setError("Please upload .txt or .zip files");
       return;
     }
 
     setError(null);
-    setFile(selectedFile);
-    await readFileContent(selectedFile);
+    setFiles(validFiles);
+    setLoading(true);
+    for (const file of validFiles) {
+      await readFileContent(file);
+    }
+    setLoading(false);
+    setFiles([]); // Clear selected files after upload
+    // Also clear the file input value so user can re-upload the same files if needed
+    if (e.target) e.target.value = "";
   };
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const droppedFile = e.dataTransfer.files[0];
-    if (!droppedFile) return;
-
-    if (
-      !droppedFile.name.endsWith(".txt") &&
-      !droppedFile.name.endsWith(".zip")
-    ) {
-      setError("Please upload a .txt or .zip file");
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(
+      (file) => file.name.endsWith(".txt") || file.name.endsWith(".zip"),
+    );
+    if (droppedFiles.length === 0) {
+      setError("Please upload .txt or .zip files");
       return;
     }
 
     setError(null);
-    setFile(droppedFile);
-    await readFileContent(droppedFile);
+    setFiles(droppedFiles);
+    setLoading(true);
+    for (const file of droppedFiles) {
+      await readFileContent(file);
+    }
+    setLoading(false);
+    setFiles([]); // Clear selected files after upload
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
-  // Update extractParticipants to store original names but display anonymized ones
   const extractParticipants = (lines: string[]) => {
     const uniqueParticipants = new Set<string>();
 
@@ -120,6 +137,7 @@ export function HandlewhatsappData() {
       return participants.includes(user);
     });
   };
+
   const processTextData = async (text: string, chatId: number) => {
     const lines = text.split("\n");
     const participantsList = extractParticipants(lines);
@@ -151,7 +169,7 @@ export function HandlewhatsappData() {
 
   useEffect(() => {
     if (isCleared) {
-      setFile(null);
+      setFiles([]);
       setError(null);
       setIsCleared(false);
       setHasMessages(false);
@@ -178,6 +196,7 @@ export function HandlewhatsappData() {
         <input
           type="file"
           accept=".txt,.zip"
+          multiple
           onChange={handleFileChange}
           className="hidden"
           id="file-upload"
@@ -186,17 +205,32 @@ export function HandlewhatsappData() {
           htmlFor="file-upload"
           className="cursor-pointer text-primary hover:underline"
         >
-          Choose a file
+          Choose files
         </label>
         <p className="mt-2 text-sm text-muted-foreground">
-          or drag and drop your WhatsApp chat export here (doesn't work with Mac
-          Whatsapp Export)
+          or drag and drop your WhatsApp chat exports here (doesn't work with
+          Mac Whatsapp Export)
         </p>
         {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-        {file && (
-          <p className="mt-2 text-sm text-green-500">
-            Selected file: {file.name}
-          </p>
+        {files.length > 0 && (
+          <ul className="mt-2 text-sm text-green-500">
+            {files.map((file) => (
+              <li key={file.name}>Selected file: {file.name}</li>
+            ))}
+          </ul>
+        )}
+        {loading && (
+          <div className="mt-4 w-full">
+            <div className="h-2 rounded bg-gray-200">
+              <div
+                className="h-2 animate-pulse rounded bg-primary"
+                style={{ width: "100%" }}
+              />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Importing, please wait...
+            </p>
+          </div>
         )}
       </div>
     </div>

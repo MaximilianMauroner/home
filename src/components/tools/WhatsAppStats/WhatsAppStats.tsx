@@ -62,7 +62,7 @@ export default function WhatsappStats() {
     setSelectedYear(null);
   }
 
-  const fetchYears = async () => {
+  const fetchYears = async (preselectedYear?: number) => {
     if (!selectedChat) return;
     const currentYear = new Date().getFullYear() + 1;
     const pairs = await whatsappDB.messages
@@ -76,6 +76,13 @@ export default function WhatsappStats() {
       new Set(pairs.map((pair) => (Array.isArray(pair) ? pair[1] : pair))),
     ).sort();
     setAvailableYears(years as number[]);
+    if (preselectedYear) {
+      const y = years.find((year) => year === preselectedYear);
+      if (y) {
+        setSelectedYear(y as number);
+        return;
+      }
+    }
     setSelectedYear(years[years.length - 1] as number);
   };
 
@@ -95,17 +102,25 @@ export default function WhatsappStats() {
   };
 
   // Refactor fetchChatCount so it can be called after upload
-  const fetchChatCount = async () => {
+  const fetchChatCount = async (preSelectedId?: number) => {
     const chatsDB = await whatsappDB.chats.toArray();
     if (chatsDB.length > 0) {
-      setSelectedChat(chatsDB[0].id);
+      if (preSelectedId === null) {
+        setSelectedChat(chatsDB[0].id);
+      } else {
+        const chat = chatsDB.find((chat) => chat.id === preSelectedId);
+        if (chat) {
+          setSelectedChat(chat.id);
+        } else {
+          setSelectedChat(chatsDB[0].id);
+        }
+      }
     }
     setChats(chatsDB);
   };
 
   useEffect(() => {
     if (isDataUploaded) {
-      console.log("upload complete fetch");
       fetchChatCount();
       setIsDataUploaded(false);
     }
@@ -113,7 +128,6 @@ export default function WhatsappStats() {
 
   useEffect(() => {
     if (selectedYear) {
-      console.log("selected year fetch(messages)");
       fetchMessages();
       // Save selected year to localStorage
       localStorage.setItem("wa_selectedYear", String(selectedYear));
@@ -122,23 +136,28 @@ export default function WhatsappStats() {
 
   useEffect(() => {
     if (selectedChat) {
-      console.log("selected chat fetch(years)");
-      fetchYears();
+      const storedChat = localStorage.getItem("wa_selectedChat");
+      const storedYear = localStorage.getItem("wa_selectedYear");
+      if (storedChat && storedYear) {
+        fetchYears(Number(storedYear));
+      } else {
+        fetchYears();
+      }
       // Save selected chat to localStorage
       localStorage.setItem("wa_selectedChat", String(selectedChat));
     }
   }, [selectedChat]);
 
   useEffect(() => {
-    console.log("initial fetch");
     const showN = localStorage.getItem("showNames");
     const storedChat = localStorage.getItem("wa_selectedChat");
     const storedYear = localStorage.getItem("wa_selectedYear");
     setShowNames(showN === "true");
-    if (storedChat) setSelectedChat(Number(storedChat));
-    if (storedYear) setSelectedYear(Number(storedYear));
-
-    fetchChatCount();
+    if (storedChat && storedYear) {
+      fetchChatCount(Number(storedChat));
+    } else {
+      fetchChatCount();
+    }
   }, []);
 
   const personsDynamic = showNames

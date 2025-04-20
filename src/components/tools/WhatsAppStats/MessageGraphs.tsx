@@ -66,6 +66,9 @@ export default function MessageGraphs({
         <div className="col-span-2 rounded-lg border p-1 sm:p-4">
           <ActivityByDay messages={messages} persons={persons} />
         </div>
+        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+          <EmojiActivity messages={messages} persons={persons} />
+        </div>
       </div>
     </>
   );
@@ -100,7 +103,7 @@ const GitHubStyleChart = ({
 
   const getColor = (count: number) => {
     if (count === 0) return colorScale[0];
-    const scale = count / 100;
+    const scale = count / 200;
     if (scale <= 0.15) return colorScale[1];
     if (scale <= 0.3) return colorScale[2];
     if (scale <= 0.45) return colorScale[3];
@@ -752,6 +755,123 @@ const ActivityByDay = ({
       </h3>
       <div className="mx-auto w-full">
         <Line data={data} options={options} />
+      </div>
+    </>
+  );
+};
+
+const EmojiActivity = ({
+  messages,
+  persons,
+}: {
+  messages: Message[];
+  persons: Person[];
+}) => {
+  const emojiCounts = useMemo(() => {
+    const emojiMap = new Map<string, number>();
+    const emojiPerPerson: Record<string, Record<number, number>> = {};
+
+    messages.forEach((msg) => {
+      const emojis = msg.text.match(EMOJI_PATTERN);
+      if (emojis) {
+        emojis.forEach((emoji) => {
+          // Skip if the emoji is a number (e.g., "1", "2", etc.)
+          if (!isNaN(Number(emoji))) return;
+          if (
+            emoji === "*" ||
+            emoji === "️" ||
+            emoji === "🏻" ||
+            emoji === "🏼"
+          )
+            return;
+          emojiMap.set(emoji, (emojiMap.get(emoji) || 0) + 1);
+          if (!emojiPerPerson[emoji]) emojiPerPerson[emoji] = {};
+          emojiPerPerson[emoji][msg.personId] =
+            (emojiPerPerson[emoji][msg.personId] || 0) + 1;
+        });
+      }
+    });
+
+    // Sort emojis by usage descending (no slice, show all)
+    const sorted = Array.from(emojiMap.entries()).sort((a, b) => b[1] - a[1]);
+    return { sorted, emojiPerPerson };
+  }, [messages]);
+  if (emojiCounts.sorted.length === 0) {
+    return (
+      <div>
+        <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
+          Emoji Usage
+        </h3>
+        <p className="text-sm text-muted-foreground">No emojis found.</p>
+      </div>
+    );
+  }
+
+  // Only show the top 30 emojis
+  emojiCounts.sorted = emojiCounts.sorted.slice(0, 30);
+
+  const data = {
+    labels: emojiCounts.sorted.map(([emoji]) => emoji),
+    datasets: [
+      {
+        label: "Emoji Usage",
+        data: emojiCounts.sorted.map(([, count]) => count),
+        backgroundColor: "rgba(255, 206, 86, 0.7)",
+        borderColor: "rgba(255, 206, 86, 1)",
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    plugins: {
+      title: {
+        display: true,
+        text: "Chart.js Line Chart - Logarithmic",
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => {
+            const emoji = ctx.label;
+            const total = ctx.raw;
+            const perPerson = emojiCounts.emojiPerPerson[emoji] || {};
+            const breakdown = persons
+              .map((p) => {
+                const count = perPerson[p.id] || 0;
+                if (count === 0) return null;
+                const share = ((count / total) * 100).toFixed(1);
+                return `${p.name}: ${count} (${share}%)`;
+              })
+              .filter((v): v is string => v !== null);
+            return [
+              `${total} uses`,
+              ...(breakdown.length ? ["Breakdown:", ...breakdown] : []),
+            ];
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        display: true,
+      },
+      y: {
+        display: true,
+      },
+    },
+  };
+
+  return (
+    <>
+      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
+        Emoji Usage
+      </h3>
+      <div
+        className="mx-auto w-full"
+        style={{ minHeight: 600, maxHeight: 1200 }}
+      >
+        <Bar data={data} options={options} />
       </div>
     </>
   );
