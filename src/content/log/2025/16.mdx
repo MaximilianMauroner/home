@@ -1,0 +1,42 @@
+---
+layout: "@/layouts/PostLayout.astro"
+title: "Upgraded WhatsApp-Stats"
+description: "Upgraded the WhatsApp-Stats page so that it's more performant, and maintainable, while storing datain IndexDB."
+tags:
+  - indexdb
+  - dexie
+  - whatsapp
+  - stats
+image: "/src/assets/log/2025-16.png"
+published: true
+releaseDate: 2025-04-21
+---
+
+# 🐢 Performance problems
+
+Sooo I finally got around to upgrading the WhatsApp-Stats page so that it's more performant, and maintainable, while storing data in IndexDB. The process itself was quite straightforeward, so I decided it was time to also add some _cool_ features.
+The main goal was to allow for lager chats to be uploaded, and to not storre all the data in localstorage. Doing this while keeping performance relatively "good", and in general restructuring the code away from my "one component" solution which was like 1.5k lines of code.
+
+# ✨ The new features
+
+- **IndexDB** - I used [Dexie](https://dexie.org/) to store the data in IndexDB, which is a wrapper around the native API. This allows for better performance, and more maintainable code.
+- **Better file upload** - I added the option to select multiple chats, and better syncing between uploads, to allow for multiple things to happen in an almost "async" way. And to allow for the user to get better and more feedback.
+- **Better UI** - I added data to most of the graphs to expose (in my opinion) cool information.
+
+# ⚡ Result
+
+The result should be a page that loads faster and better, with a JS layer which does not need to store that much information, and instead stores the information in IndexDB. The only problem I had was figuring out how dexie works with indices and multi element indices - to optimize queries. But I think I got it right, and the performance is quite good. You can check it out under [tools/whatsapp-stats](/tools/whatsapp-stats/).
+
+## 🛠️ TODO
+
+- Add a few more dynamic graphs (like i had before with words)
+- Add option to add "word filters" so that you can exlcude certain words from the stats
+- Add some other cool graphs, and highlight "interesting" stats (like longest message, and stuff like that )
+
+# 🏷️ Other stuff
+
+I also did some work on finally getting the tags to play nicely on mobile (for the blog and the logs) and I'm very happy with the solution I have now
+
+Last but not least, I also have to finishe the blog with the title _"World War what now"_ in which I list a bunch of shit which is happening right now, and that I'm not feeling good about our chaces for WW3
+
+And that's it for this log
