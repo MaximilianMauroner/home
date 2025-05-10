@@ -27,7 +27,7 @@ const logs = await getLogs();
         {
           logs.map((log) => (
             <div class="col-span-2 lg:col-span-1 min-w-[-webkit-fill-available]">
-              <LogPreview log={log}>
+              <LogPreview log={log} client:idle>
                 <div
                   slot="image"
                   transition:name={"hero-" + log.data.image}

@@ -31,7 +31,7 @@ blogs.sort((a, b) => {
         {
           blogs.map((blog) => (
             <div class="col-span-2 lg:col-span-1 min-w-[-webkit-fill-available]">
-              <BlogPreview blog={blog}>
+              <BlogPreview blog={blog} client:idle>
                 <div
                   slot="image"
                   transition:name={"hero-" + blog.data.image}
