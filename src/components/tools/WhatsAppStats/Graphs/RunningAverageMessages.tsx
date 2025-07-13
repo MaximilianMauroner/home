@@ -8,6 +8,8 @@ interface DayOption {
   label: string;
 }
 
+type MetricType = "messages" | "words";
+
 const DAY_OPTIONS: DayOption[] = [
   { value: 3, label: "3 Days" },
   { value: 7, label: "7 Days" },
@@ -17,12 +19,14 @@ const DAY_OPTIONS: DayOption[] = [
 
 export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
   const [selectedDays, setSelectedDays] = useState(7);
+  const [metricType, setMetricType] = useState<MetricType>("messages");
 
   const chartData = useMemo(() => {
     if (!messages.length) return null;
 
     // Group messages by date and person
     const messagesPerDatePerPerson = new Map<string, Map<number, number>>();
+    const wordsPerDatePerPerson = new Map<string, Map<number, number>>();
 
     // Parse all dates and sort them
     const allDates = new Set<string>();
@@ -32,12 +36,25 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
 
       if (!messagesPerDatePerPerson.has(message.date)) {
         messagesPerDatePerPerson.set(message.date, new Map());
+        wordsPerDatePerPerson.set(message.date, new Map());
       }
 
-      const personMap = messagesPerDatePerPerson.get(message.date)!;
-      personMap.set(
+      const messageMap = messagesPerDatePerPerson.get(message.date)!;
+      const wordMap = wordsPerDatePerPerson.get(message.date)!;
+
+      // Count messages
+      messageMap.set(
         message.personId,
-        (personMap.get(message.personId) || 0) + 1,
+        (messageMap.get(message.personId) || 0) + 1,
+      );
+
+      // Count words
+      const wordCount = message.text
+        ? message.text.trim().split(/\s+/).length
+        : 0;
+      wordMap.set(
+        message.personId,
+        (wordMap.get(message.personId) || 0) + wordCount,
       );
     }
 
@@ -59,6 +76,11 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
       runningAverages.set(person.id, []);
     }
 
+    const dataSource =
+      metricType === "messages"
+        ? messagesPerDatePerPerson
+        : wordsPerDatePerPerson;
+
     for (let i = 0; i < sortedDates.length; i++) {
       const currentDate = sortedDates[i];
       labels.push(currentDate);
@@ -71,18 +93,31 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
         const startIndex = Math.max(0, i - selectedDays + 1);
         const relevantDates = sortedDates.slice(startIndex, i + 1);
 
-        let totalMessages = 0;
+        let totalCount = 0;
         for (const date of relevantDates) {
-          const dayData = messagesPerDatePerPerson.get(date);
+          const dayData = dataSource.get(date);
           if (dayData) {
-            totalMessages += dayData.get(person.id) || 0;
+            totalCount += dayData.get(person.id) || 0;
           }
         }
 
-        const average = totalMessages / relevantDates.length;
+        const average = totalCount / relevantDates.length;
         personAverages.push(average);
       }
     }
+
+    // Calculate statistics for each person
+    const stats = persons.map((person) => {
+      const personData = runningAverages.get(person.id) || [];
+      const validData = personData.filter((value) => value > 0);
+
+      return {
+        personId: person.id,
+        name: person.name,
+        min: validData.length > 0 ? Math.min(...validData) : 0,
+        max: validData.length > 0 ? Math.max(...validData) : 0,
+      };
+    });
 
     // Create chart data
     const colorMap = getParticipantColors(persons.map((p) => p.name));
@@ -100,8 +135,9 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
     return {
       labels,
       datasets,
+      stats,
     };
-  }, [messages, persons, selectedDays]);
+  }, [messages, persons, selectedDays, metricType]);
 
   const chartOptions = useMemo(
     () => ({
@@ -115,7 +151,9 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
           callbacks: {
             label: function (context: any) {
               const value = context.parsed.y;
-              return `${context.dataset.label}: ${value.toFixed(2)} messages/day`;
+              const unit =
+                metricType === "messages" ? "messages/day" : "words/day";
+              return `${context.dataset.label}: ${value.toFixed(2)} ${unit}`;
             },
           },
         },
@@ -135,13 +173,16 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
           display: true,
           title: {
             display: true,
-            text: "Average Messages per Day",
+            text:
+              metricType === "messages"
+                ? "Average Messages per Day"
+                : "Average Words per Day",
           },
           beginAtZero: true,
         },
       },
     }),
-    [],
+    [metricType],
   );
 
   if (!chartData) {
@@ -154,23 +195,82 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
     <>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold sm:text-base">
-          Running Average Messages per Participant
+          Running Average {metricType === "messages" ? "Messages" : "Words"} per
+          Participant
         </h3>
-        <select
-          value={selectedDays}
-          onChange={(e) => setSelectedDays(Number(e.target.value))}
-          className="rounded border border-gray-300 bg-white px-3 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-        >
-          {DAY_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex gap-2">
+          <select
+            value={metricType}
+            onChange={(e) => setMetricType(e.target.value as MetricType)}
+            className="rounded border border-gray-300 bg-white px-3 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          >
+            <option value="messages">Messages</option>
+            <option value="words">Words</option>
+          </select>
+          <select
+            value={selectedDays}
+            onChange={(e) => setSelectedDays(Number(e.target.value))}
+            className="rounded border border-gray-300 bg-white px-3 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          >
+            {DAY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Running average over {selectedDays} days
+        Running average {metricType} over {selectedDays} days
       </p>
+
+      {/* Statistics Table */}
+      {chartData?.stats && (
+        <div className="mb-4 overflow-hidden rounded-lg border bg-card">
+          <div className="border-b bg-muted/50 px-4 py-3">
+            <h4 className="text-sm font-semibold text-card-foreground">
+              {metricType === "messages" ? "Messages" : "Words"} per Day
+              Statistics
+            </h4>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Participant
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Lowest Avg
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Highest Avg
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border bg-card">
+                {chartData.stats.map((stat) => (
+                  <tr
+                    key={stat.personId}
+                    className="transition-colors hover:bg-muted/30"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium text-card-foreground">
+                      {stat.name}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {stat.min.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {stat.max.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="h-64 w-full sm:h-80">
         <Line data={chartData} options={chartOptions} />
       </div>
