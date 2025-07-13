@@ -277,7 +277,25 @@ export default function MalenNachZahlen() {
     return centroids;
   };
 
-  // Find connected components using flood fill with background filtering
+  // Calculate perceptual color difference for better contrast detection
+  const perceptualColorDistance = (
+    color1: [number, number, number],
+    color2: [number, number, number],
+  ): number => {
+    const [r1, g1, b1] = color1;
+    const [r2, g2, b2] = color2;
+
+    // Use weighted RGB distance that approximates human perception
+    const deltaR = r1 - r2;
+    const deltaG = g1 - g2;
+    const deltaB = b1 - b2;
+
+    return Math.sqrt(
+      2 * deltaR * deltaR + 4 * deltaG * deltaG + 3 * deltaB * deltaB,
+    );
+  };
+
+  // Find connected components using flood fill with adaptive connectivity
   const findConnectedComponents = (
     imageData: ImageData,
     quantizedColors: [number, number, number][],
@@ -312,6 +330,18 @@ export default function MalenNachZahlen() {
       return colorDistance(color, backgroundColor) < 40;
     };
 
+    // Check if two colors have high contrast and should remain separate
+    const isHighContrast = (
+      color1: [number, number, number],
+      color2: [number, number, number],
+    ): boolean => {
+      const perceptualDist = perceptualColorDistance(color1, color2);
+      const regularDist = colorDistance(color1, color2);
+
+      // High contrast threshold - adjust this to control what counts as "highly contrasting"
+      return perceptualDist > 120 || regularDist > 80;
+    };
+
     const floodFill = (
       startX: number,
       startY: number,
@@ -335,45 +365,155 @@ export default function MalenNachZahlen() {
           imageData.data[pixelIndex + 2],
         );
 
-        // Use tighter tolerance for background colors, looser for foreground
-        const tolerance = isBackgroundColor(targetColor) ? 5 : 15;
+        // Adaptive tolerance based on contrast and color type
+        let tolerance: number;
+
+        if (isBackgroundColor(targetColor)) {
+          // Background colors: tighter tolerance
+          tolerance = 5;
+        } else if (isHighContrast(pixelColor, targetColor)) {
+          // High contrast colors: maintain separation
+          tolerance = 8;
+        } else {
+          // Similar colors: much more aggressive connection
+          tolerance = 35; // Increased from 15 to connect more regions
+        }
+
         if (colorDistance(pixelColor, targetColor) > tolerance) continue;
 
         visited[index] = true;
         component.push({ x, y });
 
-        // Add neighbors
-        stack.push({ x: x + 1, y });
-        stack.push({ x: x - 1, y });
-        stack.push({ x, y: y + 1 });
-        stack.push({ x, y: y - 1 });
+        // Add 8-connected neighbors for better connectivity (including diagonals)
+        const neighbors = [
+          { x: x + 1, y }, // right
+          { x: x - 1, y }, // left
+          { x, y: y + 1 }, // down
+          { x, y: y - 1 }, // up
+          { x: x + 1, y: y + 1 }, // bottom-right
+          { x: x - 1, y: y + 1 }, // bottom-left
+          { x: x + 1, y: y - 1 }, // top-right
+          { x: x - 1, y: y - 1 }, // top-left
+        ];
+
+        neighbors.forEach((neighbor) => {
+          stack.push(neighbor);
+        });
       }
 
       return component;
     };
+
+    // Pre-process image to apply morphological operations for better connectivity
+    const preprocessedImageData = new ImageData(width, height);
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const r = imageData.data[i];
+      const g = imageData.data[i + 1];
+      const b = imageData.data[i + 2];
+      const closestColor = getClosestColor(r, g, b);
+
+      preprocessedImageData.data[i] = closestColor[0];
+      preprocessedImageData.data[i + 1] = closestColor[1];
+      preprocessedImageData.data[i + 2] = closestColor[2];
+      preprocessedImageData.data[i + 3] = 255;
+    }
+
+    // Apply closing operation to connect nearby regions of same color
+    const closing = (iterations: number = 2) => {
+      for (let iter = 0; iter < iterations; iter++) {
+        // Dilation followed by erosion
+        for (let pass = 0; pass < 2; pass++) {
+          const tempData = new ImageData(width, height);
+
+          for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+              const centerIndex = (y * width + x) * 4;
+              const centerColor = [
+                preprocessedImageData.data[centerIndex],
+                preprocessedImageData.data[centerIndex + 1],
+                preprocessedImageData.data[centerIndex + 2],
+              ] as [number, number, number];
+
+              // Check 3x3 neighborhood
+              const neighborColors: [number, number, number][] = [];
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  const nx = x + dx;
+                  const ny = y + dy;
+                  if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                    const nIndex = (ny * width + nx) * 4;
+                    neighborColors.push([
+                      preprocessedImageData.data[nIndex],
+                      preprocessedImageData.data[nIndex + 1],
+                      preprocessedImageData.data[nIndex + 2],
+                    ]);
+                  }
+                }
+              }
+
+              // Find most common similar color in neighborhood
+              const colorCounts = new Map<
+                string,
+                { count: number; color: [number, number, number] }
+              >();
+              neighborColors.forEach((color) => {
+                if (!isHighContrast(color, centerColor)) {
+                  const key = `${color[0]},${color[1]},${color[2]}`;
+                  if (!colorCounts.has(key)) {
+                    colorCounts.set(key, { count: 0, color });
+                  }
+                  colorCounts.get(key)!.count++;
+                }
+              });
+
+              let dominantColor = centerColor;
+              let maxCount = 0;
+              colorCounts.forEach(({ count, color }) => {
+                if (count > maxCount) {
+                  maxCount = count;
+                  dominantColor = color;
+                }
+              });
+
+              tempData.data[centerIndex] = dominantColor[0];
+              tempData.data[centerIndex + 1] = dominantColor[1];
+              tempData.data[centerIndex + 2] = dominantColor[2];
+              tempData.data[centerIndex + 3] = 255;
+            }
+          }
+
+          // Copy back
+          for (let i = 0; i < preprocessedImageData.data.length; i++) {
+            preprocessedImageData.data[i] = tempData.data[i];
+          }
+        }
+      }
+    };
+
+    // Apply closing operation to connect nearby similar regions
+    closing(1);
 
     // Create a map to track regions by color
     const colorToRegion = new Map<string, ColorRegion>();
 
     // Find all connected components but merge by color
     for (let y = 0; y < height; y += 1) {
-      // Check every pixel for better accuracy
       for (let x = 0; x < width; x += 1) {
         const index = y * width + x;
         if (visited[index]) continue;
 
         const pixelIndex = index * 4;
         const pixelColor = getClosestColor(
-          imageData.data[pixelIndex],
-          imageData.data[pixelIndex + 1],
-          imageData.data[pixelIndex + 2],
+          preprocessedImageData.data[pixelIndex],
+          preprocessedImageData.data[pixelIndex + 1],
+          preprocessedImageData.data[pixelIndex + 2],
         );
 
         const component = floodFill(x, y, pixelColor);
 
-        // Use different minimum sizes for background vs foreground
+        // Reduced minimum sizes to allow smaller but meaningful regions
         const isBackground = isBackgroundColor(pixelColor);
-        const minSize = isBackground ? 200 : 50; // Increased minimum sizes
+        const minSize = isBackground ? 150 : 25; // Reduced from 200/50
 
         if (component.length > minSize) {
           const colorKey = rgbToHex(
@@ -416,11 +556,61 @@ export default function MalenNachZahlen() {
       }
     }
 
-    // Limit the number of regions to approximately match the color count
-    const maxRegions = Math.min(quantizedColors.length + 2, regions.length);
-    return regions
-      .sort((a, b) => b.pixels.length - a.pixels.length) // Sort by size, largest first
-      .slice(0, maxRegions); // Take only the largest regions
+    // Post-process to merge nearby regions of similar colors that aren't high contrast
+    const mergedRegions: ColorRegion[] = [];
+    const usedRegions = new Set<number>();
+
+    regions.forEach((region, index) => {
+      if (usedRegions.has(index)) return;
+
+      let mergedRegion = { ...region, pixels: [...region.pixels] };
+      usedRegions.add(index);
+
+      // Look for nearby regions to merge
+      regions.forEach((otherRegion, otherIndex) => {
+        if (usedRegions.has(otherIndex)) return;
+
+        const color1 = [
+          parseInt(region.color.slice(1, 3), 16),
+          parseInt(region.color.slice(3, 5), 16),
+          parseInt(region.color.slice(5, 7), 16),
+        ] as [number, number, number];
+
+        const color2 = [
+          parseInt(otherRegion.color.slice(1, 3), 16),
+          parseInt(otherRegion.color.slice(3, 5), 16),
+          parseInt(otherRegion.color.slice(5, 7), 16),
+        ] as [number, number, number];
+
+        // Merge if colors are similar and not high contrast
+        if (
+          !isHighContrast(color1, color2) &&
+          colorDistance(color1, color2) < 40
+        ) {
+          mergedRegion.pixels.push(...otherRegion.pixels);
+          usedRegions.add(otherIndex);
+
+          // Recalculate center
+          mergedRegion.centerX =
+            mergedRegion.pixels.reduce((sum, p) => sum + p.x, 0) /
+            mergedRegion.pixels.length;
+          mergedRegion.centerY =
+            mergedRegion.pixels.reduce((sum, p) => sum + p.y, 0) /
+            mergedRegion.pixels.length;
+        }
+      });
+
+      mergedRegions.push(mergedRegion);
+    });
+
+    // Limit the number of regions but be more generous for high-contrast images
+    const maxRegions = Math.min(
+      quantizedColors.length + 3,
+      mergedRegions.length,
+    );
+    return mergedRegions
+      .sort((a, b) => b.pixels.length - a.pixels.length)
+      .slice(0, maxRegions);
   };
 
   const processImage = useCallback(
@@ -439,11 +629,22 @@ export default function MalenNachZahlen() {
         const maxHeight = 400;
         let { width, height } = img;
 
+        // Validate image dimensions
+        if (!width || !height || width <= 0 || height <= 0) {
+          console.error("Invalid image dimensions:", width, height);
+          setIsProcessing(false);
+          return;
+        }
+
         if (width > maxWidth || height > maxHeight) {
           const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width *= ratio;
-          height *= ratio;
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
         }
+
+        // Ensure dimensions are valid integers
+        width = Math.max(1, Math.floor(width));
+        height = Math.max(1, Math.floor(height));
 
         canvas.width = width;
         canvas.height = height;
@@ -474,8 +675,8 @@ export default function MalenNachZahlen() {
           palette[region.id] = region.color;
         });
 
-        // Create reference data for edge detection (always use quantized colors)
-        const referenceImageData = new ImageData(width, height);
+        // Create the color-quantized image data
+        const colorImageData = new ImageData(width, height);
         for (let i = 0; i < imageData.data.length; i += 4) {
           const r = imageData.data[i];
           const g = imageData.data[i + 1];
@@ -493,31 +694,62 @@ export default function MalenNachZahlen() {
             }
           });
 
-          referenceImageData.data[i] = closestColor[0];
-          referenceImageData.data[i + 1] = closestColor[1];
-          referenceImageData.data[i + 2] = closestColor[2];
-          referenceImageData.data[i + 3] = 255;
+          // Apply additional enhancement to the final color
+          const [finalR, finalG, finalB] = enhanceColor(
+            closestColor[0],
+            closestColor[1],
+            closestColor[2],
+            1.2,
+          );
+
+          colorImageData.data[i] = finalR;
+          colorImageData.data[i + 1] = finalG;
+          colorImageData.data[i + 2] = finalB;
+          colorImageData.data[i + 3] = 255;
         }
 
-        // Create border detection data
-        const borderData = new ImageData(width, height);
-        // Initialize border data with transparent pixels
-        for (let i = 0; i < borderData.data.length; i += 4) {
-          borderData.data[i] = 0; // R
-          borderData.data[i + 1] = 0; // G
-          borderData.data[i + 2] = 0; // B
-          borderData.data[i + 3] = 0; // A (transparent)
+        // Create border image data by detecting edges between regions
+        const borderImageData = new ImageData(width, height);
+
+        // Initialize with white background
+        for (let i = 0; i < borderImageData.data.length; i += 4) {
+          borderImageData.data[i] = 255; // R (white)
+          borderImageData.data[i + 1] = 255; // G (white)
+          borderImageData.data[i + 2] = 255; // B (white)
+          borderImageData.data[i + 3] = 255; // A (opaque)
         }
 
-        // Find edges by comparing adjacent pixels
+        // Create a region map based on the detected regions
+        const totalPixels = width * height;
+        if (totalPixels <= 0 || totalPixels > 10000000) {
+          // Safety check
+          console.error("Invalid image dimensions:", width, height);
+          setIsProcessing(false);
+          return;
+        }
+
+        const regionMap = new Array(totalPixels).fill(-1);
+        regions.forEach((region) => {
+          region.pixels.forEach((pixel) => {
+            if (
+              pixel.x >= 0 &&
+              pixel.x < width &&
+              pixel.y >= 0 &&
+              pixel.y < height
+            ) {
+              const index = pixel.y * width + pixel.x;
+              if (index >= 0 && index < totalPixels) {
+                regionMap[index] = region.id;
+              }
+            }
+          });
+        });
+
+        // Find borders between different regions
         for (let y = 1; y < height - 1; y++) {
           for (let x = 1; x < width - 1; x++) {
-            const currentIndex = (y * width + x) * 4;
-            const currentColor = [
-              referenceImageData.data[currentIndex],
-              referenceImageData.data[currentIndex + 1],
-              referenceImageData.data[currentIndex + 2],
-            ];
+            const currentIndex = y * width + x;
+            const currentRegion = regionMap[currentIndex];
 
             // Check 4-connected neighbors
             const neighbors = [
@@ -538,19 +770,14 @@ export default function MalenNachZahlen() {
                 neighborY >= 0 &&
                 neighborY < height
               ) {
-                const neighborIndex = (neighborY * width + neighborX) * 4;
-                const neighborColor = [
-                  referenceImageData.data[neighborIndex],
-                  referenceImageData.data[neighborIndex + 1],
-                  referenceImageData.data[neighborIndex + 2],
-                ];
+                const neighborIndex = neighborY * width + neighborX;
+                const neighborRegion = regionMap[neighborIndex];
 
-                // If neighbor color is different enough, this is an edge
+                // If neighboring pixel belongs to a different region, this is an edge
                 if (
-                  colorDistance(
-                    currentColor as [number, number, number],
-                    neighborColor as [number, number, number],
-                  ) > 15
+                  currentRegion !== neighborRegion &&
+                  currentRegion !== -1 &&
+                  neighborRegion !== -1
                 ) {
                   isEdge = true;
                   break;
@@ -559,86 +786,19 @@ export default function MalenNachZahlen() {
             }
 
             if (isEdge) {
-              // Draw a thicker border by setting multiple pixels
-              const borderThickness = 1;
-              for (let dy = -borderThickness; dy <= borderThickness; dy++) {
-                for (let dx = -borderThickness; dx <= borderThickness; dx++) {
-                  const borderX = x + dx;
-                  const borderY = y + dy;
-
-                  if (
-                    borderX >= 0 &&
-                    borderX < width &&
-                    borderY >= 0 &&
-                    borderY < height
-                  ) {
-                    const borderIndex = (borderY * width + borderX) * 4;
-                    borderData.data[borderIndex] = 0; // R
-                    borderData.data[borderIndex + 1] = 0; // G
-                    borderData.data[borderIndex + 2] = 0; // B
-                    borderData.data[borderIndex + 3] = 255; // A (opaque)
-                  }
-                }
-              }
+              // Mark this pixel as a border (black)
+              const pixelIndex = currentIndex * 4;
+              borderImageData.data[pixelIndex] = 0; // R (black)
+              borderImageData.data[pixelIndex + 1] = 0; // G (black)
+              borderImageData.data[pixelIndex + 2] = 0; // B (black)
+              borderImageData.data[pixelIndex + 3] = 255; // A (opaque)
             }
           }
         }
 
-        // Create final image based on showBorders toggle
-        const newImageData = new ImageData(width, height);
-
-        if (showBorders) {
-          // Borders only mode: white background with black borders
-          for (let i = 0; i < newImageData.data.length; i += 4) {
-            if (borderData.data[i + 3] > 0) {
-              // Border pixel - make it black
-              newImageData.data[i] = 0; // R
-              newImageData.data[i + 1] = 0; // G
-              newImageData.data[i + 2] = 0; // B
-              newImageData.data[i + 3] = 255; // A
-            } else {
-              // Non-border pixel - make it white
-              newImageData.data[i] = 255; // R
-              newImageData.data[i + 1] = 255; // G
-              newImageData.data[i + 2] = 255; // B
-              newImageData.data[i + 3] = 255; // A
-            }
-          }
-        } else {
-          // Colors only mode: enhanced quantized colors without borders
-          for (let i = 0; i < imageData.data.length; i += 4) {
-            const r = imageData.data[i];
-            const g = imageData.data[i + 1];
-            const b = imageData.data[i + 2];
-
-            // Find closest quantized color
-            let minDistance = Infinity;
-            let closestColor = quantizedColors[0];
-
-            quantizedColors.forEach((color) => {
-              const distance = colorDistance([r, g, b], color);
-              if (distance < minDistance) {
-                minDistance = distance;
-                closestColor = color;
-              }
-            });
-
-            // Apply additional enhancement to the final color
-            const [finalR, finalG, finalB] = enhanceColor(
-              closestColor[0],
-              closestColor[1],
-              closestColor[2],
-              1.2,
-            );
-
-            newImageData.data[i] = finalR;
-            newImageData.data[i + 1] = finalG;
-            newImageData.data[i + 2] = finalB;
-            newImageData.data[i + 3] = 255;
-          }
-        }
-
-        ctx.putImageData(newImageData, 0, 0);
+        // Use the appropriate image data based on showBorders toggle
+        const finalImageData = showBorders ? borderImageData : colorImageData;
+        ctx.putImageData(finalImageData, 0, 0);
 
         setProcessedImage(canvas.toDataURL());
         setColorRegions(regions);
@@ -784,7 +944,7 @@ export default function MalenNachZahlen() {
                   }
                 }}
               />
-              <span className="text-sm">Borders Only</span>
+              <span className="text-sm">Border</span>
             </label>
           </div>
         </div>
