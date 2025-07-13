@@ -20,6 +20,7 @@ import {
   ActivityByDay,
   EmojiActivity,
   WordActivity,
+  RunningAverageMessages,
   EMOJI_PATTERN,
 } from "./Graphs";
 
@@ -68,6 +69,9 @@ export default function MessageGraphs({
         </div>
         <div className="col-span-2 rounded-lg border p-1 sm:p-4">
           <ActivityByDay messages={messages} persons={persons} />
+        </div>
+        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+          <RunningAverageMessages messages={messages} persons={persons} />
         </div>
         <div className="col-span-2 rounded-lg border p-1 sm:p-4">
           <EmojiActivity messages={messages} persons={persons} />
