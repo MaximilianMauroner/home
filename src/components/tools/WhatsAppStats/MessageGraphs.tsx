@@ -21,6 +21,10 @@ import {
   EmojiActivity,
   WordActivity,
   RunningAverageMessages,
+  ResponseTimeAnalysis,
+  ConversationStarters,
+  ThreadLengthDistribution,
+  SilentPeriods,
   EMOJI_PATTERN,
 } from "./Graphs";
 
@@ -78,6 +82,18 @@ export default function MessageGraphs({
         </div>
         <div className="col-span-2 rounded-lg border p-1 sm:p-4">
           <WordActivity messages={messages} persons={persons} />
+        </div>
+        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+          <ResponseTimeAnalysis messages={messages} persons={persons} />
+        </div>
+        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+          <ConversationStarters messages={messages} persons={persons} />
+        </div>
+        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+          <ThreadLengthDistribution messages={messages} persons={persons} />
+        </div>
+        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+          <SilentPeriods messages={messages} persons={persons} />
         </div>
       </div>
     </>
