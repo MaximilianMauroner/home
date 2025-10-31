@@ -1,17 +1,18 @@
 ---
 import TagView from "@/components/TagView";
-import { getBlogs, getLogs, getTags } from "@/utils/server/content";
+import { getBlogs, getLogs, getSnacks, getTags } from "@/utils/server/content";
 import StarLayout from "@/layouts/StarLayout.astro";
 
 const blogs = await getBlogs();
 const logs = await getLogs();
+const snacks = await getSnacks();
 
-const tags = getTags(blogs, logs);
+const tags = getTags(blogs, logs, snacks);
 ---
 
 <StarLayout
   title="Tags"
-  description="List of all tags that are in blogs and logs"
+  description="List of all tags that are in blogs, logs, and snacks"
 >
-  <TagView tags={tags} blogs={blogs} logs={logs} client:load />
+  <TagView tags={tags} blogs={blogs} logs={logs} snacks={snacks} client:load />
 </StarLayout>

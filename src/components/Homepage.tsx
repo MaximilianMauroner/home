@@ -8,7 +8,7 @@ import {
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 dayjs.extend(weekOfYear);
-import type { BlogType, LogType } from "@/utils/server/content";
+import type { BlogType, LogType, SnackType } from "@/utils/server/content";
 import { Queue } from "@/utils/queue";
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*";
@@ -18,12 +18,12 @@ const ogLast = "mauroner";
 interface ContentItem {
   id: string;
   slug: string;
-  collection: "blog" | "dev-log";
+  collection: "blog" | "dev-log" | "snacks";
   data: {
     title: string;
     description: string;
     tags: string[];
-    image: string;
+    image?: string;
     published: boolean;
     releaseDate: Date;
   };
@@ -39,6 +39,7 @@ interface LetterCardProps {
 interface HomepageProps {
   blogs: BlogType[];
   logs: LogType[];
+  snacks: SnackType[];
 }
 
 const LetterCard = ({
@@ -160,10 +161,20 @@ const LetterCard = ({
           <span className="text-sm text-indigo-300">
             Found in:{" "}
             <a
-              href={content.slug.startsWith("blog") ? "/blog/" : "/dev-log/"}
+              href={
+                content.slug.startsWith("blog")
+                  ? "/blog/"
+                  : content.slug.startsWith("snacks")
+                    ? "/snacks/"
+                    : "/dev-log/"
+              }
               className="hover:text-indigo-200 hover:underline"
             >
-              {content.slug.startsWith("blog") ? "blog" : "dev-log"}
+              {content.slug.startsWith("blog")
+                ? "blog"
+                : content.slug.startsWith("snacks")
+                  ? "snacks"
+                  : "dev-log"}
             </a>
           </span>
           <span className="ml-2 text-xs text-indigo-400/70">
@@ -193,7 +204,7 @@ const LetterCard = ({
   );
 };
 
-const Homepage = ({ blogs, logs }: HomepageProps) => {
+const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
   const [firstname, setFirstname] = useState(ogFirst);
   const [lastname, setLastname] = useState(ogLast);
   const [activeCard, setActiveCard] = useState<{
@@ -215,7 +226,17 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
     collection: "dev-log",
   }));
 
-  const maxLen = Math.max(transformedBlogs.length, transformedLogs.length);
+  const transformedSnacks: ContentItem[] = snacks.map((snack) => ({
+    ...snack,
+    slug: `snacks/${snack.id}`,
+    collection: "snacks",
+  }));
+
+  const maxLen = Math.max(
+    transformedBlogs.length,
+    transformedLogs.length,
+    transformedSnacks.length,
+  );
 
   const queue = new Queue<ContentItem>();
   for (let i = 0; i < maxLen; i++) {
@@ -224,6 +245,9 @@ const Homepage = ({ blogs, logs }: HomepageProps) => {
     }
     if (i < transformedLogs.length) {
       queue.enqueue(transformedLogs[i]);
+    }
+    if (i < transformedSnacks.length) {
+      queue.enqueue(transformedSnacks[i]);
     }
   }
 

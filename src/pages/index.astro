@@ -1,9 +1,10 @@
 ---
-import { getBlogs, getLogs } from "@/utils/server/content";
+import { getBlogs, getLogs, getSnacks } from "@/utils/server/content";
 import Homepage from "../components/Homepage";
 import StarLayout from "@/layouts/StarLayout.astro";
 const blogs = await getBlogs();
 const logs = await getLogs();
+const snacks = await getSnacks();
 ---
 
 <StarLayout
@@ -11,5 +12,5 @@ const logs = await getLogs();
   description="Just a dev sharing cool stuff: code snippets that work, dev stories that might help, and random tech tools I think are neat. Nothing fancy, just things I find interesting in the world of programming."
 >
   <h1 class="sr-only">Maximilian Mauroner</h1>
-  <Homepage blogs={blogs} logs={logs} client:load />
+  <Homepage blogs={blogs} logs={logs} snacks={snacks} client:load />
 </StarLayout>

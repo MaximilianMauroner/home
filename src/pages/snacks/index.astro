@@ -1,0 +1,78 @@
+---
+import SnackPreview from "@/components/SnackPreview";
+import { Pattern } from "@/components/Pattern";
+import StarLayout from "@/layouts/StarLayout.astro";
+import { getSnacks } from "@/utils/server/content";
+
+const snacks = await getSnacks();
+snacks.sort((a, b) => {
+  return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
+});
+
+const colors = [
+  "text-blue-500",
+  "text-orange-500",
+  "text-purple-500",
+  "text-green-500",
+  "text-pink-500",
+  "text-yellow-500",
+  "text-indigo-500",
+  "text-red-500",
+  "text-cyan-500",
+  "text-rose-500",
+  "text-emerald-500",
+  "text-violet-500",
+  "text-amber-500",
+  "text-teal-500",
+  "text-fuchsia-500",
+  "text-lime-500",
+];
+const dynamicColor = (index: number) => {
+  return colors[index % colors.length];
+};
+---
+
+<StarLayout
+  title="Snacks"
+  description="Quick bits of info and interesting things I found"
+>
+  <section>
+    <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
+      <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">
+        <h2
+          class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-400 lg:text-4xl"
+        >
+          snacks
+        </h2>
+        <p class="l font-light text-gray-500 sm:text-xl">
+          quick bits of info and interesting things I found
+        </p>
+      </div>
+      <div class="grid gap-8 lg:grid-cols-2">
+        {
+          snacks.map((snack, index) => (
+            <div class="col-span-2 lg:col-span-1 min-w-[-webkit-fill-available]">
+              <SnackPreview snack={snack} client:idle>
+                <div
+                  slot="image"
+                  transition:name={"hero-" + snack.id}
+                  class="absolute inset-0 overflow-hidden rounded-lg"
+                >
+                  <Pattern
+                    seed={snack.data.title}
+                    colorClass={dynamicColor(index)}
+                    opacity="0.5"
+                    gridSize={10 + (index % 5) * 2}
+                    spacing={30 + (index % 3) * 10}
+                    lineVariance={5 + (index % 4) * 2}
+                  />
+                  <div class="absolute inset-0 bg-gradient-to-br from-card/80 via-card/60 to-transparent z-10" />
+                </div>
+              </SnackPreview>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</StarLayout>

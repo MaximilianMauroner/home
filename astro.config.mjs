@@ -12,6 +12,7 @@ import sitemap from "@astrojs/sitemap";
 import expressiveCode from "astro-expressive-code";
 import { remarkReadingTime } from "./plugins/remark-reading-time.mjs";
 import { remarkModifiedTime } from "./plugins/remark-modified-time.mjs";
+import { rehypeHeadings } from "./plugins/rehype-headings.mjs";
 
 import vercel from "@astrojs/vercel";
 
@@ -24,6 +25,7 @@ export default defineConfig({
     expressiveCode(),
     mdx({
       remarkRehype: { footnoteLabel: "Footnotes" },
+      rehypePlugins: [rehypeHeadings],
     }),
     sitemap({
       changefreq: "weekly",
