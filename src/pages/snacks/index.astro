@@ -10,22 +10,14 @@ snacks.sort((a, b) => {
 });
 
 const colors = [
-  "text-blue-500",
-  "text-orange-500",
-  "text-purple-500",
-  "text-green-500",
-  "text-pink-500",
-  "text-yellow-500",
-  "text-indigo-500",
-  "text-red-500",
-  "text-cyan-500",
-  "text-rose-500",
-  "text-emerald-500",
-  "text-violet-500",
-  "text-amber-500",
-  "text-teal-500",
-  "text-fuchsia-500",
-  "text-lime-500",
+  "text-amber-400",
+  "text-orange-300",
+  "text-yellow-300",
+  "text-pink-300",
+  "text-rose-300",
+  "text-fuchsia-300",
+  "text-purple-300",
+  "text-indigo-300",
 ];
 const dynamicColor = (index: number) => {
   return colors[index % colors.length];
@@ -36,43 +28,104 @@ const dynamicColor = (index: number) => {
   title="Snacks"
   description="Quick bits of info and interesting things I found"
 >
-  <section>
-    <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
-      <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">
+  <section class="relative min-h-screen bg-gradient-to-br from-gray-100 via-amber-50/40 to-orange-50/30 dark:from-gray-950 dark:via-amber-950/30 dark:to-orange-950/20">
+    {/* Floating background elements for whimsy */}
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute top-20 left-10 w-32 h-32 rounded-full bg-amber-200/20 blur-3xl dark:bg-amber-800/10" />
+      <div class="absolute bottom-40 right-20 w-40 h-40 rounded-full bg-orange-200/20 blur-3xl dark:bg-orange-800/10" />
+      <div class="absolute top-1/2 left-1/3 w-24 h-24 rounded-full bg-yellow-200/20 blur-2xl dark:bg-yellow-800/10" />
+    </div>
+
+    <div class="relative mx-auto max-w-7xl px-4 py-12 lg:px-6 lg:py-20">
+      {/* Handwritten style header - high contrast */}
+      <div class="mx-auto mb-12 max-w-2xl text-center lg:mb-16">
         <h2
-          class="mb-4 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-gray-400 lg:text-4xl"
+          class="mb-4 text-5xl font-serif italic tracking-wide text-gray-900 dark:text-gray-50 lg:text-7xl"
+          style="text-shadow: 3px 3px 6px rgba(0,0,0,0.15), 0 0 3px rgba(255,255,255,0.9); transform: rotate(-1.5deg);"
         >
           snacks
         </h2>
-        <p class="l font-light text-gray-500 sm:text-xl">
-          quick bits of info and interesting things I found
+        <p 
+          class="text-lg font-serif italic text-gray-700 dark:text-gray-300 sm:text-xl"
+          style="transform: rotate(0.8deg); text-shadow: 1px 1px 2px rgba(0,0,0,0.1);"
+        >
+          quick bits of info and interesting things i found
         </p>
       </div>
-      <div class="grid gap-8 lg:grid-cols-2">
-        {
-          snacks.map((snack, index) => (
-            <div class="col-span-2 lg:col-span-1 min-w-[-webkit-fill-available]">
-              <SnackPreview snack={snack} client:idle>
-                <div
-                  slot="image"
-                  transition:name={"hero-" + snack.id}
-                  class="absolute inset-0 overflow-hidden rounded-lg"
+
+      {/* Organic, scattered notes layout */}
+      <div class="relative">
+        <div class="flex flex-wrap gap-6 justify-center items-start">
+          {
+            snacks.map((snack, index) => {
+              // More organic, scattered positioning
+              const baseOffsetY = (index % 4) * 8;
+              const baseOffsetX = (index % 3) * 15;
+              const randomY = Math.sin(snack.id.charCodeAt(0)) * 20;
+              const randomX = Math.cos(snack.id.charCodeAt(1)) * 25;
+              const offsetY = baseOffsetY + randomY;
+              const offsetX = baseOffsetX + randomX;
+              const delay = index * 80;
+              
+              return (
+                <div 
+                  class="w-full sm:w-[calc(45%-0.75rem)] lg:w-[calc(30%-1rem)] xl:w-[calc(23%-1rem)]"
+                  style={`
+                    transform: translate(${offsetX}px, ${offsetY}px);
+                    animation: floatIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}ms both;
+                  `}
                 >
-                  <Pattern
-                    seed={snack.data.title}
-                    colorClass={dynamicColor(index)}
-                    opacity="0.5"
-                    gridSize={10 + (index % 5) * 2}
-                    spacing={30 + (index % 3) * 10}
-                    lineVariance={5 + (index % 4) * 2}
-                  />
-                  <div class="absolute inset-0 bg-gradient-to-br from-card/80 via-card/60 to-transparent z-10" />
+                  <SnackPreview snack={snack} client:idle>
+                    <div
+                      slot="image"
+                      transition:name={"hero-" + snack.id}
+                      class="absolute inset-0 overflow-hidden opacity-[0.06]"
+                    >
+                      <Pattern
+                        seed={snack.data.title}
+                        colorClass={dynamicColor(index)}
+                        opacity="0.12"
+                        gridSize={6 + (index % 3) * 1.5}
+                        spacing={20 + (index % 4) * 5}
+                        lineVariance={2 + (index % 2) * 1.5}
+                      />
+                      <div class="absolute inset-0 bg-gradient-to-br from-transparent via-amber-50/20 to-transparent dark:via-amber-950/5" />
+                    </div>
+                  </SnackPreview>
                 </div>
-              </SnackPreview>
-            </div>
-          ))
-        }
+              );
+            })
+          }
+        </div>
       </div>
     </div>
   </section>
 </StarLayout>
+
+<style>
+  @keyframes floatIn {
+    from {
+      opacity: 0;
+      transform: translateY(30px) rotate(-5deg) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) rotate(0deg) scale(1);
+    }
+  }
+
+  /* Subtle floating animation for the whole page */
+  @keyframes gentleFloat {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-3px);
+    }
+  }
+
+  /* Apply to header */
+  h2 {
+    animation: gentleFloat 6s ease-in-out infinite;
+  }
+</style>
