@@ -1,0 +1,56 @@
+---
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+interface Props {
+  title: string;
+  description: string;
+}
+const { title, description } = Astro.props;
+import "@/styles/globals.css";
+import { ClientRouter } from "astro:transitions";
+import Posthog from "@/components/Posthog.astro";
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<html lang="en">
+  <>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <!-- Primary Meta Tags -->
+    <title>{title}</title>
+    <meta name="title" content={title} />
+    <meta name="description" content={description} />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+
+    <ClientRouter />
+    {import.meta.env.PROD && <Posthog />}
+    <script is:inline>
+      // improve performance so that it doesn't switch to dark mode after the loading of the script
+      const storedTheme = localStorage.getItem("theme");
+      if (storedTheme) {
+        document.documentElement.classList.toggle(
+          "dark",
+          storedTheme === "dark"
+        );
+      } else {
+        const systemDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        document.documentElement.classList.toggle("dark", systemDark);
+      }
+    </script>
+  </>
+  <body lang="en" class="flex min-h-dvh flex-col">
+    <Header />
+    <main class="flex-1 w-full">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>
+

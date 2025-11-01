@@ -66,6 +66,9 @@ if (image && images[image]) {
     <!-- RSS Feed -->
     <link rel="alternate" type="application/rss+xml" href="/rss.xml" />
     <meta name="generator" content={Astro.generator} />
+    {Astro.url.pathname.startsWith('/admin') && (
+      <meta name="robots" content="noindex, nofollow" />
+    )}
     <ClientRouter />
     {import.meta.env.PROD && <Posthog />}
     <script is:inline>

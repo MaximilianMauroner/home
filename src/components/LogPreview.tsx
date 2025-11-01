@@ -92,188 +92,71 @@ export default function LogPreview({
 
   return (
     <article
-      className={`group relative h-full overflow-hidden border-2 ${scheme.border} ${scheme.borderHover} ${scheme.bg} ${scheme.bgHover} ${scheme.glow} shadow-xl backdrop-blur-sm transition-all duration-500 hover:shadow-2xl`}
+      className={`group relative h-full overflow-hidden border ${scheme.border} ${scheme.borderHover} ${scheme.bg} ${scheme.bgHover} ${scheme.glow} shadow-lg transition-all duration-300 hover:shadow-2xl`}
       data-log-id={log.id}
-      style={{
-        fontFamily: 'monospace',
-      }}
     >
-      {/* Terminal scanlines effect - more prominent */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.06] dark:opacity-[0.08]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.08) 1px, rgba(255,255,255,0.08) 2px)",
-        }}
-      />
-
-      {/* Log file line number indicator on left - with ASCII decoration */}
-      <div
-        className={`absolute left-0 top-0 bottom-0 w-10 border-r-2 ${scheme.border} opacity-50`}
-        aria-hidden="true"
-      >
-        {/* Line numbers like in a text editor */}
-        <div className="absolute top-4 left-0 right-0 flex flex-col items-center gap-1 font-mono text-[7px] opacity-60" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          <div className={scheme.timestamp}>001</div>
-          <div className={scheme.timestamp}>002</div>
-          <div className={scheme.timestamp}>003</div>
-        </div>
-        {/* ASCII separator */}
-        <div className={`absolute top-12 left-1 right-1 h-px ${scheme.border} opacity-30`} />
-      </div>
-
-      {/* Animated cursor blink effect - terminal style */}
-      <div
-        className={`absolute bottom-6 right-6 h-4 w-0.5 ${scheme.accent} animate-pulse opacity-90`}
-        aria-hidden="true"
-      />
-
-      {/* Image overlay with better visibility */}
+      {/* Image overlay */}
       {image && (
-        <div className="pointer-events-none absolute inset-0 opacity-[0.15] transition-opacity duration-500 group-hover:opacity-[0.25] dark:opacity-[0.08] dark:group-hover:opacity-[0.15]">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.15] transition-opacity duration-300 group-hover:opacity-[0.25] dark:opacity-[0.08] dark:group-hover:opacity-[0.15]">
           <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-transparent dark:from-black/70 dark:via-black/50" />
           {image}
         </div>
       )}
 
       {/* Content */}
-      <div className="relative z-10 flex h-full flex-col pl-14 pr-6 py-6 sm:py-8">
-        {/* Terminal window title bar decoration */}
-        <div className={`absolute top-0 left-10 right-0 h-4 border-b ${scheme.border} flex items-center gap-2 px-2 opacity-30`} aria-hidden="true">
-          <div className={`w-1.5 h-1.5 rounded-full ${scheme.accent} opacity-50`} />
-          <div className={`w-1.5 h-1.5 rounded-full ${scheme.text} opacity-30`} />
-          <div className={`w-1.5 h-1.5 rounded-full ${scheme.text} opacity-30`} />
-          <div className={`flex-1 font-mono text-[6px] ${scheme.text} text-center opacity-40`}>entry.log</div>
-        </div>
-
-        {/* Log file header - terminal style with ASCII art */}
-        <div
-          className={`mb-4 flex items-center gap-3 border-b-2 ${scheme.border} pb-2.5 mt-6`}
-        >
-          {/* ASCII decoration */}
-          <span className={`font-mono text-xs ${scheme.text} opacity-30`}>┌─</span>
-          {/* Log level badge - terminal style */}
-          <div
-            className={`px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${scheme.logLevel} border-2 ${scheme.border}`}
-            style={{ fontVariantNumeric: 'tabular-nums' }}
-          >
-            [INFO]
+      <div className="relative z-10 flex h-full flex-col p-6 sm:p-8">
+        {/* Header */}
+        <div className={`mb-4 flex items-center gap-3 border-b ${scheme.border} pb-3`}>
+          <div className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${scheme.logLevel}`}>
+            INFO
           </div>
-          {/* ISO timestamp - log file format */}
-          <div className={`flex-1 font-mono text-[10px] ${scheme.timestamp}`} style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {new Date(log.data.releaseDate)
-              .toISOString()
-              .replace("T", " ")
-              .substring(0, 19)}
+          <div className={`text-xs ${scheme.timestamp}`}>
+            {new Date(log.data.releaseDate).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })}
           </div>
-          {/* File indicator with ASCII */}
-          <div className={`font-mono text-[8px] ${scheme.text} opacity-50`}>
-            .log
-          </div>
-          <span className={`font-mono text-xs ${scheme.text} opacity-30`}>─┐</span>
         </div>
 
         {/* Tags */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-4">
           <TagsList tags={log.data.tags} />
         </div>
 
-        {/* Title - log entry style with creative formatting */}
+        {/* Title */}
         <h2 className="mb-3 flex-1">
           <a
             href={"/dev-log/" + log.id}
-            className={`block font-mono text-lg font-bold ${scheme.accent} leading-snug transition-all duration-300 hover:underline focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 sm:text-xl`}
+            className={`block text-xl font-bold ${scheme.accent} leading-tight transition-all duration-200 hover:underline sm:text-2xl`}
             data-astro-prefetch="hover"
-            style={{ fontVariantNumeric: 'normal' }}
           >
-            <span className="opacity-60 font-mono">$&gt;</span> <span className="opacity-70">cat</span> <span className="opacity-50">entry.log</span> <span className="opacity-60">|</span> <span className="opacity-70">grep</span> <span className="opacity-40">"{log.data.title.substring(0, 8)}"</span>
-            <div className="mt-1 opacity-80">{log.data.title}</div>
+            {log.data.title}
           </a>
         </h2>
 
-        {/* Description - log output style with ASCII */}
-        <div className="mb-5 line-clamp-3">
-          <p
-            className={`font-mono text-xs ${scheme.text} leading-relaxed mb-2`}
-            style={{ fontVariantNumeric: 'normal' }}
-          >
-            <span className="opacity-40">│</span> <span className="opacity-50">→</span> {log.data.description}
+        {/* Description */}
+        <div className="mb-6 line-clamp-3">
+          <p className={`text-sm ${scheme.text} leading-relaxed`}>
+            {log.data.description}
           </p>
-          {/* ASCII separator line */}
-          <div className={`font-mono text-[8px] ${scheme.text} opacity-20 mb-1`}>
-            └─ ──────────────────────────────────────────────
-          </div>
         </div>
 
-        {/* Footer - log file style with ASCII decorations */}
-        <div className="mt-auto border-t-2 border-gray-400 dark:border-gray-600 pt-3">
-          {/* ASCII bottom border */}
-          <div className={`font-mono text-[8px] ${scheme.text} opacity-20 mb-3`}>
-            └──────────────────────────────────────────────────┘
+        {/* Footer */}
+        <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-300/50 dark:border-gray-700/50">
+          <div className={`text-sm ${scheme.timestamp}`}>
+            {timeAgo(log.data.releaseDate)}
           </div>
-          
-          <div className="flex items-center justify-between">
-            <div className={`font-mono text-[10px] ${scheme.timestamp}`} style={{ fontVariantNumeric: 'tabular-nums' }}>
-              <span className="opacity-60">~</span> <span className="opacity-40">$</span> <span className="opacity-50">date</span> <span className="opacity-60">-r</span> {timeAgo(log.data.releaseDate)}
-            </div>
 
-            {/* Read more - terminal command style with ASCII */}
-            <a
-              href={"/dev-log/" + log.id}
-              className={`group/link inline-flex items-center gap-1.5 border-2 ${scheme.border} bg-gray-100 dark:bg-black/50 px-3 py-1.5 font-mono text-[10px] font-bold ${scheme.accent} transition-all duration-300 hover:gap-2 hover:bg-gray-200 dark:hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-1`}
-              style={{ fontVariantNumeric: 'normal' }}
-            >
-              <span className="opacity-70">$</span>
-              <span className="opacity-80">tail</span>
-              <span className="opacity-50">-f</span>
-              <span className="opacity-60">entry.log</span>
-              <span className={`font-mono text-xs ${scheme.text} opacity-40 transition-transform duration-300 group-hover/link:translate-x-0.5`}>▶</span>
-            </a>
-          </div>
+          <a
+            href={"/dev-log/" + log.id}
+            className={`group/link inline-flex items-center gap-2 border ${scheme.border} bg-white/50 dark:bg-black/30 px-4 py-2 text-sm font-medium ${scheme.accent} transition-all duration-200 hover:gap-3 hover:bg-white/80 dark:hover:bg-black/50`}
+          >
+            Read more
+            <span className="transition-transform duration-200 group-hover/link:translate-x-0.5">→</span>
+          </a>
         </div>
       </div>
-
-      {/* Terminal glow effect on hover - CRT monitor style */}
-      <div
-        className={`absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-15`}
-        style={{
-          boxShadow: `inset 0 0 60px ${scheme.text}40, 0 0 20px ${scheme.text}20`,
-        }}
-      />
-
-      {/* Corner markers - ASCII box drawing characters */}
-      <div
-        className={`absolute top-0 left-0 font-mono text-xs ${scheme.text} opacity-30`}
-        aria-hidden="true"
-        style={{ lineHeight: 1 }}
-      >
-        ┌
-      </div>
-      <div
-        className={`absolute top-0 right-0 font-mono text-xs ${scheme.text} opacity-30`}
-        aria-hidden="true"
-        style={{ lineHeight: 1 }}
-      >
-        ┐
-      </div>
-      <div
-        className={`absolute bottom-0 left-0 font-mono text-xs ${scheme.text} opacity-30`}
-        aria-hidden="true"
-        style={{ lineHeight: 1 }}
-      >
-        └
-      </div>
-      <div
-        className={`absolute bottom-0 right-0 font-mono text-xs ${scheme.text} opacity-30`}
-        aria-hidden="true"
-        style={{ lineHeight: 1 }}
-      >
-        ┘
-      </div>
-
-      {/* Terminal window decoration - side borders with ASCII */}
-      <div className={`absolute left-0 top-4 bottom-4 w-px ${scheme.border} opacity-20`} aria-hidden="true" />
-      <div className={`absolute right-0 top-4 bottom-4 w-px ${scheme.border} opacity-20`} aria-hidden="true" />
     </article>
   );
 }
