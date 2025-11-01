@@ -26,9 +26,14 @@ export const GET: APIRoute = async ({ url }) => {
     }
 
     // Get the entry from Astro's content collection
-    const collection = await getCollection(
-      type === "snack" ? "snacks" : type
-    );
+    let collection;
+    if (type === "snack") {
+      collection = await getCollection("snacks");
+    } else if (type === "blog") {
+      collection = await getCollection("blog");
+    } else {
+      collection = await getCollection("log");
+    }
     const entry = collection.find((e) => e.id === id);
 
     if (!entry) {

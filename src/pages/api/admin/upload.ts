@@ -57,7 +57,6 @@ export const POST: APIRoute = async ({ request }) => {
       // Generate a safe filename
       const timestamp = Date.now();
       const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const ext = originalName.split(".").pop() || "jpg";
       const fileName = `${timestamp}-${originalName}`;
 
       // Convert file to buffer
@@ -66,7 +65,7 @@ export const POST: APIRoute = async ({ request }) => {
 
       // Write file to disk
       const filePath = join(assetsDir, fileName);
-      await writeFile(filePath, buffer);
+      await writeFile(filePath, new Uint8Array(buffer));
 
       // Generate the URL path that should be used in the content
       // This matches the structure used in the project

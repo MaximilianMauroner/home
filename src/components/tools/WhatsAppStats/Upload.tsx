@@ -1,14 +1,13 @@
 import JSZip from "jszip";
 import { useEffect, useState } from "react";
 import { isClearedAtom, isDataUploadedAtom, whatsappDB } from "./db";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 
 export function HandlewhatsappData() {
   const [isCleared, setIsCleared] = useAtom(isClearedAtom);
-  const [isDataUploaded, setIsDataUploaded] = useAtom(isDataUploadedAtom);
+  const setIsDataUploaded = useSetAtom(isDataUploadedAtom);
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [hasMessages, setHasMessages] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const extractTextFromZip = async (zipFile: File): Promise<string | null> => {
@@ -414,18 +413,14 @@ export function HandlewhatsappData() {
       setFiles([]);
       setError(null);
       setIsCleared(false);
-      setHasMessages(false);
       setIsDataUploaded(false);
     }
   }, [isCleared]);
 
   useEffect(() => {
+    // Check message count on mount (for potential future use)
     const messageCount = whatsappDB.chats.count();
-    const fetchMessageCount = async () => {
-      const count = await messageCount;
-      setHasMessages(count > 0);
-    };
-    fetchMessageCount();
+    void messageCount;
   }, []);
 
   return (

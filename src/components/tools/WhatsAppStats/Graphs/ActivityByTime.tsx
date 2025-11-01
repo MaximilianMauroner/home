@@ -4,7 +4,7 @@ import type { GraphProps } from "./types";
 
 export const ActivityByTime = ({ messages, persons }: GraphProps) => {
   // Prepare data
-  const { data, options, totalMessages, participantCounts } = useMemo(() => {
+  const { data, options } = useMemo(() => {
     // 24 intervals
     const intervals = Array.from({ length: 24 }, (_, i) => i);
 
@@ -91,8 +91,6 @@ export const ActivityByTime = ({ messages, persons }: GraphProps) => {
     return {
       data,
       options: sharedLineChartOptions,
-      totalMessages,
-      participantCounts,
     };
   }, [messages, persons]);
 

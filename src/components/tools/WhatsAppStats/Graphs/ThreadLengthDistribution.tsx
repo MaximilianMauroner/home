@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Bar, Line } from "react-chartjs-2";
+import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 
 export const ThreadLengthDistribution = ({ messages, persons }: GraphProps) => {
