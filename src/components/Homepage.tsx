@@ -4,12 +4,14 @@ import {
   useState,
   type Dispatch,
   type SetStateAction,
+  useRef,
 } from "react";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 dayjs.extend(weekOfYear);
 import type { BlogType, LogType, SnackType } from "@/utils/server/content";
 import { Queue } from "@/utils/queue";
+import Timeline from "./Timeline";
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*";
 const ogFirst = "maximilian";
@@ -212,6 +214,7 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
     position: { x: number; y: number };
   } | null>(null);
   const [showHint, setShowHint] = useState(true);
+  const timelineRef = useRef<HTMLDivElement>(null);
 
   // Transform the entries to match ContentItem format
   const transformedBlogs: ContentItem[] = blogs.map((blog) => ({
@@ -375,6 +378,15 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
     [],
   );
 
+  const scrollToTimeline = useCallback(() => {
+    if (timelineRef.current) {
+      timelineRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-transparent text-indigo-700 dark:text-indigo-300">
       {activeCard && (
@@ -483,6 +495,35 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
             </div>
           </div>
         </div>
+
+        {/* Scroll to Timeline Button */}
+        <div className="mb-20 flex justify-center">
+          <button
+            onClick={scrollToTimeline}
+            className="group flex flex-col items-center gap-2 rounded-lg border border-indigo-500/30 bg-white/50 px-6 py-4 text-indigo-700 transition-all duration-300 hover:border-indigo-500/60 hover:bg-white/80 hover:shadow-lg dark:border-indigo-500/40 dark:bg-black/50 dark:text-indigo-300 dark:hover:border-indigo-500/70 dark:hover:bg-black/70"
+          >
+            <span className="text-sm font-medium">View Timeline</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+              stroke="currentColor"
+              className="h-5 w-5 animate-bounce"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Timeline Section */}
+      <div ref={timelineRef}>
+        <Timeline blogs={blogs} logs={logs} snacks={snacks} />
       </div>
     </div>
   );
