@@ -27,23 +27,27 @@ blogs.sort((a, b) => {
           thoughts preserved for eternity /s
         </p>
       </div>
-      <div class="grid gap-8 lg:grid-cols-2">
+      <div class="grid gap-6 md:gap-8 lg:grid-cols-2">
         {
-          blogs.map((blog) => (
-            <div class="col-span-2 lg:col-span-1 min-w-[-webkit-fill-available]">
+          blogs.map((blog, index) => (
+            <div
+              class="col-span-2 lg:col-span-1 animate-fade-in"
+              style={`animation-delay: ${index * 50}ms;`}
+            >
               <BlogPreview blog={blog} client:idle>
-                <div
-                  slot="image"
-                  transition:name={"hero-" + blog.data.image}
-                  class="absolute inset-0 overflow-hidden rounded-lg"
-                >
-                  <div class="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/80 z-10" />
-                  <PostImageLoader
-                    className="h-full w-full object-cover"
-                    imagePath={blog.data.image}
-                    altText={blog.data.title}
-                  />
-                </div>
+                {blog.data.image && blog.data.image.trim() !== "" && (
+                  <div
+                    slot="image"
+                    transition:name={"hero-" + blog.data.image}
+                    class="absolute inset-0 overflow-hidden"
+                  >
+                    <PostImageLoader
+                      className="h-full w-full object-cover"
+                      imagePath={blog.data.image}
+                      altText={blog.data.title}
+                    />
+                  </div>
+                )}
               </BlogPreview>
             </div>
           ))

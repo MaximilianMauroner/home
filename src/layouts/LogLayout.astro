@@ -1,0 +1,315 @@
+---
+import FontmatterTagsList from "@/components/FontmatterTagsList.astro";
+import PostImageLoader from "@/components/PostImageLoader.astro";
+import TableOfContents from "@/components/TableOfContents";
+import { type HeadingType } from "@/utils/types";
+import { timeAgo } from "@/utils/helpers";
+import StarLayout from "./StarLayout.astro";
+
+interface Props {
+  frontmatter: {
+    title: string;
+    description?: string;
+    tags?: string[];
+    releaseDate: Date | string;
+    image?: string;
+  };
+  headings?: HeadingType[];
+}
+
+const { frontmatter, headings = [] } = Astro.props;
+
+const pathParts = Astro.url.pathname.split("/").filter(Boolean);
+const entryId = pathParts[pathParts.length - 1] || "";
+const colorSchemeIndex =
+  entryId.length > 1 ? entryId.charCodeAt(1) % 5 : entryId.charCodeAt(0) % 5;
+const logSchemes = [
+  {
+    name: "matrix",
+    bg: "bg-gradient-to-br from-white dark:from-black via-green-50 dark:via-green-950/30 to-gray-50 dark:to-black",
+    text: "text-green-700 dark:text-green-300", // High contrast: green-700 on white, green-300 on black
+    accent: "text-green-600 dark:text-green-200", // High contrast accents
+    border: "border-green-600/80 dark:border-green-400/60", // Stronger borders for visibility
+    timestamp: "text-green-700/95 dark:text-green-300/95", // Full opacity with slight transparency for readability
+    logLevel:
+      "bg-green-100 dark:bg-green-500/30 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-500/50", // Better contrast for badges
+    glow: "shadow-[0_0_40px_rgba(34,197,94,0.2)] dark:shadow-[0_0_40px_rgba(74,222,128,0.3)]",
+  },
+  {
+    name: "amber",
+    bg: "bg-gradient-to-br from-white dark:from-zinc-950 via-amber-50 dark:via-amber-950/30 to-gray-50 dark:to-zinc-950",
+    text: "text-amber-800 dark:text-amber-300",
+    accent: "text-amber-700 dark:text-amber-200",
+    border: "border-amber-600/80 dark:border-amber-400/60",
+    timestamp: "text-amber-800/95 dark:text-amber-300/95",
+    logLevel:
+      "bg-amber-100 dark:bg-amber-500/30 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-500/50",
+    glow: "shadow-[0_0_40px_rgba(245,158,11,0.2)] dark:shadow-[0_0_40px_rgba(251,191,36,0.3)]",
+  },
+  {
+    name: "cyan",
+    bg: "bg-gradient-to-br from-white dark:from-slate-950 via-cyan-50 dark:via-cyan-950/30 to-gray-50 dark:to-slate-950",
+    text: "text-cyan-800 dark:text-cyan-300",
+    accent: "text-cyan-700 dark:text-cyan-200",
+    border: "border-cyan-600/80 dark:border-cyan-400/60",
+    timestamp: "text-cyan-800/95 dark:text-cyan-300/95",
+    logLevel:
+      "bg-cyan-100 dark:bg-cyan-500/30 text-cyan-900 dark:text-cyan-200 border border-cyan-300 dark:border-cyan-500/50",
+    glow: "shadow-[0_0_40px_rgba(6,182,212,0.2)] dark:shadow-[0_0_40px_rgba(34,211,238,0.3)]",
+  },
+  {
+    name: "purple",
+    bg: "bg-gradient-to-br from-white dark:from-indigo-950 via-purple-50 dark:via-purple-950/30 to-gray-50 dark:to-indigo-950",
+    text: "text-purple-800 dark:text-purple-300",
+    accent: "text-purple-700 dark:text-purple-200",
+    border: "border-purple-600/80 dark:border-purple-400/60",
+    timestamp: "text-purple-800/95 dark:text-purple-300/95",
+    logLevel:
+      "bg-purple-100 dark:bg-purple-500/30 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-500/50",
+    glow: "shadow-[0_0_40px_rgba(168,85,247,0.2)] dark:shadow-[0_0_40px_rgba(192,132,252,0.3)]",
+  },
+  {
+    name: "rose",
+    bg: "bg-gradient-to-br from-white dark:from-rose-950 via-rose-50 dark:via-rose-950/30 to-gray-50 dark:to-rose-950",
+    text: "text-rose-800 dark:text-rose-300",
+    accent: "text-rose-700 dark:text-rose-200",
+    border: "border-rose-600/80 dark:border-rose-400/60",
+    timestamp: "text-rose-800/95 dark:text-rose-300/95",
+    logLevel:
+      "bg-rose-100 dark:bg-rose-500/30 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-500/50",
+    glow: "shadow-[0_0_40px_rgba(244,63,94,0.2)] dark:shadow-[0_0_40px_rgba(251,113,133,0.3)]",
+  },
+];
+const scheme = logSchemes[colorSchemeIndex];
+---
+
+<StarLayout
+  description={frontmatter.description || ""}
+  title={frontmatter.title}
+  image={frontmatter.image}
+>
+  <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
+    {/* Hero Header Section with Terminal Theme - Log File Style */}
+    <header
+      class={`relative mb-12 overflow-hidden border-2 ${scheme.border} ${scheme.bg} ${scheme.glow} backdrop-blur-sm sm:mb-16`}
+      transition:name={`log-header-${frontmatter.title}`}
+      style="font-family: monospace;"
+    >
+      {/* Terminal scanlines effect - more prominent */}
+      <div
+        class="pointer-events-none absolute inset-0 opacity-[0.06] dark:opacity-[0.08]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.08) 1px, rgba(255,255,255,0.08) 2px)",
+        }}
+      >
+      </div>
+
+      {/* Log file line indicator on left - with line numbers */}
+      <div
+        class={`absolute left-0 top-0 bottom-0 w-12 border-r-2 ${scheme.border} opacity-40`}
+        style="pointer-events: none;"
+        aria-hidden="true"
+      >
+        {/* Line numbers like a code editor */}
+        <div class="absolute top-8 left-0 right-0 flex flex-col items-end gap-1 font-mono text-[8px] px-2 opacity-50" style="font-variant-numeric: tabular-nums;">
+          <div class={scheme.timestamp}>001</div>
+          <div class={scheme.timestamp}>002</div>
+          <div class={scheme.timestamp}>003</div>
+          <div class={scheme.timestamp}>004</div>
+          <div class={scheme.timestamp}>005</div>
+          <div class={scheme.timestamp}>...</div>
+        </div>
+        {/* ASCII separator */}
+        <div class={`absolute top-20 left-2 right-2 h-px ${scheme.border} opacity-30`} />
+      </div>
+
+      {/* ASCII corner markers */}
+      <div
+        class={`absolute top-0 left-0 font-mono text-sm ${scheme.text} opacity-40`}
+        aria-hidden="true"
+      >
+        ┌
+      </div>
+      <div
+        class={`absolute top-0 right-0 font-mono text-sm ${scheme.text} opacity-40`}
+        aria-hidden="true"
+      >
+        ┐
+      </div>
+      <div
+        class={`absolute bottom-0 left-0 font-mono text-sm ${scheme.text} opacity-40`}
+        aria-hidden="true"
+      >
+        └
+      </div>
+      <div
+        class={`absolute bottom-0 right-0 font-mono text-sm ${scheme.text} opacity-40`}
+        aria-hidden="true"
+      >
+        ┘
+      </div>
+
+      {/* Image overlay */}
+      {
+        frontmatter.image && (
+          <div
+            class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.15] dark:opacity-[0.08]"
+            transition:name={`hero-${frontmatter.image}`}
+          >
+            <PostImageLoader
+              imagePath={frontmatter.image}
+              altText={frontmatter.title}
+              className="h-full w-full object-cover"
+            />
+            <div
+              class="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-transparent dark:from-black/80 dark:via-black/60"
+              style="pointer-events: none;"
+            />
+          </div>
+        )
+      }
+
+      {/* Terminal window chrome */}
+      <div class={`absolute top-0 left-12 right-0 h-5 border-b ${scheme.border} flex items-center gap-2 px-3 opacity-30`} aria-hidden="true">
+        <div class={`w-2 h-2 rounded-full ${scheme.accent} opacity-50`}></div>
+        <div class={`w-2 h-2 rounded-full ${scheme.text} opacity-30`}></div>
+        <div class={`w-2 h-2 rounded-full ${scheme.text} opacity-30`}></div>
+        <div class={`flex-1 font-mono text-[7px] ${scheme.text} text-center opacity-40`}>dev-log ─ entry.log</div>
+      </div>
+
+      {/* Content */}
+      <div class="relative z-10 pl-16 pr-8 py-8 sm:pl-20 sm:pr-12 sm:py-12 lg:pl-24 lg:pr-16 lg:py-16">
+        {/* Log file header - terminal style with ASCII */}
+        <div
+          class={`mb-6 flex items-center gap-2 border-b-2 ${scheme.border} pb-3 pt-2 animate-fade-in`}
+          style="animation-delay: 50ms;"
+        >
+          <span class={`font-mono text-sm ${scheme.text} opacity-30`}>┌─</span>
+          <div class={`px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest ${scheme.logLevel} border-2 ${scheme.border}`}>
+            [INFO]
+          </div>
+          <div class={`flex-1 font-mono text-[11px] ${scheme.timestamp}`} style="font-variant-numeric: tabular-nums;">
+            {new Date(frontmatter.releaseDate)
+              .toISOString()
+              .replace("T", " ")
+              .substring(0, 19)}
+          </div>
+          <div class={`font-mono text-[9px] ${scheme.text} opacity-50`}>
+            entry.log
+          </div>
+          <span class={`font-mono text-sm ${scheme.text} opacity-30`}>─┐</span>
+        </div>
+
+        {/* Tags */}
+        {
+          frontmatter.tags && frontmatter.tags.length > 0 && (
+            <div
+              class="mb-6 flex flex-wrap items-center gap-2 animate-fade-in"
+              style="animation-delay: 100ms;"
+            >
+              <FontmatterTagsList tags={frontmatter.tags} />
+            </div>
+          )
+        }
+
+        {
+          /* Date and metadata - removed duplicate timestamp, keeping only formatted date */
+        }
+        <div
+          class="mb-4 flex flex-wrap items-center gap-4 text-sm animate-fade-in"
+          style="animation-delay: 150ms;"
+        >
+          <div class={`font-mono uppercase tracking-wider ${scheme.timestamp}`}>
+            {
+              new Date(frontmatter.releaseDate).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })
+            }
+          </div>
+          <div class={`${scheme.text} opacity-70`} aria-hidden="true">•</div>
+          <div class={`${scheme.text}`}>
+            {timeAgo(new Date(frontmatter.releaseDate))}
+          </div>
+        </div>
+
+        {/* Title - terminal command style with creative formatting */}
+        <h1
+          class={`mb-6 font-mono text-3xl font-bold leading-tight ${scheme.accent} sm:text-4xl lg:text-5xl animate-fade-in`}
+          transition:name={`log-title-${frontmatter.title.replace(/\s+/g, "-").toLowerCase()}`}
+          style="animation-delay: 200ms;"
+        >
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="opacity-60">$&gt;</span>
+            <span class="opacity-70">cat</span>
+            <span class="opacity-50">entry.log</span>
+            <span class="opacity-60">|</span>
+            <span class="opacity-70">head</span>
+            <span class="opacity-50">-n</span>
+            <span class="opacity-40">1</span>
+          </div>
+          <div class="mt-2">{frontmatter.title}</div>
+        </h1>
+
+        {/* Description - log output style with ASCII */}
+        {
+          frontmatter.description && (
+            <div class="animate-fade-in mb-4" style="animation-delay: 250ms;">
+              <p class={`text-base leading-relaxed ${scheme.text} sm:text-lg font-mono`}>
+                <span class="opacity-40">│</span> <span class="opacity-50">→</span> {frontmatter.description}
+              </p>
+              <div class={`font-mono text-[10px] ${scheme.text} opacity-20 mt-2`}>
+                └─ ──────────────────────────────────────────────────────────────────
+              </div>
+            </div>
+          )
+        }
+
+        {/* Terminal cursor - blinking */}
+        <div
+          class={`absolute bottom-8 right-8 h-6 w-0.5 ${scheme.accent} animate-pulse opacity-90`}
+          aria-hidden="true"
+        >
+        </div>
+      </div>
+    </header>
+
+    {/* Main Content */}
+    <article class="relative animate-fade-in" style="animation-delay: 300ms;">
+      {/* Terminal accent bar */}
+      <div
+        class="absolute -left-4 top-0 hidden h-full w-1 rounded-full opacity-60 lg:block"
+        style={{
+          background:
+            colorSchemeIndex === 0
+              ? "linear-gradient(to bottom, rgba(22, 163, 74, 0.8), rgba(22, 163, 74, 0.4))"
+              : colorSchemeIndex === 1
+                ? "linear-gradient(to bottom, rgba(217, 119, 6, 0.8), rgba(217, 119, 6, 0.4))"
+                : colorSchemeIndex === 2
+                  ? "linear-gradient(to bottom, rgba(8, 145, 178, 0.8), rgba(8, 145, 178, 0.4))"
+                  : colorSchemeIndex === 3
+                    ? "linear-gradient(to bottom, rgba(147, 51, 234, 0.8), rgba(147, 51, 234, 0.4))"
+                    : "linear-gradient(to bottom, rgba(225, 29, 72, 0.8), rgba(225, 29, 72, 0.4))",
+        }}
+        aria-hidden="true"
+      >
+      </div>
+
+      {/* Content with terminal/log file prose styling - high contrast */}
+      <div
+        class="prose prose-lg prose-slate mx-auto max-w-none font-mono dark:prose-invert prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl prose-p:text-gray-900 dark:prose-p:text-gray-200 prose-p:leading-relaxed prose-p:font-mono prose-strong:text-gray-950 dark:prose-strong:text-gray-100 prose-a:text-blue-700 dark:prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline dark:hover:prose-a:text-blue-300 prose-a:font-semibold prose-code:rounded-md prose-code:bg-gray-900 dark:prose-code:bg-gray-950 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-medium prose-code:text-gray-100 dark:prose-code:text-gray-100 prose-code:border prose-code:border-gray-700 dark:prose-code:border-gray-600 prose-pre:bg-gray-900 dark:prose-pre:bg-gray-950 prose-pre:rounded-none prose-pre:border-2 prose-pre:border-gray-800 dark:prose-pre:border-gray-700 prose-pre:font-mono prose-li:text-gray-900 dark:prose-li:text-gray-200 prose-li:font-mono"
+        style="font-family: monospace;"
+      >
+        <slot />
+      </div>
+    </article>
+
+    {
+      headings.length > 0 && (
+        <TableOfContents headingsArr={headings} client:idle />
+      )
+    }
+  </div>
+</StarLayout>

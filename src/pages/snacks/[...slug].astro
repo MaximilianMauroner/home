@@ -1,5 +1,5 @@
 ---
-import { getBlogs } from "@/utils/server/content";
+import { getSnacks } from "@/utils/server/content";
 import { render } from "astro:content";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -7,8 +7,8 @@ import utc from "dayjs/plugin/utc";
 dayjs.extend(utc);
 
 export async function getStaticPaths() {
-  const blogEntries = await getBlogs();
-  return blogEntries.map((entry) => ({
+  const snackEntries = await getSnacks();
+  return snackEntries.map((entry) => ({
     params: { slug: entry.id },
     props: { entry },
   }));

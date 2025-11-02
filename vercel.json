@@ -8,5 +8,27 @@
       "source": "/ingest/:path(.*)",
       "destination": "https://eu.i.posthog.com/:path*"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/dev-log/:slug",
+      "destination": "/dev-log/:slug/",
+      "permanent": true
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/blog/:slug/",
+      "permanent": true
+    },
+    {
+      "source": "/snacks/:slug",
+      "destination": "/snacks/:slug/",
+      "permanent": true
+    },
+    {
+      "source": "/tags/:tag",
+      "destination": "/tags/:tag/",
+      "permanent": true
+    }
   ]
 }

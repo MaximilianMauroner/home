@@ -13,7 +13,12 @@ import "@/styles/globals.css";
 import { ClientRouter } from "astro:transitions";
 import Posthog from "@/components/Posthog.astro";
 
-const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+// Normalize trailing slashes - ensure all URLs end with trailing slash (except root)
+let normalizedPathname = Astro.url.pathname;
+if (normalizedPathname !== '/' && !normalizedPathname.endsWith('/')) {
+  normalizedPathname = normalizedPathname + '/';
+}
+const canonicalURL = new URL(normalizedPathname, Astro.site);
 
 const images = import.meta.glob<{ default: ImageMetadata }>(
   "/src/assets/**/*.{jpeg,jpg,png,gif,webp,avif}"
@@ -66,6 +71,12 @@ if (image && images[image]) {
     <!-- RSS Feed -->
     <link rel="alternate" type="application/rss+xml" href="/rss.xml" />
     <meta name="generator" content={Astro.generator} />
+    <!-- Robots meta tag -->
+    {Astro.url.pathname.startsWith('/admin') || Astro.url.pathname === '/404' ? (
+      <meta name="robots" content="noindex, nofollow" />
+    ) : (
+      <meta name="robots" content="index, follow" />
+    )}
     <ClientRouter />
     {import.meta.env.PROD && <Posthog />}
     <script is:inline>

@@ -1,7 +1,7 @@
 ---
 import TagView from "@/components/TagView";
 import StarLayout from "@/layouts/StarLayout.astro";
-import { getBlogs, getLogs, getTags } from "@/utils/server/content";
+import { getBlogs, getLogs, getSnacks, getTags } from "@/utils/server/content";
 
 interface Props {
   tag: string;
@@ -11,13 +11,15 @@ const { tag } = Astro.params;
 
 const blogs = await getBlogs();
 const logs = await getLogs();
+const snacks = await getSnacks();
 
-const tags = getTags(blogs, logs);
+const tags = getTags(blogs, logs, snacks);
 
 export async function getStaticPaths() {
   const blogs = await getBlogs();
   const logs = await getLogs();
-  const tags = getTags(blogs, logs);
+  const snacks = await getSnacks();
+  const tags = getTags(blogs, logs, snacks);
   const allTagNames = tags.keys();
   return [...allTagNames].map((tag) => ({ params: { tag } }));
 }
@@ -28,6 +30,7 @@ export async function getStaticPaths() {
     tags={tags}
     blogs={blogs}
     logs={logs}
+    snacks={snacks}
     preSelectedTag={tag}
     client:load
   />

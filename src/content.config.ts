@@ -1,4 +1,4 @@
-import { blogType, logType } from "@/utils/types";
+import { blogType, logType, snackType } from "@/utils/types";
 import { defineCollection } from "astro:content";
 import { glob } from "astro/loaders";
 
@@ -10,5 +10,9 @@ const log = defineCollection({
   loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/log" }),
   schema: logType,
 });
+const snacks = defineCollection({
+  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/snacks" }),
+  schema: snackType,
+});
 
-export const collections = { blog, log };
+export const collections = { blog, log, snacks };

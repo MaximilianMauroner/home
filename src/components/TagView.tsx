@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import BlogPreview from "./BlogPreview";
 import LogPreview from "./LogPreview";
+import SnackPreview from "./SnackPreview";
 import type { CollectionEntry } from "astro:content";
 
 type TagViewProps = {
   blogs: CollectionEntry<"blog">[];
   logs: CollectionEntry<"log">[];
+  snacks: CollectionEntry<"snacks">[];
   tags: Map<string, number>;
   preSelectedTag?: string;
 };
 export default function TagView({
   blogs,
   logs,
+  snacks,
   tags,
   preSelectedTag,
 }: TagViewProps) {
@@ -21,21 +24,25 @@ export default function TagView({
 
   const searchQueryInPost = (
     search: string,
-    post: CollectionEntry<"blog"> | CollectionEntry<"log">,
+    post:
+      | CollectionEntry<"blog">
+      | CollectionEntry<"log">
+      | CollectionEntry<"snacks">,
   ) => {
     if (search == "") {
       return true;
     }
-    if (post.data.title.includes(search)) {
+    const searchLower = search.toLowerCase();
+    if (post.data.title.toLowerCase().includes(searchLower)) {
       return true;
     }
-    if (post.data.description.includes(search)) {
+    if (post.data.description.toLowerCase().includes(searchLower)) {
       return true;
     }
-    if (post.data.tags.includes(search)) {
+    if (post.data.tags.some(tag => tag.toLowerCase().includes(searchLower))) {
       return true;
     }
-    if (post.body?.includes(search)) {
+    if (post.body?.toLowerCase().includes(searchLower)) {
       return true;
     }
 
@@ -54,11 +61,19 @@ export default function TagView({
     .filter((log) => (selectedTag ? log.data.tags.includes(selectedTag) : true))
     .filter((log) => searchQueryInPost(search, log));
 
+  const initialSnacks = snacks
+    .filter((snack) =>
+      selectedTag ? snack.data.tags.includes(selectedTag) : true,
+    )
+    .filter((snack) => searchQueryInPost(search, snack));
+
   const [selectedBlogs, setSelectedBlogs] = useState(initialBlogs);
   const [selectedLogs, setSelectedLogs] = useState(initialLogs);
+  const [selectedSnacks, setSelectedSnacks] = useState(initialSnacks);
 
-  const activePostCount = selectedBlogs.length + selectedLogs.length;
-  const totalPostCount = blogs.length + logs.length;
+  const activePostCount =
+    selectedBlogs.length + selectedLogs.length + selectedSnacks.length;
+  const totalPostCount = blogs.length + logs.length + snacks.length;
 
   const filterFunction = () => {
     const selBlogs = blogs
@@ -71,9 +86,15 @@ export default function TagView({
         selectedTag ? log.data.tags.includes(selectedTag) : true,
       )
       .filter((log) => searchQueryInPost(search, log));
+    const selSnacks = snacks
+      .filter((snack) =>
+        selectedTag ? snack.data.tags.includes(selectedTag) : true,
+      )
+      .filter((snack) => searchQueryInPost(search, snack));
 
     setSelectedBlogs(selBlogs);
     setSelectedLogs(selLogs);
+    setSelectedSnacks(selSnacks);
   };
 
   useEffect(() => {
@@ -94,6 +115,7 @@ export default function TagView({
           <PostList
             blogs={selectedBlogs}
             logs={selectedLogs}
+            snacks={selectedSnacks}
             activePostCount={activePostCount}
             totalPostCount={totalPostCount}
             search={search}
@@ -164,12 +186,10 @@ const TagList = ({
                   if (selectedTag === tagName) {
                     setSelectedTag(null);
                     setIsExpanded(true);
-                    window.history.replaceState({}, "", "/tags/");
-                    document.title = "Tags";
+                    window.location.href = "/tags/";
                   } else {
                     setSelectedTag(tagName);
-                    window.history.pushState({}, "", `/tags/${tagName}`);
-                    document.title = tagName;
+                    window.location.href = `/tags/${tagName}/`;
                   }
                 }}
                 className={
@@ -212,6 +232,7 @@ const TagList = ({
 const PostList = ({
   blogs,
   logs,
+  snacks,
   activePostCount,
   totalPostCount,
   search,
@@ -219,6 +240,7 @@ const PostList = ({
 }: {
   blogs: CollectionEntry<"blog">[];
   logs: CollectionEntry<"log">[];
+  snacks: CollectionEntry<"snacks">[];
   activePostCount: number;
   totalPostCount: number;
   search: string;
@@ -236,6 +258,12 @@ const PostList = ({
       releaseDate: log.data.releaseDate,
       url: log.id,
       content: log,
+    })),
+    ...snacks.map((snack) => ({
+      type: "snacks",
+      releaseDate: snack.data.releaseDate,
+      url: snack.id,
+      content: snack,
     })),
   ];
   items.sort((a, b) => {
@@ -267,10 +295,18 @@ const PostList = ({
               />
             );
           }
+          if (item.type === "log") {
+            return (
+              <LogPreview
+                key={item.url + "-post-list"}
+                log={item.content as CollectionEntry<"log">}
+              />
+            );
+          }
           return (
-            <LogPreview
+            <SnackPreview
               key={item.url + "-post-list"}
-              log={item.content as CollectionEntry<"log">}
+              snack={item.content as CollectionEntry<"snacks">}
             />
           );
         })}

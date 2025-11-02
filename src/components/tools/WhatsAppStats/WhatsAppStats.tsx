@@ -34,7 +34,7 @@ ChartJS.register(
   ArcElement,
 );
 
-import { atom, useAtom } from "jotai";
+import { useAtom } from "jotai";
 import MessageGraphs from "./MessageGraphs";
 
 export default function WhatsappStats() {

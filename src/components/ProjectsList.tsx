@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 interface Technology {
   name: string;
@@ -45,9 +45,7 @@ export default function ProjectsList({
   const [currentSort, setCurrentSort] = useState("progress");
   const [searchTerm, setSearchTerm] = useState("");
   const [noResults, setNoResults] = useState(false);
-  const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [focusedProject, setFocusedProject] = useState<string | null>(null);
-  const projectsGridRef = useRef<HTMLDivElement>(null);
 
   // Filter projects based on current filter and search term
   useEffect(() => {
@@ -89,31 +87,6 @@ export default function ProjectsList({
     setProjects(sortedProjects);
     setNoResults(sortedProjects.length === 0);
   }, [initialProjects, currentFilter, currentSort, searchTerm]);
-
-  const handleMouseMove = (
-    e: React.MouseEvent<HTMLDivElement>,
-    cardRef: HTMLDivElement,
-  ) => {
-    const inner = cardRef.querySelector(".project-inner") as HTMLElement;
-    if (!inner) return;
-
-    const rect = cardRef.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const xRotation = ((y - rect.height / 2) / rect.height) * 8;
-    const yRotation = ((x - rect.width / 2) / rect.width) * -8;
-
-    inner.style.transform = `perspective(1000px) rotateX(${xRotation}deg) rotateY(${yRotation}deg) translateY(-5px)`;
-  };
-
-  const handleMouseOut = (cardRef: HTMLDivElement) => {
-    const inner = cardRef.querySelector(".project-inner") as HTMLElement;
-    if (inner) {
-      inner.style.transform =
-        "perspective(1000px) rotateX(0) rotateY(0) translateY(0)";
-    }
-  };
 
   // Add simpler space particles with reduced count
   useEffect(() => {
@@ -162,24 +135,6 @@ export default function ProjectsList({
     } else {
       setFocusedProject(slug);
     }
-    setSelectedCard((prevSelected) => (prevSelected === slug ? null : slug));
-  };
-
-  // Function to generate random blinking lights
-  const generateRandomBlinkingLights = (count: number) => {
-    return Array.from({ length: count }, (_, i) => (
-      <div
-        key={`light-${i}`}
-        className={`absolute h-1.5 w-1.5 rounded-full ${
-          Math.random() > 0.5 ? "bg-green-500" : "bg-red-500"
-        } animate-blink-${Math.floor(Math.random() * 5) + 1}`}
-        style={{
-          left: `${Math.random() * 100}%`,
-          top: `${Math.random() * 100}%`,
-          animationDelay: `${Math.random() * 5}s`,
-        }}
-      />
-    ));
   };
 
   return (
