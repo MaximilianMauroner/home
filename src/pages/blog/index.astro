@@ -35,17 +35,19 @@ blogs.sort((a, b) => {
               style={`animation-delay: ${index * 50}ms;`}
             >
               <BlogPreview blog={blog} client:idle>
-                <div
-                  slot="image"
-                  transition:name={"hero-" + blog.data.image}
-                  class="absolute inset-0 overflow-hidden"
-                >
-                  <PostImageLoader
-                    className="h-full w-full object-cover"
-                    imagePath={blog.data.image}
-                    altText={blog.data.title}
-                  />
-                </div>
+                {blog.data.image && blog.data.image.trim() !== "" && (
+                  <div
+                    slot="image"
+                    transition:name={"hero-" + blog.data.image}
+                    class="absolute inset-0 overflow-hidden"
+                  >
+                    <PostImageLoader
+                      className="h-full w-full object-cover"
+                      imagePath={blog.data.image}
+                      altText={blog.data.title}
+                    />
+                  </div>
+                )}
               </BlogPreview>
             </div>
           ))

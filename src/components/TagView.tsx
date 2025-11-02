@@ -32,16 +32,17 @@ export default function TagView({
     if (search == "") {
       return true;
     }
-    if (post.data.title.includes(search)) {
+    const searchLower = search.toLowerCase();
+    if (post.data.title.toLowerCase().includes(searchLower)) {
       return true;
     }
-    if (post.data.description.includes(search)) {
+    if (post.data.description.toLowerCase().includes(searchLower)) {
       return true;
     }
-    if (post.data.tags.includes(search)) {
+    if (post.data.tags.some(tag => tag.toLowerCase().includes(searchLower))) {
       return true;
     }
-    if (post.body?.includes(search)) {
+    if (post.body?.toLowerCase().includes(searchLower)) {
       return true;
     }
 
@@ -185,12 +186,10 @@ const TagList = ({
                   if (selectedTag === tagName) {
                     setSelectedTag(null);
                     setIsExpanded(true);
-                    window.history.replaceState({}, "", "/tags/");
-                    document.title = "Tags";
+                    window.location.href = "/tags/";
                   } else {
                     setSelectedTag(tagName);
-                    window.history.pushState({}, "", `/tags/${tagName}`);
-                    document.title = tagName;
+                    window.location.href = `/tags/${tagName}/`;
                   }
                 }}
                 className={

@@ -10,6 +10,10 @@ export default function BlogPreview({
   blog: CollectionEntry<"blog">;
   image?: ReactNode;
 }) {
+  // Check if we have an image path but no ReactNode image
+  // This happens when used in React components like TagView
+  const hasImagePath = blog.data.image && blog.data.image.trim() !== "";
+  
   // Generate dynamic color schemes based on blog ID
   const colorSchemeIndex =
     parseInt(blog.id.split("-").filter(Boolean)[0]) % 6 || 0;
@@ -86,10 +90,18 @@ export default function BlogPreview({
       />
 
       {/* Image overlay with parallax effect */}
-      {image && (
+      {(image || hasImagePath) && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-20 transition-opacity duration-700 group-hover:opacity-30 dark:opacity-10 dark:group-hover:opacity-20">
           <div className="absolute inset-0 scale-110 transition-transform duration-700 group-hover:scale-100">
-            {image}
+            {image ? (
+              image
+            ) : hasImagePath && '_imageUrl' in blog && typeof (blog as any)._imageUrl === 'string' ? (
+              <img
+                src={(blog as any)._imageUrl}
+                alt={blog.data.title}
+                className="h-full w-full object-cover"
+              />
+            ) : null}
           </div>
           <div className="absolute inset-0 bg-gradient-to-br from-card/60 via-card/40 to-transparent" />
         </div>

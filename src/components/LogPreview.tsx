@@ -10,6 +10,10 @@ export default function LogPreview({
   log: CollectionEntry<"log">;
   image?: ReactNode;
 }) {
+  // Check if we have an image path but no ReactNode image
+  // This happens when used in React components like TagView
+  const hasImagePath = log.data.image && log.data.image.trim() !== "";
+  
   // High contrast color schemes for WCAG AA compliance in both light and dark modes
   // Use entry ID to determine color scheme - this ensures consistency with the detail page
   // The entry ID format should match what's in the URL (e.g., "2025/17" or "2025-17")
@@ -96,10 +100,18 @@ export default function LogPreview({
       data-log-id={log.id}
     >
       {/* Image overlay */}
-      {image && (
+      {(image || hasImagePath) && (
         <div className="pointer-events-none absolute inset-0 opacity-[0.15] transition-opacity duration-300 group-hover:opacity-[0.25] dark:opacity-[0.08] dark:group-hover:opacity-[0.15]">
           <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-transparent dark:from-black/70 dark:via-black/50" />
-          {image}
+          {image ? (
+            image
+          ) : hasImagePath && '_imageUrl' in log && typeof (log as any)._imageUrl === 'string' ? (
+            <img
+              src={(log as any)._imageUrl}
+              alt={log.data.title}
+              className="h-full w-full object-cover"
+            />
+          ) : null}
         </div>
       )}
 
@@ -127,7 +139,7 @@ export default function LogPreview({
         {/* Title */}
         <h2 className="mb-3 flex-1">
           <a
-            href={"/dev-log/" + log.id}
+            href={"/dev-log/" + log.id + "/"}
             className={`block text-xl font-bold ${scheme.accent} leading-tight transition-all duration-200 hover:underline sm:text-2xl`}
             data-astro-prefetch="hover"
           >
@@ -149,7 +161,7 @@ export default function LogPreview({
           </div>
 
           <a
-            href={"/dev-log/" + log.id}
+            href={"/dev-log/" + log.id + "/"}
             className={`group/link inline-flex items-center gap-2 border ${scheme.border} bg-white/50 dark:bg-black/30 px-4 py-2 text-sm font-medium ${scheme.accent} transition-all duration-200 hover:gap-3 hover:bg-white/80 dark:hover:bg-black/50`}
           >
             Read more
