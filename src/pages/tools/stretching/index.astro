@@ -1,0 +1,21 @@
+---
+export const title = "Stretching";
+export const description = "A guided stretching routine with timer and auto-advance";
+import Stretching from "@/components/tools/Stretching/Stretching";
+import StarLayout from "@/layouts/StarLayout.astro";
+---
+
+<StarLayout title={title} description={description}>
+  <div class="mx-auto max-w-screen-xl px-2 md:px-4 md:py-8 lg:px-6 lg:py-16">
+    <div class="space-y-4">
+      <div class="flex flex-col space-y-2 mb-4">
+        <h1 class="text-3xl font-bold tracking-tight">Stretching Routine</h1>
+        <p class="text-muted-foreground">
+          A guided stretching routine with auto-advance timer. Customize your stretches and track your progress.
+        </p>
+      </div>
+      <Stretching client:load />
+    </div>
+  </div>
+</StarLayout>
+
