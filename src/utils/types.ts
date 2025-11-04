@@ -7,6 +7,7 @@ export const blogType = z.object({
   image: z.string().optional(),
   published: z.boolean(),
   releaseDate: z.date(),
+  lastModified: z.string().optional(), // Added by remark-modified-time plugin
 });
 
 export const logType = z.object({
@@ -16,6 +17,7 @@ export const logType = z.object({
   image: z.string().optional(),
   published: z.boolean(),
   releaseDate: z.date(),
+  lastModified: z.string().optional(), // Added by remark-modified-time plugin
 });
 
 export const snackType = z.object({
@@ -25,6 +27,7 @@ export const snackType = z.object({
   image: z.string().optional(),
   published: z.boolean(),
   releaseDate: z.date(),
+  lastModified: z.string().optional(), // Added by remark-modified-time plugin
 });
 
 export type HeadingType = {

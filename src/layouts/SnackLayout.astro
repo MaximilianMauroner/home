@@ -13,11 +13,17 @@ interface Props {
     tags?: string[];
     releaseDate: Date | string;
     image?: string;
+    lastModified?: string;
   };
   headings?: HeadingType[];
 }
 
 const { frontmatter, headings = [] } = Astro.props;
+
+// Calculate article modified time - use lastModified if available, otherwise use releaseDate
+const articleModifiedTime = frontmatter.lastModified 
+  ? new Date(frontmatter.lastModified).toISOString()
+  : new Date(frontmatter.releaseDate).toISOString();
 
 // Generate dynamic color scheme based on title for snack variety
 const colorSchemeIndex =
@@ -67,6 +73,9 @@ const scheme = snackSchemes[colorSchemeIndex];
   description={frontmatter.description || ""}
   title={frontmatter.title}
   image={frontmatter.image}
+  articlePublishedTime={new Date(frontmatter.releaseDate).toISOString()}
+  articleModifiedTime={articleModifiedTime}
+  articleAuthor="Maximilian Mauroner"
 >
   <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
     {/* Snack-style Header - like a note card */}

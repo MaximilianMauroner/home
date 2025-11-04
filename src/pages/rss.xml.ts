@@ -33,10 +33,11 @@ export const GET: APIRoute = async ({ site }) => {
     });
   });
   return rss({
-    title: "Maximilians Blog/Log/Snacks feed",
+    title: "Maximilian Mauroner - Blog, Dev Log & Snacks",
     description:
-      "This contains all the blog, log, and snack posts from my page",
+      "Blog posts, development logs, and quick tips about programming, development, and technology",
     site: site,
     items: posts,
+    customData: `<language>en-us</language><copyright>Copyright ${new Date().getFullYear()} Maximilian Mauroner</copyright>`,
   });
 };

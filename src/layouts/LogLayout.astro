@@ -13,11 +13,17 @@ interface Props {
     tags?: string[];
     releaseDate: Date | string;
     image?: string;
+    lastModified?: string;
   };
   headings?: HeadingType[];
 }
 
 const { frontmatter, headings = [] } = Astro.props;
+
+// Calculate article modified time - use lastModified if available, otherwise use releaseDate
+const articleModifiedTime = frontmatter.lastModified 
+  ? new Date(frontmatter.lastModified).toISOString()
+  : new Date(frontmatter.releaseDate).toISOString();
 
 const pathParts = Astro.url.pathname.split("/").filter(Boolean);
 const entryId = pathParts[pathParts.length - 1] || "";
@@ -87,6 +93,9 @@ const scheme = logSchemes[colorSchemeIndex];
   description={frontmatter.description || ""}
   title={frontmatter.title}
   image={frontmatter.image}
+  articlePublishedTime={new Date(frontmatter.releaseDate).toISOString()}
+  articleModifiedTime={articleModifiedTime}
+  articleAuthor="Maximilian Mauroner"
 >
   <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
     {/* Hero Header Section with Terminal Theme - Log File Style */}

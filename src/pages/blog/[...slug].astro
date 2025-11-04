@@ -24,9 +24,12 @@ if (entry.data.published !== true && import.meta.env.PROD) {
 }
 
 const { Content, remarkPluginFrontmatter } = await render(entry);
-const lastModified = dayjs(remarkPluginFrontmatter.lastModified)
-  .utc()
-  .format("HH:mm:ss DD MMMM YYYY UTC");
+const lastModified = dayjs(remarkPluginFrontmatter.lastModified).utc().toISOString();
+const publishedDate = dayjs(entry.data.releaseDate).utc().toISOString();
+const postUrl = new URL(Astro.url.pathname, Astro.site);
+
+// Article meta tags will be added via the MDX layout
+// We'll add them directly in the page head
 
 const schema = {
   "@context": "https://schema.org",
@@ -34,24 +37,61 @@ const schema = {
   headline: entry.data.title,
   description: entry.data.description,
   keywords: entry.data.tags.join(", "),
-  image: entry.data.image ? new URL(entry.data.image, Astro.site) : undefined,
+  url: postUrl.toString(),
+  image: entry.data.image ? new URL(entry.data.image, Astro.site).toString() : undefined,
   author: {
     "@type": "Person",
     name: "Maximilian Mauroner",
     url: "https://www.mauroner.net",
   },
+  publisher: {
+    "@type": "Person",
+    name: "Maximilian Mauroner",
+    url: "https://www.mauroner.net",
+  },
   dateModified: lastModified,
-  datePublished: entry.data.releaseDate,
+  datePublished: publishedDate,
   mainEntityOfPage: {
     "@type": "WebPage",
-    "@id": new URL(Astro.url.pathname, Astro.site),
+    "@id": postUrl.toString(),
   },
 };
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": Astro.site
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Blog",
+      "item": `${Astro.site}/blog/`
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": entry.data.title,
+      "item": postUrl.toString()
+    }
+  ]
+};
 ---
+
 
 <script
   is:inline
   type="application/ld+json"
   set:html={JSON.stringify(schema)}
+/>
+<script
+  is:inline
+  type="application/ld+json"
+  set:html={JSON.stringify(breadcrumbSchema)}
 />
 <Content />

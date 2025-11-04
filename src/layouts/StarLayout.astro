@@ -5,12 +5,22 @@ interface Props {
   title: string;
   description: string;
   image?: string;
+  articlePublishedTime?: string;
+  articleModifiedTime?: string;
+  articleAuthor?: string;
 }
 
-const { title, description, image } = Astro.props;
+const { title, description, image, articlePublishedTime, articleModifiedTime, articleAuthor } = Astro.props;
 ---
 
-<DefaultLayout title={title} description={description} image={image}>
+<DefaultLayout 
+  title={title} 
+  description={description} 
+  image={image}
+  articlePublishedTime={articlePublishedTime}
+  articleModifiedTime={articleModifiedTime}
+  articleAuthor={articleAuthor}
+>
   <div
     class="fixed inset-0 -z-10 h-screen w-screen overflow-hidden bg-gray-50 dark:bg-black"
   >
