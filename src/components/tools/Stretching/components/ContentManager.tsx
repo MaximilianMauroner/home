@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { Stretch, StretchRoutine } from "../types";
-import { DEFAULT_ROUTINES } from "../constants";
 import { formatTime } from "../utils";
 import { StretchForm } from "./StretchForm";
 import { RoutineForm } from "./RoutineForm";
@@ -168,7 +167,7 @@ export function ContentManager({
     onClose();
   };
 
-  const editingStretch = editingStretchId ? currentStretches.find((s) => s.id === editingStretchId) : null;
+  const editingStretch = editingStretchId ? (currentStretches.find((s) => s.id === editingStretchId) ?? null) : null;
 
   // Stretch form view
   if (activeTab === "stretches" && (stretchMode === "create" || stretchMode === "edit")) {
