@@ -1,1 +1,243 @@
+---
+import FontmatterTagsList from "@/components/FontmatterTagsList.astro";
+import PostImageLoader from "@/components/PostImageLoader.astro";
+import TableOfContents from "@/components/TableOfContents";
+import { type HeadingType } from "@/utils/types";
+import { timeAgo } from "@/utils/helpers";
+import StarLayout from "./StarLayout.astro";
 
+interface Props {
+  frontmatter: {
+    title: string;
+    description?: string;
+    tags?: string[];
+    releaseDate: Date | string;
+    image?: string;
+  };
+  headings?: HeadingType[];
+}
+
+const { frontmatter, headings = [] } = Astro.props;
+
+// Generate dynamic color scheme based on title for snack variety
+const colorSchemeIndex =
+  frontmatter.title.length > 0 ? frontmatter.title.charCodeAt(0) % 4 : 0;
+const snackSchemes = [
+  {
+    name: "amber",
+    gradient: "from-amber-500/20 via-orange-500/20 to-yellow-500/20",
+    darkGradient:
+      "dark:from-amber-500/30 dark:via-orange-500/30 dark:to-yellow-500/30",
+    accent: "text-amber-700 dark:text-amber-300",
+    borderGradient: "from-amber-500/50 to-orange-500/50",
+    bg: "bg-gradient-to-br from-white via-amber-50/40 to-orange-50/30 dark:from-gray-950 dark:via-amber-950/30 dark:to-orange-950/20",
+  },
+  {
+    name: "orange",
+    gradient: "from-orange-500/20 via-red-500/20 to-pink-500/20",
+    darkGradient:
+      "dark:from-orange-500/30 dark:via-red-500/30 dark:to-pink-500/30",
+    accent: "text-orange-700 dark:text-orange-300",
+    borderGradient: "from-orange-500/50 to-red-500/50",
+    bg: "bg-gradient-to-br from-white via-orange-50/40 to-red-50/30 dark:from-gray-950 dark:via-orange-950/30 dark:to-red-950/20",
+  },
+  {
+    name: "yellow",
+    gradient: "from-yellow-500/20 via-amber-500/20 to-orange-500/20",
+    darkGradient:
+      "dark:from-yellow-500/30 dark:via-amber-500/30 dark:to-orange-500/30",
+    accent: "text-yellow-700 dark:text-yellow-300",
+    borderGradient: "from-yellow-500/50 to-amber-500/50",
+    bg: "bg-gradient-to-br from-white via-yellow-50/40 to-amber-50/30 dark:from-gray-950 dark:via-yellow-950/30 dark:to-amber-950/20",
+  },
+  {
+    name: "rose",
+    gradient: "from-rose-500/20 via-pink-500/20 to-fuchsia-500/20",
+    darkGradient:
+      "dark:from-rose-500/30 dark:via-pink-500/30 dark:to-fuchsia-500/30",
+    accent: "text-rose-700 dark:text-rose-300",
+    borderGradient: "from-rose-500/50 to-pink-500/50",
+    bg: "bg-gradient-to-br from-white via-rose-50/40 to-pink-50/30 dark:from-gray-950 dark:via-rose-950/30 dark:to-pink-950/20",
+  },
+];
+const scheme = snackSchemes[colorSchemeIndex];
+---
+
+<StarLayout
+  description={frontmatter.description || ""}
+  title={frontmatter.title}
+  image={frontmatter.image}
+>
+  <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
+    {/* Snack-style Header - like a note card */}
+    <header
+      class={`relative mb-12 overflow-hidden ${scheme.bg} backdrop-blur-xl sm:mb-16`}
+      transition:name={`snack-header-${frontmatter.title}`}
+      style={{
+        clipPath: `polygon(
+          1% 4%, 7% 0.5%, 14% 2%, 21% 0%, 29% 2%, 36% 0.5%, 
+          43% 1.5%, 51% 0%, 59% 2.5%, 66% 0.5%, 73% 3.5%, 81% 1%, 
+          88% 2%, 95% 5%, 99% 9%, 98% 16%, 99% 23%, 97% 31%, 
+          99% 39%, 98% 46%, 99% 54%, 97% 61%, 99% 69%, 98% 76%, 
+          97% 83%, 99% 91%, 95% 98%, 89% 99%, 81% 97%, 74% 99%, 
+          67% 96%, 59% 99%, 52% 97%, 44% 99%, 37% 96%, 29% 99%, 
+          22% 97%, 14% 99%, 7% 96%, 2% 94%, 0% 89%, 0% 81%, 
+          1% 74%, 0% 67%, 1% 59%, 0% 51%, 1% 44%, 0% 36%, 
+          1% 29%, 0% 21%, 1% 14%, 0% 7%
+        )`,
+        boxShadow:
+          "3px 4px 12px rgba(0,0,0,0.18), -2px -2px 6px rgba(255,255,255,0.9)",
+      }}
+    >
+      {/* Animated gradient background */}
+      <div
+        class={`absolute inset-0 bg-gradient-to-br ${scheme.gradient} ${scheme.darkGradient} opacity-50`}
+        style={{
+          backgroundSize: "200% 200%",
+          animation: "animated-background 15s ease infinite",
+        }}
+      >
+      </div>
+
+      {/* Floating decorative elements */}
+      <div class="absolute top-20 left-10 w-32 h-32 rounded-full bg-amber-200/20 blur-3xl dark:bg-amber-800/10" />
+      <div class="absolute bottom-40 right-20 w-40 h-40 rounded-full bg-orange-200/20 blur-3xl dark:bg-orange-800/10" />
+      <div class="absolute top-1/2 left-1/3 w-24 h-24 rounded-full bg-yellow-200/20 blur-2xl dark:bg-yellow-800/10" />
+
+      {/* Image overlay */}
+      {
+        frontmatter.image && (
+          <div
+            class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.06] dark:opacity-[0.04]"
+            transition:name={`hero-${frontmatter.image}`}
+          >
+            <PostImageLoader
+              imagePath={frontmatter.image}
+              altText={frontmatter.title}
+              className="h-full w-full object-cover"
+            />
+            <div
+              class="absolute inset-0 bg-gradient-to-br from-transparent via-amber-50/20 to-transparent dark:via-amber-950/5"
+              style="pointer-events: none;"
+            />
+          </div>
+        )
+      }
+
+      <div class="relative z-10 p-8 sm:p-12 lg:p-16">
+        {/* Tags */}
+        {
+          frontmatter.tags && frontmatter.tags.length > 0 && (
+            <div
+              class="mb-6 flex flex-wrap items-center gap-2 animate-fade-in"
+              style="animation-delay: 100ms;"
+            >
+              <FontmatterTagsList tags={frontmatter.tags} />
+            </div>
+          )
+        }
+
+        {/* Date and metadata */}
+        <div
+          class="mb-4 flex flex-wrap items-center gap-4 text-sm animate-fade-in"
+          style="animation-delay: 150ms;"
+        >
+          <div class={`font-serif italic font-medium ${scheme.accent}`}>
+            {
+              new Date(frontmatter.releaseDate).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })
+            }
+          </div>
+          <div class="text-gray-600 dark:text-gray-400">•</div>
+          <div class="text-gray-600 dark:text-gray-400 font-serif italic">
+            {timeAgo(new Date(frontmatter.releaseDate))}
+          </div>
+        </div>
+
+        {/* Title - handwritten style */}
+        <h1
+          class={`mb-6 text-4xl font-serif italic font-bold leading-tight text-gray-900 dark:text-gray-50 sm:text-5xl lg:text-6xl animate-fade-in`}
+          transition:name={`snack-title-${frontmatter.title}`}
+          style={{
+            textShadow:
+              "3px 3px 6px rgba(0,0,0,0.15), 0 0 3px rgba(255,255,255,0.9)",
+            transform: "rotate(-0.5deg)",
+            animationDelay: "200ms",
+          }}
+        >
+          {frontmatter.title}
+        </h1>
+
+        {/* Description - italic style */}
+        {
+          frontmatter.description && (
+            <p
+              class="text-lg font-serif italic leading-relaxed text-gray-700 dark:text-gray-300 sm:text-xl animate-fade-in"
+              style={{
+                transform: "rotate(0.3deg)",
+                textShadow: "1px 1px 2px rgba(0,0,0,0.1)",
+                animationDelay: "250ms",
+              }}
+            >
+              {frontmatter.description}
+            </p>
+          )
+        }
+      </div>
+    </header>
+
+    {/* Main Content */}
+    <article class="relative animate-fade-in" style="animation-delay: 300ms;">
+      {/* Decorative accent */}
+      <div
+        class={`absolute -left-4 top-0 hidden h-full w-1 rounded-full bg-gradient-to-b ${scheme.borderGradient} opacity-50 lg:block`}
+      >
+      </div>
+
+      {/* Content with snack-themed prose styling */}
+      <div
+        class="prose prose-lg prose-slate mx-auto max-w-none dark:prose-invert prose-headings:font-bold prose-headings:tracking-tight prose-headings:font-serif prose-headings:italic prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-p:leading-relaxed prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-a:text-primary prose-a:no-underline hover:prose-a:underline dark:prose-a:text-blue-400 dark:hover:prose-a:text-blue-300 prose-code:rounded-md prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-medium prose-code:text-foreground dark:prose-code:text-gray-200 prose-pre:bg-slate-900 dark:prose-pre:bg-slate-950 prose-pre:rounded-xl prose-li:text-gray-700 dark:prose-li:text-gray-300"
+      >
+        <slot />
+      </div>
+    </article>
+
+    {
+      headings.length > 0 && (
+        <TableOfContents headingsArr={headings} client:idle />
+      )
+    }
+  </div>
+</StarLayout>
+
+<style>
+  @keyframes animated-background {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out both;
+  }
+</style>

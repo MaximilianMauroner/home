@@ -22,7 +22,6 @@ if (entry.data.published !== true && import.meta.env.PROD) {
     statusText: "Not Found",
   });
 }
-
 const { Content, remarkPluginFrontmatter } = await render(entry);
 const lastModified = dayjs(remarkPluginFrontmatter.lastModified)
   .utc()
