@@ -9,6 +9,25 @@ snacks.sort((a, b) => {
   return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
 });
 
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": Astro.site
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Snacks",
+      "item": `${Astro.site}/snacks/`
+    }
+  ]
+};
+
 const colors = [
   "text-amber-400",
   "text-orange-300",
@@ -28,6 +47,11 @@ const dynamicColor = (index: number) => {
   title="Snacks"
   description="Quick bits of info and interesting things I found"
 >
+  <script
+    is:inline
+    type="application/ld+json"
+    set:html={JSON.stringify(breadcrumbSchema)}
+  />
   <section class="relative min-h-screen bg-gradient-to-br from-gray-100 via-amber-50/40 to-orange-50/30 dark:from-gray-950 dark:via-amber-950/30 dark:to-orange-950/20">
     {/* Floating background elements for whimsy */}
     <div class="absolute inset-0 overflow-hidden pointer-events-none">

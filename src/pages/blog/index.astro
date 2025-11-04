@@ -8,12 +8,36 @@ const blogs = await getBlogs();
 blogs.sort((a, b) => {
   return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
 });
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": Astro.site
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Blog",
+      "item": `${Astro.site}/blog/`
+    }
+  ]
+};
 ---
 
 <StarLayout
   title="Blog"
   description="trying to get my blog started so future historians can have my genius thoughts preserved for eternity /s"
 >
+  <script
+    is:inline
+    type="application/ld+json"
+    set:html={JSON.stringify(breadcrumbSchema)}
+  />
   <section>
     <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
       <div class="mx-auto mb-8 max-w-screen-sm text-center lg:mb-16">

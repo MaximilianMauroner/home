@@ -19,6 +19,10 @@ if (normalizedPathname !== '/' && !normalizedPathname.endsWith('/')) {
   normalizedPathname = normalizedPathname + '/';
 }
 const canonicalURL = new URL(normalizedPathname, Astro.site);
+// Preserve query parameters for search pages (tags page with q parameter)
+if (Astro.url.pathname === '/tags/' && Astro.url.searchParams.has('q')) {
+  canonicalURL.search = Astro.url.search;
+}
 
 const images = import.meta.glob<{ default: ImageMetadata }>(
   "/src/assets/**/*.{jpeg,jpg,png,gif,webp,avif}"
@@ -79,6 +83,75 @@ if (image && images[image]) {
     )}
     <ClientRouter />
     {import.meta.env.PROD && <Posthog />}
+    
+    <!-- Website Schema for Sitelinks Optimization -->
+    {Astro.url.pathname === '/' && (
+      <script
+        is:inline
+        type="application/ld+json"
+        set:html={JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "Maximilian Mauroner",
+          "url": Astro.site,
+          "description": "Just a dev sharing cool stuff: code snippets that work, dev stories that might help, and random tech tools I think are neat.",
+          "publisher": {
+            "@type": "Person",
+            "name": "Maximilian Mauroner",
+            "url": Astro.site
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": `${Astro.site}/tags/?q={search_term_string}`
+            },
+            "query-input": "required name=search_term_string"
+          },
+          "mainEntity": {
+            "@type": "ItemList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Dev Log",
+                "url": `${Astro.site}/dev-log/`,
+                "description": "Development logs and updates"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Blog",
+                "url": `${Astro.site}/blog/`,
+                "description": "Blog posts about development and technology"
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "Snacks",
+                "url": `${Astro.site}/snacks/`,
+                "description": "Quick tips and code snippets"
+              },
+              {
+                "@type": "ListItem",
+                "position": 4,
+                "name": "Tools",
+                "url": `${Astro.site}/tools/`,
+                "description": "Interactive tools and utilities"
+              },
+              {
+                "@type": "ListItem",
+                "position": 5,
+                "name": "Tags",
+                "url": `${Astro.site}/tags/`,
+                "description": "Browse content by tags"
+              }
+            ]
+          }
+        })}
+      />
+    )}
+    
     <script is:inline>
       // improve performance so that it doesn't switch to dark mode after the loading of the script
       const storedTheme = localStorage.getItem("theme");

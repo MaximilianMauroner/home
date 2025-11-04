@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
+Disallow: /index/
 
 # Sitemaps
 Sitemap: https://www.mauroner.net/sitemap-index.xml

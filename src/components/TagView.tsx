@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import BlogPreview from "./BlogPreview";
 import LogPreview from "./LogPreview";
 import SnackPreview from "./SnackPreview";
@@ -10,6 +10,7 @@ type TagViewProps = {
   snacks: CollectionEntry<"snacks">[];
   tags: Map<string, number>;
   preSelectedTag?: string;
+  initialSearchQuery?: string;
 };
 export default function TagView({
   blogs,
@@ -17,6 +18,7 @@ export default function TagView({
   snacks,
   tags,
   preSelectedTag,
+  initialSearchQuery = "",
 }: TagViewProps) {
   const [selectedTag, setSelectedTag] = useState<string | null>(
     preSelectedTag ?? null,
@@ -29,7 +31,7 @@ export default function TagView({
       | CollectionEntry<"log">
       | CollectionEntry<"snacks">,
   ) => {
-    if (search == "") {
+    if (!search || search.trim() === "") {
       return true;
     }
     const searchLower = search.toLowerCase();
@@ -49,57 +51,71 @@ export default function TagView({
     return false;
   };
 
-  const [search, setSearch] = useState<string>("");
+  // Read search from URL on client side to ensure it's correct after hydration
+  const [search, setSearch] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('q') || initialSearchQuery || "";
+    }
+    return initialSearchQuery || "";
+  });
+  const isInitialMount = useRef(true);
+  
+  // Ensure search is synced with URL on mount (in case of hydration mismatch)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlSearch = urlParams.get('q') || "";
+      if (urlSearch !== search) {
+        setSearch(urlSearch);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const initialBlogs = blogs
-    .filter((blog) =>
-      selectedTag ? blog.data.tags.includes(selectedTag) : true,
-    )
-    .filter((blog) => searchQueryInPost(search, blog));
-
-  const initialLogs = logs
-    .filter((log) => (selectedTag ? log.data.tags.includes(selectedTag) : true))
-    .filter((log) => searchQueryInPost(search, log));
-
-  const initialSnacks = snacks
-    .filter((snack) =>
-      selectedTag ? snack.data.tags.includes(selectedTag) : true,
-    )
-    .filter((snack) => searchQueryInPost(search, snack));
-
-  const [selectedBlogs, setSelectedBlogs] = useState(initialBlogs);
-  const [selectedLogs, setSelectedLogs] = useState(initialLogs);
-  const [selectedSnacks, setSelectedSnacks] = useState(initialSnacks);
+  // Use useMemo to calculate filtered results - this will update when search or selectedTag changes
+  const { selectedBlogs, selectedLogs, selectedSnacks } = useMemo(() => {
+    // Ensure we're using the current search value
+    const currentSearch = search.trim();
+    
+    const selBlogs = blogs
+      .filter((blog) =>
+        selectedTag ? blog.data.tags.includes(selectedTag) : true,
+      )
+      .filter((blog) => searchQueryInPost(currentSearch, blog));
+    const selLogs = logs
+      .filter((log) =>
+        selectedTag ? log.data.tags.includes(selectedTag) : true,
+      )
+      .filter((log) => searchQueryInPost(currentSearch, log));
+    const selSnacks = snacks
+      .filter((snack) =>
+        selectedTag ? snack.data.tags.includes(selectedTag) : true,
+      )
+      .filter((snack) => searchQueryInPost(currentSearch, snack));
+    return { selectedBlogs: selBlogs, selectedLogs: selLogs, selectedSnacks: selSnacks };
+  }, [blogs, logs, snacks, selectedTag, search]);
 
   const activePostCount =
     selectedBlogs.length + selectedLogs.length + selectedSnacks.length;
   const totalPostCount = blogs.length + logs.length + snacks.length;
 
-  const filterFunction = () => {
-    const selBlogs = blogs
-      .filter((blog) =>
-        selectedTag ? blog.data.tags.includes(selectedTag) : true,
-      )
-      .filter((blog) => searchQueryInPost(search, blog));
-    const selLogs = logs
-      .filter((log) =>
-        selectedTag ? log.data.tags.includes(selectedTag) : true,
-      )
-      .filter((log) => searchQueryInPost(search, log));
-    const selSnacks = snacks
-      .filter((snack) =>
-        selectedTag ? snack.data.tags.includes(selectedTag) : true,
-      )
-      .filter((snack) => searchQueryInPost(search, snack));
-
-    setSelectedBlogs(selBlogs);
-    setSelectedLogs(selLogs);
-    setSelectedSnacks(selSnacks);
-  };
-
+  // Update URL when search changes (but don't add to history stack)
   useEffect(() => {
-    filterFunction();
-  }, [selectedTag, search]);
+    // Skip URL update on initial mount to avoid redirect issues
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    const url = new URL(window.location.href);
+    if (search) {
+      url.searchParams.set('q', search);
+    } else {
+      url.searchParams.delete('q');
+    }
+    window.history.replaceState({}, '', url.toString());
+  }, [search]);
 
   return (
     <>
@@ -322,14 +338,15 @@ const Search = ({
   search: string;
   setSearch: (search: string) => void;
 }) => {
-  const [isActive, setIsActive] = useState(false);
+  const [isActive, setIsActive] = useState(!!search);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!isActive) {
-      setSearch("");
+    // Auto-show search if there's a query
+    if (search) {
+      setIsActive(true);
     }
-  }, [isActive]);
+  }, [search]);
   return (
     <div className="relative flex">
       <input
@@ -346,8 +363,12 @@ const Search = ({
       />
       <button
         onClick={() => {
+          if (isActive) {
+            // Closing search - clear it
+            setSearch("");
+          }
           setIsActive(!isActive);
-          if (!isActive === true && inputRef.current) {
+          if (!isActive && inputRef.current) {
             setTimeout(() => {
               inputRef.current?.focus();
             }, 50);

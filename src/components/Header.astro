@@ -48,9 +48,9 @@ navigation.forEach((item) => {
       </div>
     </a>
 
-    <div class="hidden sm:flex gap-4">
+    <nav class="hidden sm:flex gap-4" aria-label="Main navigation">
       {navigation.map((item) => <NavItem item={item} isMobile={false} />)}
-    </div>
+    </nav>
 
     <div class="flex sm:hidden items-center gap-2">
       {/* Show only current page on mobile */}
@@ -101,9 +101,10 @@ navigation.forEach((item) => {
   </div>
 
   {/* Expandable Mobile Navigation */}
-  <div
+  <nav
     id="mobile-menu"
     class="sm:hidden h-0 overflow-hidden transition-[height] duration-300 ease-in-out"
+    aria-label="Mobile navigation"
   >
     <div class="flex flex-col gap-2 py-4">
       {
@@ -141,7 +142,7 @@ navigation.forEach((item) => {
         <DarkModeToggle client:idle />
       </div>
     </div>
-  </div>
+  </nav>
 </header>
 
 <script>

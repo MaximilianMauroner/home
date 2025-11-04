@@ -11,6 +11,9 @@ if (tagParam) {
   return Astro.redirect(`/tags/${tagParam}/`, 301);
 }
 
+// Get search query parameter for Google search integration
+const searchQuery = Astro.url.searchParams.get('q') || '';
+
 const blogs = await getBlogs();
 const logs = await getLogs();
 const snacks = await getSnacks();
@@ -70,11 +73,35 @@ const logsWithImages = await Promise.all(
     _imageUrl: await preprocessLogImage(log),
   }))
 );
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": Astro.site
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Tags",
+      "item": `${Astro.site}/tags/`
+    }
+  ]
+};
 ---
 
 <StarLayout
   title="Tags"
   description="List of all tags that are in blogs, logs, and snacks"
 >
-  <TagView tags={tags} blogs={blogsWithImages} logs={logsWithImages} snacks={snacks} client:load />
+  <script
+    is:inline
+    type="application/ld+json"
+    set:html={JSON.stringify(breadcrumbSchema)}
+  />
+  <TagView tags={tags} blogs={blogsWithImages} logs={logsWithImages} snacks={snacks} initialSearchQuery={searchQuery} client:load />
 </StarLayout>
