@@ -10,13 +10,8 @@ export default function LogPreview({
   log: CollectionEntry<"log">;
   image?: ReactNode;
 }) {
-  // Check if we have an image path but no ReactNode image
-  // This happens when used in React components like TagView
   const hasImagePath = log.data.image && log.data.image.trim() !== "";
 
-  // High contrast color schemes for WCAG AA compliance in both light and dark modes
-  // Use entry ID to determine color scheme - this ensures consistency with the detail page
-  // The entry ID format should match what's in the URL (e.g., "2025/17" or "2025-17")
   const entryId = log.id.split("/").filter(Boolean)[1];
   const colorSchemeIndex =
     entryId.length > 1 ? entryId.charCodeAt(1) % 5 : entryId.charCodeAt(0) % 5;
@@ -34,6 +29,7 @@ export default function LogPreview({
       logLevel:
         "bg-green-100 dark:bg-green-500/30 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-500/50", // Badge with better contrast
       glow: "group-hover:shadow-[0_0_40px_rgba(34,197,94,0.3)] dark:group-hover:shadow-[0_0_40px_rgba(74,222,128,0.4)]",
+      level: "INFO",
     },
     {
       name: "amber",
@@ -48,6 +44,7 @@ export default function LogPreview({
       logLevel:
         "bg-amber-100 dark:bg-amber-500/30 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-500/50",
       glow: "group-hover:shadow-[0_0_40px_rgba(245,158,11,0.3)] dark:group-hover:shadow-[0_0_40px_rgba(251,191,36,0.4)]",
+      level: "WARNING",
     },
     {
       name: "cyan",
@@ -62,6 +59,7 @@ export default function LogPreview({
       logLevel:
         "bg-cyan-100 dark:bg-cyan-500/30 text-cyan-900 dark:text-cyan-200 border border-cyan-300 dark:border-cyan-500/50",
       glow: "group-hover:shadow-[0_0_40px_rgba(6,182,212,0.3)] dark:group-hover:shadow-[0_0_40px_rgba(34,211,238,0.4)]",
+      level: "DEBUG",
     },
     {
       name: "purple",
@@ -76,6 +74,7 @@ export default function LogPreview({
       logLevel:
         "bg-purple-100 dark:bg-purple-500/30 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-500/50",
       glow: "group-hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] dark:group-hover:shadow-[0_0_40px_rgba(192,132,252,0.4)]",
+      level: "CRITICAL",
     },
     {
       name: "rose",
@@ -90,9 +89,11 @@ export default function LogPreview({
       logLevel:
         "bg-rose-100 dark:bg-rose-500/30 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-500/50",
       glow: "group-hover:shadow-[0_0_40px_rgba(244,63,94,0.3)] dark:group-hover:shadow-[0_0_40px_rgba(251,113,133,0.4)]",
+      level: "ERROR",
     },
   ];
   const scheme = logSchemes[colorSchemeIndex];
+  console.log(image, log);
   return (
     <article
       className={`group relative h-full overflow-hidden border ${scheme.border} ${scheme.borderHover} ${scheme.bg} ${scheme.bgHover} ${scheme.glow} shadow-lg transition-all duration-300 hover:shadow-2xl`}
@@ -123,7 +124,7 @@ export default function LogPreview({
           <div
             className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${scheme.logLevel}`}
           >
-            INFO
+            {scheme.level}
           </div>
           <div className={`text-xs ${scheme.timestamp}`}>
             {new Date(log.data.releaseDate).toLocaleDateString("en-US", {

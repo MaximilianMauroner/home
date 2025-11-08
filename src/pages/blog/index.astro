@@ -5,9 +5,6 @@ import StarLayout from "@/layouts/StarLayout.astro";
 import { getBlogs } from "@/utils/server/content";
 
 const blogs = await getBlogs();
-blogs.sort((a, b) => {
-  return b.data.releaseDate.getTime() - a.data.releaseDate.getTime();
-});
 
 const breadcrumbSchema = {
   "@context": "https://schema.org",

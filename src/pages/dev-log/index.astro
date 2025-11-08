@@ -50,10 +50,7 @@ const breadcrumbSchema = {
       <div class="grid gap-6 lg:grid-cols-2 p-4">
         {
           logs.map((log) => (
-            <div
-              class="col-span-2 lg:col-span-1"
-              transition:name={`log-preview-${log.id}`}
-            >
+            <div class="col-span-2 lg:col-span-1 animate-fade-in">
               <LogPreview log={log} client:idle>
                 {log.data.image && log.data.image.trim() !== "" && (
                   <div

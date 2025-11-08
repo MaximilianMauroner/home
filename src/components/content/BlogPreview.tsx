@@ -10,11 +10,8 @@ export default function BlogPreview({
   blog: CollectionEntry<"blog">;
   image?: ReactNode;
 }) {
-  // Check if we have an image path but no ReactNode image
-  // This happens when used in React components like TagView
   const hasImagePath = blog.data.image && blog.data.image.trim() !== "";
 
-  // Generate dynamic color schemes based on blog ID
   const colorSchemeIndex =
     parseInt(blog.id.split("-").filter(Boolean)[0]) % 6 || 0;
 
@@ -72,6 +69,7 @@ export default function BlogPreview({
 
   // Subtle tilt for visual interest
   const tilt = Math.sin(colorSchemeIndex) * 1.5;
+  console.log(image, blog);
 
   return (
     <article
