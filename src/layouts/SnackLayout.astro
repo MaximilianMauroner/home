@@ -81,7 +81,6 @@ const scheme = snackSchemes[colorSchemeIndex];
     {/* Snack-style Header - like a note card */}
     <header
       class={`relative mb-12 overflow-hidden ${scheme.bg} backdrop-blur-xl sm:mb-16`}
-      transition:name={`snack-header-${frontmatter.title}`}
       style={{
         clipPath: `polygon(
           1% 4%, 7% 0.5%, 14% 2%, 21% 0%, 29% 2%, 36% 0.5%, 
@@ -125,10 +124,7 @@ const scheme = snackSchemes[colorSchemeIndex];
       {/* Image overlay */}
       {
         frontmatter.image && (
-          <div
-            class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.06] dark:opacity-[0.04]"
-            transition:name={`hero-${frontmatter.image}`}
-          >
+          <div class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.06] dark:opacity-[0.04]">
             <PostImageLoader
               imagePath={frontmatter.image}
               altText={frontmatter.title}
@@ -178,7 +174,6 @@ const scheme = snackSchemes[colorSchemeIndex];
         {/* Title - handwritten style */}
         <h1
           class={`mb-6 text-4xl font-serif italic font-bold leading-tight text-gray-900 dark:text-gray-50 sm:text-5xl lg:text-6xl animate-fade-in`}
-          transition:name={`snack-title-${frontmatter.title}`}
           style={{
             textShadow:
               "3px 3px 6px rgba(0,0,0,0.15), 0 0 3px rgba(255,255,255,0.9)",

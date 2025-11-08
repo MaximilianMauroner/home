@@ -87,7 +87,6 @@ const scheme = schemes[colorSchemeIndex];
     {/* Hero Header Section */}
     <header
       class="relative mb-12 overflow-hidden rounded-3xl border border-border/50 bg-card/80 backdrop-blur-xl sm:mb-16"
-      transition:name={`blog-header-${frontmatter.title}`}
     >
       {/* Animated gradient background */}
       <div
@@ -102,10 +101,7 @@ const scheme = schemes[colorSchemeIndex];
       {/* Image overlay */}
       {
         frontmatter.image && (
-          <div
-            class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.15] dark:opacity-[0.08]"
-            transition:name={`hero-${frontmatter.image}`}
-          >
+          <div class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.15] dark:opacity-[0.08]">
             <PostImageLoader
               imagePath={frontmatter.image}
               altText={frontmatter.title}
@@ -166,7 +162,6 @@ const scheme = schemes[colorSchemeIndex];
         {/* Title */}
         <h1
           class={`mb-6 text-4xl font-bold leading-tight text-foreground sm:text-5xl lg:text-6xl animate-fade-in`}
-          transition:name={`blog-title-${frontmatter.title}`}
           style="animation-delay: 200ms;"
         >
           {frontmatter.title}

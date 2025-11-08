@@ -57,11 +57,7 @@ const breadcrumbSchema = {
             >
               <BlogPreview blog={blog} client:idle>
                 {blog.data.image && blog.data.image.trim() !== "" && (
-                  <div
-                    slot="image"
-                    transition:name={"hero-" + blog.data.image}
-                    class="absolute inset-0 overflow-hidden"
-                  >
+                  <div slot="image" class="absolute inset-0 overflow-hidden">
                     <PostImageLoader
                       className="h-full w-full object-cover"
                       imagePath={blog.data.image}

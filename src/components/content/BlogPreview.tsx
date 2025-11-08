@@ -72,8 +72,9 @@ export default function BlogPreview({
 
   return (
     <article
-      className={`group relative h-full overflow-hidden rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl transition-all duration-700 hover:scale-[1.02] hover:border-opacity-100 ${scheme.glow}`}
+      className={`group relative h-full overflow-hidden rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl transition-all duration-700 hover:scale-[1.02] hover:border-opacity-100 dark:bg-card/80 ${scheme.glow}`}
       style={{
+        backgroundColor: "rgba(var(--card-rgb), 0.8)",
         transform: `perspective(1000px) rotateX(${tilt * 0.1}deg) rotateY(${tilt * 0.2}deg)`,
       }}
     >

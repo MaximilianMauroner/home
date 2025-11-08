@@ -106,7 +106,6 @@ const scheme = logSchemes[colorSchemeIndex];
     {/* Hero Header Section with Terminal Theme - Log File Style */}
     <header
       class={`relative mb-12 overflow-hidden border-2 ${scheme.border} ${scheme.bg} ${scheme.glow} backdrop-blur-sm sm:mb-16`}
-      transition:name={`log-header-${frontmatter.title}`}
       style="font-family: monospace;"
     >
       {/* Terminal scanlines effect - more prominent */}
@@ -173,10 +172,7 @@ const scheme = logSchemes[colorSchemeIndex];
       {/* Image overlay */}
       {
         frontmatter.image && (
-          <div
-            class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.15] dark:opacity-[0.08]"
-            transition:name={`hero-${frontmatter.image}`}
-          >
+          <div class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.15] dark:opacity-[0.08]">
             <PostImageLoader
               imagePath={frontmatter.image}
               altText={frontmatter.title}
@@ -274,7 +270,6 @@ const scheme = logSchemes[colorSchemeIndex];
         {/* Title - terminal command style with creative formatting */}
         <h1
           class={`mb-6 font-mono text-3xl font-bold leading-tight ${scheme.accent} sm:text-4xl lg:text-5xl animate-fade-in`}
-          transition:name={`log-title-${frontmatter.title.replace(/\s+/g, "-").toLowerCase()}`}
           style="animation-delay: 200ms;"
         >
           <div class="flex items-center gap-2 flex-wrap">

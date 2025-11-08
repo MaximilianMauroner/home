@@ -12,20 +12,20 @@ snacks.sort((a, b) => {
 const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
-  "itemListElement": [
+  itemListElement: [
     {
       "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": Astro.site
+      position: 1,
+      name: "Home",
+      item: Astro.site,
     },
     {
       "@type": "ListItem",
-      "position": 2,
-      "name": "Snacks",
-      "item": `${Astro.site}/snacks/`
-    }
-  ]
+      position: 2,
+      name: "Snacks",
+      item: `${Astro.site}/snacks/`,
+    },
+  ],
 };
 
 const colors = [
@@ -52,12 +52,23 @@ const dynamicColor = (index: number) => {
     type="application/ld+json"
     set:html={JSON.stringify(breadcrumbSchema)}
   />
-  <section class="relative min-h-screen bg-gradient-to-br from-gray-100 via-amber-50/40 to-orange-50/30 dark:from-gray-950 dark:via-amber-950/30 dark:to-orange-950/20">
+  <section
+    class="relative min-h-screen bg-gradient-to-br from-gray-100 via-amber-50/40 to-orange-50/30 dark:from-gray-950 dark:via-amber-950/30 dark:to-orange-950/20"
+  >
     {/* Floating background elements for whimsy */}
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <div class="absolute top-20 left-10 w-32 h-32 rounded-full bg-amber-200/20 blur-3xl dark:bg-amber-800/10" />
-      <div class="absolute bottom-40 right-20 w-40 h-40 rounded-full bg-orange-200/20 blur-3xl dark:bg-orange-800/10" />
-      <div class="absolute top-1/2 left-1/3 w-24 h-24 rounded-full bg-yellow-200/20 blur-2xl dark:bg-yellow-800/10" />
+      <div
+        class="absolute top-20 left-10 w-32 h-32 rounded-full bg-amber-200/20 blur-3xl dark:bg-amber-800/10"
+      >
+      </div>
+      <div
+        class="absolute bottom-40 right-20 w-40 h-40 rounded-full bg-orange-200/20 blur-3xl dark:bg-orange-800/10"
+      >
+      </div>
+      <div
+        class="absolute top-1/2 left-1/3 w-24 h-24 rounded-full bg-yellow-200/20 blur-2xl dark:bg-yellow-800/10"
+      >
+      </div>
     </div>
 
     <div class="relative mx-auto max-w-7xl px-4 py-12 lg:px-6 lg:py-20">
@@ -69,7 +80,7 @@ const dynamicColor = (index: number) => {
         >
           snacks
         </h2>
-        <p 
+        <p
           class="text-lg font-serif italic text-gray-700 dark:text-gray-300 sm:text-xl"
           style="transform: rotate(0.8deg); text-shadow: 1px 1px 2px rgba(0,0,0,0.1);"
         >
@@ -90,9 +101,9 @@ const dynamicColor = (index: number) => {
               const offsetY = baseOffsetY + randomY;
               const offsetX = baseOffsetX + randomX;
               const delay = index * 80;
-              
+
               return (
-                <div 
+                <div
                   class="w-full sm:w-[calc(45%-0.75rem)] lg:w-[calc(30%-1rem)] xl:w-[calc(23%-1rem)]"
                   style={`
                     transform: translate(${offsetX}px, ${offsetY}px);
@@ -102,7 +113,6 @@ const dynamicColor = (index: number) => {
                   <SnackPreview snack={snack} client:idle>
                     <div
                       slot="image"
-                      transition:name={"hero-" + snack.id}
                       class="absolute inset-0 overflow-hidden opacity-[0.06]"
                     >
                       <Pattern
@@ -140,7 +150,8 @@ const dynamicColor = (index: number) => {
 
   /* Subtle floating animation for the whole page */
   @keyframes gentleFloat {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateY(0px);
     }
     50% {
