@@ -1,0 +1,38 @@
+---
+export const title = "Readwise Tags Mapper";
+export const description =
+  "Authenticate with Readwise, fetch documents, and curate tags from one dashboard.";
+
+import ReadwiseTagsMapper from "@/components/tools/ReadwiseTagsMapper/ReadwiseTagsMapper";
+import StarLayout from "@/layouts/StarLayout.astro";
+---
+
+<StarLayout title={title} description={description}>
+  <section>
+    <div class="mx-auto max-w-screen-2xl px-4 py-8 lg:px-6 lg:py-16">
+      <div class="space-y-6">
+        <div class="space-y-2">
+          <h1
+            class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50 lg:text-4xl"
+          >
+            Readwise Tags Mapper
+          </h1>
+          <p class="text-muted-foreground">
+            Validate your access token, review Readwise documents, compare
+            extracted hashtags, and push curated tags back to Readwise.
+          </p>
+          <a
+            href="https://readwise.io/access_token"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
+            Get your Readwise access token →
+          </a>
+        </div>
+
+        <ReadwiseTagsMapper client:load />
+      </div>
+    </div>
+  </section>
+</StarLayout>
