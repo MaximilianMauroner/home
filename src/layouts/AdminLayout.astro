@@ -45,7 +45,11 @@ import Posthog from "@/components/layout/Posthog.astro";
   </>
   <body lang="en" class="flex min-h-dvh flex-col">
     <Header />
-    <main class="flex-1 w-full">
+    <main
+      class="flex-1 w-full"
+      transition:name="page-content"
+      transition:animate="fade"
+    >
       <slot />
     </main>
     <Footer />

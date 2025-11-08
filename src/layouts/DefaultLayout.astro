@@ -193,7 +193,7 @@ if (image && images[image]) {
   </>
   <body lang="en" class="flex min-h-dvh flex-col">
     <Header />
-    <main class="flex-1">
+    <main class="flex-1" transition:name="page-content" transition:animate="fade">
       <slot />
     </main>
     <Footer />

@@ -10,18 +10,26 @@ interface Props {
   articleAuthor?: string;
 }
 
-const { title, description, image, articlePublishedTime, articleModifiedTime, articleAuthor } = Astro.props;
+const {
+  title,
+  description,
+  image,
+  articlePublishedTime,
+  articleModifiedTime,
+  articleAuthor,
+} = Astro.props;
 ---
 
-<DefaultLayout 
-  title={title} 
-  description={description} 
+<DefaultLayout
+  title={title}
+  description={description}
   image={image}
   articlePublishedTime={articlePublishedTime}
   articleModifiedTime={articleModifiedTime}
   articleAuthor={articleAuthor}
 >
   <div
+    transition:persist="starfield"
     class="fixed inset-0 -z-10 h-screen w-screen overflow-hidden bg-gray-50 dark:bg-black"
   >
     <div class="stars-small absolute inset-0"></div>
@@ -50,9 +58,21 @@ const { title, description, image, articlePublishedTime, articleModifiedTime, ar
         rgb(156 163 175),
         rgba(255, 255, 255, 0)
       ),
-      radial-gradient(1px 1px at 50px 25px, rgb(156 163 175), rgba(255, 255, 255, 0)),
-      radial-gradient(1px 1px at 125px 20px, rgb(156 163 175), rgba(255, 255, 255, 0)),
-      radial-gradient(1.5px 1.5px at 50px 75px, rgb(156 163 175), rgba(255, 255, 255, 0));
+      radial-gradient(
+        1px 1px at 50px 25px,
+        rgb(156 163 175),
+        rgba(255, 255, 255, 0)
+      ),
+      radial-gradient(
+        1px 1px at 125px 20px,
+        rgb(156 163 175),
+        rgba(255, 255, 255, 0)
+      ),
+      radial-gradient(
+        1.5px 1.5px at 50px 75px,
+        rgb(156 163 175),
+        rgba(255, 255, 255, 0)
+      );
     background-size: 150px 150px;
     animation: twinkle 4s ease-in-out infinite;
   }
@@ -63,9 +83,21 @@ const { title, description, image, articlePublishedTime, articleModifiedTime, ar
         rgb(156 163 175),
         rgba(255, 255, 255, 0)
       ),
-      radial-gradient(1.5px 1.5px at 100px 25px, rgb(156 163 175), rgba(255, 255, 255, 0)),
-      radial-gradient(1.5px 1.5px at 25px 120px, rgb(156 163 175), rgba(255, 255, 255, 0)),
-      radial-gradient(2px 2px at 75px 125px, rgb(156 163 175), rgba(255, 255, 255, 0));
+      radial-gradient(
+        1.5px 1.5px at 100px 25px,
+        rgb(156 163 175),
+        rgba(255, 255, 255, 0)
+      ),
+      radial-gradient(
+        1.5px 1.5px at 25px 120px,
+        rgb(156 163 175),
+        rgba(255, 255, 255, 0)
+      ),
+      radial-gradient(
+        2px 2px at 75px 125px,
+        rgb(156 163 175),
+        rgba(255, 255, 255, 0)
+      );
     background-size: 200px 200px;
     animation: twinkle 5s ease-in-out infinite;
     animation-delay: 0.3s;
@@ -77,13 +109,21 @@ const { title, description, image, articlePublishedTime, articleModifiedTime, ar
         rgb(156 163 175),
         rgba(255, 255, 255, 0)
       ),
-      radial-gradient(2px 2px at 150px 50px, rgb(156 163 175), rgba(255, 255, 255, 0)),
+      radial-gradient(
+        2px 2px at 150px 50px,
+        rgb(156 163 175),
+        rgba(255, 255, 255, 0)
+      ),
       radial-gradient(
         2.5px 2.5px at 175px 175px,
         rgb(156 163 175),
         rgba(255, 255, 255, 0)
       ),
-      radial-gradient(2.5px 2.5px at 20px 200px, rgb(156 163 175), rgba(255, 255, 255, 0));
+      radial-gradient(
+        2.5px 2.5px at 20px 200px,
+        rgb(156 163 175),
+        rgba(255, 255, 255, 0)
+      );
     background-size: 250px 250px;
     animation: twinkle 6s ease-in-out infinite;
     animation-delay: 0.6s;
