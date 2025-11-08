@@ -59,7 +59,7 @@ const breadcrumbSchema = {
               style={`animation-delay: ${index * 50}ms;`}
             >
               <BlogPreview blog={blog} client:idle>
-                {/* {blog.data.image && blog.data.image.trim() !== "" && (
+                {blog.data.image && blog.data.image.trim() !== "" && (
                   <div
                     slot="image"
                     transition:name={"hero-" + blog.data.image}
@@ -71,7 +71,7 @@ const breadcrumbSchema = {
                       altText={blog.data.title}
                     />
                   </div>
-                )} */}
+                )}
               </BlogPreview>
             </div>
           ))
