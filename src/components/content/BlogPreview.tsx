@@ -7,7 +7,7 @@ export default function BlogPreview({
   blog,
   image,
 }: {
-  blog: CollectionEntry<"blog">;
+  blog: CollectionEntry<"blog"> & { _imageUrl?: string };
   image?: ReactNode;
 }) {
   const hasImagePath = blog.data.image && blog.data.image.trim() !== "";
@@ -69,7 +69,6 @@ export default function BlogPreview({
 
   // Subtle tilt for visual interest
   const tilt = Math.sin(colorSchemeIndex) * 1.5;
-  console.log(image, blog);
 
   return (
     <article
@@ -93,9 +92,9 @@ export default function BlogPreview({
           <div className="absolute inset-0 scale-110 transition-transform duration-700 group-hover:scale-100">
             {image ? (
               image
-            ) : hasImagePath && blog.data.image ? (
+            ) : hasImagePath && blog._imageUrl ? (
               <img
-                src={blog.data.image}
+                src={blog._imageUrl}
                 alt={blog.data.title}
                 className="h-full w-full object-cover"
               />

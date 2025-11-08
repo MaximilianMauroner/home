@@ -7,7 +7,7 @@ export default function LogPreview({
   log,
   image,
 }: {
-  log: CollectionEntry<"log">;
+  log: CollectionEntry<"log"> & { _imageUrl?: string };
   image?: ReactNode;
 }) {
   const hasImagePath = log.data.image && log.data.image.trim() !== "";
@@ -93,7 +93,6 @@ export default function LogPreview({
     },
   ];
   const scheme = logSchemes[colorSchemeIndex];
-  console.log(image, log);
   return (
     <article
       className={`group relative h-full overflow-hidden border ${scheme.border} ${scheme.borderHover} ${scheme.bg} ${scheme.bgHover} ${scheme.glow} shadow-lg transition-all duration-300 hover:shadow-2xl`}
@@ -105,9 +104,9 @@ export default function LogPreview({
           <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-transparent dark:from-black/70 dark:via-black/50" />
           {image ? (
             image
-          ) : hasImagePath && log.data.image ? (
+          ) : hasImagePath && log._imageUrl ? (
             <img
-              src={log.data.image}
+              src={log._imageUrl}
               alt={log.data.title}
               className="h-full w-full object-cover"
             />
