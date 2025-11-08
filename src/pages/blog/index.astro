@@ -12,20 +12,20 @@ blogs.sort((a, b) => {
 const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
-  "itemListElement": [
+  itemListElement: [
     {
       "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": Astro.site
+      position: 1,
+      name: "Home",
+      item: Astro.site,
     },
     {
       "@type": "ListItem",
-      "position": 2,
-      "name": "Blog",
-      "item": `${Astro.site}/blog/`
-    }
-  ]
+      position: 2,
+      name: "Blog",
+      item: `${Astro.site}/blog/`,
+    },
+  ],
 };
 ---
 
@@ -59,7 +59,7 @@ const breadcrumbSchema = {
               style={`animation-delay: ${index * 50}ms;`}
             >
               <BlogPreview blog={blog} client:idle>
-                {blog.data.image && blog.data.image.trim() !== "" && (
+                {/* {blog.data.image && blog.data.image.trim() !== "" && (
                   <div
                     slot="image"
                     transition:name={"hero-" + blog.data.image}
@@ -71,7 +71,7 @@ const breadcrumbSchema = {
                       altText={blog.data.title}
                     />
                   </div>
-                )}
+                )} */}
               </BlogPreview>
             </div>
           ))

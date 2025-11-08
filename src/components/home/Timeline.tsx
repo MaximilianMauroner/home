@@ -256,7 +256,7 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
                     <div className="absolute left-4 z-10 flex items-center md:left-1/2 md:-translate-x-1/2">
                       {/* Horizontal connector line - shorter on mobile, only right side on mobile */}
                       <div
-                        className={`duration-[600ms] absolute left-full h-0.5 bg-gradient-to-r from-indigo-500/30 to-transparent transition-all ${isVisible ? "w-8 md:w-24" : "w-0"} ${isLeft ? "md:left-full md:from-indigo-500/30 md:to-transparent" : "md:left-auto md:right-full md:from-transparent md:to-indigo-500/30"}`}
+                        className={`transition-duration-[600ms] absolute left-full h-0.5 bg-gradient-to-r from-indigo-500/30 to-transparent transition-all ${isVisible ? "w-8 md:w-24" : "w-0"} ${isLeft ? "md:left-full md:from-indigo-500/30 md:to-transparent" : "md:left-auto md:right-full md:from-transparent md:to-indigo-500/30"}`}
                         style={{
                           opacity: isVisible ? 1 : 0,
                           transitionDelay: `${animationDelay + 300}ms`,

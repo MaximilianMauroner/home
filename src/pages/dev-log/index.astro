@@ -9,20 +9,20 @@ const logs = await getLogs();
 const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
-  "itemListElement": [
+  itemListElement: [
     {
       "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": Astro.site
+      position: 1,
+      name: "Home",
+      item: Astro.site,
     },
     {
       "@type": "ListItem",
-      "position": 2,
-      "name": "Dev Log",
-      "item": `${Astro.site}/dev-log/`
-    }
-  ]
+      position: 2,
+      name: "Dev Log",
+      item: `${Astro.site}/dev-log/`,
+    },
+  ],
 };
 ---
 
@@ -50,12 +50,12 @@ const breadcrumbSchema = {
       <div class="grid gap-6 lg:grid-cols-2 p-4">
         {
           logs.map((log) => (
-            <div 
+            <div
               class="col-span-2 lg:col-span-1"
               transition:name={`log-preview-${log.id}`}
             >
               <LogPreview log={log} client:idle>
-                {log.data.image && log.data.image.trim() !== "" && (
+                {/* {log.data.image && log.data.image.trim() !== "" && (
                   <div
                     slot="image"
                     transition:name={"hero-" + log.data.image}
@@ -68,7 +68,7 @@ const breadcrumbSchema = {
                       altText={log.data.title}
                     />
                   </div>
-                )}
+                )} */}
               </LogPreview>
             </div>
           ))

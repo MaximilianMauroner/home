@@ -21,7 +21,7 @@ interface Props {
 const { frontmatter, headings = [] } = Astro.props;
 
 // Calculate article modified time - use lastModified if available, otherwise use releaseDate
-const articleModifiedTime = frontmatter.lastModified 
+const articleModifiedTime = frontmatter.lastModified
   ? new Date(frontmatter.lastModified).toISOString()
   : new Date(frontmatter.releaseDate).toISOString();
 
@@ -109,9 +109,18 @@ const scheme = snackSchemes[colorSchemeIndex];
       </div>
 
       {/* Floating decorative elements */}
-      <div class="absolute top-20 left-10 w-32 h-32 rounded-full bg-amber-200/20 blur-3xl dark:bg-amber-800/10" />
-      <div class="absolute bottom-40 right-20 w-40 h-40 rounded-full bg-orange-200/20 blur-3xl dark:bg-orange-800/10" />
-      <div class="absolute top-1/2 left-1/3 w-24 h-24 rounded-full bg-yellow-200/20 blur-2xl dark:bg-yellow-800/10" />
+      <div
+        class="absolute top-20 left-10 w-32 h-32 rounded-full bg-amber-200/20 blur-3xl dark:bg-amber-800/10"
+      >
+      </div>
+      <div
+        class="absolute bottom-40 right-20 w-40 h-40 rounded-full bg-orange-200/20 blur-3xl dark:bg-orange-800/10"
+      >
+      </div>
+      <div
+        class="absolute top-1/2 left-1/3 w-24 h-24 rounded-full bg-yellow-200/20 blur-2xl dark:bg-yellow-800/10"
+      >
+      </div>
 
       {/* Image overlay */}
       {

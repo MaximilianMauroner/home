@@ -21,7 +21,7 @@ interface Props {
 const { frontmatter, headings = [] } = Astro.props;
 
 // Calculate article modified time - use lastModified if available, otherwise use releaseDate
-const articleModifiedTime = frontmatter.lastModified 
+const articleModifiedTime = frontmatter.lastModified
   ? new Date(frontmatter.lastModified).toISOString()
   : new Date(frontmatter.releaseDate).toISOString();
 
@@ -103,7 +103,7 @@ const scheme = schemes[colorSchemeIndex];
       {
         frontmatter.image && (
           <div
-            class="pointer-events-none absolute inset-0 overflow-hidden opacity-20 dark:opacity-10"
+            class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.15] dark:opacity-[0.08]"
             transition:name={`hero-${frontmatter.image}`}
           >
             <PostImageLoader
@@ -112,7 +112,7 @@ const scheme = schemes[colorSchemeIndex];
               className="h-full w-full object-cover"
             />
             <div
-              class="absolute inset-0 bg-gradient-to-br from-card/70 via-card/50 to-transparent"
+              class="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-transparent dark:from-black/80 dark:via-black/60"
               style="pointer-events: none;"
             />
           </div>

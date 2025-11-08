@@ -21,7 +21,7 @@ interface Props {
 const { frontmatter, headings = [] } = Astro.props;
 
 // Calculate article modified time - use lastModified if available, otherwise use releaseDate
-const articleModifiedTime = frontmatter.lastModified 
+const articleModifiedTime = frontmatter.lastModified
   ? new Date(frontmatter.lastModified).toISOString()
   : new Date(frontmatter.releaseDate).toISOString();
 
@@ -121,7 +121,10 @@ const scheme = logSchemes[colorSchemeIndex];
         aria-hidden="true"
       >
         {/* Line numbers like a code editor */}
-        <div class="absolute top-8 left-0 right-0 flex flex-col items-end gap-1 font-mono text-[8px] px-2 opacity-50" style="font-variant-numeric: tabular-nums;">
+        <div
+          class="absolute top-8 left-0 right-0 flex flex-col items-end gap-1 font-mono text-[8px] px-2 opacity-50"
+          style="font-variant-numeric: tabular-nums;"
+        >
           <div class={scheme.timestamp}>001</div>
           <div class={scheme.timestamp}>002</div>
           <div class={scheme.timestamp}>003</div>
@@ -130,7 +133,10 @@ const scheme = logSchemes[colorSchemeIndex];
           <div class={scheme.timestamp}>...</div>
         </div>
         {/* ASCII separator */}
-        <div class={`absolute top-20 left-2 right-2 h-px ${scheme.border} opacity-30`} />
+        <div
+          class={`absolute top-20 left-2 right-2 h-px ${scheme.border} opacity-30`}
+        >
+        </div>
       </div>
 
       {/* ASCII corner markers */}
@@ -180,29 +186,45 @@ const scheme = logSchemes[colorSchemeIndex];
       }
 
       {/* Terminal window chrome */}
-      <div class={`absolute top-0 left-12 right-0 h-5 border-b ${scheme.border} flex items-center gap-2 px-3 opacity-30`} aria-hidden="true">
+      <div
+        class={`absolute top-0 left-12 right-0 h-5 border-b ${scheme.border} flex items-center gap-2 px-3 opacity-30`}
+        aria-hidden="true"
+      >
         <div class={`w-2 h-2 rounded-full ${scheme.accent} opacity-50`}></div>
         <div class={`w-2 h-2 rounded-full ${scheme.text} opacity-30`}></div>
         <div class={`w-2 h-2 rounded-full ${scheme.text} opacity-30`}></div>
-        <div class={`flex-1 font-mono text-[7px] ${scheme.text} text-center opacity-40`}>dev-log ─ entry.log</div>
+        <div
+          class={`flex-1 font-mono text-[7px] ${scheme.text} text-center opacity-40`}
+        >
+          dev-log ─ entry.log
+        </div>
       </div>
 
       {/* Content */}
-      <div class="relative z-10 pl-16 pr-8 py-8 sm:pl-20 sm:pr-12 sm:py-12 lg:pl-24 lg:pr-16 lg:py-16">
+      <div
+        class="relative z-10 pl-16 pr-8 py-8 sm:pl-20 sm:pr-12 sm:py-12 lg:pl-24 lg:pr-16 lg:py-16"
+      >
         {/* Log file header - terminal style with ASCII */}
         <div
           class={`mb-6 flex items-center gap-2 border-b-2 ${scheme.border} pb-3 pt-2 animate-fade-in`}
           style="animation-delay: 50ms;"
         >
           <span class={`font-mono text-sm ${scheme.text} opacity-30`}>┌─</span>
-          <div class={`px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest ${scheme.logLevel} border-2 ${scheme.border}`}>
+          <div
+            class={`px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest ${scheme.logLevel} border-2 ${scheme.border}`}
+          >
             [INFO]
           </div>
-          <div class={`flex-1 font-mono text-[11px] ${scheme.timestamp}`} style="font-variant-numeric: tabular-nums;">
-            {new Date(frontmatter.releaseDate)
-              .toISOString()
-              .replace("T", " ")
-              .substring(0, 19)}
+          <div
+            class={`flex-1 font-mono text-[11px] ${scheme.timestamp}`}
+            style="font-variant-numeric: tabular-nums;"
+          >
+            {
+              new Date(frontmatter.releaseDate)
+                .toISOString()
+                .replace("T", " ")
+                .substring(0, 19)
+            }
           </div>
           <div class={`font-mono text-[9px] ${scheme.text} opacity-50`}>
             entry.log
@@ -266,11 +288,17 @@ const scheme = logSchemes[colorSchemeIndex];
         {
           frontmatter.description && (
             <div class="animate-fade-in mb-4" style="animation-delay: 250ms;">
-              <p class={`text-base leading-relaxed ${scheme.text} sm:text-lg font-mono`}>
-                <span class="opacity-40">│</span> <span class="opacity-50">→</span> {frontmatter.description}
+              <p
+                class={`text-base leading-relaxed ${scheme.text} sm:text-lg font-mono`}
+              >
+                <span class="opacity-40">│</span>{" "}
+                <span class="opacity-50">→</span> {frontmatter.description}
               </p>
-              <div class={`font-mono text-[10px] ${scheme.text} opacity-20 mt-2`}>
-                └─ ──────────────────────────────────────────────────────────────────
+              <div
+                class={`font-mono text-[10px] ${scheme.text} opacity-20 mt-2`}
+              >
+                └─
+                ──────────────────────────────────────────────────────────────────
               </div>
             </div>
           )

@@ -13,7 +13,7 @@ export default function LogPreview({
   // Check if we have an image path but no ReactNode image
   // This happens when used in React components like TagView
   const hasImagePath = log.data.image && log.data.image.trim() !== "";
-  
+
   // High contrast color schemes for WCAG AA compliance in both light and dark modes
   // Use entry ID to determine color scheme - this ensures consistency with the detail page
   // The entry ID format should match what's in the URL (e.g., "2025/17" or "2025-17")
@@ -93,7 +93,6 @@ export default function LogPreview({
     },
   ];
   const scheme = logSchemes[colorSchemeIndex];
-
   return (
     <article
       className={`group relative h-full overflow-hidden border ${scheme.border} ${scheme.borderHover} ${scheme.bg} ${scheme.bgHover} ${scheme.glow} shadow-lg transition-all duration-300 hover:shadow-2xl`}
@@ -101,13 +100,13 @@ export default function LogPreview({
     >
       {/* Image overlay */}
       {(image || hasImagePath) && (
-        <div className="pointer-events-none absolute inset-0 opacity-[0.15] transition-opacity duration-300 group-hover:opacity-[0.25] dark:opacity-[0.08] dark:group-hover:opacity-[0.15]">
+        <div className="pointer-events-none absolute inset-0 opacity-15 transition-opacity duration-300 group-hover:opacity-25 dark:opacity-10 dark:group-hover:opacity-15">
           <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-transparent dark:from-black/70 dark:via-black/50" />
           {image ? (
             image
-          ) : hasImagePath && '_imageUrl' in log && typeof (log as any)._imageUrl === 'string' ? (
+          ) : hasImagePath && log.data.image ? (
             <img
-              src={(log as any)._imageUrl}
+              src={log.data.image}
               alt={log.data.title}
               className="h-full w-full object-cover"
             />
@@ -118,15 +117,19 @@ export default function LogPreview({
       {/* Content */}
       <div className="relative z-10 flex h-full flex-col p-6 sm:p-8">
         {/* Header */}
-        <div className={`mb-4 flex items-center gap-3 border-b ${scheme.border} pb-3`}>
-          <div className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${scheme.logLevel}`}>
+        <div
+          className={`mb-4 flex items-center gap-3 border-b ${scheme.border} pb-3`}
+        >
+          <div
+            className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${scheme.logLevel}`}
+          >
             INFO
           </div>
           <div className={`text-xs ${scheme.timestamp}`}>
-            {new Date(log.data.releaseDate).toLocaleDateString('en-US', { 
-              year: 'numeric', 
-              month: 'short', 
-              day: 'numeric' 
+            {new Date(log.data.releaseDate).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
             })}
           </div>
         </div>
@@ -155,17 +158,19 @@ export default function LogPreview({
         </div>
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-300/50 dark:border-gray-700/50">
+        <div className="mt-auto flex items-center justify-between border-t border-gray-300/50 pt-4 dark:border-gray-700/50">
           <div className={`text-sm ${scheme.timestamp}`}>
             {timeAgo(log.data.releaseDate)}
           </div>
 
           <a
             href={"/dev-log/" + log.id + "/"}
-            className={`group/link inline-flex items-center gap-2 border ${scheme.border} bg-white/50 dark:bg-black/30 px-4 py-2 text-sm font-medium ${scheme.accent} transition-all duration-200 hover:gap-3 hover:bg-white/80 dark:hover:bg-black/50`}
+            className={`group/link inline-flex items-center gap-2 border ${scheme.border} bg-white/50 px-4 py-2 text-sm font-medium dark:bg-black/30 ${scheme.accent} transition-all duration-200 hover:gap-3 hover:bg-white/80 dark:hover:bg-black/50`}
           >
             Read more
-            <span className="transition-transform duration-200 group-hover/link:translate-x-0.5">→</span>
+            <span className="transition-transform duration-200 group-hover/link:translate-x-0.5">
+              →
+            </span>
           </a>
         </div>
       </div>
