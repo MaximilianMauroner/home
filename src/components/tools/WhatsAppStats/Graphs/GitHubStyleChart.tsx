@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import type { Message } from "../db";
+import type { Message } from "@/components/tools/WhatsAppStats/db";
 import type { TooltipState } from "./types";
 
 interface GitHubStyleChartProps {

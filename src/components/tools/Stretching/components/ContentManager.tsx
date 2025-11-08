@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { Stretch, StretchRoutine } from "../types";
-import { formatTime } from "../utils";
+import type { Stretch, StretchRoutine } from "@/components/tools/Stretching/types";
+import { formatTime } from "@/components/tools/Stretching/utils";
 import { StretchForm } from "./StretchForm";
 import { RoutineForm } from "./RoutineForm";
 

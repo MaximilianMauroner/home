@@ -1,6 +1,6 @@
 ---
-import Header from "@/components/Header.astro";
-import Footer from "@/components/Footer.astro";
+import Header from "@/components/layout/Header.astro";
+import Footer from "@/components/layout/Footer.astro";
 interface Props {
   title: string;
   description: string;
@@ -8,7 +8,7 @@ interface Props {
 const { title, description } = Astro.props;
 import "@/styles/globals.css";
 import { ClientRouter } from "astro:transitions";
-import Posthog from "@/components/Posthog.astro";
+import Posthog from "@/components/layout/Posthog.astro";
 ---
 
 <html lang="en">

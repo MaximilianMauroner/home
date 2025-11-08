@@ -1,4 +1,4 @@
-import { formatTime } from "../utils";
+import { formatTime } from "@/components/tools/Stretching/utils";
 
 interface ProgressBarProps {
   progress: number;

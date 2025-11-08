@@ -1,4 +1,4 @@
-import type { StretchRoutine } from "../types";
+import type { StretchRoutine } from "@/components/tools/Stretching/types";
 import { RoutineCard } from "./RoutineCard";
 
 interface RoutineSelectorProps {

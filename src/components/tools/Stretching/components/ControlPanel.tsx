@@ -1,4 +1,4 @@
-import type { Stretch } from "../types";
+import type { Stretch } from "@/components/tools/Stretching/types";
 import { TimerDisplay } from "./TimerDisplay";
 import { ProgressBar } from "./ProgressBar";
 import { ControlButtons } from "./ControlButtons";

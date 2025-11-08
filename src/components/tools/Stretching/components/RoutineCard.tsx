@@ -1,5 +1,5 @@
-import type { StretchRoutine } from "../types";
-import { formatTime } from "../utils";
+import type { StretchRoutine } from "@/components/tools/Stretching/types";
+import { formatTime } from "@/components/tools/Stretching/utils";
 
 interface RoutineCardProps {
   routine: StretchRoutine;

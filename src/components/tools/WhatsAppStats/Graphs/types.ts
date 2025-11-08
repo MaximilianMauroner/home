@@ -1,4 +1,4 @@
-import type { Message, Person } from "../db";
+import type { Message, Person } from "@/components/tools/WhatsAppStats/db";
 
 export interface GraphProps {
     messages: Message[];

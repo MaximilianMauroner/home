@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Stretch } from "../types";
+import type { Stretch } from "@/components/tools/Stretching/types";
 
 interface StretchFormProps {
   stretch: Stretch | null;

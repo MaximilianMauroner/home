@@ -1,4 +1,4 @@
-import type { Stretch } from "../types";
+import type { Stretch } from "@/components/tools/Stretching/types";
 
 interface ControlButtonsProps {
   isRunning: boolean;

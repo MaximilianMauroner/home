@@ -1,6 +1,6 @@
 ---
-import Header from "@/components/Header.astro";
-import Footer from "@/components/Footer.astro";
+import Header from "@/components/layout/Header.astro";
+import Footer from "@/components/layout/Footer.astro";
 import type { ImageMetadata } from "astro";
 import { getImage } from "astro:assets";
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
 const { title, description, image, articlePublishedTime, articleModifiedTime, articleAuthor } = Astro.props;
 import "@/styles/globals.css";
 import { ClientRouter } from "astro:transitions";
-import Posthog from "@/components/Posthog.astro";
+import Posthog from "@/components/layout/Posthog.astro";
 
 // Normalize trailing slashes - ensure all URLs end with trailing slash (except root)
 let normalizedPathname = Astro.url.pathname;

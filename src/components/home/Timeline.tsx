@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { BlogType, LogType, SnackType } from "@/utils/server/content";
-import BlogPreview from "./BlogPreview";
-import LogPreview from "./LogPreview";
-import SnackPreview from "./SnackPreview";
-import { Pattern } from "./Pattern";
+import BlogPreview from "@/components/content/BlogPreview";
+import LogPreview from "@/components/content/LogPreview";
+import SnackPreview from "@/components/content/SnackPreview";
+import { Pattern } from "@/components/layout/Pattern";
 
 interface TimelineProps {
   blogs: BlogType[];

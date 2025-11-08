@@ -1,7 +1,6 @@
 import {
   categoryEnum,
   locationEnum,
-  readwiseItemSchema,
   readwiseListResponseSchema,
   updateReadwiseItemSchema,
   type FetchDocumentListOptions,
@@ -41,13 +40,13 @@ const getRetryAfterDelayMs = (response: Response): number | null => {
 
 const fetchWrapper = async <T>(
   input: string | URL | Request,
-  init?: AuthenticatedRequestInit
+  init?: AuthenticatedRequestInit,
 ): Promise<T> => {
   const { authToken, headers, ...restInit } = init ?? {};
 
   if (!authToken) {
     throw new Error(
-      "Missing Readwise access token. Ensure the authentication cookie is set before making requests."
+      "Missing Readwise access token. Ensure the authentication cookie is set before making requests.",
     );
   }
 
@@ -67,7 +66,7 @@ const fetchWrapper = async <T>(
     if (response.status === 429) {
       if (retryCount >= MAX_RATE_LIMIT_RETRIES) {
         throw new Error(
-          "Rate limit exceeded: received too many 429 responses from Readwise API"
+          "Rate limit exceeded: received too many 429 responses from Readwise API",
         );
       }
 
@@ -76,8 +75,8 @@ const fetchWrapper = async <T>(
       retryCount += 1;
       console.warn(
         `Rate limited by Readwise API. Retrying in ${Math.ceil(
-          retryDelayMs / 1_000
-        )}s (attempt ${retryCount}/${MAX_RATE_LIMIT_RETRIES}).`
+          retryDelayMs / 1_000,
+        )}s (attempt ${retryCount}/${MAX_RATE_LIMIT_RETRIES}).`,
       );
       await delay(retryDelayMs);
       continue;
@@ -85,7 +84,7 @@ const fetchWrapper = async <T>(
 
     if (!response.ok) {
       throw new Error(
-        `Network error: ${response.status} ${response.statusText}`
+        `Network error: ${response.status} ${response.statusText}`,
       );
     }
 
@@ -110,7 +109,7 @@ const fetchWrapper = async <T>(
       throw new Error(
         `Expected JSON response but received content type '${
           contentType || "unknown"
-        }'.`
+        }'.`,
       );
     }
   }
@@ -118,7 +117,7 @@ const fetchWrapper = async <T>(
 
 const fetchDocumentListApi = async (
   token: string,
-  options: FetchDocumentListOptions = {}
+  options: FetchDocumentListOptions = {},
 ) => {
   let fullData: ReadwiseItem[] = [];
   let nextPageCursor: string | null = options.pageCursor ?? null;
@@ -162,7 +161,7 @@ const fetchDocumentListApi = async (
 export const updateDocumentApi = async (
   token: string,
   id: string,
-  payload: UpdateDocumentPayload
+  payload: UpdateDocumentPayload,
 ) => {
   if (!id) throw new Error("Document id is required to perform an update");
   const url = `https://readwise.io/api/v3/update/${id}/`;
@@ -181,7 +180,7 @@ export const updateDocumentApi = async (
 export const getDocumentById = async (
   token: string,
   id: string,
-  options: Omit<FetchDocumentListOptions, "id" | "pageCursor"> = {}
+  options: Omit<FetchDocumentListOptions, "id" | "pageCursor"> = {},
 ) => {
   const results = await fetchDocumentListApi(token, { ...options, id });
   return results[0] ?? null;
@@ -191,7 +190,7 @@ export const getDocuments = async (
   token: string,
   locations: string[],
   categories: string[],
-  pageCursor: string | null = null
+  pageCursor: string | null = null,
 ) => {
   let allDocs: ReadwiseItem[] = [];
   for (const loc of locations) {
@@ -210,7 +209,7 @@ export const getDocuments = async (
 };
 
 export const extractHashtags = (
-  summary: string | null | undefined
+  summary: string | null | undefined,
 ): string[] => {
   if (typeof summary !== "string" || summary.trim().length === 0) {
     return [];
