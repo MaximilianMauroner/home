@@ -29,6 +29,8 @@ const pathParts = Astro.url.pathname.split("/").filter(Boolean);
 const entryId = pathParts[pathParts.length - 1] || "";
 const colorSchemeIndex =
   entryId.length > 1 ? entryId.charCodeAt(1) % 5 : entryId.charCodeAt(0) % 5;
+const slugFromPath = Astro.url.pathname.replace(/^\/dev-log\//, "").replace(/\/$/, "");
+const titleTransitionName = `devlog-title-${slugFromPath.replaceAll("/", "-") || "entry"}`;
 const logSchemes = [
   {
     name: "matrix",
@@ -271,6 +273,7 @@ const scheme = logSchemes[colorSchemeIndex];
         <h1
           class={`mb-6 font-mono text-3xl font-bold leading-tight ${scheme.accent} sm:text-4xl lg:text-5xl animate-fade-in`}
           style="animation-delay: 200ms;"
+          transition:name={titleTransitionName}
         >
           <div class="flex items-center gap-2 flex-wrap">
             <span class="opacity-60">$&gt;</span>

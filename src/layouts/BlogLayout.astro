@@ -73,6 +73,11 @@ const schemes = [
   },
 ];
 const scheme = schemes[colorSchemeIndex];
+const slugFromPath = Astro.url.pathname
+  .replace(/^\/blog\//, "")
+  .replace(/\/$/, "");
+const sanitizedSlug = slugFromPath.replaceAll("/", "-");
+const titleTransitionName = `blog-title-${sanitizedSlug || "blog"}`;
 ---
 
 <StarLayout
@@ -163,6 +168,7 @@ const scheme = schemes[colorSchemeIndex];
         <h1
           class={`mb-6 text-4xl font-bold leading-tight text-foreground sm:text-5xl lg:text-6xl animate-fade-in`}
           style="animation-delay: 200ms;"
+          transition:name={titleTransitionName}
         >
           {frontmatter.title}
         </h1>

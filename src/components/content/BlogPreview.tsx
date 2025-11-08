@@ -14,6 +14,7 @@ export default function BlogPreview({
 
   const colorSchemeIndex =
     parseInt(blog.id.split("-").filter(Boolean)[0]) % 6 || 0;
+  const titleTransitionId = `blog-title-${blog.id}`;
 
   const schemes = [
     {
@@ -144,6 +145,7 @@ export default function BlogPreview({
             href={`/blog/${blog.id}/`}
             className="text-2xl font-bold leading-tight text-foreground transition-colors duration-300 hover:text-primary sm:text-3xl"
             data-astro-prefetch="hover"
+            style={{ viewTransitionName: titleTransitionId }}
           >
             {blog.data.title}
           </a>

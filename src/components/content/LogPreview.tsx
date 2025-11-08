@@ -13,6 +13,7 @@ export default function LogPreview({
   const hasImagePath = log.data.image && log.data.image.trim() !== "";
 
   const entryId = log.id.split("/").filter(Boolean)[1];
+  const titleTransitionId = `devlog-title-${log.id.replaceAll("/", "-")}`;
   const colorSchemeIndex =
     entryId.length > 1 ? entryId.charCodeAt(1) % 5 : entryId.charCodeAt(0) % 5;
   const logSchemes = [
@@ -145,6 +146,7 @@ export default function LogPreview({
             href={"/dev-log/" + log.id + "/"}
             className={`block text-xl font-bold ${scheme.accent} leading-tight transition-all duration-200 hover:underline sm:text-2xl`}
             data-astro-prefetch="hover"
+            style={{ viewTransitionName: titleTransitionId }}
           >
             {log.data.title}
           </a>

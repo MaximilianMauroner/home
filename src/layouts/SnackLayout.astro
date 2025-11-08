@@ -67,6 +67,8 @@ const snackSchemes = [
   },
 ];
 const scheme = snackSchemes[colorSchemeIndex];
+const slugFromPath = Astro.url.pathname.replace(/^\/snacks\//, "").replace(/\/$/, "");
+const titleTransitionName = `snack-title-${slugFromPath.replaceAll("/", "-") || "snack"}`;
 ---
 
 <StarLayout
@@ -180,6 +182,7 @@ const scheme = snackSchemes[colorSchemeIndex];
             transform: "rotate(-0.5deg)",
             animationDelay: "200ms",
           }}
+          transition:name={titleTransitionName}
         >
           {frontmatter.title}
         </h1>

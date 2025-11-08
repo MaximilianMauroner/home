@@ -11,6 +11,7 @@ export default function SnackPreview({
   image?: ReactNode;
 }) {
   const rotation = Math.sin(snack.id.charCodeAt(0));
+  const titleTransitionId = `snack-title-${snack.id.replaceAll("/", "-")}`;
 
   return (
     <article className="group relative h-full w-full">
@@ -103,6 +104,7 @@ export default function SnackPreview({
                     "1px 1px 2px rgba(0,0,0,0.1), 0 0 2px rgba(255,255,255,0.8)",
                   letterSpacing: "0.04em",
                   lineHeight: "1.35",
+                  viewTransitionName: titleTransitionId,
                 }}
               >
                 {snack.data.title}
