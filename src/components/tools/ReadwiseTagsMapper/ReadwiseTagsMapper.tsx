@@ -580,8 +580,8 @@ function ReadwiseTagsMapper() {
 
   return (
     <div className="space-y-6 text-gray-900 dark:text-gray-100">
-      <div className="flex flex-col gap-5 lg:gap-6">
-        <header className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="flex flex-col gap-2 lg:gap-4">
+        <section className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-base font-semibold text-white shadow">
               RW
@@ -611,7 +611,7 @@ function ReadwiseTagsMapper() {
                 ? "Token required"
                 : "Status unknown"}
           </span>
-        </header>
+        </section>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,0.4fr)] xl:grid-cols-[minmax(0,0.55fr)_minmax(0,0.45fr)]">
           <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
