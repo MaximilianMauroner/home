@@ -7,53 +7,98 @@ const toolPages = [];
 
 for (const path in tools) {
   const tool = (await tools[path]()) as { title: string; description: string };
+  const url = path.replace("src/pages", "").replace("/index.astro", "");
+  const slug = url.split("/").filter(Boolean).pop() ?? "";
   toolPages.push({
     title: tool.title,
     description: tool.description,
-    url: path.replace("src/pages", "").replace("/index.astro", ""),
+    url,
+    slug,
   });
 }
 
 const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
-  "itemListElement": [
+  itemListElement: [
     {
       "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": Astro.site
+      position: 1,
+      name: "Home",
+      item: Astro.site,
     },
     {
       "@type": "ListItem",
-      "position": 2,
-      "name": "Tools",
-      "item": `${Astro.site}/tools/`
-    }
-  ]
+      position: 2,
+      name: "Tools",
+      item: `${Astro.site}/tools/`,
+    },
+  ],
 };
 
-const colors = [
-  "text-blue-500",
-  "text-orange-500",
-  "text-purple-500",
-  "text-green-500",
-  "text-pink-500",
-  "text-yellow-500",
-  "text-indigo-500",
-  "text-red-500",
-  "text-cyan-500",
-  "text-rose-500",
-  "text-emerald-500",
-  "text-violet-500",
-  "text-amber-500",
-  "text-teal-500",
-  "text-fuchsia-500",
-  "text-lime-500",
+const palettes = [
+  {
+    text: "text-blue-600 dark:text-blue-400",
+    dot: "bg-blue-500",
+    border: "border-blue-200/80 dark:border-border/40",
+    tintSoft: "rgba(59, 130, 246, 0.08)",
+    tintStrong: "rgba(59, 130, 246, 0.22)",
+  },
+  {
+    text: "text-orange-600 dark:text-orange-400",
+    dot: "bg-orange-500",
+    border: "border-orange-200/80 dark:border-border/40",
+    tintSoft: "rgba(249, 115, 22, 0.08)",
+    tintStrong: "rgba(249, 115, 22, 0.2)",
+  },
+  {
+    text: "text-purple-600 dark:text-purple-400",
+    dot: "bg-purple-500",
+    border: "border-purple-200/80 dark:border-border/40",
+    tintSoft: "rgba(147, 51, 234, 0.08)",
+    tintStrong: "rgba(147, 51, 234, 0.2)",
+  },
+  {
+    text: "text-emerald-600 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+    border: "border-emerald-200/80 dark:border-border/40",
+    tintSoft: "rgba(16, 185, 129, 0.08)",
+    tintStrong: "rgba(16, 185, 129, 0.2)",
+  },
+  {
+    text: "text-pink-600 dark:text-pink-400",
+    dot: "bg-pink-500",
+    border: "border-pink-200/80 dark:border-border/40",
+    tintSoft: "rgba(236, 72, 153, 0.08)",
+    tintStrong: "rgba(236, 72, 153, 0.2)",
+  },
+  {
+    text: "text-amber-600 dark:text-amber-400",
+    dot: "bg-amber-500",
+    border: "border-amber-200/80 dark:border-border/40",
+    tintSoft: "rgba(245, 158, 11, 0.08)",
+    tintStrong: "rgba(245, 158, 11, 0.2)",
+  },
+  {
+    text: "text-indigo-600 dark:text-indigo-400",
+    dot: "bg-indigo-500",
+    border: "border-indigo-200/80 dark:border-border/40",
+    tintSoft: "rgba(99, 102, 241, 0.08)",
+    tintStrong: "rgba(99, 102, 241, 0.2)",
+  },
+  {
+    text: "text-rose-600 dark:text-rose-400",
+    dot: "bg-rose-500",
+    border: "border-rose-200/80 dark:border-border/40",
+    tintSoft: "rgba(244, 63, 94, 0.08)",
+    tintStrong: "rgba(244, 63, 94, 0.2)",
+  },
 ];
-const dynamicColor = (index: number) => {
-  return colors[index % colors.length];
+const dynamicPalette = (index: number) => {
+  return palettes[index % palettes.length];
 };
+
+const toolCount = toolPages.length;
 ---
 
 <StarLayout
@@ -74,35 +119,67 @@ const dynamicColor = (index: number) => {
           tools
         </h2>
         <p class="font-light text-gray-500 sm:text-xl">
-          a collection of useful tools and utilities I've built
+          a growing library of small helpers, experiments, and utilities
         </p>
+        <div
+          class="mt-6 inline-flex items-center gap-3 rounded-full border border-border/60 bg-card/80 px-4 py-2 text-sm font-medium text-muted-foreground"
+        >
+          <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+          {toolCount} tool{toolCount === 1 ? "" : "s"} available
+        </div>
       </div>
-      <div class="grid gap-8 lg:grid-cols-2">
+      <div class="relative">
+        <div
+          class="pointer-events-none absolute inset-x-4 -top-10 h-32 rounded-full bg-gradient-to-r from-primary/25 via-primary/10 to-transparent blur-3xl transition-opacity"
+        >
+        </div>
+      </div>
+      <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {
-          toolPages.map((tool, index) => (
-            <a
-              href={tool.url + "/"}
-              class="group relative block h-48 overflow-hidden rounded-lg bg-card transition-all hover:shadow-lg hover:scale-[1.02]"
-            >
-              <Pattern
-                seed={tool.title}
-                colorClass={dynamicColor(index)}
-                opacity="0.5"
-                gridSize={10 + (index % 5) * 2}
-                spacing={30 + (index % 3) * 10}
-                lineVariance={5 + (index % 4) * 2}
-              />
-              <div class="absolute inset-0 bg-gradient-to-br from-card/80 via-card/60 to-transparent z-10" />
-              <div class="relative z-20 flex h-full flex-col justify-end p-6">
-                <h3 class="mb-2 text-xl font-bold text-foreground capitalize">
-                  {tool.title}
-                </h3>
-                <p class="text-muted-foreground line-clamp-2">
-                  {tool.description}
-                </p>
-              </div>
-            </a>
-          ))
+          toolPages.map((tool, index) => {
+            const palette = dynamicPalette(index);
+            const backgroundStyle = `radial-gradient(140% 120% at 10% 12%, ${palette.tintStrong} 0%, transparent 60%), radial-gradient(120% 120% at 90% 20%, ${palette.tintSoft} 0%, transparent 70%), linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.82) 100%)`;
+            return (
+              <a
+                href={tool.url + "/"}
+                class={`group relative flex h-full flex-col overflow-hidden rounded-3xl border ${palette.border} bg-gradient-to-br from-white/95 via-white/80 to-white/60 p-[1px] shadow-[0_16px_40px_-24px_rgba(15,23,42,0.22)] transition-transform duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_25px_60px_-20px_rgba(15,23,42,0.65)] dark:from-background dark:via-background/60 dark:to-background/10 dark:shadow-none`}
+              >
+                <div
+                  class="absolute inset-0 rounded-3xl opacity-95 transition-opacity duration-200 ease-out group-hover:opacity-100 dark:opacity-60"
+                  style={{ background: backgroundStyle }}
+                />
+                <Pattern
+                  seed={tool.title}
+                  colorClass={palette.text}
+                  opacity="0.75"
+                  gridSize={10 + (index % 5) * 2}
+                  spacing={30 + (index % 3) * 10}
+                  lineVariance={5 + (index % 4) * 2}
+                  className="pointer-events-none z-10 opacity-95 mix-blend-multiply dark:mix-blend-screen"
+                />
+                <div class="absolute inset-0 z-20 bg-gradient-to-br from-white/70 via-white/50 to-transparent opacity-85 transition-opacity duration-200 ease-out group-hover:opacity-90 dark:from-card/55 dark:via-card/30 dark:opacity-70" />
+                <div class="relative z-30 flex h-full flex-col justify-between gap-6 rounded-3xl bg-white/65 p-6 backdrop-blur-sm transition-colors duration-200 ease-out dark:bg-card/35">
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/85 text-xl font-semibold uppercase tracking-wide text-foreground shadow-sm dark:bg-background/70">
+                      {tool.title.slice(0, 2)}
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <h3 class="text-2xl font-semibold tracking-tight text-foreground capitalize">
+                      {tool.title}
+                    </h3>
+                    <p class="text-muted-foreground line-clamp-3">
+                      {tool.description}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2 text-sm font-medium text-primary transition-all group-hover:gap-3">
+                    <span>Open tool</span>
+                    <span aria-hidden="true">→</span>
+                  </div>
+                </div>
+              </a>
+            );
+          })
         }
       </div>
     </div>
