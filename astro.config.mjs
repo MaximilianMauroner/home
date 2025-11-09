@@ -26,10 +26,19 @@ export default defineConfig({
       remarkRehype: { footnoteLabel: "Footnotes" },
     }),
     sitemap({
-      changefreq: "weekly",
-      priority: 0.7,
-      lastmod: new Date(),
       filter: (page) => !page.includes('/admin'),
+      serialize: (item) => {
+        if (item.url.includes("/tags/")) {
+          return { ...item, priority: 0.3 };
+        }
+        if (item.url.endsWith("/dev-log/") || item.url.endsWith("/blog/") || item.url.endsWith("/snacks/") || item.url.endsWith("/tools/")) {
+          return { ...item, priority: 0.7 };
+        }
+        if (item.url.includes("/dev-log/") || item.url.includes("/blog/") || item.url.includes("/snacks/") || item.url.includes("/tools/")) {
+          return { ...item, priority: 0.5 };
+        }
+        return { ...item, priority: 0.9 };
+      },
       i18n: {
         defaultLocale: "en",
         locales: {
