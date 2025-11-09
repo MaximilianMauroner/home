@@ -1,0 +1,14 @@
+---
+export const title = "Colour game";
+export const description =
+  "Train your eye to spot subtle opacity differences. Each streak tightens the alpha contrast or expands the grid.";
+
+import ColourGame from "@/components/tools/ColourGame";
+import StarLayout from "@/layouts/StarLayout.astro";
+---
+
+<StarLayout title={title} description={description}>
+  <section>
+    <ColourGame client:only="react" />
+  </section>
+</StarLayout>
