@@ -1,0 +1,15 @@
+---
+export const title = "Frequency tester";
+export const description =
+  "Generate pristine stereo tones, adjust channels independently, and explore binaural beats with a refined interface.";
+
+import FrequencyTester from "@/components/tools/FrequencyTester";
+import StarLayout from "@/layouts/StarLayout.astro";
+---
+
+<StarLayout title={title} description={description}>
+  <section>
+    <FrequencyTester client:only="react" />
+  </section>
+</StarLayout>
+
