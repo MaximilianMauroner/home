@@ -1,0 +1,15 @@
+---
+export const title = "Pace calculator";
+export const description =
+  "Convert between kilometres and miles per hour, calculate splits, and estimate race finish times instantly.";
+
+import PaceCalculator from "@/components/tools/PaceCalculator";
+import StarLayout from "@/layouts/StarLayout.astro";
+---
+
+<StarLayout title={title} description={description}>
+  <section>
+    <PaceCalculator client:only="react" />
+  </section>
+</StarLayout>
+
