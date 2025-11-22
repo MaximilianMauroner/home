@@ -23,7 +23,10 @@ if (entry.data.published !== true && import.meta.env.PROD) {
   });
 }
 const { Content, remarkPluginFrontmatter } = await render(entry);
-const lastModified = dayjs(remarkPluginFrontmatter.lastModified).utc().toISOString();
+const lmd = remarkPluginFrontmatter.lastModified
+  ? remarkPluginFrontmatter.lastModified
+  : entry.data.releaseDate;
+const lastModified = dayjs(lmd).utc().toISOString();
 const publishedDate = dayjs(entry.data.releaseDate).utc().toISOString();
 const postUrl = new URL(Astro.url.pathname, Astro.site);
 
@@ -34,7 +37,9 @@ const schema = {
   description: entry.data.description,
   keywords: entry.data.tags.join(", "),
   url: postUrl.toString(),
-  image: entry.data.image ? new URL(entry.data.image, Astro.site).toString() : undefined,
+  image: entry.data.image
+    ? new URL(entry.data.image, Astro.site).toString()
+    : undefined,
   author: {
     "@type": "Person",
     name: "Maximilian Mauroner",
@@ -56,26 +61,26 @@ const schema = {
 const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
-  "itemListElement": [
+  itemListElement: [
     {
       "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": Astro.site
+      position: 1,
+      name: "Home",
+      item: Astro.site,
     },
     {
       "@type": "ListItem",
-      "position": 2,
-      "name": "Snacks",
-      "item": `${Astro.site}/snacks/`
+      position: 2,
+      name: "Snacks",
+      item: `${Astro.site}/snacks/`,
     },
     {
       "@type": "ListItem",
-      "position": 3,
-      "name": entry.data.title,
-      "item": postUrl.toString()
-    }
-  ]
+      position: 3,
+      name: entry.data.title,
+      item: postUrl.toString(),
+    },
+  ],
 };
 ---
 
