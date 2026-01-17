@@ -1,0 +1,39 @@
+---
+layout: "@/layouts/SnackLayout.astro"
+title: "Break fast and move things"
+description: "AI-coding is going to be the default. The real leverage (and developer value) will come from strong code reviews and knowing how to manage coding agents without shipping the next outage, breach, or supply-chain disaster."
+tags:
+  - ai
+  - ai-coding
+  - code-review
+  - agents
+  - security
+  - developer-workflow
+published: true
+releaseDate: 2026-01-17
+---
+
+**“move fast and break things”** - is basically the new normal for developers at least - but the funny part is that **fixing most of this is not complicated**. it's literally just **doing a code review** - which a lot of companies (especially smaller ones) are still **not doing consistently** anyway.
+
+and this is not some “in theory” thing either - we literally watched a **bad update** take out a massive chunk of windows machines worldwide (CrowdStrike, July 2024). not even a “someone hacked them” story - just **shipping something with too much blast radius** and not enough guardrails.
+
+i think **AI-coding (like it or not) is going to be the future**, but **reviewing the code** will be what really makes developers valuable again. that - and, surprisingly enough, **managing the agents that will be writing the code**.
+
+because if you can **manage the agents well**, you can get a lot done with very little effort - (if you ignore the part where you then need to **review the code they write**) - but if you **can't manage them well**, you will get very little done without shooting yourself in the foot.
+
+also companies which **don't do code reviews** will have a hard time adapting to this new way of coding, because they already have a hard time doing what's right when there is not a lot of code being written - what makes you think they will have any idea how to manage the agents properly?
+They will just create bugs and won't have the instincts to catch the _weird_ failures.
+
+and the scary part is that a lot of the worst incidents were not even “we had a bug in our app” - they were “we trusted the thing that builds/runs/updates our app”.
+
+like:
+
+- **SolarWinds (2020)** - attackers pushed a malicious update through a trusted vendor channel.
+- **XZ utils (2024)** - a backdoor attempt landed in a critical dependency path (and thankfully got caught).
+- **Log4Shell (2021)** - one dependency bug turned into a global incident response marathon.
+- **MOVEit (2023)** - one widely used product got exploited at scale and suddenly everyone is doing the same fire drill.
+- **NotPetya (2017)** - spread via a compromised update mechanism and caused massive collateral damage.
+- **WannaCry (2017)** - patching discipline decided who had a normal week and who got wrecked.
+- **Equifax (2017)** - the “basic hygiene miss” that keeps showing up in every security talk.
+
+so yeah - my bet is that the future of coding is going to be **a lot more about managing agents and reviewing code**, than actually typing out every line yourself.
