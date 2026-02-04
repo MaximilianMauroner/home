@@ -12,35 +12,33 @@ export function StretchDetails({ stretch }: StretchDetailsProps) {
 
   return (
     <div className="space-y-4">
-      {/* Stretch Image */}
-      {stretch.image && (
-        <div className="relative rounded-2xl overflow-hidden bg-muted">
-          <img
-            src={stretch.image || PLACEHOLDER_IMAGE}
-            alt={stretch.name}
-            className="w-full h-48 sm:h-64 object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE;
-            }}
-          />
-          {/* Soft overlay gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+      {/* Stretch Image - Prominent Display */}
+      <div className="relative rounded-2xl overflow-hidden bg-muted shadow-lg">
+        <img
+          src={stretch.image || PLACEHOLDER_IMAGE}
+          alt={stretch.name}
+          className="w-full h-64 sm:h-80 md:h-96 object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE;
+          }}
+        />
+        {/* Soft overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-          {/* Target areas tags */}
-          {stretch.targetAreas && stretch.targetAreas.length > 0 && (
-            <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-2">
-              {stretch.targetAreas.map((area) => (
-                <span
-                  key={area}
-                  className="text-xs font-medium text-white bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full"
-                >
-                  {area}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        {/* Target areas tags */}
+        {stretch.targetAreas && stretch.targetAreas.length > 0 && (
+          <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+            {stretch.targetAreas.map((area) => (
+              <span
+                key={area}
+                className="text-sm font-medium text-white bg-white/25 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm"
+              >
+                {area}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* How To Section */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
