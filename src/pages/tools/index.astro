@@ -36,7 +36,7 @@ const breadcrumbSchema = {
       "@type": "ListItem",
       position: 2,
       name: "Tools",
-      item: `${Astro.site}/tools/`,
+      item: new URL("/tools/", Astro.site).href,
     },
   ],
 };
