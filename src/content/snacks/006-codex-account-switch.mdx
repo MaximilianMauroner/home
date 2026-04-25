@@ -1,0 +1,50 @@
+---
+layout: "@/layouts/SnackLayout.astro"
+title: "I built a Codex CLI account switcher"
+description: "A small helper to switch between multiple Codex CLI accounts without constantly logging in and out."
+tags:
+  - codex
+  - cli
+  - open-source
+  - tools
+  - developer-workflow
+published: true
+releaseDate: 2026-04-25
+---
+
+I built a small helper called **codex-account-switch** because I kept running into the same annoying workflow problem: using multiple Codex CLI accounts meant constantly swapping `~/.codex/auth.json` around or logging in again.
+
+So I made the boring version of the fix:
+
+- save multiple Codex logins under names
+- switch accounts with one command
+- keep the rest of `~/.codex` untouched
+- show live usage and the next reset time
+- collapse free-tier accounts to a simple `free plan` output
+
+It ended up being a pretty nice little Unix-style tool:
+
+```bash
+codex-account-switch save main
+codex-account-switch work
+codex-account-switch list
+```
+
+I also cleaned up the install flow so there is now:
+
+- a standard `make install`
+- a one-command installer
+- a first tagged release
+
+Project:
+
+- [GitHub repo](https://github.com/MaximilianMauroner/codex-acc-sw)
+- [Release v0.1.0](https://github.com/MaximilianMauroner/codex-acc-sw/releases/tag/v0.1.0)
+
+Install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/MaximilianMauroner/codex-acc-sw/main/install.sh | bash
+```
+
+This is one of those tiny tools that probably should not have to exist, but until Codex CLI has native multi-account support, it is useful enough that I wanted it around.
