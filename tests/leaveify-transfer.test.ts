@@ -6,6 +6,7 @@ import type {
   SpotifyTrackForTransfer,
   TidalTrackMatch,
 } from "../src/utils/leaveify";
+import { getTidalAuthorizationUrl } from "../src/utils/leaveify";
 
 process.env.TIDAL_CLIENT_ID = "";
 process.env.TIDAL_CLIENT_SECRET = "";
@@ -107,11 +108,14 @@ function installProviderFetch({
   tracks,
 }: ProviderFixture) {
   const addedTrackChunks: string[][] = [];
+  const tidalRequests: Array<{ authorization: string | null; pathname: string }> =
+    [];
 
   globalThis.fetch = (async (input, init) => {
     const url = new URL(
       input instanceof Request ? input.url : input.toString(),
     );
+    const authorization = new Headers(init?.headers).get("Authorization");
 
     if (
       url.origin === "https://auth.tidal.com" &&
@@ -169,6 +173,7 @@ function installProviderFetch({
       url.origin === "https://openapi.tidal.com" &&
       url.pathname === "/v2/tracks"
     ) {
+      tidalRequests.push({ authorization, pathname: url.pathname });
       return jsonResponse({
         data: url.searchParams.getAll("filter[isrc]").flatMap((isrc) => {
           const match = isrcMatches.get(isrc.toUpperCase());
@@ -193,6 +198,7 @@ function installProviderFetch({
       url.origin === "https://openapi.tidal.com" &&
       url.pathname.startsWith("/v2/searchResults/")
     ) {
+      tidalRequests.push({ authorization, pathname: url.pathname });
       const query = decodeURIComponent(url.pathname.split("/")[3] ?? "");
       const match =
         [...searchMatches.entries()].find(([needle]) =>
@@ -223,6 +229,7 @@ function installProviderFetch({
       url.origin === "https://openapi.tidal.com" &&
       url.pathname === "/v2/playlists"
     ) {
+      tidalRequests.push({ authorization, pathname: url.pathname });
       const body = JSON.parse(String(init?.body ?? "{}")) as {
         data?: { attributes?: { name?: string } };
       };
@@ -239,6 +246,7 @@ function installProviderFetch({
       url.origin === "https://openapi.tidal.com" &&
       url.pathname === "/v2/playlists/tidal-playlist/relationships/items"
     ) {
+      tidalRequests.push({ authorization, pathname: url.pathname });
       const body = JSON.parse(String(init?.body ?? "{}")) as {
         data?: Array<{ id: string }>;
       };
@@ -251,6 +259,7 @@ function installProviderFetch({
 
   return {
     addedTrackChunks,
+    tidalRequests,
   };
 }
 
@@ -278,7 +287,33 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
+});
+
+describe("Leaveify OAuth", () => {
+  test("requests the TIDAL user scopes required by transfer endpoints", () => {
+    vi.stubEnv("TIDAL_CLIENT_ID", "tidal-client-id");
+
+    const authorizationUrl = new URL(
+      getTidalAuthorizationUrl({
+        challenge: "challenge",
+        origin: "http://localhost:4321",
+        state: "state",
+      }),
+    );
+
+    expect(authorizationUrl.searchParams.get("client_id")).toBe("tidal-client-id");
+    expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual(
+      expect.arrayContaining([
+        "playlists.write",
+        "w_usr",
+        "search.read",
+        "r_usr",
+        "user.read",
+      ]),
+    );
+  });
 });
 
 describe("Leaveify transfer", () => {
@@ -408,5 +443,54 @@ describe("Leaveify transfer", () => {
       { method: "search", sourceName: "Search Song", tidalId: "tidal-search" },
     ]);
     expect(body.unmatched.map((track) => track.name)).toEqual(["Missing Song"]);
+  });
+
+  test("uses client credentials for TIDAL search when available", async () => {
+    vi.stubEnv("TIDAL_CLIENT_ID", "tidal-client-id");
+    vi.stubEnv("TIDAL_CLIENT_SECRET", "tidal-client-secret");
+
+    const provider = installProviderFetch({
+      isrcMatches: new Map(),
+      searchMatches: new Map([
+        [
+          "Search Song",
+          tidalMatch({
+            id: "tidal-search",
+            isrc: null,
+            method: "search",
+            title: "Search Song",
+          }),
+        ],
+      ]),
+      tracks: [
+        spotifyTrack({
+          albumName: "Search Album",
+          artists: ["Search Artist"],
+          id: "spotify-search",
+          isrc: null,
+          name: "Search Song",
+        }),
+      ],
+    });
+
+    const { response } = await transferPlaylist({
+      playlistId: "spotify-playlist",
+    });
+
+    expect(response.status).toBe(200);
+    expect(
+      provider.tidalRequests
+        .filter(({ pathname }) => pathname.startsWith("/v2/searchResults/"))
+        .map(({ authorization }) => authorization),
+    ).toContain("Bearer tidal-client-token");
+    expect(
+      provider.tidalRequests
+        .filter(
+          ({ pathname }) =>
+            pathname === "/v2/playlists" ||
+            pathname === "/v2/playlists/tidal-playlist/relationships/items",
+        )
+        .map(({ authorization }) => authorization),
+    ).toEqual(["Bearer tidal-user-token", "Bearer tidal-user-token"]);
   });
 });

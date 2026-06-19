@@ -68,7 +68,13 @@ const SPOTIFY_SCOPES = [
   "user-read-private",
 ].join(" ");
 
-const TIDAL_SCOPES = ["playlists.write", "search.read", "user.read"].join(" ");
+const TIDAL_SCOPES = [
+  "playlists.write",
+  "w_usr",
+  "search.read",
+  "r_usr",
+  "user.read",
+].join(" ");
 
 const cookiePrefix = (provider: LeaveifyProvider) => `leaveify_${provider}`;
 

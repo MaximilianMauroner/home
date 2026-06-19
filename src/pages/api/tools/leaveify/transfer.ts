@@ -183,7 +183,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
       async ({ index, result }) => ({
         index,
         match: await findTidalTrackBySearch({
-          accessToken: tidalToken,
+          accessToken: tidalMatchingToken,
           countryCode,
           track: result.source,
         }).catch((error) => {
