@@ -1,0 +1,35 @@
+---
+import "./toolStyles.css";
+
+interface Props {
+  theme: string;
+  title?: string;
+  description?: string;
+  wide?: boolean;
+}
+
+const { theme, title, description, wide = false } = Astro.props;
+const hasHeader = Boolean(title || description);
+const shellClass = wide ? "tools-shell-wide" : "tools-shell";
+---
+
+<section class:list={["tool-theme", theme]}>
+  {
+    hasHeader ? (
+      <div class={shellClass}>
+        <div class="space-y-6">
+          <div class="tool-page-header">
+            {title && <h1 class="tool-page-title">{title}</h1>}
+            {description && (
+              <p class="tool-page-description">{description}</p>
+            )}
+            <slot name="header-extra" />
+          </div>
+          <slot />
+        </div>
+      </div>
+    ) : (
+      <slot />
+    )
+  }
+</section>

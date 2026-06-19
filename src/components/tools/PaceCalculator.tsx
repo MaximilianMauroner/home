@@ -215,14 +215,10 @@ export default function PaceCalculator() {
   };
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 pb-16 pt-8 md:px-6 lg:px-8">
-      <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-emerald-500/10 via-transparent to-blue-500/10 p-8 shadow-lg backdrop-blur-sm dark:from-emerald-500/20 dark:to-blue-500/20">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),transparent_60%)]" />
+    <div className="tools-shell flex max-w-5xl flex-col gap-6">
+      <section className="tool-panel-lg">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-4">
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
-              Running Toolkit
-            </span>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Pace &amp; Distance Calculator
             </h1>
@@ -234,8 +230,8 @@ export default function PaceCalculator() {
           </div>
           <div className="flex flex-col gap-4">
             {!showSpeedTable && (
-              <div className="flex flex-col items-start gap-3 rounded-2xl border border-border bg-card/80 p-4 text-sm text-muted-foreground shadow-sm backdrop-blur-sm">
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">
+              <div className="tool-subpanel flex flex-col items-start gap-3 text-sm text-muted-foreground">
+                <p className="text-sm font-medium text-muted-foreground">
                   At this speed you&apos;d cover
                 </p>
                 <div className="text-4xl font-semibold text-foreground">
@@ -254,14 +250,14 @@ export default function PaceCalculator() {
             <button
               type="button"
               onClick={() => setShowSpeedTable((previous) => !previous)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-primary/30 dark:bg-primary/15 dark:text-primary-foreground"
+              className="tool-button-secondary"
             >
               <span>
                 {showSpeedTable
                   ? "Back to calculator"
                   : "Show pace reference table"}
               </span>
-              <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                 3 – 40 kph
               </span>
             </button>
@@ -270,7 +266,7 @@ export default function PaceCalculator() {
       </section>
 
       {showSpeedTable ? (
-        <section className="space-y-4 rounded-3xl border border-border bg-card/90 p-6 shadow-lg backdrop-blur-sm">
+        <section className="tool-panel-lg space-y-4">
           <header className="space-y-2">
             <h2 className="text-xl font-semibold text-foreground">
               Pace reference table
@@ -281,10 +277,10 @@ export default function PaceCalculator() {
             </p>
           </header>
 
-          <div className="overflow-hidden rounded-2xl border border-border">
+          <div className="overflow-hidden rounded-lg border border-border">
             <div className="max-h-[420px] overflow-auto">
               <table className="min-w-full divide-y divide-border text-sm">
-                <thead className="sticky top-0 z-10 bg-card/95 text-xs uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
+                <thead className="sticky top-0 z-10 bg-card text-xs text-muted-foreground">
                   <tr>
                     <th scope="col" className="px-4 py-3 text-left">
                       KPH
@@ -338,7 +334,7 @@ export default function PaceCalculator() {
       ) : (
         <section className="grid gap-6 md:grid-cols-[1.1fr_0.9fr]">
           <div className="flex flex-col gap-6">
-            <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="tool-panel-lg space-y-6">
               <header className="space-y-1">
                 <h2 className="text-lg font-semibold text-foreground">
                   Speed inputs
@@ -361,7 +357,7 @@ export default function PaceCalculator() {
                     step={0.1}
                     value={kphInput}
                     onChange={(event) => handleKphChange(event.target.value)}
-                    className="h-11 w-full rounded-lg border border-border bg-background px-3 text-base font-medium text-foreground shadow-inner transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="tool-field h-11 w-full text-base font-medium"
                   />
                 </label>
 
@@ -376,13 +372,13 @@ export default function PaceCalculator() {
                     step={0.1}
                     value={mphInput}
                     onChange={(event) => handleMphChange(event.target.value)}
-                    className="h-11 w-full rounded-lg border border-border bg-background px-3 text-base font-medium text-foreground shadow-inner transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="tool-field h-11 w-full text-base font-medium"
                   />
                 </label>
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+                <div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
                   <span>Adjust speed</span>
                   <span>{formatNumber(kph, 1)} kph</span>
                 </div>
@@ -402,7 +398,7 @@ export default function PaceCalculator() {
               </div>
             </div>
 
-            <div className="grid gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="tool-panel-lg grid gap-4">
               <header className="space-y-1">
                 <h2 className="text-lg font-semibold text-foreground">
                   Pace insights
@@ -414,8 +410,8 @@ export default function PaceCalculator() {
               </header>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-border bg-background p-4 shadow-inner">
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                <div className="tool-subpanel">
+                  <span className="tool-label">
                     Minutes per kilometre
                   </span>
                   <p className="mt-2 text-2xl font-semibold text-foreground">
@@ -424,8 +420,8 @@ export default function PaceCalculator() {
                       : "00:00:00"}
                   </p>
                 </div>
-                <div className="rounded-xl border border-border bg-background p-4 shadow-inner">
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                <div className="tool-subpanel">
+                  <span className="tool-label">
                     Minutes per mile
                   </span>
                   <p className="mt-2 text-2xl font-semibold text-foreground">
@@ -438,7 +434,7 @@ export default function PaceCalculator() {
             </div>
           </div>
 
-          <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="tool-panel-lg space-y-6">
             <header className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">
                 Set a race time
@@ -453,7 +449,7 @@ export default function PaceCalculator() {
               {DISTANCES.map((distance) => (
                 <div
                   key={distance.key}
-                  className="rounded-2xl border border-border bg-background/60 p-4 shadow-inner transition hover:border-primary/40 hover:shadow-md"
+                  className="tool-subpanel transition-colors hover:border-primary/40"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -466,7 +462,7 @@ export default function PaceCalculator() {
                     </div>
                     <div className="flex flex-col gap-2 sm:w-56">
                       <label className="space-y-2">
-                        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                        <span className="tool-label">
                           Finish time
                         </span>
                         <input
@@ -476,7 +472,7 @@ export default function PaceCalculator() {
                           onChange={(event) =>
                             handleTimeChange(event.target.value, distance.key)
                           }
-                          className="h-11 w-full rounded-lg border border-border bg-card px-3 text-base font-medium text-foreground shadow-sm transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          className="tool-field h-11 w-full bg-card text-base font-medium"
                         />
                       </label>
                     </div>
@@ -490,4 +486,3 @@ export default function PaceCalculator() {
     </div>
   );
 }
-

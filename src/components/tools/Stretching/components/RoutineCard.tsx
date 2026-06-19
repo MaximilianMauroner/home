@@ -13,7 +13,7 @@ interface RoutineCardProps {
 export function RoutineCard({ routine, isSelected, isCustom, onSelect, onEdit, onDelete }: RoutineCardProps) {
   return (
     <div
-      className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all relative group ${
+      className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors relative group ${
         isSelected
           ? "border-primary bg-primary/10 shadow-md"
           : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"

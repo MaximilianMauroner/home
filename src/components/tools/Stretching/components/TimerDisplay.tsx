@@ -10,7 +10,7 @@ interface TimerDisplayProps {
 export function TimerDisplay({ timeRemaining, isRunning, isPaused, variant = "primary" }: TimerDisplayProps) {
   if (variant === "blue") {
     return (
-      <div className="bg-gradient-to-br from-blue-500/30 to-blue-500/20 rounded-2xl p-4 sm:p-5 border-2 border-blue-500/30">
+      <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
         <div className="text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-blue-600 mb-1 tabular-nums">
           {formatTime(timeRemaining)}
         </div>
@@ -25,7 +25,7 @@ export function TimerDisplay({ timeRemaining, isRunning, isPaused, variant = "pr
   }
   
   return (
-    <div className="bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl p-4 sm:p-5 border-2 border-primary/20">
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
       <div className="text-4xl sm:text-5xl md:text-6xl font-mono font-bold text-primary mb-1 tabular-nums">
         {formatTime(timeRemaining)}
       </div>
@@ -38,4 +38,3 @@ export function TimerDisplay({ timeRemaining, isRunning, isPaused, variant = "pr
     </div>
   );
 }
-

@@ -172,7 +172,7 @@ export function ContentManager({
   // Stretch form view
   if (activeTab === "stretches" && (stretchMode === "create" || stretchMode === "edit")) {
     return (
-      <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border/50">
+      <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg sm:text-xl font-bold">
             {editingStretch ? "Edit Stretch" : "Create New Stretch"}
@@ -196,7 +196,7 @@ export function ContentManager({
   // Routine form view
   if (activeTab === "routines" && (routineMode === "create" || routineMode === "edit")) {
     return (
-      <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border/50">
+      <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
         <RoutineForm
           routine={editingRoutine}
           stretches={currentStretches}
@@ -209,7 +209,7 @@ export function ContentManager({
 
   // Main view
   return (
-    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border/50">
+    <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg sm:text-xl font-bold">Content Manager</h3>
         <button
@@ -281,7 +281,7 @@ export function ContentManager({
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, index)}
                   onDragEnd={handleDragEnd}
-                  className={`bg-gradient-to-br from-card to-card/80 rounded-xl p-4 border border-border/50 shadow-sm hover:shadow-md transition-all cursor-move ${
+                  className={`bg-card rounded-xl p-4 border border-border/50 shadow-sm hover:shadow-sm transition-colors cursor-move ${
                     draggedIndex === index ? "opacity-50" : ""
                   }`}
                 >
@@ -310,13 +310,13 @@ export function ContentManager({
                     <div className="flex gap-2 w-full sm:w-auto">
                       <button
                         onClick={() => handleEditStretch(stretch.id)}
-                        className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] bg-secondary/80 text-secondary-foreground rounded-xl text-sm hover:bg-secondary active:bg-secondary/70 transition-all touch-manipulation font-medium"
+                        className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] bg-secondary/80 text-secondary-foreground rounded-xl text-sm hover:bg-secondary active:bg-secondary/70 transition-colors touch-manipulation font-medium"
                       >
                         ✏️ Edit
                       </button>
                       <button
                         onClick={() => handleDeleteStretch(stretch.id)}
-                        className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] bg-destructive/10 text-destructive rounded-xl text-sm hover:bg-destructive/20 active:bg-destructive/30 transition-all touch-manipulation font-medium border border-destructive/20"
+                        className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] bg-destructive/10 text-destructive rounded-xl text-sm hover:bg-destructive/20 active:bg-destructive/30 transition-colors touch-manipulation font-medium border border-destructive/20"
                       >
                         🗑️ Delete
                       </button>
@@ -334,7 +334,7 @@ export function ContentManager({
                   onResetToDefault(selectedRoutineId);
                 }
               }}
-              className="w-full px-4 py-2.5 bg-secondary/80 text-secondary-foreground rounded-xl hover:bg-secondary active:bg-secondary/70 transition-all font-medium text-sm"
+              className="w-full px-4 py-2.5 bg-secondary/80 text-secondary-foreground rounded-xl hover:bg-secondary active:bg-secondary/70 transition-colors font-medium text-sm"
             >
               ↻ Reset to Default Stretches
             </button>
@@ -366,7 +366,7 @@ export function ContentManager({
                 {defaultRoutines.map((routine) => (
                   <div
                     key={routine.id}
-                    className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                    className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors cursor-pointer ${
                       selectedRoutineId === routine.id
                         ? "border-primary bg-primary/10 shadow-md"
                         : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"
@@ -405,7 +405,7 @@ export function ContentManager({
                   {customRoutines.map((routine) => (
                     <div
                       key={routine.id}
-                      className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all relative group ${
+                      className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors relative group ${
                         selectedRoutineId === routine.id
                           ? "border-primary bg-primary/10 shadow-md"
                           : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"

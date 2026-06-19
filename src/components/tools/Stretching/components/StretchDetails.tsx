@@ -13,7 +13,7 @@ export function StretchDetails({ stretch }: StretchDetailsProps) {
   return (
     <div className="space-y-4">
       {/* Stretch Image - Prominent Display */}
-      <div className="relative rounded-2xl overflow-hidden bg-muted shadow-lg">
+      <div className="relative rounded-lg overflow-hidden bg-muted shadow-sm">
         <img
           src={stretch.image || PLACEHOLDER_IMAGE}
           alt={stretch.name}
@@ -41,7 +41,7 @@ export function StretchDetails({ stretch }: StretchDetailsProps) {
       </div>
 
       {/* How To Section */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         <button
           onClick={() => setShowHow(!showHow)}
           className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-muted/50 transition-colors"
@@ -73,7 +73,7 @@ export function StretchDetails({ stretch }: StretchDetailsProps) {
       </div>
 
       {/* What to Feel Section */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         <button
           onClick={() => setShowLookFor(!showLookFor)}
           className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-muted/50 transition-colors"

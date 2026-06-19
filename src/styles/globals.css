@@ -28,6 +28,11 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --radius-xs: 0.22rem;
+    --radius-sm: 0.34rem 0.28rem 0.32rem 0.26rem;
+    --radius-md: 0.52rem 0.4rem 0.48rem 0.34rem;
+    --radius-lg: 0.72rem 0.54rem 0.68rem 0.44rem;
+    --radius-xl: 0.98rem 0.72rem 0.9rem 0.58rem;
     --radius: 0.5rem;
     @apply transition-colors duration-300;
   }
@@ -66,26 +71,6 @@
     @apply bg-background text-foreground;
   }
 }
-@keyframes rotate {
-  to {
-    --angle: 360deg;
-  }
-}
-
-@property --angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-.rotating-border-animation {
-  border: 5px solid #0000;
-  background:
-    linear-gradient(#131219, #131219) padding-box,
-    linear-gradient(var(--angle), #ec4899, #06b6d4, #8b5cf6) border-box;
-  animation: 8s rotate linear infinite;
-}
-
 h1,
 h2,
 h3,

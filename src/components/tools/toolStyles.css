@@ -1,0 +1,309 @@
+.tool-theme {
+  --tool-accent: oklch(0.68 0.1 250);
+  --tool-accent-foreground: oklch(0.16 0.025 250);
+  --tool-accent-text: oklch(0.55 0.11 250);
+  --tool-accent-soft: oklch(0.68 0.1 250 / 0.1);
+  --tool-accent-border: oklch(0.68 0.1 250 / 0.32);
+}
+
+.dark .tool-theme {
+  --tool-accent-foreground: oklch(0.13 0.018 250);
+  --tool-accent-text: oklch(0.78 0.09 250);
+  --tool-accent-soft: oklch(0.68 0.1 250 / 0.14);
+  --tool-accent-border: oklch(0.68 0.1 250 / 0.36);
+}
+
+.tool-theme-colour {
+  --tool-accent: oklch(0.72 0.12 76);
+  --tool-accent-foreground: oklch(0.18 0.035 76);
+  --tool-accent-text: oklch(0.57 0.11 76);
+}
+
+.dark .tool-theme-colour {
+  --tool-accent-text: oklch(0.81 0.1 76);
+}
+
+.tool-theme-ai-city {
+  --tool-accent: oklch(0.72 0.072 188);
+  --tool-accent-foreground: oklch(0.2 0.022 194);
+  --tool-accent-text: oklch(0.48 0.075 190);
+}
+
+.dark .tool-theme-ai-city {
+  --tool-accent-text: oklch(0.8 0.062 190);
+}
+
+.tool-theme-frequency {
+  --tool-accent: oklch(0.69 0.105 304);
+  --tool-accent-foreground: oklch(0.17 0.03 304);
+  --tool-accent-text: oklch(0.55 0.105 304);
+}
+
+.dark .tool-theme-frequency {
+  --tool-accent-text: oklch(0.79 0.09 304);
+}
+
+.tool-theme-leaveify {
+  --tool-accent: oklch(0.72 0.11 178);
+  --tool-accent-foreground: oklch(0.14 0.025 178);
+  --tool-accent-text: oklch(0.47 0.095 178);
+}
+
+.dark .tool-theme-leaveify {
+  --tool-accent-text: oklch(0.8 0.085 178);
+}
+
+.tool-theme-pace {
+  --tool-accent: oklch(0.69 0.105 154);
+  --tool-accent-foreground: oklch(0.15 0.03 154);
+  --tool-accent-text: oklch(0.5 0.1 154);
+}
+
+.dark .tool-theme-pace {
+  --tool-accent-text: oklch(0.77 0.09 154);
+}
+
+.tool-theme-readwise {
+  --tool-accent: oklch(0.68 0.095 252);
+  --tool-accent-foreground: oklch(0.14 0.025 252);
+  --tool-accent-text: oklch(0.52 0.105 252);
+}
+
+.dark .tool-theme-readwise {
+  --tool-accent-text: oklch(0.77 0.085 252);
+}
+
+.tool-theme-spotify {
+  --tool-accent: oklch(0.72 0.12 132);
+  --tool-accent-foreground: oklch(0.16 0.03 132);
+  --tool-accent-text: oklch(0.48 0.105 132);
+}
+
+.dark .tool-theme-spotify {
+  --tool-accent-text: oklch(0.78 0.095 132);
+}
+
+.tool-theme-stretching {
+  --tool-accent: oklch(0.72 0.08 185);
+  --tool-accent-foreground: oklch(0.14 0.025 185);
+  --tool-accent-text: oklch(0.48 0.09 185);
+}
+
+.dark .tool-theme-stretching {
+  --tool-accent-text: oklch(0.79 0.075 185);
+}
+
+.tool-theme-whatsapp {
+  --tool-accent: oklch(0.7 0.105 31);
+  --tool-accent-foreground: oklch(0.17 0.035 31);
+  --tool-accent-text: oklch(0.53 0.105 31);
+}
+
+.dark .tool-theme-whatsapp {
+  --tool-accent-text: oklch(0.78 0.09 31);
+}
+
+.tool-accent-mark {
+  @apply block h-2.5 w-2.5;
+  border-radius: var(--radius-xs);
+  background-color: var(--tool-accent);
+}
+
+.tool-accent-text {
+  color: var(--tool-accent-text);
+}
+
+.tools-shell {
+  @apply mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12;
+}
+
+.tools-shell-wide {
+  @apply mx-auto w-full max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12;
+}
+
+.tool-page-header {
+  @apply mb-6 w-full space-y-2 border-b border-border/80 pb-5 dark:border-neutral-800;
+}
+
+.tool-page-title {
+  @apply text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl;
+}
+
+.tool-page-description {
+  @apply max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base;
+}
+
+.tool-panel {
+  @apply rounded-2xl border border-border bg-card p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95;
+}
+
+.tool-theme .tool-panel {
+  border-color: color-mix(
+    in oklch,
+    hsl(var(--border)) 64%,
+    var(--tool-accent) 36%
+  );
+  background-color: color-mix(
+    in oklch,
+    hsl(var(--card)) 94%,
+    var(--tool-accent) 6%
+  );
+}
+
+.dark .tool-theme .tool-panel {
+  border-color: color-mix(
+    in oklch,
+    oklch(0.26 0.012 260) 66%,
+    var(--tool-accent) 34%
+  );
+  background-color: color-mix(
+    in oklch,
+    oklch(0.13 0.01 260) 94%,
+    var(--tool-accent) 6%
+  );
+}
+
+.tool-panel-lg {
+  @apply rounded-2xl border border-border bg-card p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/95;
+}
+
+.tool-theme .tool-panel-lg {
+  border-color: color-mix(
+    in oklch,
+    hsl(var(--border)) 64%,
+    var(--tool-accent) 36%
+  );
+  background-color: color-mix(
+    in oklch,
+    hsl(var(--card)) 94%,
+    var(--tool-accent) 6%
+  );
+}
+
+.dark .tool-theme .tool-panel-lg {
+  border-color: color-mix(
+    in oklch,
+    oklch(0.26 0.012 260) 66%,
+    var(--tool-accent) 34%
+  );
+  background-color: color-mix(
+    in oklch,
+    oklch(0.13 0.01 260) 94%,
+    var(--tool-accent) 6%
+  );
+}
+
+.tool-subpanel {
+  @apply rounded-lg border border-border bg-background p-4 dark:border-neutral-800 dark:bg-neutral-950;
+}
+
+.tool-field {
+  @apply rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-800 dark:bg-neutral-950;
+}
+
+.tool-theme .tool-field:focus {
+  border-color: var(--tool-accent-border);
+  box-shadow: 0 0 0 2px var(--tool-accent-soft);
+}
+
+.tool-button {
+  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground;
+}
+
+.tool-theme .tool-button {
+  background-color: var(--tool-accent);
+  color: var(--tool-accent-foreground);
+}
+
+.tool-theme .tool-button:hover {
+  background-color: color-mix(
+    in oklch,
+    var(--tool-accent) 90%,
+    oklch(0.24 0.012 260) 10%
+  );
+}
+
+.tool-theme .tool-button:focus-visible {
+  box-shadow: 0 0 0 2px var(--tool-accent-soft);
+}
+
+.tool-button-secondary {
+  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-950;
+}
+
+.tool-theme .tool-button-secondary {
+  border-color: var(--tool-accent-border);
+  color: var(--tool-accent-text);
+}
+
+.tool-theme .tool-button-secondary:hover {
+  background-color: var(--tool-accent-soft);
+}
+
+.tool-theme .tool-button-secondary:focus-visible {
+  box-shadow: 0 0 0 2px var(--tool-accent-soft);
+}
+
+.tool-button-danger {
+  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-destructive/30 bg-background px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive/20 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-950;
+}
+
+.tool-label {
+  @apply text-sm font-medium text-muted-foreground;
+}
+
+.tool-upload-zone {
+  @apply rounded-2xl border border-dashed border-border bg-card p-8 text-center transition-colors hover:border-primary/40 hover:bg-muted/30 dark:border-neutral-800 dark:bg-neutral-950/90;
+}
+
+.tool-theme .tool-upload-zone:hover {
+  border-color: var(--tool-accent-border);
+  background-color: var(--tool-accent-soft);
+}
+
+.tool-card {
+  @apply flex min-h-44 flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 dark:border-neutral-800 dark:bg-neutral-950/95;
+  border-color: color-mix(
+    in oklch,
+    hsl(var(--border)) 74%,
+    var(--tool-accent) 26%
+  );
+  background-color: color-mix(
+    in oklch,
+    hsl(var(--card)) 96%,
+    var(--tool-accent) 4%
+  );
+}
+
+.dark .tool-card {
+  border-color: color-mix(
+    in oklch,
+    oklch(0.25 0.012 260) 74%,
+    var(--tool-accent) 26%
+  );
+  background-color: color-mix(
+    in oklch,
+    oklch(0.13 0.01 260) 96%,
+    var(--tool-accent) 4%
+  );
+}
+
+.tool-card:hover,
+.tool-card:focus-visible {
+  border-color: var(--tool-accent-border);
+  background-color: color-mix(
+    in oklch,
+    hsl(var(--card)) 90%,
+    var(--tool-accent) 10%
+  );
+  box-shadow: 0 0 0 2px var(--tool-accent-soft);
+}
+
+.dark .tool-card:hover,
+.dark .tool-card:focus-visible {
+  background-color: color-mix(
+    in oklch,
+    oklch(0.15 0.01 260) 90%,
+    var(--tool-accent) 10%
+  );
+}

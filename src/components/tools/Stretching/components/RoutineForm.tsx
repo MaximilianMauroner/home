@@ -63,7 +63,7 @@ export function RoutineForm({ routine, stretches, onSubmit, onCancel }: RoutineF
           onChange={(e) => setName(e.target.value)}
           required
           placeholder="e.g., Morning Mobility Flow"
-          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
         />
       </div>
 
@@ -75,7 +75,7 @@ export function RoutineForm({ routine, stretches, onSubmit, onCancel }: RoutineF
           required
           rows={2}
           placeholder="e.g., Gentle 8-minute reset routine to wake up joints and posture."
-          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
+          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors resize-none"
         />
       </div>
 
@@ -93,14 +93,14 @@ export function RoutineForm({ routine, stretches, onSubmit, onCancel }: RoutineF
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
         <button
           type="submit"
-          className="flex-1 px-5 py-3 min-h-[48px] bg-gradient-to-r from-primary to-primary/90 text-primary-foreground rounded-xl hover:from-primary/90 hover:to-primary/80 active:scale-[0.98] transition-all font-semibold text-sm touch-manipulation shadow-lg"
+          className="flex-1 px-5 py-3 min-h-[48px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90  transition-colors font-semibold text-sm touch-manipulation shadow-sm"
         >
           {routine ? "✓ Update Routine" : "+ Create Routine"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 sm:flex-none px-5 py-3 min-h-[48px] bg-secondary/80 text-secondary-foreground rounded-xl hover:bg-secondary active:bg-secondary/70 transition-all font-medium text-sm touch-manipulation shadow-sm"
+          className="flex-1 sm:flex-none px-5 py-3 min-h-[48px] bg-secondary/80 text-secondary-foreground rounded-xl hover:bg-secondary active:bg-secondary/70 transition-colors font-medium text-sm touch-manipulation shadow-sm"
         >
           Cancel
         </button>

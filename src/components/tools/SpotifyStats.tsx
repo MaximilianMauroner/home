@@ -242,22 +242,25 @@ export default function SpotifyStats() {
   );
 
   return (
-    <div className="pt-4">
-      <div className="grid w-full items-center gap-4">
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".zip"
-            onChange={handleFileUpload}
-            disabled={isLoading}
-            className="h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          />
+    <div className="space-y-5">
+      <div className="tool-panel">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <label className="flex-1 space-y-2">
+            <span className="tool-label">Spotify data export (.zip)</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".zip"
+              onChange={handleFileUpload}
+              disabled={isLoading}
+              className="tool-field h-11 w-full file:mr-4 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
+            />
+          </label>
           {tracks.size > 0 && (
             <button
               onClick={resetData}
               disabled={isLoading}
-              className="h-10 rounded-md bg-destructive px-4 py-2 text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+              className="tool-button-danger sm:mt-7"
             >
               Reset
             </button>
@@ -265,7 +268,7 @@ export default function SpotifyStats() {
         </div>
         <div className="flex items-center gap-2">
           {status && (
-            <p className="flex-1 text-sm italic text-muted-foreground">
+            <p className="flex-1 text-sm text-muted-foreground">
               {status}
             </p>
           )}
@@ -296,7 +299,7 @@ export default function SpotifyStats() {
             </div>
           )}
 
-          <div className="space-y-4 rounded-lg border bg-card p-4">
+          <div className="tool-panel space-y-4">
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2">
                 <input
@@ -305,7 +308,7 @@ export default function SpotifyStats() {
                   onChange={() => setIsCustomRange(false)}
                   className="h-4 w-4"
                 />
-                <span>Preset Range</span>
+                <span>Preset range</span>
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -314,7 +317,7 @@ export default function SpotifyStats() {
                   onChange={() => setIsCustomRange(true)}
                   className="h-4 w-4"
                 />
-                <span>Custom Range</span>
+                <span>Custom range</span>
               </label>
             </div>
 
@@ -322,7 +325,7 @@ export default function SpotifyStats() {
               <select
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className="tool-field flex h-10 w-full"
               >
                 <option value="month">Last Month</option>
                 <option value="6months">Last 6 Months</option>
@@ -344,7 +347,7 @@ export default function SpotifyStats() {
                         start: e.target.value,
                       }))
                     }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    className="tool-field flex h-10 w-full"
                   />
                 </div>
                 <div className="flex-1 space-y-2">
@@ -360,7 +363,7 @@ export default function SpotifyStats() {
                         end: e.target.value,
                       }))
                     }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    className="tool-field flex h-10 w-full"
                   />
                 </div>
               </div>
@@ -371,7 +374,7 @@ export default function SpotifyStats() {
                   setDateRange(pendingDateRange);
                   handleProcessFile();
                 }}
-                className="h-10 w-full rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
+                className="tool-button w-full"
               >
                 Apply Range
               </button>
@@ -379,12 +382,12 @@ export default function SpotifyStats() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="rounded-lg border bg-card p-4">
+            <div className="tool-panel">
               <h2 className="mb-4 text-xl font-semibold">Artists</h2>
               {ArtistList}
             </div>
 
-            <div className="rounded-lg border bg-card p-4">
+            <div className="tool-panel">
               <h2 className="mb-4 text-xl font-semibold">Tracks</h2>
               {TrackList}
             </div>

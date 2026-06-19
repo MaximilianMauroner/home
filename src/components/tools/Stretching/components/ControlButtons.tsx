@@ -43,7 +43,7 @@ export function ControlButtons({
         <button
           onClick={onPrevious}
           disabled={currentIndex === 0 && currentRepetition === 1}
-          className="col-span-1 flex items-center justify-center py-3 sm:py-4 min-h-[56px] bg-muted text-foreground rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 active:scale-[0.98] transition-all font-medium touch-manipulation"
+          className="col-span-1 flex items-center justify-center py-3 sm:py-4 min-h-[56px] bg-muted text-foreground rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10  transition-colors font-medium touch-manipulation"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -54,7 +54,7 @@ export function ControlButtons({
         {!isRunning ? (
           <button
             onClick={onStart}
-            className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all font-semibold text-lg touch-manipulation shadow-sm"
+            className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -65,7 +65,7 @@ export function ControlButtons({
         ) : isPaused ? (
           <button
             onClick={onResume}
-            className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all font-semibold text-lg touch-manipulation shadow-sm"
+            className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -76,7 +76,7 @@ export function ControlButtons({
         ) : (
           <button
             onClick={onPause}
-            className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.98] transition-all font-semibold text-lg touch-manipulation shadow-sm"
+            className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-600  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -88,7 +88,7 @@ export function ControlButtons({
         {/* Next button */}
         <button
           onClick={onNext}
-          className="col-span-1 flex items-center justify-center py-3 sm:py-4 min-h-[56px] bg-muted text-foreground rounded-xl hover:bg-primary/10 active:scale-[0.98] transition-all font-medium touch-manipulation"
+          className="col-span-1 flex items-center justify-center py-3 sm:py-4 min-h-[56px] bg-muted text-foreground rounded-xl hover:bg-primary/10  transition-colors font-medium touch-manipulation"
         >
           {isResting ? (
             <span className="text-xs font-medium">Skip</span>
@@ -107,7 +107,7 @@ export function ControlButtons({
       {/* Reset button */}
       <button
         onClick={onReset}
-        className="w-full py-2.5 min-h-[44px] text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted active:bg-primary/10 transition-all font-medium text-sm touch-manipulation"
+        className="w-full py-2.5 min-h-[44px] text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted active:bg-primary/10 transition-colors font-medium text-sm touch-manipulation"
       >
         Reset Routine
       </button>

@@ -1,0 +1,16 @@
+---
+export const title = "AI City Simulator";
+export const description =
+  "A small city economy toy where AI adoption starts in white-collar work and ripples through jobs, demand, taxes, and stability.";
+
+import AICitySimulator from "@/components/tools/AICitySimulator/AICitySimulator";
+import ToolPage from "@/components/tools/ToolPage.astro";
+import { getToolThemeClass } from "@/components/tools/toolTheme";
+import StarLayout from "@/layouts/StarLayout.astro";
+---
+
+<StarLayout title={title} description={description}>
+  <ToolPage theme={getToolThemeClass("ai-city-simulator")}>
+    <AICitySimulator client:only="react" />
+  </ToolPage>
+</StarLayout>

@@ -28,7 +28,8 @@ const DarkModeToggle = () => {
   return (
     <button
       onClick={toggleDarkMode}
-      className="rounded-lg p-2 text-white/90 hover:bg-white/10 dark:hover:bg-primary/10"
+      className="header-theme-toggle"
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {isDark ? (

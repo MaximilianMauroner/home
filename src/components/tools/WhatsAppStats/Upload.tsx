@@ -424,9 +424,9 @@ export function HandlewhatsappData() {
   }, []);
 
   return (
-    <div>
+    <div className="tool-panel">
       <div
-        className="rounded-lg border-2 border-dashed p-4 text-center sm:p-8"
+        className="tool-upload-zone"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
@@ -440,17 +440,17 @@ export function HandlewhatsappData() {
         />
         <label
           htmlFor="file-upload"
-          className="cursor-pointer text-primary hover:underline"
+          className="tool-button cursor-pointer"
         >
           Choose files
         </label>
-        <p className="mt-2 text-sm text-muted-foreground">
-          or drag and drop your WhatsApp chat exports here (supports both
-          Android and macOS exports)
+        <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
+          Drag in a WhatsApp chat export, or choose one or more `.txt` or `.zip`
+          files from Android or macOS.
         </p>
-        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         {files.length > 0 && (
-          <ul className="mt-2 text-sm text-green-500">
+          <ul className="mt-3 text-sm text-emerald-500">
             {files.map((file) => (
               <li key={file.name}>Selected file: {file.name}</li>
             ))}
@@ -458,14 +458,14 @@ export function HandlewhatsappData() {
         )}
         {loading && (
           <div className="mt-4 w-full">
-            <div className="h-2 rounded bg-gray-200">
+            <div className="h-2 rounded-full bg-muted">
               <div
-                className="h-2 animate-pulse rounded bg-primary"
+                className="h-2 animate-pulse rounded-full bg-primary"
                 style={{ width: "100%" }}
               />
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Importing, please wait...
+              Importing, please wait.
             </p>
           </div>
         )}

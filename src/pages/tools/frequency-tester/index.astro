@@ -4,12 +4,13 @@ export const description =
   "Generate pristine stereo tones, adjust channels independently, and explore binaural beats with a refined interface.";
 
 import FrequencyTester from "@/components/tools/FrequencyTester";
+import ToolPage from "@/components/tools/ToolPage.astro";
+import { getToolThemeClass } from "@/components/tools/toolTheme";
 import StarLayout from "@/layouts/StarLayout.astro";
 ---
 
 <StarLayout title={title} description={description}>
-  <section>
-    <FrequencyTester client:only="react" />
-  </section>
+  <ToolPage theme={getToolThemeClass("frequency-tester")}>
+    <FrequencyTester client:load />
+  </ToolPage>
 </StarLayout>
-

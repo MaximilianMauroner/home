@@ -6,42 +6,125 @@ interface Props {
     current: boolean;
     defaultHidden?: boolean;
   };
-  isMobile: boolean;
+  class?: string;
 }
 
-const { item, isMobile = false } = Astro.props;
-const mobileClass = isMobile ? " block sm:hidden" : " sm:block hidden";
-const mobileStyles = isMobile ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm";
-
-if (item.defaultHidden && !item.current) return null;
+const { item, class: className = "" } = Astro.props;
 ---
 
-{
-  item.current ? (
-    <div class={"relative" + mobileClass}>
-      <div class="rotating-border-animation absolute inset-0 -translate-x-0.5 translate-y-0.5 rounded-lg blur" />
-      <div class="rotating-border-animation rounded-md !border-2">
-        <a
-          href={item.href}
-          class={
-            `relative my-auto rounded-md border border-slate-500 font-medium text-white hover:bg-white/10 ${mobileStyles}` +
-            mobileClass
-          }
-          aria-current="page"
-        >
-          {item.name}
-        </a>
-      </div>
-    </div>
-  ) : (
-    <a
-      href={item.href}
-      class={
-        `my-auto rounded-md border border-slate-500 font-medium text-white hover:bg-white/10 ${mobileStyles}` +
-        mobileClass
-      }
-    >
-      {item.name}
-    </a>
-  )
-}
+<a
+  href={item.href}
+  class:list={[
+    "nav-item",
+    className,
+    item.current && "nav-item--current",
+  ]}
+  aria-current={item.current ? "page" : undefined}
+>
+  <span>{item.name}</span>
+</a>
+
+<style>
+  .nav-item {
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    color: var(--nav-link);
+    font-weight: 560;
+    letter-spacing: 0;
+    line-height: 1;
+    text-decoration: none;
+    transition:
+      background-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .nav-item:hover {
+    background: var(--nav-link-hover-bg);
+    border-color: var(--nav-link-hover-border);
+    color: var(--nav-link-hover);
+    transform: translateY(-1px);
+  }
+
+  .nav-item:focus-visible {
+    outline: 2px solid var(--header-focus);
+    outline-offset: 3px;
+  }
+
+  .nav-item--desktop {
+    display: none;
+    min-height: 2.35rem;
+    padding: 0.63rem 0.78rem;
+    font-size: 0.875rem;
+  }
+
+  .nav-item--mobile-current {
+    display: inline-flex;
+    min-height: 2.25rem;
+    padding: 0.56rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .nav-item--mobile-menu {
+    display: flex;
+    justify-content: flex-start;
+    min-height: 2.65rem;
+    padding: 0.78rem 0.9rem;
+    font-size: 0.95rem;
+  }
+
+  .nav-item--current {
+    background: var(--nav-active-bg);
+    border-color: var(--nav-active-border);
+    box-shadow: var(--nav-active-shadow);
+    color: var(--nav-active);
+  }
+
+  .nav-item--current::after {
+    content: "";
+    position: absolute;
+    right: 0.66rem;
+    bottom: 0.28rem;
+    left: 0.66rem;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--nav-active-rule);
+  }
+
+  .nav-item--mobile-current.nav-item--current::after {
+    right: 0.56rem;
+    bottom: 0.2rem;
+    left: 0.56rem;
+  }
+
+  .nav-item--mobile-menu.nav-item--current::after {
+    right: 0.9rem;
+    bottom: 0.38rem;
+    left: 0.9rem;
+  }
+
+  @media (min-width: 640px) {
+    .nav-item--desktop {
+      display: inline-flex;
+    }
+
+    .nav-item--mobile-current {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav-item {
+      transition: none;
+    }
+
+    .nav-item:hover {
+      transform: none;
+    }
+  }
+</style>

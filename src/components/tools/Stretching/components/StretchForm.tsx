@@ -42,7 +42,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
         />
       </div>
       <div>
@@ -52,7 +52,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
           onChange={(e) => setDescription(e.target.value)}
           required
           rows={2}
-          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
+          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors resize-none"
         />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -64,7 +64,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
             onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
             required
             min="1"
-            className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
           />
         </div>
         <div>
@@ -75,7 +75,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
             onChange={(e) => setRepetitions(Math.max(1, parseInt(e.target.value) || 1))}
             required
             min="1"
-            className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
           />
           <p className="text-xs text-muted-foreground mt-1">e.g., 2 for left/right leg</p>
         </div>
@@ -125,7 +125,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
               <button
                 type="button"
                 onClick={() => setShowImagePicker(true)}
-                className="w-full px-4 py-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 active:bg-primary/30 transition-all font-medium text-sm flex items-center justify-center gap-2"
+                className="w-full px-4 py-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 active:bg-primary/30 transition-colors font-medium text-sm flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -141,7 +141,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
                     setImageLoadError(false);
                   }}
                   placeholder="Or paste image URL..."
-                  className="w-full px-3 py-2 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors text-sm"
                 />
               </div>
               {imageLoadError && image && (
@@ -162,7 +162,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
           onChange={(e) => setHow(e.target.value)}
           required
           rows={4}
-          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
+          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors resize-none"
           placeholder="Include instructions and tempo/cues..."
         />
       </div>
@@ -173,21 +173,21 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
           onChange={(e) => setLookFor(e.target.value)}
           required
           rows={3}
-          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
+          className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors resize-none"
           placeholder="What sensations and feedback to look for..."
         />
       </div>
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
         <button
           type="submit"
-          className="flex-1 px-5 py-3 min-h-[48px] bg-gradient-to-r from-primary to-primary/90 text-primary-foreground rounded-xl hover:from-primary/90 hover:to-primary/80 active:scale-[0.98] transition-all font-semibold text-sm touch-manipulation shadow-lg"
+          className="flex-1 px-5 py-3 min-h-[48px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90  transition-colors font-semibold text-sm touch-manipulation shadow-sm"
         >
           {stretch ? "✓ Update Stretch" : "+ Add Stretch"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 sm:flex-none px-5 py-3 min-h-[48px] bg-secondary/80 text-secondary-foreground rounded-xl hover:bg-secondary active:bg-secondary/70 transition-all font-medium text-sm touch-manipulation shadow-sm"
+          className="flex-1 sm:flex-none px-5 py-3 min-h-[48px] bg-secondary/80 text-secondary-foreground rounded-xl hover:bg-secondary active:bg-secondary/70 transition-colors font-medium text-sm touch-manipulation shadow-sm"
         >
           Cancel
         </button>

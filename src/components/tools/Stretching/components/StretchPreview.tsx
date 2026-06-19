@@ -55,7 +55,7 @@ export function StretchPreview({ routine, onBegin, onBack }: StretchPreviewProps
         {routine.stretches.map((stretch, index) => (
           <div
             key={stretch.id}
-            className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-md transition-shadow"
+            className="bg-card rounded-lg border border-border overflow-hidden hover:shadow-sm transition-shadow"
           >
             <div className="flex gap-4 p-4">
               {/* Thumbnail */}
@@ -108,7 +108,7 @@ export function StretchPreview({ routine, onBegin, onBack }: StretchPreviewProps
       {/* Begin Button */}
       <button
         onClick={onBegin}
-        className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-semibold text-lg shadow-sm hover:bg-primary/90 transition-all active:scale-[0.98]"
+        className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-semibold text-lg shadow-sm hover:bg-primary/90 transition-colors "
       >
         Begin Routine
       </button>

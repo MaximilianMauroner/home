@@ -87,7 +87,7 @@ export function RoutineManager({
 
   if (mode === "create" || mode === "edit") {
     return (
-      <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border/50">
+      <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
         <RoutineForm
           routine={editingRoutine}
           stretches={currentStretches}
@@ -99,7 +99,7 @@ export function RoutineManager({
   }
 
   return (
-    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border/50">
+    <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg sm:text-xl font-bold">Manage Routines</h3>
         <div className="flex items-center gap-2">
@@ -128,7 +128,7 @@ export function RoutineManager({
             {defaultRoutines.map((routine) => (
               <div
                 key={routine.id}
-                className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all ${
+                className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors ${
                   selectedRoutineId === routine.id
                     ? "border-primary bg-primary/10 shadow-md"
                     : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card cursor-pointer"
@@ -161,7 +161,7 @@ export function RoutineManager({
               {customRoutines.map((routine) => (
                 <div
                   key={routine.id}
-                  className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all relative group ${
+                  className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors relative group ${
                     selectedRoutineId === routine.id
                       ? "border-primary bg-primary/10 shadow-md"
                       : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"

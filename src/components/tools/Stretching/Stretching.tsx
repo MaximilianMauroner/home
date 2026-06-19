@@ -741,7 +741,7 @@ export default function Stretching() {
           <div className="flex items-center gap-4">
             <button
               onClick={handleBackToQuickStart}
-              className="p-2 rounded-full bg-white/80 dark:bg-card hover:bg-white dark:hover:bg-card/80 shadow-sm transition-all"
+              className="p-2 rounded-full bg-white/80 dark:bg-card hover:bg-white dark:hover:bg-card/80 shadow-sm transition-colors"
             >
               <svg className="w-5 h-5 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />

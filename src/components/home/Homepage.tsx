@@ -123,7 +123,7 @@ const LetterCard = ({
   if (!content) {
     return (
       <div
-        className="fixed z-50 w-96 select-none rounded-lg border border-indigo-500/30 bg-black/95 p-4 text-center shadow-lg backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/95 dark:text-indigo-300"
+        className="fixed z-50 w-96 select-none rounded-2xl border border-indigo-500/30 bg-black/95 p-4 text-center shadow-lg backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/95 dark:text-indigo-300"
         style={{
           top: `${position.y}px`,
           left: `${position.x + 40}px`,
@@ -148,7 +148,7 @@ const LetterCard = ({
 
   return (
     <div
-      className="fixed z-50 w-96 select-none rounded-lg border border-indigo-500/20 bg-white/95 p-4 text-indigo-700 shadow-lg backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/95 dark:text-indigo-300"
+      className="fixed z-50 w-96 select-none rounded-2xl border border-indigo-500/20 bg-white/95 p-4 text-indigo-700 shadow-lg backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/95 dark:text-indigo-300"
       style={{
         top: `${position.y}px`,
         left: `${position.x + 40}px`,
@@ -197,7 +197,7 @@ const LetterCard = ({
         <p className="text-sm text-indigo-400">{content.data.description}</p>
         <a
           href={`/${content.slug}`}
-          className="mt-4 block rounded border border-indigo-500/30 px-4 py-2 text-center text-sm text-indigo-300 transition-colors hover:bg-indigo-500/10"
+          className="mt-4 block rounded-md border border-indigo-500/30 px-4 py-2 text-center text-sm text-indigo-300 transition-colors hover:bg-indigo-500/10"
         >
           Read More
         </a>
@@ -464,7 +464,7 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
         </div>
 
         <div className="flex flex-col items-center justify-center py-8">
-          <div className="relative max-w-prose rounded-lg border border-indigo-500/20 bg-white/70 p-6 font-mono text-indigo-700 shadow-[0_0_15px_rgba(99,102,241,0.1)] backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/70 dark:text-indigo-300 dark:shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+          <div className="relative max-w-prose rounded-2xl border border-indigo-500/20 bg-white/70 p-6 font-mono text-indigo-700 shadow-[0_0_15px_rgba(99,102,241,0.1)] backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/70 dark:text-indigo-300 dark:shadow-[0_0_15px_rgba(99,102,241,0.2)]">
             <div className="absolute -top-3 left-4 bg-black px-2 text-sm text-indigo-400">
               <span className="text-violet-400">$</span> cat{" "}
               <span className="text-indigo-300">profile.txt</span>
@@ -500,7 +500,7 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
         <div className="mb-20 flex justify-center">
           <button
             onClick={scrollToTimeline}
-            className="group flex flex-col items-center gap-2 rounded-lg border border-indigo-500/30 bg-white/50 px-6 py-4 text-indigo-700 transition-all duration-300 hover:border-indigo-500/60 hover:bg-white/80 hover:shadow-lg dark:border-indigo-500/40 dark:bg-black/50 dark:text-indigo-300 dark:hover:border-indigo-500/70 dark:hover:bg-black/70"
+            className="group flex flex-col items-center gap-2 rounded-xl border border-indigo-500/30 bg-white/50 px-6 py-4 text-indigo-700 transition-all duration-300 hover:border-indigo-500/60 hover:bg-white/80 hover:shadow-lg dark:border-indigo-500/40 dark:bg-black/50 dark:text-indigo-300 dark:hover:border-indigo-500/70 dark:hover:bg-black/70"
           >
             <span className="text-sm font-medium">View Timeline</span>
             <svg

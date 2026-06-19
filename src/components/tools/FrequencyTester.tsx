@@ -82,9 +82,6 @@ class StereoOscillator {
   setVolumes(vol: number) {
     this.volume = Math.max(0, Math.min(1, vol));
     if (!this.audioContext || !this.leftGain || !this.rightGain) {
-      this.ensureContext();
-    }
-    if (!this.audioContext || !this.leftGain || !this.rightGain) {
       return;
     }
     this.leftGain.gain.setValueAtTime(
@@ -265,26 +262,21 @@ const FrequencyTester = () => {
   const frequencyDifference = Math.abs(leftFrequency - rightFrequency);
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-10 px-4 pb-16 pt-8 md:px-6 lg:px-8">
-      <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-pink-500/15 via-background to-purple-500/10 p-8 shadow-lg backdrop-blur-sm dark:from-pink-500/20 dark:via-background dark:to-purple-500/15">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.12),transparent_65%)]" />
+    <div className="tools-shell flex max-w-5xl flex-col gap-6">
+      <section className="tool-panel-lg">
         <div className="grid gap-6 md:grid-cols-[1.15fr_0.85fr] md:items-center">
           <div className="space-y-4 text-foreground">
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-              Audio Playground
-            </span>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
               Stereo Frequency Tester
             </h1>
             <p className="max-w-xl text-base leading-relaxed text-card-foreground">
               Craft precise binaural tone tests. Adjust individual channel
-              frequencies, sync the output, and fine-tune volume with an elegant
-              interface that adapts beautifully to light and dark modes.
+              frequencies, sync the output, and fine-tune volume.
             </p>
           </div>
-          <div className="grid gap-4 rounded-2xl border border-border bg-card p-4 text-sm text-card-foreground shadow-sm backdrop-blur-sm">
+          <div className="tool-subpanel grid gap-4 text-sm text-card-foreground">
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              <span className="tool-label">
                 Left channel
               </span>
               <span className="text-lg font-semibold text-foreground">
@@ -292,7 +284,7 @@ const FrequencyTester = () => {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              <span className="tool-label">
                 Right channel
               </span>
               <span className="text-lg font-semibold text-foreground">
@@ -300,7 +292,7 @@ const FrequencyTester = () => {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              <span className="tool-label">
                 Difference
               </span>
               <span className="text-lg font-semibold text-foreground">
@@ -310,7 +302,7 @@ const FrequencyTester = () => {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              <span className="tool-label">
                 Volume
               </span>
               <span className="text-lg font-semibold text-foreground">
@@ -322,7 +314,7 @@ const FrequencyTester = () => {
       </section>
 
       <section className="grid gap-6 md:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
+        <div className="tool-panel-lg flex flex-col gap-6">
           <header className="flex items-start justify-between gap-4 text-card-foreground">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">
@@ -334,12 +326,12 @@ const FrequencyTester = () => {
                 perfectly in sync.
               </p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-background text-primary">
               <Headphones className="h-5 w-5" />
             </div>
           </header>
 
-          <div className="grid gap-4 rounded-2xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+          <div className="tool-subpanel grid gap-4 text-sm text-muted-foreground">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-card-foreground">
                 <Waves className="h-4 w-4" />
@@ -363,10 +355,10 @@ const FrequencyTester = () => {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-4 rounded-2xl border border-border bg-background/60 p-4 shadow-sm">
+            <div className="tool-subpanel space-y-4">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span className="font-medium text-card-foreground">Left channel</span>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary">
+                <span className="rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   {isLeftPlaying ? "Playing" : "Paused"}
                 </span>
               </div>
@@ -403,23 +395,23 @@ const FrequencyTester = () => {
                     Math.max(frequencyRange.min, Math.min(frequencyRange.max, value)),
                   );
                 }}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="tool-field w-full text-base"
               />
               <button
                 type="button"
                 onClick={toggleLeft}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="tool-button w-full py-3"
               >
                 {isLeftPlaying ? "Pause left" : "Play left"}
               </button>
             </div>
 
-            <div className="space-y-4 rounded-2xl border border-border bg-background/60 p-4 shadow-sm">
+            <div className="tool-subpanel space-y-4">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span className="font-medium text-card-foreground">
                   Right channel
                 </span>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary">
+                <span className="rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   {isRightPlaying ? "Playing" : "Paused"}
                 </span>
               </div>
@@ -456,19 +448,19 @@ const FrequencyTester = () => {
                     Math.max(frequencyRange.min, Math.min(frequencyRange.max, value)),
                   );
                 }}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="tool-field w-full text-base"
               />
               <button
                 type="button"
                 onClick={toggleRight}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="tool-button w-full py-3"
               >
                 {isRightPlaying ? "Pause right" : "Play right"}
               </button>
             </div>
           </div>
 
-          <div className="space-y-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4 text-sm text-muted-foreground">
+          <div className="space-y-4 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
             <div className="flex items-center justify-between text-card-foreground">
               <span className="font-semibold text-foreground">Master controls</span>
               <Volume2 className="h-4 w-4 text-primary" />
@@ -493,26 +485,26 @@ const FrequencyTester = () => {
             <button
               type="button"
               onClick={toggleBoth}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-primary/60 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="tool-button-secondary w-full py-3"
             >
               {isLeftPlaying && isRightPlaying ? "Pause both channels" : "Play both channels"}
             </button>
           </div>
         </div>
 
-        <aside className="flex flex-col justify-between gap-6 rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-background to-purple-500/10 p-6 shadow-sm">
+        <aside className="tool-panel-lg flex flex-col justify-between gap-6">
           <div className="space-y-4 text-card-foreground">
             <h3 className="text-lg font-semibold text-foreground">Visualizer</h3>
             <p className="text-sm text-muted-foreground">
               The highlighted bars indicate the current binaural offset. Larger
               offsets illuminate more bars. Equal frequencies keep the spectrum calm.
             </p>
-            <div className="flex h-32 items-end gap-1 rounded-2xl border border-border bg-background/80 p-3">
+            <div className="flex h-32 items-end gap-1 rounded-lg border border-border bg-background p-3">
               {visualizerBars.map((active, index) => (
                 <div
                   // eslint-disable-next-line react/no-array-index-key
                   key={index}
-                  className="flex-1 rounded-full bg-gradient-to-t from-primary/10 via-primary/40 to-primary/80 transition-all"
+                  className="flex-1 rounded-sm bg-primary transition-all"
                   style={{
                     opacity: active ? 1 : 0.12,
                     height: `${active ? 40 + index * 2 : 12}%`,
@@ -521,7 +513,7 @@ const FrequencyTester = () => {
               ))}
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-card/80 p-4 text-sm text-muted-foreground shadow-sm">
+          <div className="tool-subpanel text-sm text-muted-foreground">
             <p>
               Need a quick reference? Start around <span className="font-semibold text-primary">440 Hz</span> on both
               channels. Adjust one channel in small increments to explore
@@ -535,4 +527,3 @@ const FrequencyTester = () => {
 };
 
 export default FrequencyTester;
-

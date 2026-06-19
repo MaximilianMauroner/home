@@ -208,17 +208,17 @@ if (image && images[image]) {
       const storedTheme = localStorage.getItem("theme");
 
       if (storedTheme) {
-        toggleDarkMode(storedTheme);
+        toggleDarkMode(storedTheme === "dark");
       } else {
         const systemDark = window.matchMedia(
           "(prefers-color-scheme: dark)"
         ).matches;
-        toggleDarkMode(systemDark ? "dark" : "light");
+        toggleDarkMode(systemDark);
       }
       document.addEventListener("astro:after-swap", () => {
         const storedTheme = localStorage.getItem("theme");
         if (storedTheme) {
-          toggleDarkMode(storedTheme);
+          toggleDarkMode(storedTheme === "dark");
         }
       });
     </script>

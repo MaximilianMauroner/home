@@ -23,7 +23,7 @@ const socials = [
   {
     name: "GitHub",
     href: "https://github.com/MaximilianMauroner",
-    icon: "/github-mark-white.svg",
+    icon: "/github-mark.svg",
   },
 ];
 
@@ -33,39 +33,75 @@ navigation.forEach((item) => {
   const regex = new RegExp(item.regex);
   item.current = regex.test(pathname);
 });
+
+const visibleNavigation = navigation.filter(
+  (item) => !item.defaultHidden || item.current
+);
+const currentNavigation = navigation.filter((item) => item.current);
+const mobileMenuNavigation = navigation;
 ---
 
 <header
   transition:name="site-header"
   transition:animate="fade"
-  class="sticky top-0 z-50 flex flex-col bg-primary px-2 py-2 text-white sm:px-6 dark:bg-background/80 dark:backdrop-blur-sm dark:border-b dark:border-primary-foreground"
+  class="site-header sticky top-0 z-50"
+  data-menu-open="false"
 >
-  <div class="flex items-center justify-between md:justify-between">
-    <a href="/" class="flex items-center gap-2 font-medium">
-      <div
-        class="my-auto flex h-12 w-12 sm:h-20 sm:w-20 items-center justify-center"
-      >
-        <Image src={ImgAstronaut} loading="eager" alt="Astronaut with laptop" />
-        <span class="sr-only">Astronaut</span>
-      </div>
+  <div class="site-header-shell">
+    <a href="/" class="brand-home" aria-label="Maximilian Mauroner home">
+      <span class="brand-orbit" aria-hidden="true">
+        <Image
+          src={ImgAstronaut}
+          loading="eager"
+          alt=""
+          class="brand-image"
+        />
+      </span>
+      <span class="brand-copy">
+        <span>maximilian mauroner</span>
+      </span>
     </a>
 
-    <nav class="hidden sm:flex gap-4" aria-label="Main navigation">
-      {navigation.map((item) => <NavItem item={item} isMobile={false} />)}
+    <nav class="desktop-nav" aria-label="Main navigation">
+      {visibleNavigation.map((item) => <NavItem item={item} class="nav-item--desktop" />)}
     </nav>
 
-    <div class="flex sm:hidden items-center gap-2">
-      {/* Show only current page on mobile */}
+    <div class="mobile-utility-actions" role="group" aria-label="Site utilities">
       {
-        navigation.map(
-          (item) => item.current && <NavItem item={item} isMobile={true} />
+        socials.map((item) => (
+          <a
+            href={item.href}
+            title={item.name}
+            target="_blank"
+            rel="noreferrer"
+            class="header-social"
+          >
+            <img
+              src={item.icon}
+              alt={item.name}
+              width={22}
+              height={22}
+              class="header-social-icon"
+            />
+          </a>
+        ))
+      }
+      <DarkModeToggle client:idle />
+    </div>
+
+    <div class="mobile-actions">
+      {
+        currentNavigation.map(
+          (item) => <NavItem item={item} class="nav-item--mobile-current" />
         )
       }
 
       <button
         id="menu-toggle"
-        class="rounded-lg p-2 text-white hover:bg-white/10"
-        aria-label="Toggle Navigation Menu"
+        class="menu-button"
+        aria-label="Toggle navigation menu"
+        aria-controls="mobile-menu"
+        aria-expanded="false"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -73,28 +109,48 @@ navigation.forEach((item) => {
           viewBox="0 0 24 24"
           stroke-width="1.5"
           stroke="currentColor"
-          class="w-6 h-6"
+          class="menu-icon menu-icon--menu"
+          aria-hidden="true"
         >
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
             d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path>
         </svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="menu-icon menu-icon--close"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M6 18 18 6M6 6l12 12"></path>
+        </svg>
       </button>
     </div>
 
-    <div class="hidden md:flex gap-2">
+    <div class="header-actions">
       {
         socials.map((item) => (
           <a
             href={item.href}
             title={item.name}
             target="_blank"
-            class="flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline rounded-lg p-2 text-white hover:bg-white/10"
+            rel="noreferrer"
+            class="header-social"
           >
-            <div class="h-6 w-6">
-              <img src={item.icon} alt={item.name} width={1000} height={1000} />
-            </div>
+            <img
+              src={item.icon}
+              alt={item.name}
+              width={24}
+              height={24}
+              class="header-social-icon"
+            />
           </a>
         ))
       }
@@ -102,46 +158,26 @@ navigation.forEach((item) => {
     </div>
   </div>
 
-  {/* Expandable Mobile Navigation */}
   <nav
     id="mobile-menu"
-    class="sm:hidden h-0 overflow-hidden transition-[height] duration-300 ease-in-out"
+    class="mobile-menu"
     aria-label="Mobile navigation"
+    aria-hidden="true"
+    data-open="false"
+    inert
   >
-    <div class="flex flex-col gap-2 py-4">
-      {
-        navigation.map((item) => (
-          <a
-            href={item.href}
-            class="text-lg font-medium py-2 hover:bg-white/10 rounded-lg px-4 text-white"
-          >
-            {item.name}
-          </a>
-        ))
-      }
-      <div class="flex items-center justify-between mt-2 px-4">
-        <div class="flex gap-2">
+    <div class="mobile-menu-inner">
+      <div class="mobile-menu-panel">
+        <div class="mobile-menu-list">
           {
-            socials.map((item) => (
-              <a
-                href={item.href}
-                title={item.name}
-                target="_blank"
-                class="flex items-center gap-1 text-sm font-medium rounded-lg p-2 text-white hover:bg-white/10"
-              >
-                <div class="h-5 w-5">
-                  <img
-                    src={item.icon}
-                    alt={item.name}
-                    width={1000}
-                    height={1000}
-                  />
-                </div>
-              </a>
+            mobileMenuNavigation.map((item) => (
+              <NavItem
+                item={item}
+                class="nav-item--mobile-menu"
+              />
             ))
           }
         </div>
-        <DarkModeToggle client:idle />
       </div>
     </div>
   </nav>
@@ -150,28 +186,355 @@ navigation.forEach((item) => {
 <script>
   const menuToggle = document.getElementById("menu-toggle");
   const mobileMenu = document.getElementById("mobile-menu");
+  const siteHeader = menuToggle?.closest(".site-header");
   let isOpen = false;
-  let isRunning = false;
 
-  const handleOpen = (e: Event) => {
-    e.preventDefault();
-
-    if (isRunning) return;
-    isRunning = true;
+  const handleOpen = (event: Event) => {
+    event.preventDefault();
     isOpen = !isOpen;
     if (mobileMenu) {
-      // Set explicit height for animation
-      mobileMenu.style.height = isOpen ? `${mobileMenu.scrollHeight}px` : "0";
+      mobileMenu.dataset.open = String(isOpen);
+      mobileMenu.setAttribute("aria-hidden", String(!isOpen));
+      mobileMenu.toggleAttribute("inert", !isOpen);
     }
-    isRunning = false;
+    if (siteHeader instanceof HTMLElement) {
+      siteHeader.dataset.menuOpen = String(isOpen);
+    }
+    menuToggle?.setAttribute("aria-expanded", String(isOpen));
   };
+
   menuToggle?.addEventListener("click", handleOpen);
-  menuToggle?.addEventListener("touchstart", handleOpen);
 </script>
 
 <style>
-  /* Optional: Add some animation styles */
-  #mobile-menu {
-    z-index: 100;
+  .site-header {
+    --header-bg: oklch(0.985 0.006 255 / 0.88);
+    --header-border: oklch(0.77 0.024 255 / 0.34);
+    --header-text: oklch(0.22 0.03 258);
+    --header-muted: oklch(0.48 0.034 258);
+    --header-focus: oklch(0.64 0.13 214);
+    --header-action: oklch(0.28 0.032 258);
+    --header-action-hover: oklch(0.17 0.034 258);
+    --header-action-hover-bg: oklch(0.64 0.13 214 / 0.1);
+    --header-icon-filter: none;
+    --header-nav-bg: oklch(0.96 0.008 255 / 0.62);
+    --header-nav-border: oklch(0.8 0.02 255 / 0.28);
+    --header-radius-control: var(--radius-md);
+    --header-radius-panel: var(--radius-xl);
+    --header-radius-mark: var(--radius-lg);
+    --header-brand-mark-size: 2.38rem;
+    --header-brand-image-size: 3.35rem;
+    --header-sigil-bg: oklch(0.93 0.02 252 / 0.9);
+    --header-sigil-border: oklch(0.7 0.06 226 / 0.24);
+    --header-sigil-glow: oklch(0.65 0.11 214 / 0.2);
+    --nav-link: oklch(0.38 0.034 258);
+    --nav-link-hover: oklch(0.18 0.035 258);
+    --nav-link-hover-bg: oklch(0.64 0.13 214 / 0.08);
+    --nav-link-hover-border: oklch(0.64 0.13 214 / 0.18);
+    --nav-active: oklch(0.24 0.046 248);
+    --nav-active-bg: oklch(0.67 0.12 214 / 0.14);
+    --nav-active-border: oklch(0.62 0.13 214 / 0.34);
+    --nav-active-rule: oklch(0.64 0.14 214);
+    --nav-active-shadow: inset 0 1px 0 oklch(0.99 0.004 255 / 0.82), 0
+      10px 26px oklch(0.64 0.13 214 / 0.12);
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--header-border);
+    color: var(--header-text);
+    backdrop-filter: blur(18px) saturate(1.2);
+    box-shadow: 0 12px 34px oklch(0.24 0.026 258 / 0.08);
+  }
+
+  :global(.dark) .site-header {
+    --header-bg: oklch(0.13 0.018 258 / 0.82);
+    --header-border: oklch(0.42 0.04 250 / 0.32);
+    --header-text: oklch(0.93 0.012 255);
+    --header-muted: oklch(0.71 0.035 255);
+    --header-focus: oklch(0.74 0.11 214);
+    --header-action: oklch(0.84 0.02 255);
+    --header-action-hover: oklch(0.97 0.008 255);
+    --header-action-hover-bg: oklch(0.74 0.11 214 / 0.12);
+    --header-icon-filter: invert(1) saturate(0) brightness(1.12);
+    --header-nav-bg: oklch(0.2 0.02 258 / 0.54);
+    --header-nav-border: oklch(0.48 0.034 252 / 0.22);
+    --header-radius-control: var(--radius-md);
+    --header-radius-panel: var(--radius-xl);
+    --header-radius-mark: var(--radius-lg);
+    --header-brand-mark-size: 2.38rem;
+    --header-brand-image-size: 3.35rem;
+    --header-sigil-bg: oklch(0.2 0.03 255 / 0.78);
+    --header-sigil-border: oklch(0.72 0.1 214 / 0.24);
+    --header-sigil-glow: oklch(0.72 0.11 214 / 0.22);
+    --nav-link: oklch(0.76 0.022 255);
+    --nav-link-hover: oklch(0.96 0.008 255);
+    --nav-link-hover-bg: oklch(0.74 0.11 214 / 0.1);
+    --nav-link-hover-border: oklch(0.74 0.11 214 / 0.2);
+    --nav-active: oklch(0.94 0.02 238);
+    --nav-active-bg: oklch(0.72 0.11 214 / 0.16);
+    --nav-active-border: oklch(0.72 0.11 214 / 0.36);
+    --nav-active-rule: oklch(0.76 0.13 214);
+    --nav-active-shadow: inset 0 1px 0 oklch(0.98 0.01 255 / 0.14), 0
+      10px 28px oklch(0.72 0.11 214 / 0.12);
+    box-shadow: 0 16px 36px oklch(0.05 0.018 258 / 0.24);
+  }
+
+  .site-header-shell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(0.5rem, 1.5vw, 1rem);
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 0.5rem clamp(0.75rem, 3vw, 1.5rem);
+  }
+
+  .brand-home {
+    display: flex;
+    align-items: center;
+    gap: 0.78rem;
+    min-width: 0;
+    padding: 0.12rem 0.28rem 0.12rem 0.12rem;
+    border-radius: var(--header-radius-panel);
+    color: var(--header-text);
+    text-decoration: none;
+    transition:
+      color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .brand-home:hover {
+    color: var(--header-action-hover);
+    transform: translateY(-1px);
+  }
+
+  .brand-home:focus-visible {
+    outline: 2px solid var(--header-focus);
+    outline-offset: 4px;
+  }
+
+  .brand-orbit {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--header-brand-mark-size);
+    height: var(--header-brand-mark-size);
+    flex: 0 0 auto;
+    overflow: visible;
+    border-radius: var(--header-radius-mark);
+    background: var(--header-sigil-bg);
+    box-shadow:
+      inset 0 0 0 1px var(--header-sigil-border),
+      0 0 18px var(--header-sigil-glow);
+  }
+
+  .brand-orbit::after {
+    content: "";
+    position: absolute;
+    right: 0.32rem;
+    bottom: 0.24rem;
+    left: 0.32rem;
+    height: 1px;
+    background: var(--header-focus);
+    opacity: 0.72;
+  }
+
+  .brand-orbit :global(img) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 1;
+    width: var(--header-brand-image-size);
+    height: var(--header-brand-image-size);
+    max-width: none;
+    object-fit: contain;
+    transform: translate(-50%, -50%);
+  }
+
+  .brand-copy {
+    display: none;
+    min-width: 0;
+    max-width: 12rem;
+    font-size: 0.86rem;
+    font-weight: 680;
+    letter-spacing: 0;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .desktop-nav {
+    display: none;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.22rem;
+    border: 1px solid var(--header-nav-border);
+    border-radius: var(--header-radius-panel);
+    background: var(--header-nav-bg);
+  }
+
+  .header-actions {
+    display: none;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .mobile-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .mobile-utility-actions {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    margin-inline: auto;
+  }
+
+  .site-header[data-menu-open="true"] .mobile-utility-actions {
+    display: flex;
+  }
+
+  .menu-button,
+  .header-social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: var(--header-radius-control);
+    color: var(--header-action);
+    transition:
+      background-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .menu-button:hover,
+  .header-social:hover {
+    background: var(--header-action-hover-bg);
+    color: var(--header-action-hover);
+    transform: translateY(-1px);
+  }
+
+  .menu-button:focus-visible,
+  .header-social:focus-visible,
+  :global(.header-theme-toggle:focus-visible) {
+    outline: 2px solid var(--header-focus);
+    outline-offset: 3px;
+  }
+
+  .menu-icon {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .menu-icon--close,
+  .menu-button[aria-expanded="true"] .menu-icon--menu {
+    display: none;
+  }
+
+  .menu-button[aria-expanded="true"] .menu-icon--close {
+    display: block;
+  }
+
+  .header-social-icon {
+    width: 1.35rem;
+    height: 1.35rem;
+    filter: var(--header-icon-filter);
+  }
+
+  :global(.header-theme-toggle) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: var(--header-radius-control);
+    color: var(--header-action);
+    transition:
+      background-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  :global(.header-theme-toggle:hover) {
+    background: var(--header-action-hover-bg);
+    color: var(--header-action-hover);
+    transform: translateY(-1px);
+  }
+
+  .mobile-menu {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .mobile-menu[data-open="true"] {
+    grid-template-rows: 1fr;
+  }
+
+  .mobile-menu-inner {
+    overflow: hidden;
+  }
+
+  .mobile-menu-panel {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding: 0.2rem clamp(0.75rem, 3vw, 1.5rem) 0.85rem;
+  }
+
+  .mobile-menu-list {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.35rem;
+    border: 1px solid var(--header-nav-border);
+    border-radius: var(--header-radius-panel);
+    background: var(--header-nav-bg);
+  }
+
+  @media (min-width: 640px) {
+    .site-header {
+      --header-brand-mark-size: 2.58rem;
+      --header-brand-image-size: 3.92rem;
+    }
+
+    .site-header-shell {
+      padding-block: 0.62rem;
+    }
+
+    .brand-copy {
+      display: flex;
+    }
+
+    .desktop-nav {
+      display: flex;
+    }
+
+    .mobile-actions,
+    .mobile-utility-actions,
+    .mobile-menu {
+      display: none;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .header-actions {
+      display: flex;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-header *,
+    :global(.header-theme-toggle) {
+      transition: none;
+    }
+
+    .brand-home:hover,
+    .menu-button:hover,
+    .header-social:hover,
+    :global(.header-theme-toggle:hover) {
+      transform: none;
+    }
   }
 </style>

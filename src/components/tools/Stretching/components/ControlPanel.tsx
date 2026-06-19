@@ -52,7 +52,7 @@ export function ControlPanel({
   onJumpTo,
 }: ControlPanelProps) {
   return (
-    <div className="bg-card rounded-3xl p-6 sm:p-8 shadow-sm border border-border space-y-6">
+    <div className="bg-card rounded-xl p-6 sm:p-8 shadow-sm border border-border space-y-6">
       {/* Stretch Info */}
       <div className="text-center">
         <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
@@ -117,7 +117,7 @@ export function ControlPanel({
       {/* Progress Bar */}
       <div className="relative h-2 bg-muted rounded-full overflow-hidden">
         <div
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-400 dark:to-teal-400 rounded-full transition-all duration-300"
+          className="absolute inset-y-0 left-0 bg-primary rounded-full transition-colors duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>

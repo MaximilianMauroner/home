@@ -2,34 +2,23 @@
 export const title = "WhatsApp Stats";
 export const description = "A tool to visualize your WhatsApp chat habits";
 import WhatsappIndex from "@/components/tools/WhatsAppStats/Index";
+import ToolPage from "@/components/tools/ToolPage.astro";
+import { getToolThemeClass } from "@/components/tools/toolTheme";
 import StarLayout from "@/layouts/StarLayout.astro";
 ---
 
 <StarLayout title={title} description={description}>
-  <div class="mx-auto max-w-screen-xl px-2 md:px-4 md:py-8 lg:px-6 lg:py-16">
-    <div class="space-y-4">
-      <div class="flex flex-col space-y-2 mb-4">
-        <h1 class="text-3xl font-bold tracking-tight">WhatsApp Stats</h1>
-        <p class="text-muted-foreground">
-          Upload your WhatsApp chat export to analyze your messaging patterns
-        </p>
-        <div class="relative inline-block">
-          <p class="group text-xs text-muted-foreground">
-            Your privacy is important.
-            <span
-              class="block max-h-0 overflow-hidden transition-all duration-300 group-hover:max-h-40"
-              style="transition-property: max-height;"
-            >
-              All data is processed locally on your device and stays in your
-              browser. No information leaves your device; this is a purely
-              client-side application. All chat data is processed locally in
-              your browser and is not collected, stored, or transmitted to any
-              server.
-            </span>
-          </p>
-        </div>
-      </div>
-      <WhatsappIndex client:load />
+  <ToolPage
+    theme={getToolThemeClass("whatsapp-stats")}
+    title="WhatsApp Stats"
+    description="Upload your WhatsApp chat export to analyze your messaging patterns"
+  >
+    <div slot="header-extra" class="rounded-lg border border-border bg-card p-3">
+      <p class="text-xs leading-5 text-muted-foreground">
+        Chat data is processed locally in your browser and is not uploaded or
+        stored on a server.
+      </p>
     </div>
-  </div>
+    <WhatsappIndex client:load />
+  </ToolPage>
 </StarLayout>

@@ -36,15 +36,15 @@ export function StretchTimeline({
               >
                 {/* Main dot */}
                 <div
-                  className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                  className={`w-4 h-4 rounded-full transition-colors duration-300 ${
                     isActive
-                      ? "bg-emerald-500 dark:bg-emerald-400 shadow-lg shadow-emerald-500/40 dark:shadow-emerald-400/40 scale-125"
+                      ? "bg-emerald-500 dark:bg-emerald-400 shadow-sm shadow-emerald-500/40 dark:shadow-emerald-400/40 scale-125"
                       : isCompleted
                       ? "bg-teal-500 dark:bg-teal-400"
                       : "bg-foreground/20"
                   } ${
                     isPaused && onJumpTo
-                      ? "hover:scale-125 hover:shadow-md"
+                      ? "hover:scale-125 hover:shadow-sm"
                       : ""
                   }`}
                 >
@@ -64,7 +64,7 @@ export function StretchTimeline({
                       return (
                         <div
                           key={repIdx}
-                          className={`w-1.5 h-1.5 rounded-full transition-all ${
+                          className={`w-1.5 h-1.5 rounded-full transition-colors ${
                             repActive
                               ? "bg-emerald-500 dark:bg-emerald-400"
                               : repCompleted

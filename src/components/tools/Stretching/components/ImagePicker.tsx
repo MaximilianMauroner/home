@@ -74,7 +74,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col border border-border/50 overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm w-full max-w-4xl max-h-[85vh] flex flex-col border border-border/50 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border/50">
           <div>
@@ -184,7 +184,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
                     placeholder="Search images by name or routine..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm"
+                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors text-sm"
                   />
                   {searchQuery && (
                     <button
@@ -235,7 +235,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
                       <button
                         key={img.url}
                         onClick={() => handleSelectImage(img.url)}
-                        className={`group relative aspect-square rounded-xl overflow-hidden border-2 transition-all hover:shadow-lg ${
+                        className={`group relative aspect-square rounded-xl overflow-hidden border-2 transition-colors hover:shadow-sm ${
                           value === img.url
                             ? "border-primary ring-2 ring-primary/30"
                             : "border-border/50 hover:border-primary/50"
@@ -322,7 +322,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
                   value={customUrl}
                   onChange={(e) => setCustomUrl(e.target.value)}
                   placeholder="https://example.com/image.jpg"
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
                 />
                 <p className="text-xs text-muted-foreground">
                   Enter a direct link to an image file (JPG, PNG, GIF, WebP)
@@ -352,7 +352,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
               <button
                 onClick={handleCustomUrlSubmit}
                 disabled={!customUrl.trim()}
-                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Use This Image
               </button>

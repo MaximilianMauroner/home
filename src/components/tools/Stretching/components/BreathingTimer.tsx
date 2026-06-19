@@ -32,7 +32,7 @@ export function BreathingTimer({
     <div className="relative flex items-center justify-center">
       {/* Outer glow ring */}
       <div
-        className={`absolute w-52 h-52 rounded-full transition-all duration-1000 ${
+        className={`absolute w-52 h-52 rounded-full transition-colors duration-1000 ${
           isRunning && !isPaused ? "animate-breathe-glow" : ""
         }`}
         style={{
@@ -61,7 +61,7 @@ export function BreathingTimer({
           cy="100"
           r="88"
           fill="none"
-          className={`transition-all duration-300 ${isResting ? 'stroke-teal-500 dark:stroke-teal-400' : 'stroke-emerald-500 dark:stroke-emerald-400'}`}
+          className={`transition-colors duration-300 ${isResting ? 'stroke-teal-500 dark:stroke-teal-400' : 'stroke-emerald-500 dark:stroke-emerald-400'}`}
           strokeWidth="6"
           strokeLinecap="round"
           strokeDasharray={circumference}

@@ -8,7 +8,7 @@ export function TimeBetweenSettings({ timeBetween, onTimeBetweenChange, onClose 
   const presets = [0, 5, 10, 15, 20, 30];
 
   return (
-    <div className="bg-card rounded-2xl p-5 sm:p-6 shadow-lg border border-border">
+    <div className="bg-card rounded-lg p-5 sm:p-6 shadow-sm border border-border">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-foreground">Rest Between Stretches</h3>
         <button
@@ -28,7 +28,7 @@ export function TimeBetweenSettings({ timeBetween, onTimeBetweenChange, onClose 
             <button
               key={preset}
               onClick={() => onTimeBetweenChange(preset)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                 timeBetween === preset
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "bg-muted text-foreground hover:bg-primary/10"
@@ -49,7 +49,7 @@ export function TimeBetweenSettings({ timeBetween, onTimeBetweenChange, onClose 
             value={timeBetween}
             onChange={(e) => onTimeBetweenChange(Math.max(0, parseInt(e.target.value) || 0))}
             min="0"
-            className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground"
+            className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors text-foreground"
           />
           <p className="text-xs text-muted-foreground mt-2">
             Rest time to prepare between stretches and repetitions. Set to 0 for no breaks.

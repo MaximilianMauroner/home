@@ -23,7 +23,7 @@ export function RoutineSelector({
   const allRoutines = [...routines, ...customRoutines];
   
   return (
-    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-lg border border-border/50">
+    <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
       <div className="mb-3">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Select Routine</h3>

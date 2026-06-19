@@ -38,7 +38,7 @@ export function FilterPills({
           <button
             key={cat.value}
             onClick={() => onCategoryChange(cat.value)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               selectedCategory === cat.value
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "bg-muted text-foreground hover:bg-primary/10 border border-border"
@@ -55,7 +55,7 @@ export function FilterPills({
           <button
             key={diff.value}
             onClick={() => onDifficultyChange(diff.value)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               selectedDifficulty === diff.value
                 ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-sm"
                 : "bg-muted text-foreground hover:bg-emerald-500/10 border border-border"

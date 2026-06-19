@@ -361,14 +361,10 @@ export default function ColourGame() {
   }, [amount, hydrated, recalculateBoardSize]);
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-10 px-4 pb-16 pt-8 md:px-6 lg:px-8">
-      <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-violet-500/10 via-transparent to-emerald-500/10 p-8 shadow-lg backdrop-blur-sm dark:from-violet-600/15 dark:to-emerald-500/20">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(147,51,234,0.12),transparent_65%)]" />
+    <div className="tools-shell flex max-w-5xl flex-col gap-6">
+      <section className="tool-panel-lg">
         <div className="grid gap-6 md:grid-cols-[1.1fr_0.9fr] md:items-center">
           <div className="space-y-4">
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-              Design Warm-Up
-            </span>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Colour Contrast Trainer
             </h1>
@@ -379,9 +375,9 @@ export default function ColourGame() {
             </p>
           </div>
 
-          <div className="grid gap-4 rounded-2xl border border-border bg-card p-4 text-sm text-card-foreground shadow-sm backdrop-blur-sm">
+          <div className="tool-subpanel grid gap-4 text-sm text-card-foreground">
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-foreground">
+              <span className="tool-label">
                 Level
               </span>
               <span className="text-lg font-semibold text-foreground">
@@ -389,7 +385,7 @@ export default function ColourGame() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-foreground">
+              <span className="tool-label">
                 Grid size
               </span>
               <span className="text-lg font-semibold text-foreground">
@@ -397,7 +393,7 @@ export default function ColourGame() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-foreground">
+              <span className="tool-label">
                 Streak
               </span>
               <span className="text-lg font-semibold text-foreground">
@@ -411,7 +407,7 @@ export default function ColourGame() {
       <section className="grid gap-6 md:grid-cols-[1fr_320px]">
         <div
           ref={boardWrapperRef}
-          className="flex flex-col gap-6 rounded-3xl border border-border bg-card p-6 shadow-sm"
+          className="tool-panel-lg flex flex-col gap-6"
         >
           <header className="space-y-2">
             <h2 className="text-lg font-semibold text-foreground">
@@ -461,14 +457,14 @@ export default function ColourGame() {
               <button
                 type="button"
                 onClick={regenerateBoard}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-primary/30 dark:bg-primary/15 dark:text-primary-foreground"
+                className="tool-button-secondary"
               >
                 Regenerate board
               </button>
               <button
                 type="button"
                 onClick={resetGame}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-500 transition hover:bg-rose-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-100"
+                className="tool-button-danger"
               >
                 Reset progress
               </button>
@@ -476,7 +472,7 @@ export default function ColourGame() {
           </div>
         </div>
 
-        <aside className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-6 text-card-foreground shadow-sm">
+        <aside className="tool-panel-lg flex flex-col gap-4 text-card-foreground">
           <h3 className="text-base font-semibold text-foreground">
             Difficulty snapshot
           </h3>
@@ -486,8 +482,8 @@ export default function ColourGame() {
           </p>
 
           <div className="grid gap-4">
-            <div className="rounded-2xl border border-border bg-background/70 p-4 shadow-inner">
-              <span className="text-xs uppercase tracking-wide text-foreground">
+            <div className="tool-subpanel">
+              <span className="tool-label">
                 Target alpha
               </span>
               <p className="mt-2 text-2xl font-semibold text-foreground">
@@ -498,8 +494,8 @@ export default function ColourGame() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border bg-background/70 p-4 shadow-inner">
-              <span className="text-xs uppercase tracking-wide text-foreground">
+            <div className="tool-subpanel">
+              <span className="tool-label">
                 Base alpha
               </span>
               <p className="mt-2 text-2xl font-semibold text-foreground">
@@ -510,8 +506,8 @@ export default function ColourGame() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-primary/30 bg-card p-4 shadow-inner">
-              <span className="text-xs uppercase tracking-wide text-foreground">
+            <div className="tool-subpanel border-primary/30 bg-card">
+              <span className="tool-label">
                 Contrast ratio
               </span>
               <p className="mt-2 text-2xl font-semibold text-foreground">
@@ -522,8 +518,8 @@ export default function ColourGame() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-emerald-500/40 bg-card p-4 shadow-inner">
-              <span className="text-xs uppercase tracking-wide text-foreground">
+            <div className="tool-subpanel border-emerald-500/40 bg-card">
+              <span className="tool-label">
                 Alpha difference
               </span>
               <p className="mt-2 text-2xl font-semibold text-foreground">

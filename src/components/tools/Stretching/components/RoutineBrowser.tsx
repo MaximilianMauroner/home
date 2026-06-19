@@ -107,7 +107,7 @@ export function RoutineBrowser({
           placeholder="Search routines..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-foreground placeholder:text-muted-foreground"
+          className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors text-foreground placeholder:text-muted-foreground"
         />
       </div>
 
@@ -145,15 +145,15 @@ export function RoutineBrowser({
             return (
               <div
                 key={routine.id}
-                className={`relative group rounded-2xl overflow-hidden transition-all ${
+                className={`relative group rounded-lg overflow-hidden transition-colors ${
                   isSelected
-                    ? "ring-2 ring-primary shadow-lg"
-                    : "hover:shadow-md"
+                    ? "ring-2 ring-primary shadow-sm"
+                    : "hover:shadow-sm"
                 }`}
               >
                 <button
                   onClick={() => onSelectRoutine(routine.id)}
-                  className="w-full text-left p-5 bg-card border border-border rounded-2xl"
+                  className="w-full text-left p-5 bg-card border border-border rounded-lg"
                 >
                   {/* Category badge */}
                   <div className="flex items-start justify-between mb-3">

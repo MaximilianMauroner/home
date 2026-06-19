@@ -11,7 +11,7 @@ export function ProgressBar({ progress, timeRemaining, stepsRemaining }: Progres
     <div className="relative">
       <div className="w-full bg-muted/50 rounded-full h-2.5 sm:h-3 overflow-hidden">
         <div
-          className="bg-gradient-to-r from-primary via-primary to-primary/80 h-full rounded-full transition-all duration-300 shadow-sm"
+          className="bg-primary h-full rounded-full transition-colors duration-300 shadow-sm"
           style={{ width: `${progress}%` }}
         />
       </div>

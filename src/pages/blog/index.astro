@@ -48,11 +48,11 @@ const breadcrumbSchema = {
           thoughts preserved for eternity /s
         </p>
       </div>
-      <div class="grid gap-6 md:gap-8 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
         {
           blogs.map((blog, index) => (
             <div
-              class="col-span-2 lg:col-span-1 animate-fade-in"
+              class="min-w-0 animate-fade-in"
               style={`animation-delay: ${index * 50}ms;`}
             >
               <BlogPreview blog={blog} client:idle>

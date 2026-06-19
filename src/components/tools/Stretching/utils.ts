@@ -36,9 +36,8 @@ export const playTickSound = async () => {
 
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.05);
-  } catch (e) {
-    // Fallback if audio context is not available
-    console.log("Audio not available", e);
+  } catch {
+    // Audio is optional; browser policies can block it.
   }
 };
 
@@ -79,12 +78,11 @@ export const playEndSound = async () => {
 
         oscillator2.start(ctx2.currentTime);
         oscillator2.stop(ctx2.currentTime + 0.3);
-      } catch (e) {
-        console.log("Audio error in second tone", e);
+      } catch {
+        // Audio is optional; browser policies can block it.
       }
     }, 150);
-  } catch (e) {
-    console.log("Audio not available", e);
+  } catch {
+    // Audio is optional; browser policies can block it.
   }
 };
-
