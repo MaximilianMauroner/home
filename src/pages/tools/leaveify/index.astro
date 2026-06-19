@@ -1,7 +1,7 @@
 ---
 export const title = "Leaveify";
 export const description =
-  "Move Spotify playlists to TIDAL with OAuth login and track matching.";
+  "Move Spotify playlists and Liked Songs to TIDAL with OAuth login and track matching.";
 
 import Leaveify from "@/components/tools/Leaveify/Leaveify";
 import ToolPage from "@/components/tools/ToolPage.astro";
@@ -13,7 +13,7 @@ import StarLayout from "@/layouts/StarLayout.astro";
   <ToolPage
     theme={getToolThemeClass("leaveify")}
     title="Leaveify"
-    description="Move Spotify playlists to TIDAL."
+    description="Move Spotify playlists and Liked Songs to TIDAL."
     wide
   >
     <Leaveify client:load />

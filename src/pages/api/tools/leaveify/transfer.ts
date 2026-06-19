@@ -4,8 +4,8 @@ import { randomUUID } from "node:crypto";
 import {
   addTracksToTidalPlaylist,
   createTidalPlaylist,
-  fetchSpotifyPlaylist,
-  fetchSpotifyPlaylistTracks,
+  fetchSpotifySource,
+  fetchSpotifySourceTracks,
   findTidalTrackBySearch,
   findTidalTracksByIsrc,
   getTidalClientCredentialsToken,
@@ -21,6 +21,8 @@ export const prerender = false;
 
 type TransferPayload = {
   deduplicateTracks?: boolean;
+  // Kept as playlistId for request compatibility. It may also be the synthetic
+  // Liked Songs source id.
   playlistId?: string;
   targetName?: string;
   visibility?: "PUBLIC" | "UNLISTED";
@@ -100,17 +102,17 @@ export const POST: APIRoute = async ({ cookies, request }) => {
 
   try {
     const payload = (await request.json().catch(() => ({}))) as TransferPayload;
-    const playlistId = payload.playlistId?.trim();
+    const sourceId = payload.playlistId?.trim();
     const deduplicateTracks = Boolean(payload.deduplicateTracks);
     log("info", "transfer_start", {
       deduplicateTracks,
       hasTargetName: Boolean(payload.targetName?.trim()),
-      playlistId,
+      sourceId,
       visibility: payload.visibility ?? "UNLISTED",
     });
 
-    if (!playlistId) {
-      log("warn", "transfer_rejected", { reason: "missing_playlist_id" });
+    if (!sourceId) {
+      log("warn", "transfer_rejected", { reason: "missing_source_id" });
       return Response.json(
         { error: "The 'playlistId' field is required", requestId },
         { status: 400 },
@@ -126,15 +128,15 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     log("info", "token_lookup_done");
     const countryCode = getTidalCountryCode();
 
-    log("info", "spotify_playlist_fetch_start", { playlistId });
+    log("info", "spotify_source_fetch_start", { sourceId });
     const [sourcePlaylist, sourceTracks] = await Promise.all([
-      fetchSpotifyPlaylist(spotifyToken, playlistId),
-      fetchSpotifyPlaylistTracks(spotifyToken, playlistId),
+      fetchSpotifySource(spotifyToken, sourceId),
+      fetchSpotifySourceTracks(spotifyToken, sourceId),
     ]);
-    log("info", "spotify_playlist_fetch_done", {
-      playlistId,
-      playlistName: sourcePlaylist.name,
-      playlistReportedTracks: sourcePlaylist.tracks.total,
+    log("info", "spotify_source_fetch_done", {
+      sourceId,
+      sourceName: sourcePlaylist.name,
+      sourceReportedTracks: sourcePlaylist.tracks.total,
       transferableTracks: sourceTracks.length,
       tracksWithIsrc: sourceTracks.filter((track) => track.isrc).length,
     });
@@ -217,7 +219,8 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     const trackIdsToAdd = deduplicateTracks
       ? deduplicatePreservingOrder(matchedTrackIds)
       : matchedTrackIds;
-    const duplicateTracksSkipped = matchedTrackIds.length - trackIdsToAdd.length;
+    const duplicateTracksSkipped =
+      matchedTrackIds.length - trackIdsToAdd.length;
 
     log("info", "tidal_playlist_create_start", {
       targetName,
@@ -226,7 +229,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     const tidalPlaylist = await createTidalPlaylist({
       accessToken: tidalToken,
       countryCode,
-      description: `Imported from Spotify with Leaveify. Source playlist: ${sourcePlaylist.name}`,
+      description: `Imported from Spotify with Leaveify. Source: ${sourcePlaylist.name}`,
       name: targetName,
       visibility,
     });
@@ -295,7 +298,9 @@ export const POST: APIRoute = async ({ cookies, request }) => {
       },
       sourceTracks: sourceTracks.length,
       tidalClientCredentialsUsed: Boolean(tidalClientToken),
-      tidalMatchingTokenSource: tidalClientToken ? "client_credentials" : "user",
+      tidalMatchingTokenSource: tidalClientToken
+        ? "client_credentials"
+        : "user",
       tidalPlaylist: {
         id: tidalPlaylist.id,
         name: tidalPlaylist.name,
@@ -306,7 +311,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Could not transfer playlist";
+      error instanceof Error ? error.message : "Could not transfer source";
     const status = error instanceof LeaveifyApiError ? error.status : 500;
     log("error", "transfer_failed", {
       error: serializeError(error),

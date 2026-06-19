@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   Download,
   ExternalLink,
+  Heart,
   ListChecks,
   Loader2,
   Music2,
@@ -46,6 +47,7 @@ type LeaveifyPlaylist = {
   description: string | null;
   id: string;
   imageUrl: string | null;
+  kind: "liked_songs" | "playlist";
   name: string;
   ownerName: string | null;
   tracksTotal: number;
@@ -174,10 +176,18 @@ function ProviderCard({ provider }: { provider: ProviderStatus }) {
   );
 }
 
-function EmptyArtwork({ name }: { name: string }) {
+function EmptyArtwork({
+  kind,
+  name,
+}: {
+  kind: LeaveifyPlaylist["kind"];
+  name: string;
+}) {
+  const Icon = kind === "liked_songs" ? Heart : Music2;
+
   return (
     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground dark:border-neutral-800">
-      <Music2 aria-hidden="true" className="h-5 w-5" />
+      <Icon aria-hidden="true" className="h-5 w-5" />
       <span className="sr-only">{name}</span>
     </div>
   );
@@ -306,7 +316,7 @@ export default function Leaveify() {
 
       if (!response.ok) {
         throw new Error(
-          data.error ?? `Playlist request failed (${response.status}).`,
+          data.error ?? `Spotify source request failed (${response.status}).`,
         );
       }
 
@@ -322,7 +332,7 @@ export default function Leaveify() {
         text:
           error instanceof Error
             ? error.message
-            : "Could not load Spotify playlists.",
+            : "Could not load Spotify sources.",
         tone: "error",
       });
     } finally {
@@ -408,7 +418,7 @@ export default function Leaveify() {
   async function handleTransfer() {
     if (selectedPlaylists.length === 0) {
       setNotice({
-        text: "Select at least one Spotify playlist first.",
+        text: "Select at least one Spotify source first.",
         tone: "error",
       });
       return;
@@ -428,7 +438,7 @@ export default function Leaveify() {
       text:
         transferPlaylists.length === 1
           ? "Matching Spotify tracks on TIDAL."
-          : `Exporting ${transferPlaylists.length} playlists to TIDAL.`,
+          : `Exporting ${transferPlaylists.length} sources to TIDAL.`,
       tone: "info",
     });
 
@@ -505,12 +515,12 @@ export default function Leaveify() {
         });
       } else if (results.length > 0) {
         setNotice({
-          text: `${results.length} playlist${results.length === 1 ? "" : "s"} exported. ${failures.length} failed.`,
+          text: `${results.length} source${results.length === 1 ? "" : "s"} exported. ${failures.length} failed.`,
           tone: "info",
         });
       } else {
         setNotice({
-          text: "No playlists were exported. Check the report below.",
+          text: "No sources were exported. Check the report below.",
           tone: "error",
         });
       }
@@ -519,7 +529,7 @@ export default function Leaveify() {
         text:
           error instanceof Error
             ? error.message
-            : "Could not transfer the selected playlists.",
+            : "Could not transfer the selected sources.",
         tone: "error",
       });
     } finally {
@@ -564,14 +574,14 @@ export default function Leaveify() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">
-                Spotify playlists
+                Spotify sources
               </h2>
               <p className="text-sm text-muted-foreground">
                 {!status?.ready
                   ? "Spotify login is not enabled yet"
                   : playlists.length
                     ? `${selectedPlaylistIds.length} of ${playlists.length} selected`
-                    : "Connect Spotify to load playlists"}
+                    : "Connect Spotify to load sources"}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -648,7 +658,7 @@ export default function Leaveify() {
                         src={playlist.imageUrl}
                       />
                     ) : (
-                      <EmptyArtwork name={playlist.name} />
+                      <EmptyArtwork kind={playlist.kind} name={playlist.name} />
                     )}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-foreground">
@@ -670,7 +680,7 @@ export default function Leaveify() {
               })
             ) : (
               <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground dark:border-neutral-800">
-                No Spotify playlists loaded.
+                No Spotify sources loaded.
               </div>
             )}
           </div>
@@ -685,8 +695,8 @@ export default function Leaveify() {
               {selectedPlaylist
                 ? `${selectedPlaylist.name} will become a new TIDAL playlist.`
                 : selectedPlaylists.length
-                  ? `${selectedPlaylists.length} playlists will be exported.`
-                  : "Select one or more source playlists."}
+                  ? `${selectedPlaylists.length} sources will be exported.`
+                  : "Select one or more Spotify sources."}
             </p>
           </div>
 
@@ -804,7 +814,7 @@ export default function Leaveify() {
                 Transfer report
               </h2>
               <p className="text-sm leading-6 text-muted-foreground">
-                {latestReport.results.length} playlist
+                {latestReport.results.length} source
                 {latestReport.results.length === 1 ? "" : "s"} exported.
                 {latestReport.failures.length
                   ? ` ${latestReport.failures.length} failed.`
@@ -867,7 +877,7 @@ export default function Leaveify() {
                   <table className="w-full text-left text-sm">
                     <thead className="sticky top-0 bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                       <tr>
-                        <th className="px-3 py-2 font-medium">Playlist</th>
+                        <th className="px-3 py-2 font-medium">Source</th>
                         <th className="px-3 py-2 font-medium">Added</th>
                         <th className="px-3 py-2 font-medium">Misses</th>
                         <th className="px-3 py-2 font-medium">TIDAL</th>
@@ -911,13 +921,13 @@ export default function Leaveify() {
           {latestReport.failures.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-foreground">
-                Failed playlists
+                Failed sources
               </h3>
               <div className="overflow-hidden rounded-lg border border-border dark:border-neutral-800">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 font-medium">Playlist</th>
+                      <th className="px-3 py-2 font-medium">Source</th>
                       <th className="px-3 py-2 font-medium">Problem</th>
                       <th className="px-3 py-2 font-medium">Reference</th>
                     </tr>
@@ -952,7 +962,7 @@ export default function Leaveify() {
                   <table className="w-full text-left text-sm">
                     <thead className="sticky top-0 bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                       <tr>
-                        <th className="px-3 py-2 font-medium">Playlist</th>
+                        <th className="px-3 py-2 font-medium">Source</th>
                         <th className="px-3 py-2 font-medium">Track</th>
                         <th className="px-3 py-2 font-medium">Artist</th>
                         <th className="px-3 py-2 font-medium">Album</th>

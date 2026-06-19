@@ -6,7 +6,11 @@ import type {
   SpotifyTrackForTransfer,
   TidalTrackMatch,
 } from "../src/utils/leaveify";
-import { getTidalAuthorizationUrl } from "../src/utils/leaveify";
+import {
+  getSpotifyAuthorizationUrl,
+  getTidalAuthorizationUrl,
+  SPOTIFY_LIKED_SONGS_SOURCE_ID,
+} from "../src/utils/leaveify";
 
 process.env.TIDAL_CLIENT_ID = "";
 process.env.TIDAL_CLIENT_SECRET = "";
@@ -29,6 +33,12 @@ type TransferResponse = {
     tidalId: string;
   }>;
   matchedTracks: number;
+  sourcePlaylist: {
+    id: string;
+    name: string;
+    spotifyUrl: string | null;
+    tracksTotal: number;
+  };
   sourceTracks: number;
   unmatched: Array<{
     name: string;
@@ -38,6 +48,7 @@ type TransferResponse = {
 
 type ProviderFixture = {
   isrcMatches: Map<string, TidalTrackMatch>;
+  likedTracks?: SpotifyTrackForTransfer[];
   playlistId?: string;
   playlistName?: string;
   searchMatches?: Map<string, TidalTrackMatch | null>;
@@ -102,14 +113,17 @@ function jsonResponse(body: unknown, status = 200) {
 
 function installProviderFetch({
   isrcMatches,
+  likedTracks = [],
   playlistId = "spotify-playlist",
   playlistName = "Source Playlist",
   searchMatches = new Map(),
   tracks,
 }: ProviderFixture) {
   const addedTrackChunks: string[][] = [];
-  const tidalRequests: Array<{ authorization: string | null; pathname: string }> =
-    [];
+  const tidalRequests: Array<{
+    authorization: string | null;
+    pathname: string;
+  }> = [];
 
   globalThis.fetch = (async (input, init) => {
     const url = new URL(
@@ -125,6 +139,31 @@ function installProviderFetch({
         access_token: "tidal-client-token",
         expires_in: 3600,
         token_type: "Bearer",
+      });
+    }
+
+    if (
+      url.origin === "https://api.spotify.com" &&
+      url.pathname === "/v1/me/tracks"
+    ) {
+      return jsonResponse({
+        items: likedTracks.map((track) => ({
+          added_at: "2026-06-19T12:00:00Z",
+          track: {
+            album: { name: track.albumName },
+            artists: track.artists.map((name) => ({ name })),
+            duration_ms: track.durationMs,
+            external_ids: track.isrc ? { isrc: track.isrc } : {},
+            external_urls: track.spotifyUrl
+              ? { spotify: track.spotifyUrl }
+              : undefined,
+            id: track.id,
+            name: track.name,
+            type: "track",
+          },
+        })),
+        next: null,
+        total: likedTracks.length,
       });
     }
 
@@ -292,6 +331,28 @@ afterEach(() => {
 });
 
 describe("Leaveify OAuth", () => {
+  test("requests the Spotify user library scope needed for Liked Songs", () => {
+    vi.stubEnv("SPOTIFY_CLIENT_ID", "spotify-client-id");
+
+    const authorizationUrl = new URL(
+      getSpotifyAuthorizationUrl({
+        challenge: "challenge",
+        origin: "http://localhost:4321",
+        state: "state",
+      }),
+    );
+
+    expect(authorizationUrl.searchParams.get("client_id")).toBe(
+      "spotify-client-id",
+    );
+    expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual([
+      "playlist-read-private",
+      "playlist-read-collaborative",
+      "user-library-read",
+      "user-read-private",
+    ]);
+  });
+
   test("requests the TIDAL user scopes required by transfer endpoints", () => {
     vi.stubEnv("TIDAL_CLIENT_ID", "tidal-client-id");
 
@@ -303,7 +364,9 @@ describe("Leaveify OAuth", () => {
       }),
     );
 
-    expect(authorizationUrl.searchParams.get("client_id")).toBe("tidal-client-id");
+    expect(authorizationUrl.searchParams.get("client_id")).toBe(
+      "tidal-client-id",
+    );
     expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual([
       "playlists.write",
       "search.read",
@@ -439,6 +502,46 @@ describe("Leaveify transfer", () => {
       { method: "search", sourceName: "Search Song", tidalId: "tidal-search" },
     ]);
     expect(body.unmatched.map((track) => track.name)).toEqual(["Missing Song"]);
+  });
+
+  test("transfers Spotify Liked Songs as a synthetic source", async () => {
+    const provider = installProviderFetch({
+      isrcMatches: new Map([
+        [
+          "LIKEDISRC",
+          tidalMatch({
+            id: "tidal-liked",
+            isrc: "LIKEDISRC",
+            title: "Liked Song",
+          }),
+        ],
+      ]),
+      likedTracks: [
+        spotifyTrack({
+          id: "spotify-liked",
+          isrc: "LIKEDISRC",
+          name: "Liked Song",
+          spotifyUrl: "https://open.spotify.com/track/spotify-liked",
+        }),
+      ],
+      tracks: [],
+    });
+
+    const { body, response } = await transferPlaylist({
+      playlistId: SPOTIFY_LIKED_SONGS_SOURCE_ID,
+    });
+
+    expect(response.status).toBe(200);
+    expect(body.sourcePlaylist).toEqual({
+      id: SPOTIFY_LIKED_SONGS_SOURCE_ID,
+      name: "Liked Songs",
+      spotifyUrl: null,
+      tracksTotal: 1,
+    });
+    expect(body.sourceTracks).toBe(1);
+    expect(body.matchedTracks).toBe(1);
+    expect(body.addedTracks).toBe(1);
+    expect(provider.addedTrackChunks).toEqual([["tidal-liked"]]);
   });
 
   test("uses client credentials for TIDAL search when available", async () => {

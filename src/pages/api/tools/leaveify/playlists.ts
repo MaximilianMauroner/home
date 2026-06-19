@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 
 import {
-  fetchSpotifyPlaylists,
+  fetchSpotifySources,
   LeaveifyApiError,
   requireProviderAccessToken,
 } from "@/utils/leaveify";
@@ -11,7 +11,7 @@ export const prerender = false;
 export const GET: APIRoute = async ({ cookies }) => {
   try {
     const spotifyToken = await requireProviderAccessToken(cookies, "spotify");
-    const playlists = await fetchSpotifyPlaylists(spotifyToken);
+    const playlists = await fetchSpotifySources(spotifyToken);
     return Response.json({ playlists });
   } catch (error) {
     const message =

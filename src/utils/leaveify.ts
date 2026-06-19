@@ -29,6 +29,7 @@ export type OAuthTokenResponse = {
 
 export type LeaveifyPlaylist = {
   id: string;
+  kind: "liked_songs" | "playlist";
   name: string;
   description: string | null;
   imageUrl: string | null;
@@ -57,6 +58,7 @@ export type TidalTrackMatch = {
 const SPOTIFY_AUTHORIZE_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 const SPOTIFY_API_URL = "https://api.spotify.com/v1";
+export const SPOTIFY_LIKED_SONGS_SOURCE_ID = "__spotify_liked_songs__";
 
 const TIDAL_AUTHORIZE_URL = "https://login.tidal.com/authorize";
 const TIDAL_TOKEN_URL = "https://auth.tidal.com/v1/oauth2/token";
@@ -65,14 +67,11 @@ const TIDAL_API_URL = "https://openapi.tidal.com/v2";
 const SPOTIFY_SCOPES = [
   "playlist-read-private",
   "playlist-read-collaborative",
+  "user-library-read",
   "user-read-private",
 ].join(" ");
 
-const TIDAL_SCOPES = [
-  "playlists.write",
-  "search.read",
-  "user.read",
-].join(" ");
+const TIDAL_SCOPES = ["playlists.write", "search.read", "user.read"].join(" ");
 
 const cookiePrefix = (provider: LeaveifyProvider) => `leaveify_${provider}`;
 
@@ -583,6 +582,25 @@ type SpotifyPlaylistsResponse = {
   next: string | null;
 };
 
+async function fetchSpotifyLikedSongsSource(
+  accessToken: string,
+): Promise<LeaveifyPlaylist> {
+  const data = await spotifyApi<SpotifySavedTracksResponse>(
+    "/me/tracks?limit=1&offset=0",
+    accessToken,
+  );
+
+  return {
+    description: "Songs saved in your Spotify library.",
+    id: SPOTIFY_LIKED_SONGS_SOURCE_ID,
+    imageUrl: null,
+    kind: "liked_songs",
+    name: "Liked Songs",
+    ownerName: "Your Library",
+    tracksTotal: data.total,
+  };
+}
+
 export async function fetchSpotifyPlaylists(
   accessToken: string,
 ): Promise<LeaveifyPlaylist[]> {
@@ -600,6 +618,7 @@ export async function fetchSpotifyPlaylists(
           description: playlist.description,
           id: playlist.id,
           imageUrl: playlist.images?.[0]?.url ?? null,
+          kind: "playlist",
           name: playlist.name,
           ownerName: playlist.owner?.display_name ?? null,
           tracksTotal: playlist.tracks.total,
@@ -613,6 +632,17 @@ export async function fetchSpotifyPlaylists(
   return playlists.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export async function fetchSpotifySources(
+  accessToken: string,
+): Promise<LeaveifyPlaylist[]> {
+  const [likedSongs, playlists] = await Promise.all([
+    fetchSpotifyLikedSongsSource(accessToken),
+    fetchSpotifyPlaylists(accessToken),
+  ]);
+
+  return [likedSongs, ...playlists];
+}
+
 type SpotifyPlaylistResponse = {
   description: string | null;
   external_urls?: { spotify?: string };
@@ -621,6 +651,10 @@ type SpotifyPlaylistResponse = {
   owner: { display_name?: string | null } | null;
   tracks: { total: number };
 };
+
+function isSpotifyLikedSongsSource(sourceId: string) {
+  return sourceId === SPOTIFY_LIKED_SONGS_SOURCE_ID;
+}
 
 export async function fetchSpotifyPlaylist(
   accessToken: string,
@@ -641,23 +675,70 @@ export async function fetchSpotifyPlaylist(
   );
 }
 
+export async function fetchSpotifySource(
+  accessToken: string,
+  sourceId: string,
+): Promise<SpotifyPlaylistResponse> {
+  if (!isSpotifyLikedSongsSource(sourceId)) {
+    return fetchSpotifyPlaylist(accessToken, sourceId);
+  }
+
+  const likedSongs = await fetchSpotifyLikedSongsSource(accessToken);
+  return {
+    description: likedSongs.description,
+    id: likedSongs.id,
+    name: likedSongs.name,
+    owner: { display_name: likedSongs.ownerName },
+    tracks: { total: likedSongs.tracksTotal },
+  };
+}
+
+type SpotifyTrackObjectForTransfer = {
+  album?: { name?: string | null };
+  artists?: Array<{ name: string }>;
+  duration_ms?: number;
+  external_ids?: { isrc?: string };
+  external_urls?: { spotify?: string };
+  id?: string | null;
+  name?: string;
+  type?: string;
+};
+
 type SpotifyPlaylistTracksResponse = {
   items: Array<{
     is_local: boolean;
-    track: {
-      album?: { name?: string | null };
-      artists?: Array<{ name: string }>;
-      duration_ms?: number;
-      external_ids?: { isrc?: string };
-      external_urls?: { spotify?: string };
-      id?: string | null;
-      name?: string;
-      type?: string;
-    } | null;
+    track: SpotifyTrackObjectForTransfer | null;
   }>;
   next: string | null;
   total: number;
 };
+
+type SpotifySavedTracksResponse = {
+  items: Array<{
+    added_at: string;
+    track: SpotifyTrackObjectForTransfer | null;
+  }>;
+  next: string | null;
+  total: number;
+};
+
+function spotifyTrackToTransfer(
+  track: SpotifyTrackObjectForTransfer | null,
+): SpotifyTrackForTransfer | null {
+  if (!track || track.type !== "track" || !track.id) {
+    return null;
+  }
+
+  return {
+    albumName: track.album?.name ?? null,
+    artists: track.artists?.map((artist) => artist.name) ?? [],
+    durationMs: track.duration_ms ?? 0,
+    id: track.id,
+    isrc: track.external_ids?.isrc?.toUpperCase() ?? null,
+    name: track.name ?? "Untitled track",
+    spotifyUrl: track.external_urls?.spotify ?? null,
+  };
+}
 
 export async function fetchSpotifyPlaylistTracks(
   accessToken: string,
@@ -679,26 +760,56 @@ export async function fetchSpotifyPlaylistTracks(
       await spotifyApi<SpotifyPlaylistTracksResponse>(nextUrl, accessToken);
 
     for (const item of data.items) {
-      const track = item.track;
-      if (item.is_local || !track || track.type !== "track" || !track.id) {
+      if (item.is_local) {
         continue;
       }
 
-      tracks.push({
-        albumName: track.album?.name ?? null,
-        artists: track.artists?.map((artist) => artist.name) ?? [],
-        durationMs: track.duration_ms ?? 0,
-        id: track.id,
-        isrc: track.external_ids?.isrc?.toUpperCase() ?? null,
-        name: track.name ?? "Untitled track",
-        spotifyUrl: track.external_urls?.spotify ?? null,
-      });
+      const track = spotifyTrackToTransfer(item.track);
+      if (track) tracks.push(track);
     }
 
     nextUrl = data.next;
   }
 
   return tracks;
+}
+
+export async function fetchSpotifyLikedSongsTracks(
+  accessToken: string,
+): Promise<SpotifyTrackForTransfer[]> {
+  const tracks: SpotifyTrackForTransfer[] = [];
+  const fields = [
+    "items(added_at,track(id,name,type,duration_ms,external_ids,external_urls,album(name),artists(name)))",
+    "next",
+    "total",
+  ].join(",");
+  let nextUrl: string | null =
+    `${SPOTIFY_API_URL}/me/tracks?limit=50&offset=0&fields=${encodeURIComponent(
+      fields,
+    )}`;
+
+  while (nextUrl) {
+    const data: SpotifySavedTracksResponse =
+      await spotifyApi<SpotifySavedTracksResponse>(nextUrl, accessToken);
+
+    for (const item of data.items) {
+      const track = spotifyTrackToTransfer(item.track);
+      if (track) tracks.push(track);
+    }
+
+    nextUrl = data.next;
+  }
+
+  return tracks;
+}
+
+export async function fetchSpotifySourceTracks(
+  accessToken: string,
+  sourceId: string,
+): Promise<SpotifyTrackForTransfer[]> {
+  return isSpotifyLikedSongsSource(sourceId)
+    ? fetchSpotifyLikedSongsTracks(accessToken)
+    : fetchSpotifyPlaylistTracks(accessToken, sourceId);
 }
 
 type TidalResourceIdentifier = {
@@ -821,7 +932,10 @@ function normalizeForMatch(value: string) {
 }
 
 function removeBracketedText(value: string) {
-  return value.replace(/\([^)]*\)|\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
+  return value
+    .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function scoreTidalCandidate(
@@ -874,7 +988,10 @@ export async function findTidalTrackBySearch({
     [track.name],
   ]
     .map((parts) => parts.filter(Boolean).join(" ").trim())
-    .filter((query, index, allQueries) => query && allQueries.indexOf(query) === index);
+    .filter(
+      (query, index, allQueries) =>
+        query && allQueries.indexOf(query) === index,
+    );
 
   let bestFallback: { candidate: TidalTrackMatch; score: number } | null = null;
 

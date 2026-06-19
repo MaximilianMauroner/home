@@ -85,7 +85,7 @@ function csvCell(value: string | number | null | undefined) {
 
 export function serializeUnmatchedTracksCsv(report: LeaveifyTransferReport) {
   const rows = [
-    ["Playlist", "Track", "Artists", "Album", "Spotify URL", "Request ID"],
+    ["Source", "Track", "Artists", "Album", "Spotify URL", "Request ID"],
     ...report.unmatched.map((track) => [
       track.sourcePlaylistName,
       track.name,

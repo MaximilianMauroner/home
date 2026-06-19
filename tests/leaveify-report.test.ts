@@ -128,7 +128,7 @@ describe("Leaveify transfer report", () => {
 
     expect(serializeUnmatchedTracksCsv(report)).toBe(
       [
-        '"Playlist","Track","Artists","Album","Spotify URL","Request ID"',
+        '"Source","Track","Artists","Album","Spotify URL","Request ID"',
         '"Playlist, A","Missing A","Artist A, Artist B","Album ""A""","https://open.spotify.com/track/a","request-a"',
         "",
       ].join("\n"),
