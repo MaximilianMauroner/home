@@ -70,9 +70,7 @@ const SPOTIFY_SCOPES = [
 
 const TIDAL_SCOPES = [
   "playlists.write",
-  "w_usr",
   "search.read",
-  "r_usr",
   "user.read",
 ].join(" ");
 

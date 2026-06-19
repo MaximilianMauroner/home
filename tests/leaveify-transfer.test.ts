@@ -304,15 +304,11 @@ describe("Leaveify OAuth", () => {
     );
 
     expect(authorizationUrl.searchParams.get("client_id")).toBe("tidal-client-id");
-    expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual(
-      expect.arrayContaining([
-        "playlists.write",
-        "w_usr",
-        "search.read",
-        "r_usr",
-        "user.read",
-      ]),
-    );
+    expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual([
+      "playlists.write",
+      "search.read",
+      "user.read",
+    ]);
   });
 });
 
