@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly LEAVEIFY_SPOTIFY_REDIRECT_URI?: string;
   readonly LEAVEIFY_TIDAL_REDIRECT_URI?: string;
+  readonly LEAVEIFY_TIDAL_SEARCH_CONCURRENCY?: string;
   readonly LEAVEIFY_DEBUG?: string;
   readonly SPOTIFY_CLIENT_ID: string;
   readonly SPOTIFY_REDIRECT_URI: string;

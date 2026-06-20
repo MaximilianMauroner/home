@@ -11,6 +11,10 @@ import {
   getTidalAuthorizationUrl,
   SPOTIFY_LIKED_SONGS_SOURCE_ID,
 } from "../src/utils/leaveify";
+import {
+  createLeaveifyTransferControl,
+  LeaveifyTransferCancelledError,
+} from "../src/utils/leaveifyTransferControl";
 
 process.env.TIDAL_CLIENT_ID = "";
 process.env.TIDAL_CLIENT_SECRET = "";
@@ -19,6 +23,11 @@ process.env.LEAVEIFY_DEBUG = "false";
 
 const { POST } = (await import("../src/pages/api/tools/leaveify/transfer")) as {
   POST: APIRoute;
+};
+const { PATCH: PATCH_TRANSFER_CONTROL } = (await import(
+  "../src/pages/api/tools/leaveify/transfer/[requestId]"
+)) as {
+  PATCH: APIRoute;
 };
 
 const originalFetch = globalThis.fetch;
@@ -51,17 +60,28 @@ type ProviderFixture = {
   likedTracks?: SpotifyTrackForTransfer[];
   playlistId?: string;
   playlistName?: string;
+  searchDelayMs?: number;
   searchMatches?: Map<string, TidalTrackMatch | null>;
   tracks: SpotifyTrackForTransfer[];
 };
 
-function createSessionCookies(): CookieStore {
+function createSessionCookies({
+  includeTidal = true,
+}: {
+  includeTidal?: boolean;
+} = {}): CookieStore {
   const values = new Map([
     ["leaveify_spotify_access_token", "spotify-user-token"],
     ["leaveify_spotify_expires_at", String(Date.now() + 60 * 60 * 1000)],
-    ["leaveify_tidal_access_token", "tidal-user-token"],
-    ["leaveify_tidal_expires_at", String(Date.now() + 60 * 60 * 1000)],
   ]);
+
+  if (includeTidal) {
+    values.set("leaveify_tidal_access_token", "tidal-user-token");
+    values.set(
+      "leaveify_tidal_expires_at",
+      String(Date.now() + 60 * 60 * 1000),
+    );
+  }
 
   return {
     delete(name) {
@@ -111,11 +131,56 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function tidalDuration(durationMs: number | null) {
+  if (!durationMs) {
+    return undefined;
+  }
+
+  const totalSeconds = Math.round(durationMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `PT${minutes}M${seconds}S`;
+}
+
+function tidalIncludedResources(match: TidalTrackMatch) {
+  const artistResources =
+    match.artists?.map((name, index) => ({
+      attributes: { name },
+      id: `${match.id}-artist-${index}`,
+      type: "artists",
+    })) ?? [];
+
+  return [
+    {
+      attributes: {
+        duration: tidalDuration(match.durationMs),
+        isrc: match.isrc,
+        title: match.title,
+      },
+      id: match.id,
+      relationships:
+        artistResources.length > 0
+          ? {
+              artists: {
+                data: artistResources.map((artist) => ({
+                  id: artist.id,
+                  type: artist.type,
+                })),
+              },
+            }
+          : undefined,
+      type: "tracks",
+    },
+    ...artistResources,
+  ];
+}
+
 function installProviderFetch({
   isrcMatches,
   likedTracks = [],
   playlistId = "spotify-playlist",
   playlistName = "Source Playlist",
+  searchDelayMs = 0,
   searchMatches = new Map(),
   tracks,
 }: ProviderFixture) {
@@ -124,6 +189,8 @@ function installProviderFetch({
     authorization: string | null;
     pathname: string;
   }> = [];
+  let activeSearchRequests = 0;
+  let maxActiveSearchRequests = 0;
 
   globalThis.fetch = (async (input, init) => {
     const url = new URL(
@@ -237,31 +304,34 @@ function installProviderFetch({
       url.origin === "https://openapi.tidal.com" &&
       url.pathname.startsWith("/v2/searchResults/")
     ) {
-      tidalRequests.push({ authorization, pathname: url.pathname });
-      const query = decodeURIComponent(url.pathname.split("/")[3] ?? "");
-      const match =
-        [...searchMatches.entries()].find(([needle]) =>
-          query.includes(needle),
-        )?.[1] ?? null;
-
-      return jsonResponse(
-        match
-          ? {
-              data: [{ id: match.id, type: "tracks" }],
-              included: [
-                {
-                  attributes: {
-                    duration: "PT3M0S",
-                    isrc: match.isrc,
-                    title: match.title,
-                  },
-                  id: match.id,
-                  type: "tracks",
-                },
-              ],
-            }
-          : { data: [], included: [] },
+      activeSearchRequests += 1;
+      maxActiveSearchRequests = Math.max(
+        maxActiveSearchRequests,
+        activeSearchRequests,
       );
+      tidalRequests.push({ authorization, pathname: url.pathname });
+      try {
+        if (searchDelayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, searchDelayMs));
+        }
+
+        const query = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+        const match =
+          [...searchMatches.entries()].find(([needle]) =>
+            query.includes(needle),
+          )?.[1] ?? null;
+
+        return jsonResponse(
+          match
+            ? {
+                data: [{ id: match.id, type: "tracks" }],
+                included: tidalIncludedResources(match),
+              }
+            : { data: [], included: [] },
+        );
+      } finally {
+        activeSearchRequests -= 1;
+      }
     }
 
     if (
@@ -298,6 +368,7 @@ function installProviderFetch({
 
   return {
     addedTrackChunks,
+    getMaxActiveSearchRequests: () => maxActiveSearchRequests,
     tidalRequests,
   };
 }
@@ -316,6 +387,54 @@ async function transferPlaylist(payload: Record<string, unknown>) {
     body: (await response.json()) as TransferResponse,
     response,
   };
+}
+
+async function transferPlaylistStream(
+  payload: Record<string, unknown>,
+  options: { cookies?: CookieStore } = {},
+) {
+  const response = await POST({
+    cookies: options.cookies ?? createSessionCookies(),
+    request: new Request("http://localhost/api/tools/leaveify/transfer", {
+      body: JSON.stringify(payload),
+      headers: {
+        Accept: "application/x-ndjson",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    }),
+  } as Parameters<APIRoute>[0]);
+  const text = await response.text();
+  const events = text
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line)) as Array<{
+    error?: string;
+    progress?: { phase: string; tracksProcessed?: number };
+    result?: TransferResponse;
+    status?: number;
+    type: string;
+  }>;
+
+  return { events, response };
+}
+
+async function updateTransferControl(
+  requestId: string,
+  action: "cancel" | "pause" | "resume",
+) {
+  return PATCH_TRANSFER_CONTROL({
+    params: { requestId },
+    request: new Request(
+      `http://localhost/api/tools/leaveify/transfer/${requestId}`,
+      {
+        body: JSON.stringify({ action }),
+        headers: { "Content-Type": "application/json" },
+        method: "PATCH",
+      },
+    ),
+  } as unknown as Parameters<APIRoute>[0]);
 }
 
 beforeEach(() => {
@@ -376,6 +495,48 @@ describe("Leaveify OAuth", () => {
 });
 
 describe("Leaveify transfer", () => {
+  test("pauses, resumes, and cancels an active transfer control", async () => {
+    const control = createLeaveifyTransferControl("transfer-control-test");
+
+    const pausedResponse = await updateTransferControl(
+      "transfer-control-test",
+      "pause",
+    );
+    expect(pausedResponse.status).toBe(200);
+    await expect(pausedResponse.json()).resolves.toMatchObject({
+      cancelled: false,
+      paused: true,
+      requestId: "transfer-control-test",
+    });
+
+    const resumedResponse = await updateTransferControl(
+      "transfer-control-test",
+      "resume",
+    );
+    expect(resumedResponse.status).toBe(200);
+    await expect(resumedResponse.json()).resolves.toMatchObject({
+      cancelled: false,
+      paused: false,
+      requestId: "transfer-control-test",
+    });
+
+    const cancelledResponse = await updateTransferControl(
+      "transfer-control-test",
+      "cancel",
+    );
+    expect(cancelledResponse.status).toBe(200);
+    await expect(cancelledResponse.json()).resolves.toMatchObject({
+      cancelled: true,
+      paused: false,
+      requestId: "transfer-control-test",
+    });
+    await expect(control.checkpoint()).rejects.toBeInstanceOf(
+      LeaveifyTransferCancelledError,
+    );
+
+    control.dispose();
+  });
+
   test("keeps duplicate matched entries when deduplication is not requested", async () => {
     const provider = installProviderFetch({
       isrcMatches: new Map([
@@ -504,6 +665,198 @@ describe("Leaveify transfer", () => {
     expect(body.unmatched.map((track) => track.name)).toEqual(["Missing Song"]);
   });
 
+  test("accepts exact-title search matches with close duration confidence", async () => {
+    const provider = installProviderFetch({
+      isrcMatches: new Map(),
+      searchMatches: new Map([
+        [
+          "Specific Search Song",
+          tidalMatch({
+            durationMs: 182_000,
+            id: "tidal-specific",
+            isrc: null,
+            method: "search",
+            title: "Specific Search Song",
+          }),
+        ],
+      ]),
+      tracks: [
+        spotifyTrack({
+          artists: ["Source Artist"],
+          durationMs: 181_000,
+          id: "spotify-specific",
+          isrc: null,
+          name: "Specific Search Song",
+        }),
+      ],
+    });
+
+    const { body, response } = await transferPlaylist({
+      playlistId: "spotify-playlist",
+    });
+
+    expect(response.status).toBe(200);
+    expect(body.matchedTracks).toBe(1);
+    expect(body.unmatchedTracks).toBe(0);
+    expect(provider.addedTrackChunks).toEqual([["tidal-specific"]]);
+  });
+
+  test("rejects common-title search matches with poor duration confidence", async () => {
+    const provider = installProviderFetch({
+      isrcMatches: new Map(),
+      searchMatches: new Map([
+        [
+          "Intro",
+          tidalMatch({
+            durationMs: 180_000,
+            id: "tidal-wrong-intro",
+            isrc: null,
+            method: "search",
+            title: "Intro",
+          }),
+        ],
+      ]),
+      tracks: [
+        spotifyTrack({
+          artists: ["Source Artist"],
+          durationMs: 60_000,
+          id: "spotify-intro",
+          isrc: null,
+          name: "Intro",
+        }),
+      ],
+    });
+
+    const { body, response } = await transferPlaylist({
+      playlistId: "spotify-playlist",
+    });
+
+    expect(response.status).toBe(200);
+    expect(body.matchedTracks).toBe(0);
+    expect(body.unmatchedTracks).toBe(1);
+    expect(body.unmatched.map((track) => track.name)).toEqual(["Intro"]);
+    expect(provider.addedTrackChunks).toEqual([]);
+  });
+
+  test("rejects exact-title search matches when TIDAL artists conflict", async () => {
+    const provider = installProviderFetch({
+      isrcMatches: new Map(),
+      searchMatches: new Map([
+        [
+          "Home",
+          tidalMatch({
+            artists: ["Different Artist"],
+            id: "tidal-wrong-home",
+            isrc: null,
+            method: "search",
+            title: "Home",
+          }),
+        ],
+      ]),
+      tracks: [
+        spotifyTrack({
+          artists: ["Source Artist"],
+          id: "spotify-home",
+          isrc: null,
+          name: "Home",
+        }),
+      ],
+    });
+
+    const { body, response } = await transferPlaylist({
+      playlistId: "spotify-playlist",
+    });
+
+    expect(response.status).toBe(200);
+    expect(body.matchedTracks).toBe(0);
+    expect(body.unmatchedTracks).toBe(1);
+    expect(body.unmatched.map((track) => track.name)).toEqual(["Home"]);
+    expect(provider.addedTrackChunks).toEqual([]);
+  });
+
+  test("bounds fallback TIDAL search concurrency", async () => {
+    const tracks = Array.from({ length: 6 }, (_, index) =>
+      spotifyTrack({
+        id: `spotify-concurrent-${index + 1}`,
+        isrc: null,
+        name: `Concurrent Song ${index + 1}`,
+      }),
+    );
+    const provider = installProviderFetch({
+      isrcMatches: new Map(),
+      searchDelayMs: 25,
+      searchMatches: new Map(
+        tracks.map((track, index) => [
+          track.name,
+          tidalMatch({
+            id: `tidal-concurrent-${index + 1}`,
+            isrc: null,
+            method: "search",
+            title: track.name,
+          }),
+        ]),
+      ),
+      tracks,
+    });
+
+    const { body, response } = await transferPlaylist({
+      playlistId: "spotify-playlist",
+    });
+
+    expect(response.status).toBe(200);
+    expect(body.matchedTracks).toBe(tracks.length);
+    expect(provider.getMaxActiveSearchRequests()).toBeGreaterThan(1);
+    expect(provider.getMaxActiveSearchRequests()).toBeLessThanOrEqual(3);
+  });
+
+  test("caches identical fallback searches within one transfer run", async () => {
+    const provider = installProviderFetch({
+      isrcMatches: new Map(),
+      searchMatches: new Map([
+        [
+          "Repeated Song",
+          tidalMatch({
+            id: "tidal-repeated",
+            isrc: null,
+            method: "search",
+            title: "Repeated Song",
+          }),
+        ],
+      ]),
+      tracks: [
+        spotifyTrack({
+          albumName: "Repeated Album",
+          artists: ["Repeated Artist"],
+          id: "spotify-repeated-1",
+          isrc: null,
+          name: "Repeated Song",
+        }),
+        spotifyTrack({
+          albumName: "Repeated Album",
+          artists: ["Repeated Artist"],
+          id: "spotify-repeated-2",
+          isrc: null,
+          name: "Repeated Song",
+        }),
+      ],
+    });
+
+    const { body, response } = await transferPlaylist({
+      playlistId: "spotify-playlist",
+    });
+
+    const searchRequests = provider.tidalRequests.filter(({ pathname }) =>
+      pathname.startsWith("/v2/searchResults/"),
+    );
+    expect(response.status).toBe(200);
+    expect(searchRequests).toHaveLength(1);
+    expect(body.matchedTracks).toBe(2);
+    expect(body.addedTracks).toBe(2);
+    expect(provider.addedTrackChunks).toEqual([
+      ["tidal-repeated", "tidal-repeated"],
+    ]);
+  });
+
   test("transfers Spotify Liked Songs as a synthetic source", async () => {
     const provider = installProviderFetch({
       isrcMatches: new Map([
@@ -542,6 +895,79 @@ describe("Leaveify transfer", () => {
     expect(body.matchedTracks).toBe(1);
     expect(body.addedTracks).toBe(1);
     expect(provider.addedTrackChunks).toEqual([["tidal-liked"]]);
+  });
+
+  test("streams preflight auth failures with the matching HTTP status", async () => {
+    const { events, response } = await transferPlaylistStream(
+      {
+        playlistId: "spotify-playlist",
+      },
+      {
+        cookies: createSessionCookies({ includeTidal: false }),
+      },
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("Content-Type")).toContain(
+      "application/x-ndjson",
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      error: "Connect tidal before continuing",
+      status: 401,
+      type: "error",
+    });
+  });
+
+  test("streams song-level progress before the final transfer result", async () => {
+    installProviderFetch({
+      isrcMatches: new Map([
+        [
+          "ISRC1",
+          tidalMatch({ id: "tidal-1", isrc: "ISRC1", title: "First Song" }),
+        ],
+      ]),
+      searchMatches: new Map([
+        [
+          "Second Song",
+          tidalMatch({
+            id: "tidal-2",
+            isrc: null,
+            method: "search",
+            title: "Second Song",
+          }),
+        ],
+      ]),
+      tracks: [
+        spotifyTrack({ id: "spotify-1", isrc: "ISRC1", name: "First Song" }),
+        spotifyTrack({ id: "spotify-2", isrc: null, name: "Second Song" }),
+      ],
+    });
+
+    const { events, response } = await transferPlaylistStream({
+      playlistId: "spotify-playlist",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toContain(
+      "application/x-ndjson",
+    );
+    expect(events.map((event) => event.type)).toContain("progress");
+    expect(
+      events
+        .filter((event) => event.type === "progress")
+        .map((event) => event.progress?.phase),
+    ).toEqual(
+      expect.arrayContaining([
+        "loading_source",
+        "matching_search",
+        "adding_tracks",
+        "done",
+      ]),
+    );
+    expect(events.at(-1)?.type).toBe("result");
+    expect(events.at(-1)?.result?.matchedTracks).toBe(2);
+    expect(events.at(-1)?.result?.addedTracks).toBe(2);
   });
 
   test("uses client credentials for TIDAL search when available", async () => {

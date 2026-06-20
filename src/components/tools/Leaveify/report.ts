@@ -28,8 +28,28 @@ export type LeaveifyTransferResult = {
   unmatchedTracks: number;
 };
 
+export type LeaveifyTransferPartialFailure = {
+  addedTracks: number;
+  countryCode: string;
+  deduplicateTracks: boolean;
+  duplicateTracksSkipped: number;
+  failedChunkIndex: number;
+  failedChunkStart: number;
+  failedTrackIds: string[];
+  kind: "tidal_add_tracks";
+  matchedTracks: number;
+  remainingTrackIds: string[];
+  requestId: string;
+  sourcePlaylist: LeaveifyTransferResult["sourcePlaylist"];
+  sourceTracks: number;
+  tidalPlaylist: LeaveifyTransferResult["tidalPlaylist"];
+  totalTracksToAdd: number;
+  unmatchedTracks: number;
+};
+
 export type LeaveifyTransferFailure = {
   error: string;
+  partial?: LeaveifyTransferPartialFailure;
   playlistId: string;
   playlistName: string;
   requestId: string | null;

@@ -1,6 +1,10 @@
 import { Buffer } from "node:buffer";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
+import type { LeaveifyPlaylist } from "./leaveifyTypes";
+
+export type { LeaveifyPlaylist } from "./leaveifyTypes";
+
 type CookieOptions = {
   httpOnly?: boolean;
   path?: string;
@@ -17,6 +21,10 @@ export type CookieStore = {
 
 export type LeaveifyProvider = "spotify" | "tidal";
 
+export type ProviderAccessTokenAccessor = {
+  requireAccessToken(provider: LeaveifyProvider): Promise<string>;
+};
+
 export type OAuthTokenResponse = {
   access_token?: string;
   expires_in?: number;
@@ -25,16 +33,6 @@ export type OAuthTokenResponse = {
   token_type?: string;
   error?: string;
   error_description?: string;
-};
-
-export type LeaveifyPlaylist = {
-  id: string;
-  kind: "liked_songs" | "playlist";
-  name: string;
-  description: string | null;
-  imageUrl: string | null;
-  ownerName: string | null;
-  tracksTotal: number;
 };
 
 export type SpotifyTrackForTransfer = {
@@ -48,12 +46,20 @@ export type SpotifyTrackForTransfer = {
 };
 
 export type TidalTrackMatch = {
+  artists?: string[];
   id: string;
   title: string;
   isrc: string | null;
   durationMs: number | null;
   method: "isrc" | "search";
 };
+
+type TrackPageProgress = {
+  loaded: number;
+  total: number;
+};
+
+type MaybePromise<T> = T | Promise<T>;
 
 const SPOTIFY_AUTHORIZE_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
@@ -109,6 +115,56 @@ export class LeaveifyApiError extends Error {
     super(message);
     this.name = "LeaveifyApiError";
     this.status = status;
+  }
+}
+
+export type TidalAddTracksPartialFailure = {
+  addedTracks: number;
+  failedChunkIndex: number;
+  failedChunkStart: number;
+  failedTrackIds: string[];
+  playlistId: string;
+  remainingTrackIds: string[];
+  totalTracks: number;
+};
+
+export class LeaveifyPartialAddTracksError extends LeaveifyApiError {
+  addedTracks: number;
+  cause: unknown;
+  failedChunkIndex: number;
+  failedChunkStart: number;
+  failedTrackIds: string[];
+  playlistId: string;
+  remainingTrackIds: string[];
+  totalTracks: number;
+
+  constructor({
+    addedTracks,
+    cause,
+    failedChunkIndex,
+    failedChunkStart,
+    failedTrackIds,
+    playlistId,
+    remainingTrackIds,
+    totalTracks,
+  }: TidalAddTracksPartialFailure & { cause: unknown }) {
+    const causeMessage =
+      cause instanceof Error ? cause.message : "TIDAL request failed";
+    const status = cause instanceof LeaveifyApiError ? cause.status : 500;
+
+    super(
+      `TIDAL playlist was created, but adding tracks stopped after ${addedTracks} of ${totalTracks} tracks. ${causeMessage}`,
+      status,
+    );
+    this.name = "LeaveifyPartialAddTracksError";
+    this.addedTracks = addedTracks;
+    this.cause = cause;
+    this.failedChunkIndex = failedChunkIndex;
+    this.failedChunkStart = failedChunkStart;
+    this.failedTrackIds = failedTrackIds;
+    this.playlistId = playlistId;
+    this.remainingTrackIds = remainingTrackIds;
+    this.totalTracks = totalTracks;
   }
 }
 
@@ -453,6 +509,32 @@ export async function requireProviderAccessToken(
   return token;
 }
 
+export function createProviderAccessTokenAccessor(
+  cookies: CookieStore,
+): ProviderAccessTokenAccessor {
+  const activeLookups = new Map<LeaveifyProvider, Promise<string>>();
+
+  return {
+    requireAccessToken(provider) {
+      const activeLookup = activeLookups.get(provider);
+      if (activeLookup) {
+        return activeLookup;
+      }
+
+      const lookup = requireProviderAccessToken(cookies, provider).finally(
+        () => {
+          if (activeLookups.get(provider) === lookup) {
+            activeLookups.delete(provider);
+          }
+        },
+      );
+      activeLookups.set(provider, lookup);
+
+      return lookup;
+    },
+  };
+}
+
 async function fetchJson<T>(
   url: string,
   init: RequestInit,
@@ -492,6 +574,9 @@ async function fetchJson<T>(
 export async function spotifyApi<T>(
   pathOrUrl: string,
   accessToken: string,
+  options: {
+    signal?: AbortSignal;
+  } = {},
 ): Promise<T> {
   const url = pathOrUrl.startsWith("https://")
     ? pathOrUrl
@@ -503,6 +588,7 @@ export async function spotifyApi<T>(
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
+      signal: options.signal,
     },
     "Spotify",
   );
@@ -514,12 +600,14 @@ export async function tidalApi<T>({
   idempotencyKey,
   method = "GET",
   path,
+  signal,
 }: {
   accessToken: string;
   body?: unknown;
   idempotencyKey?: string;
   method?: "DELETE" | "GET" | "PATCH" | "POST";
   path: string;
+  signal?: AbortSignal;
 }): Promise<T> {
   const headers = new Headers({
     Accept: "application/vnd.api+json",
@@ -540,12 +628,17 @@ export async function tidalApi<T>({
       body: body === undefined ? undefined : JSON.stringify(body),
       headers,
       method,
+      signal,
     },
     "TIDAL",
   );
 }
 
-export async function getTidalClientCredentialsToken() {
+export async function getTidalClientCredentialsToken({
+  signal,
+}: {
+  signal?: AbortSignal;
+} = {}) {
   const clientId = getTidalClientId();
   const clientSecret = getTidalClientSecret();
 
@@ -564,6 +657,7 @@ export async function getTidalClientCredentialsToken() {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     method: "POST",
+    signal,
   });
 
   const tokens = await parseTokenResponse(response);
@@ -584,10 +678,14 @@ type SpotifyPlaylistsResponse = {
 
 async function fetchSpotifyLikedSongsSource(
   accessToken: string,
+  options: {
+    signal?: AbortSignal;
+  } = {},
 ): Promise<LeaveifyPlaylist> {
   const data = await spotifyApi<SpotifySavedTracksResponse>(
     "/me/tracks?limit=1&offset=0",
     accessToken,
+    { signal: options.signal },
   );
 
   return {
@@ -603,6 +701,9 @@ async function fetchSpotifyLikedSongsSource(
 
 export async function fetchSpotifyPlaylists(
   accessToken: string,
+  options: {
+    signal?: AbortSignal;
+  } = {},
 ): Promise<LeaveifyPlaylist[]> {
   const playlists: LeaveifyPlaylist[] = [];
   let nextUrl: string | null =
@@ -610,7 +711,9 @@ export async function fetchSpotifyPlaylists(
 
   while (nextUrl) {
     const data: SpotifyPlaylistsResponse =
-      await spotifyApi<SpotifyPlaylistsResponse>(nextUrl, accessToken);
+      await spotifyApi<SpotifyPlaylistsResponse>(nextUrl, accessToken, {
+        signal: options.signal,
+      });
 
     playlists.push(
       ...data.items.map(
@@ -634,10 +737,13 @@ export async function fetchSpotifyPlaylists(
 
 export async function fetchSpotifySources(
   accessToken: string,
+  options: {
+    signal?: AbortSignal;
+  } = {},
 ): Promise<LeaveifyPlaylist[]> {
   const [likedSongs, playlists] = await Promise.all([
-    fetchSpotifyLikedSongsSource(accessToken),
-    fetchSpotifyPlaylists(accessToken),
+    fetchSpotifyLikedSongsSource(accessToken, options),
+    fetchSpotifyPlaylists(accessToken, options),
   ]);
 
   return [likedSongs, ...playlists];
@@ -647,23 +753,83 @@ type SpotifyPlaylistResponse = {
   description: string | null;
   external_urls?: { spotify?: string };
   id: string;
+  images?: Array<{ url: string }> | null;
   name: string;
   owner: { display_name?: string | null } | null;
   tracks: { total: number };
 };
 
+const SPOTIFY_PLAYLIST_ID_PATTERN = /^[A-Za-z0-9]{22}$/;
+
 function isSpotifyLikedSongsSource(sourceId: string) {
   return sourceId === SPOTIFY_LIKED_SONGS_SOURCE_ID;
+}
+
+export function parseSpotifyPlaylistId(input: string) {
+  const value = input.trim();
+
+  if (!value) {
+    return null;
+  }
+
+  if (SPOTIFY_PLAYLIST_ID_PATTERN.test(value)) {
+    return value;
+  }
+
+  const uriMatch = value.match(
+    /^spotify:(?:user:[^:]+:)?playlist:([A-Za-z0-9]{22})$/i,
+  );
+  if (uriMatch) {
+    return uriMatch[1];
+  }
+
+  try {
+    const url = new URL(value);
+    if (!/(^|\.)spotify\.com$/i.test(url.hostname)) {
+      return null;
+    }
+
+    const segments = url.pathname.split("/").filter(Boolean);
+    const playlistSegmentIndex = segments.findIndex(
+      (segment) => segment.toLowerCase() === "playlist",
+    );
+    const playlistId =
+      playlistSegmentIndex >= 0 ? segments[playlistSegmentIndex + 1] : null;
+
+    return playlistId && SPOTIFY_PLAYLIST_ID_PATTERN.test(playlistId)
+      ? playlistId
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function spotifyPlaylistToLeaveifyPlaylist(
+  playlist: SpotifyPlaylistResponse,
+): LeaveifyPlaylist {
+  return {
+    description: playlist.description,
+    id: playlist.id,
+    imageUrl: playlist.images?.[0]?.url ?? null,
+    kind: "playlist",
+    name: playlist.name,
+    ownerName: playlist.owner?.display_name ?? null,
+    tracksTotal: playlist.tracks.total,
+  };
 }
 
 export async function fetchSpotifyPlaylist(
   accessToken: string,
   playlistId: string,
+  options: {
+    signal?: AbortSignal;
+  } = {},
 ): Promise<SpotifyPlaylistResponse> {
   const fields = [
     "description",
     "external_urls",
     "id",
+    "images(url)",
     "name",
     "owner(display_name)",
     "tracks(total)",
@@ -672,18 +838,33 @@ export async function fetchSpotifyPlaylist(
   return spotifyApi<SpotifyPlaylistResponse>(
     `/playlists/${encodeURIComponent(playlistId)}?fields=${fields}`,
     accessToken,
+    { signal: options.signal },
   );
+}
+
+export async function fetchSpotifyPlaylistSource(
+  accessToken: string,
+  playlistId: string,
+  options: {
+    signal?: AbortSignal;
+  } = {},
+): Promise<LeaveifyPlaylist> {
+  const playlist = await fetchSpotifyPlaylist(accessToken, playlistId, options);
+  return spotifyPlaylistToLeaveifyPlaylist(playlist);
 }
 
 export async function fetchSpotifySource(
   accessToken: string,
   sourceId: string,
+  options: {
+    signal?: AbortSignal;
+  } = {},
 ): Promise<SpotifyPlaylistResponse> {
   if (!isSpotifyLikedSongsSource(sourceId)) {
-    return fetchSpotifyPlaylist(accessToken, sourceId);
+    return fetchSpotifyPlaylist(accessToken, sourceId, options);
   }
 
-  const likedSongs = await fetchSpotifyLikedSongsSource(accessToken);
+  const likedSongs = await fetchSpotifyLikedSongsSource(accessToken, options);
   return {
     description: likedSongs.description,
     id: likedSongs.id,
@@ -743,6 +924,10 @@ function spotifyTrackToTransfer(
 export async function fetchSpotifyPlaylistTracks(
   accessToken: string,
   playlistId: string,
+  options: {
+    onProgress?: (progress: TrackPageProgress) => MaybePromise<void>;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<SpotifyTrackForTransfer[]> {
   const tracks: SpotifyTrackForTransfer[] = [];
   const fields = [
@@ -757,7 +942,9 @@ export async function fetchSpotifyPlaylistTracks(
 
   while (nextUrl) {
     const data: SpotifyPlaylistTracksResponse =
-      await spotifyApi<SpotifyPlaylistTracksResponse>(nextUrl, accessToken);
+      await spotifyApi<SpotifyPlaylistTracksResponse>(nextUrl, accessToken, {
+        signal: options.signal,
+      });
 
     for (const item of data.items) {
       if (item.is_local) {
@@ -768,6 +955,7 @@ export async function fetchSpotifyPlaylistTracks(
       if (track) tracks.push(track);
     }
 
+    await options.onProgress?.({ loaded: tracks.length, total: data.total });
     nextUrl = data.next;
   }
 
@@ -776,6 +964,10 @@ export async function fetchSpotifyPlaylistTracks(
 
 export async function fetchSpotifyLikedSongsTracks(
   accessToken: string,
+  options: {
+    onProgress?: (progress: TrackPageProgress) => MaybePromise<void>;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<SpotifyTrackForTransfer[]> {
   const tracks: SpotifyTrackForTransfer[] = [];
   const fields = [
@@ -790,13 +982,16 @@ export async function fetchSpotifyLikedSongsTracks(
 
   while (nextUrl) {
     const data: SpotifySavedTracksResponse =
-      await spotifyApi<SpotifySavedTracksResponse>(nextUrl, accessToken);
+      await spotifyApi<SpotifySavedTracksResponse>(nextUrl, accessToken, {
+        signal: options.signal,
+      });
 
     for (const item of data.items) {
       const track = spotifyTrackToTransfer(item.track);
       if (track) tracks.push(track);
     }
 
+    await options.onProgress?.({ loaded: tracks.length, total: data.total });
     nextUrl = data.next;
   }
 
@@ -806,10 +1001,14 @@ export async function fetchSpotifyLikedSongsTracks(
 export async function fetchSpotifySourceTracks(
   accessToken: string,
   sourceId: string,
+  options: {
+    onProgress?: (progress: TrackPageProgress) => MaybePromise<void>;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<SpotifyTrackForTransfer[]> {
   return isSpotifyLikedSongsSource(sourceId)
-    ? fetchSpotifyLikedSongsTracks(accessToken)
-    : fetchSpotifyPlaylistTracks(accessToken, sourceId);
+    ? fetchSpotifyLikedSongsTracks(accessToken, options)
+    : fetchSpotifyPlaylistTracks(accessToken, sourceId, options);
 }
 
 type TidalResourceIdentifier = {
@@ -819,10 +1018,18 @@ type TidalResourceIdentifier = {
 
 type TidalTrackResource = TidalResourceIdentifier & {
   attributes?: {
+    artist?: { name?: string } | string;
+    artistName?: string;
+    artists?: Array<{ name?: string } | string>;
     duration?: string;
     isrc?: string;
     title?: string;
     version?: string;
+  };
+  relationships?: {
+    artists?: {
+      data?: TidalResourceIdentifier[];
+    };
   };
 };
 
@@ -830,9 +1037,17 @@ type TidalTracksResponse = {
   data?: TidalTrackResource[];
 };
 
+type TidalArtistResource = TidalResourceIdentifier & {
+  attributes?: {
+    name?: string;
+  };
+};
+
+type TidalIncludedResource = TidalArtistResource | TidalTrackResource;
+
 type TidalRelationshipResponse = {
   data?: TidalResourceIdentifier[];
-  included?: TidalTrackResource[];
+  included?: TidalIncludedResource[];
 };
 
 type TidalPlaylistCreateResponse = {
@@ -860,9 +1075,89 @@ function parseIsoDurationToMs(duration: string | undefined) {
   );
 }
 
+function uniqueNonEmpty(values: string[]) {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+
+  for (const value of values) {
+    const normalized = value.trim();
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    unique.push(normalized);
+  }
+
+  return unique;
+}
+
+function getIncludedArtistsById(included: TidalIncludedResource[] = []) {
+  const artists = new Map<string, string>();
+
+  for (const resource of included) {
+    if (!resource.type.includes("artist")) {
+      continue;
+    }
+
+    const name =
+      resource.attributes && "name" in resource.attributes
+        ? resource.attributes.name?.trim()
+        : undefined;
+    if (name) {
+      artists.set(resource.id, name);
+    }
+  }
+
+  return artists;
+}
+
+function isTidalTrackResource(
+  resource: TidalIncludedResource,
+): resource is TidalTrackResource {
+  return resource.type === "tracks";
+}
+
+function getTidalTrackArtists(
+  track: TidalTrackResource,
+  includedArtistsById: Map<string, string>,
+) {
+  const artists: string[] = [];
+  const attributeArtist = track.attributes?.artist;
+
+  if (typeof attributeArtist === "string") {
+    artists.push(attributeArtist);
+  } else if (attributeArtist?.name) {
+    artists.push(attributeArtist.name);
+  }
+
+  if (track.attributes?.artistName) {
+    artists.push(track.attributes.artistName);
+  }
+
+  for (const artist of track.attributes?.artists ?? []) {
+    if (typeof artist === "string") {
+      artists.push(artist);
+    } else if (artist.name) {
+      artists.push(artist.name);
+    }
+  }
+
+  for (const artist of track.relationships?.artists?.data ?? []) {
+    const name = includedArtistsById.get(artist.id);
+    if (name) {
+      artists.push(name);
+    }
+  }
+
+  return uniqueNonEmpty(artists);
+}
+
 function tidalTrackToMatch(
   track: TidalTrackResource,
   method: TidalTrackMatch["method"],
+  includedArtistsById = new Map<string, string>(),
 ): TidalTrackMatch {
   const title = [
     track.attributes?.title ?? "Untitled track",
@@ -870,8 +1165,10 @@ function tidalTrackToMatch(
   ]
     .filter(Boolean)
     .join(" ");
+  const artists = getTidalTrackArtists(track, includedArtistsById);
 
   return {
+    ...(artists.length > 0 ? { artists } : {}),
     durationMs: parseIsoDurationToMs(track.attributes?.duration),
     id: track.id,
     isrc: track.attributes?.isrc?.toUpperCase() ?? null,
@@ -883,10 +1180,17 @@ function tidalTrackToMatch(
 export async function findTidalTracksByIsrc({
   accessToken,
   countryCode,
+  onProgress,
+  signal,
   tracks,
 }: {
   accessToken: string;
   countryCode: string;
+  onProgress?: (progress: {
+    processed: number;
+    total: number;
+  }) => MaybePromise<void>;
+  signal?: AbortSignal;
   tracks: SpotifyTrackForTransfer[];
 }) {
   const matches = new Map<string, TidalTrackMatch>();
@@ -908,6 +1212,7 @@ export async function findTidalTracksByIsrc({
     const data = await tidalApi<TidalTracksResponse>({
       accessToken,
       path: `/tracks?${params.toString()}`,
+      signal,
     });
 
     for (const track of data.data ?? []) {
@@ -916,6 +1221,11 @@ export async function findTidalTracksByIsrc({
         matches.set(isrc, tidalTrackToMatch(track, "isrc"));
       }
     }
+
+    await onProgress?.({
+      processed: Math.min(index + chunk.length, isrcs.length),
+      total: isrcs.length,
+    });
   }
 
   return matches;
@@ -931,11 +1241,100 @@ function normalizeForMatch(value: string) {
     .trim();
 }
 
+function normalizeArtistForMatch(value: string) {
+  return normalizeForMatch(value).replace(/^the\s+/, "");
+}
+
 function removeBracketedText(value: string) {
   return value
     .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function getTitleScore(sourceTitle: string, candidateTitle: string) {
+  if (!sourceTitle || !candidateTitle) {
+    return 0;
+  }
+
+  if (sourceTitle === candidateTitle) {
+    return 6;
+  }
+
+  if (
+    sourceTitle.includes(candidateTitle) ||
+    candidateTitle.includes(sourceTitle)
+  ) {
+    return 4;
+  }
+
+  const sourceTokens = new Set(sourceTitle.split(" ").filter(Boolean));
+  const candidateTokens = new Set(candidateTitle.split(" ").filter(Boolean));
+  const sharedTokens = [...sourceTokens].filter((token) =>
+    candidateTokens.has(token),
+  ).length;
+  const coverage =
+    sharedTokens / Math.max(sourceTokens.size, candidateTokens.size, 1);
+
+  return sharedTokens >= 2 && coverage >= 0.67 ? 3 : 0;
+}
+
+function getDurationScore(
+  sourceDurationMs: number,
+  candidateDurationMs: number | null,
+) {
+  if (!sourceDurationMs || !candidateDurationMs) {
+    return 0;
+  }
+
+  const durationDelta = Math.abs(candidateDurationMs - sourceDurationMs);
+  if (durationDelta <= 3_000) return 3;
+  if (durationDelta <= 8_000) return 2;
+  if (durationDelta <= 15_000) return 1;
+  if (durationDelta > 30_000) return -4;
+  return -2;
+}
+
+function getArtistScore(
+  sourceArtists: string[],
+  candidateArtists: string[] | undefined,
+) {
+  const normalizedSourceArtists = sourceArtists
+    .map(normalizeArtistForMatch)
+    .filter(Boolean);
+  const normalizedCandidateArtists =
+    candidateArtists?.map(normalizeArtistForMatch).filter(Boolean) ?? [];
+
+  if (
+    normalizedSourceArtists.length === 0 ||
+    normalizedCandidateArtists.length === 0
+  ) {
+    return { score: 0, mismatch: false };
+  }
+
+  for (const sourceArtist of normalizedSourceArtists) {
+    for (const candidateArtist of normalizedCandidateArtists) {
+      if (sourceArtist === candidateArtist) {
+        return { score: 4, mismatch: false };
+      }
+
+      if (
+        sourceArtist.length > 3 &&
+        candidateArtist.length > 3 &&
+        (sourceArtist.includes(candidateArtist) ||
+          candidateArtist.includes(sourceArtist))
+      ) {
+        return { score: 2, mismatch: false };
+      }
+    }
+  }
+
+  return { score: -4, mismatch: true };
+}
+
+function hasDistinctiveTitle(title: string) {
+  const tokens = title.split(" ").filter(Boolean);
+  return title.length >= 14 || tokens.length >= 3;
 }
 
 function scoreTidalCandidate(
@@ -944,37 +1343,59 @@ function scoreTidalCandidate(
 ) {
   const sourceTitle = normalizeForMatch(source.name);
   const candidateTitle = normalizeForMatch(candidate.title);
-  let score = 0;
+  const titleScore = getTitleScore(sourceTitle, candidateTitle);
+  const durationScore = getDurationScore(
+    source.durationMs,
+    candidate.durationMs,
+  );
+  const artistScore = getArtistScore(source.artists, candidate.artists);
+  const isrcMatch = Boolean(
+    source.isrc && candidate.isrc && source.isrc === candidate.isrc,
+  );
+  const score =
+    (isrcMatch ? 20 : 0) + titleScore + durationScore + artistScore.score;
 
-  if (source.isrc && candidate.isrc && source.isrc === candidate.isrc) {
-    score += 10;
+  if (isrcMatch) {
+    return { acceptable: true, score };
   }
 
-  if (sourceTitle === candidateTitle) {
-    score += 5;
-  } else if (
-    sourceTitle.includes(candidateTitle) ||
-    candidateTitle.includes(sourceTitle)
-  ) {
-    score += 3;
+  if (titleScore === 0 || artistScore.mismatch) {
+    return { acceptable: false, score };
   }
 
-  if (candidate.durationMs && source.durationMs) {
-    const durationDelta = Math.abs(candidate.durationMs - source.durationMs);
-    if (durationDelta <= 3_000) score += 2;
-    else if (durationDelta <= 8_000) score += 1;
+  if (artistScore.score > 0) {
+    return {
+      acceptable: titleScore >= 4 || (titleScore >= 3 && durationScore >= 1),
+      score,
+    };
   }
 
-  return score;
+  if (durationScore >= 2 && titleScore >= 4) {
+    return { acceptable: true, score };
+  }
+
+  if (durationScore >= 3 && titleScore >= 3) {
+    return { acceptable: true, score };
+  }
+
+  return {
+    acceptable:
+      durationScore === 0 &&
+      titleScore >= 6 &&
+      hasDistinctiveTitle(sourceTitle),
+    score,
+  };
 }
 
 export async function findTidalTrackBySearch({
   accessToken,
   countryCode,
+  signal,
   track,
 }: {
   accessToken: string;
   countryCode: string;
+  signal?: AbortSignal;
   track: SpotifyTrackForTransfer;
 }) {
   const cleanedName = removeBracketedText(track.name);
@@ -993,7 +1414,10 @@ export async function findTidalTrackBySearch({
         query && allQueries.indexOf(query) === index,
     );
 
-  let bestFallback: { candidate: TidalTrackMatch; score: number } | null = null;
+  let bestFallback: {
+    candidate: TidalTrackMatch;
+    score: ReturnType<typeof scoreTidalCandidate>;
+  } | null = null;
 
   for (const query of queries) {
     const params = new URLSearchParams({
@@ -1004,6 +1428,7 @@ export async function findTidalTrackBySearch({
     const data = await tidalApi<TidalRelationshipResponse>({
       accessToken,
       path: `/searchResults/${encodeURIComponent(query)}/relationships/tracks?${params.toString()}`,
+      signal,
     });
 
     const trackIds = new Set(
@@ -1011,11 +1436,16 @@ export async function findTidalTrackBySearch({
         .filter((resource) => resource.type === "tracks")
         .map((resource) => resource.id),
     );
-    const candidates = (data.included ?? [])
+    const included = data.included ?? [];
+    const includedArtistsById = getIncludedArtistsById(included);
+    const candidates = included
       .filter(
-        (resource) => resource.type === "tracks" && trackIds.has(resource.id),
+        (resource): resource is TidalTrackResource =>
+          isTidalTrackResource(resource) && trackIds.has(resource.id),
       )
-      .map((resource) => tidalTrackToMatch(resource, "search"));
+      .map((resource) =>
+        tidalTrackToMatch(resource, "search", includedArtistsById),
+      );
 
     if (candidates.length === 0) {
       continue;
@@ -1026,18 +1456,22 @@ export async function findTidalTrackBySearch({
         candidate,
         score: scoreTidalCandidate(track, candidate),
       }))
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => b.score.score - a.score.score);
 
-    if (ranked[0]?.score >= 3) {
-      return ranked[0].candidate;
+    const accepted = ranked.find(({ score }) => score.acceptable);
+    if (accepted) {
+      return accepted.candidate;
     }
 
-    if (ranked[0] && (!bestFallback || ranked[0].score > bestFallback.score)) {
+    if (
+      ranked[0] &&
+      (!bestFallback || ranked[0].score.score > bestFallback.score.score)
+    ) {
       bestFallback = ranked[0];
     }
   }
 
-  return bestFallback && bestFallback.score >= 3
+  return bestFallback && bestFallback.score.acceptable
     ? bestFallback.candidate
     : null;
 }
@@ -1047,12 +1481,14 @@ export async function createTidalPlaylist({
   countryCode,
   description,
   name,
+  signal,
   visibility,
 }: {
   accessToken: string;
   countryCode: string;
   description: string;
   name: string;
+  signal?: AbortSignal;
   visibility: "PUBLIC" | "UNLISTED";
 }) {
   const data = await tidalApi<TidalPlaylistCreateResponse>({
@@ -1070,6 +1506,7 @@ export async function createTidalPlaylist({
     idempotencyKey: randomUUID(),
     method: "POST",
     path: `/playlists?${new URLSearchParams({ countryCode }).toString()}`,
+    signal,
   });
 
   if (!data.data?.id) {
@@ -1085,12 +1522,19 @@ export async function createTidalPlaylist({
 export async function addTracksToTidalPlaylist({
   accessToken,
   countryCode,
+  onProgress,
   playlistId,
+  signal,
   trackIds,
 }: {
   accessToken: string;
   countryCode: string;
+  onProgress?: (progress: {
+    added: number;
+    total: number;
+  }) => MaybePromise<void>;
   playlistId: string;
+  signal?: AbortSignal;
   trackIds: string[];
 }) {
   let added = 0;
@@ -1098,25 +1542,44 @@ export async function addTracksToTidalPlaylist({
   for (let index = 0; index < trackIds.length; index += 50) {
     const chunk = trackIds.slice(index, index + 50);
 
-    await tidalApi({
-      accessToken,
-      body: {
-        data: chunk.map((id) => ({
-          id,
-          meta: {
-            addedAt: new Date().toISOString(),
-          },
-          type: "tracks",
-        })),
-      },
-      idempotencyKey: randomUUID(),
-      method: "POST",
-      path: `/playlists/${encodeURIComponent(
+    try {
+      await tidalApi({
+        accessToken,
+        body: {
+          data: chunk.map((id) => ({
+            id,
+            meta: {
+              addedAt: new Date().toISOString(),
+            },
+            type: "tracks",
+          })),
+        },
+        idempotencyKey: randomUUID(),
+        method: "POST",
+        path: `/playlists/${encodeURIComponent(
+          playlistId,
+        )}/relationships/items?${new URLSearchParams({ countryCode }).toString()}`,
+        signal,
+      });
+    } catch (cause) {
+      if (cause instanceof Error && cause.name === "AbortError") {
+        throw cause;
+      }
+
+      throw new LeaveifyPartialAddTracksError({
+        addedTracks: added,
+        cause,
+        failedChunkIndex: index / 50,
+        failedChunkStart: index,
+        failedTrackIds: chunk,
         playlistId,
-      )}/relationships/items?${new URLSearchParams({ countryCode }).toString()}`,
-    });
+        remainingTrackIds: trackIds.slice(index),
+        totalTracks: trackIds.length,
+      });
+    }
 
     added += chunk.length;
+    await onProgress?.({ added, total: trackIds.length });
   }
 
   return added;
