@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { Line } from "react-chartjs-2";
 import type { GraphProps } from "./types";
+import { hourFromTime } from "../datetime";
+import { ChartHeader } from "./ChartHeader";
 
 export const ActivityByTime = ({ messages, persons }: GraphProps) => {
   // Prepare data
   const { data, options } = useMemo(() => {
-    // 24 intervals
     const intervals = Array.from({ length: 24 }, (_, i) => i);
 
     // Total counts per interval (not per person)
@@ -17,23 +18,15 @@ export const ActivityByTime = ({ messages, persons }: GraphProps) => {
       participantCounts[p.id] = Array(24).fill(0);
     });
 
-    let totalMessages = 0;
-
     messages.forEach((msg) => {
-      if (!msg.time) return;
-      const [h] = msg.time.split(":").map(Number);
-      if (typeof h !== "number") return;
-      // Round up to next highest 15 min interval
-      let interval = h;
-      if (interval > 24) interval = 24; // Clamp to last interval
+      const interval = hourFromTime(msg.time);
+      if (interval === null) return;
       counts[interval]++;
       if (participantCounts[msg.personId]) {
         participantCounts[msg.personId][interval]++;
       }
-      totalMessages++;
     });
 
-    // Labels for each 15-min interval
     const labels = intervals.map((i) => {
       return `${i.toString().padStart(2, "0")}:00`;
     });
@@ -96,11 +89,12 @@ export const ActivityByTime = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Activity by 15-Minute Interval
-      </h3>
+      <ChartHeader
+        title="Activity by Hour"
+        assumption="Buckets every parsed message by the normalized local hour stored in the WhatsApp export. Media and deleted placeholders are included because this chart measures activity, not text content."
+      />
       <p className="mb-4 text-sm text-muted-foreground">
-        Most Active Interval:{" "}
+        Most Active Hour:{" "}
         {(() => {
           // Find the interval with the highest total messages
           const hourTotals = data.datasets[0].data;

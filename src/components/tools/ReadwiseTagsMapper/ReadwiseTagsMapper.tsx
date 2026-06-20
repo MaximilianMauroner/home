@@ -33,7 +33,8 @@ function ReadwiseTagsMapper() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [activeDocUrl, setActiveDocUrl] = useState<string | null>(null);
 
-  const [cursor, setCursor] = useState<string | null>();
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
 
   const [sampleText, setSampleText] = useState<string>("");
 
@@ -263,12 +264,16 @@ function ReadwiseTagsMapper() {
     setLocations((prev) =>
       prev.includes(loc) ? prev.filter((l) => l !== loc) : [...prev, loc],
     );
+    setCursor(null);
+    setNextCursor(null);
   }
 
   function toggleCategory(cat: string) {
     setCategories((prev) =>
       prev.includes(cat) ? prev.filter((t) => t !== cat) : [...prev, cat],
     );
+    setCursor(null);
+    setNextCursor(null);
   }
 
   function toggleDocSelection(docId: string) {
@@ -486,9 +491,12 @@ function ReadwiseTagsMapper() {
     }
   }
 
-  async function handleFetchBatch() {
+  async function handleFetchBatch(pageCursor: string | null = null) {
     setIsFetchingBatch(true);
-    setStatusMessage({ text: "Fetching documents…", tone: "info" });
+    setStatusMessage({
+      text: pageCursor ? "Fetching next page…" : "Fetching documents…",
+      tone: "info",
+    });
     try {
       const url = new URL(
         "/api/tools/readwise-tags-mapper/multi-fetch",
@@ -502,7 +510,7 @@ function ReadwiseTagsMapper() {
         body: JSON.stringify({
           locations,
           categories,
-          cursor,
+          cursor: pageCursor,
         }),
       });
 
@@ -518,27 +526,32 @@ function ReadwiseTagsMapper() {
       }
 
       const data = (await res.json()) as {
-        doc: ReadwiseItem;
-        tags: string[];
-      }[];
-      setFetchedDocs(data);
+        docs: {
+          doc: ReadwiseItem;
+          tags: string[];
+        }[];
+        nextPageCursor: string | null;
+      };
+      setCursor(pageCursor);
+      setNextCursor(data.nextPageCursor);
+      setFetchedDocs(data.docs);
       clearDocSelection();
-      if (data.length > 0) {
-        const firstWithDoc = data.find((entry) => entry.doc);
+      if (data.docs.length > 0) {
+        const firstWithDoc = data.docs.find((entry) => entry.doc);
         if (firstWithDoc?.doc) {
           loadDocIntoPane(firstWithDoc.doc, firstWithDoc.tags);
           setStatusMessage({
-            text: `Fetched ${data.length} document${
-              data.length > 1 ? "s" : ""
-            }. Loaded “${
+            text: `Fetched ${data.docs.length} document${
+              data.docs.length > 1 ? "s" : ""
+            }${data.nextPageCursor ? ". Another page is available" : ""}. Loaded “${
               firstWithDoc.doc.title ?? "first document"
             }” for review.`,
             tone: "success",
           });
         } else {
           setStatusMessage({
-            text: `Fetched ${data.length} document${
-              data.length > 1 ? "s" : ""
+            text: `Fetched ${data.docs.length} document${
+              data.docs.length > 1 ? "s" : ""
             }, but none contained document details. Please try again.`,
             tone: "error",
           });
@@ -609,9 +622,14 @@ function ReadwiseTagsMapper() {
             isFetchingBatch={isFetchingBatch}
             isFetchingSingle={isFetchingSingle}
             locations={locations}
-            onFetchBatch={handleFetchBatch}
+            nextCursor={nextCursor}
+            onFetchBatch={() => handleFetchBatch(null)}
+            onFetchNextBatch={() => {
+              if (nextCursor) {
+                void handleFetchBatch(nextCursor);
+              }
+            }}
             onFetchSingle={handleFetchSingle}
-            onSetCursor={setCursor}
             onSetDocumentId={setDocumentId}
             onSetFiltersExpanded={setFiltersExpanded}
             onSetRunSingle={setRunSingle}

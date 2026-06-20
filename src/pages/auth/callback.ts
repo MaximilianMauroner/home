@@ -25,7 +25,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
             maxAge: 30 * 24 * 3600
         });
 
-        return redirect('/other/elo-compare');
+        return redirect('/tools/spotify-stats/');
     } catch (error) {
         return new Response('Authentication failed', { status: 500 });
     }

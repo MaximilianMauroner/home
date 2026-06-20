@@ -8,9 +8,10 @@ interface WorkflowControlsProps {
   isFetchingBatch: boolean;
   isFetchingSingle: boolean;
   locations: string[];
+  nextCursor: string | null;
   onFetchBatch: () => void;
+  onFetchNextBatch: () => void;
   onFetchSingle: () => void;
-  onSetCursor: (value: string) => void;
   onSetDocumentId: (value: string) => void;
   onSetFiltersExpanded: (expanded: boolean) => void;
   onSetRunSingle: (runSingle: boolean) => void;
@@ -27,9 +28,10 @@ export function WorkflowControls({
   isFetchingBatch,
   isFetchingSingle,
   locations,
+  nextCursor,
   onFetchBatch,
+  onFetchNextBatch,
   onFetchSingle,
-  onSetCursor,
   onSetDocumentId,
   onSetFiltersExpanded,
   onSetRunSingle,
@@ -38,8 +40,8 @@ export function WorkflowControls({
   runSingle,
 }: WorkflowControlsProps) {
   const cursorIsSet = Boolean(cursor && cursor.trim());
-  const filterCount =
-    locations.length + categories.length + (cursorIsSet ? 1 : 0);
+  const hasNextPage = Boolean(nextCursor);
+  const filterCount = locations.length + categories.length;
   const filterButtonLabel =
     filterCount > 0 ? `Adjust filters (${filterCount})` : "Adjust filters";
   const locationSummary = locations.join(", ");
@@ -47,7 +49,6 @@ export function WorkflowControls({
   const singleModeId = "readwise-mode-single";
   const batchModeId = "readwise-mode-batch";
   const documentIdInputId = "readwise-document-id";
-  const cursorInputId = "readwise-cursor";
 
   return (
     <section className="tool-panel flex flex-col gap-4">
@@ -131,9 +132,9 @@ export function WorkflowControls({
             <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-1 font-medium text-gray-600 dark:border-neutral-800 dark:bg-neutral-950/40 dark:text-gray-200">
               Categories: {categorySummary}
             </span>
-            {cursorIsSet && (
+            {(cursorIsSet || hasNextPage) && (
               <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-1 font-medium text-gray-600 dark:border-neutral-800 dark:bg-neutral-950/40 dark:text-gray-200">
-                Cursor set
+                {hasNextPage ? "Next page available" : "Page cursor active"}
               </span>
             )}
           </div>
@@ -162,31 +163,31 @@ export function WorkflowControls({
                 hoverClass="hover:border-pink-300 dark:hover:border-pink-400"
                 onToggle={onToggleCategory}
               />
-
-              <div className="space-y-2">
-                <label htmlFor={cursorInputId} className="tool-label block">
-                  Cursor (optional)
-                </label>
-                <input
-                  id={cursorInputId}
-                  type="text"
-                  value={cursor ?? ""}
-                  onChange={(event) => onSetCursor(event.target.value)}
-                  placeholder="Cursor"
-                  className="tool-field w-full"
-                />
-              </div>
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={onFetchBatch}
-            disabled={isFetchingBatch}
-            className="tool-button"
-          >
-            {isFetchingBatch ? "Fetching..." : "Fetch documents"}
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={onFetchBatch}
+              disabled={isFetchingBatch}
+              className="tool-button"
+            >
+              {isFetchingBatch
+                ? "Fetching..."
+                : cursorIsSet
+                  ? "Fetch first page"
+                  : "Fetch documents"}
+            </button>
+            <button
+              type="button"
+              onClick={onFetchNextBatch}
+              disabled={isFetchingBatch || !hasNextPage}
+              className="tool-button-secondary"
+            >
+              Next page
+            </button>
+          </div>
         </div>
       )}
     </section>

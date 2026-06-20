@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import type { Message } from "@/components/tools/WhatsAppStats/db";
 import type { TooltipState } from "./types";
+import { dateKeyFromMessage, enumerateDateKeys } from "../datetime";
 
 interface GitHubStyleChartProps {
   messages: Message[];
@@ -18,9 +19,6 @@ export const GitHubStyleChart = ({ messages, year }: GitHubStyleChartProps) => {
     "#1b4c2a", // level 5
     "#0f2d19", // level 6
   ];
-
-  const startOfYear = new Date(year, 0, 1);
-  const endOfYear = new Date(year, 11, 31);
 
   const getColor = (count: number) => {
     if (count === 0) return colorScale[0];
@@ -63,9 +61,7 @@ export const GitHubStyleChart = ({ messages, year }: GitHubStyleChartProps) => {
   const messagesByDay = useMemo(() => {
     const days = new Map<string, number>();
     messages.forEach((message) => {
-      const [day, month, year] = message.date.split("/").map(Number);
-      const date = new Date(year, month - 1, day); // month is 0-based
-      const dateKey = date.toISOString().split("T")[0];
+      const dateKey = dateKeyFromMessage(message);
       days.set(dateKey, (days.get(dateKey) || 0) + 1);
     });
     return days;
@@ -73,27 +69,29 @@ export const GitHubStyleChart = ({ messages, year }: GitHubStyleChartProps) => {
 
   const weeks = useMemo(() => {
     const weeks = [];
-    let currentDate = new Date(startOfYear);
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31);
+    const dateKeys = enumerateDateKeys(startOfYear, endOfYear);
 
-    while (currentDate <= endOfYear) {
+    for (let i = 0; i < dateKeys.length; i += 7) {
       const week = [];
-      for (let i = 0; i < 7; i++) {
-        if (currentDate <= endOfYear) {
-          const dateKey = currentDate.toISOString().split("T")[0];
-          const count = messagesByDay.get(dateKey) || 0;
-          week.push({ date: new Date(currentDate), count });
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
+      for (const dateKey of dateKeys.slice(i, i + 7)) {
+        const [dateYear, dateMonth, dateDay] = dateKey.split("-").map(Number);
+        const count = messagesByDay.get(dateKey) || 0;
+        week.push({
+          date: new Date(dateYear, dateMonth - 1, dateDay),
+          count,
+        });
       }
       weeks.push(week);
     }
     return weeks;
-  }, [messagesByDay, startOfYear, endOfYear]);
+  }, [messagesByDay, year]);
 
   return (
     <div className="col-span-2 rounded-lg border p-1 sm:p-4">
       <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Message Activity (Last Year)
+        Message Activity ({year})
       </h3>
       <div className="w-full overflow-x-auto">
         <div className="relative w-full overflow-x-auto">

@@ -1,9 +1,12 @@
 ---
 import FontmatterTagsList from "@/components/content/FontmatterTagsList.astro";
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
+import ReadingProgress from "@/components/content/ReadingProgress";
+import RelatedPosts from "@/components/content/RelatedPosts.astro";
 import TableOfContents from "@/components/content/TableOfContents";
 import { type HeadingType } from "@/utils/types";
 import { timeAgo } from "@/utils/helpers";
+import { getArticleOgImageUrl, getArticleTrail } from "@/utils/server/content";
 import StarLayout from "./StarLayout.astro";
 
 interface Props {
@@ -14,6 +17,7 @@ interface Props {
     releaseDate: Date | string;
     image?: string;
     lastModified?: string;
+    minutesRead?: string;
   };
   headings?: HeadingType[];
 }
@@ -78,16 +82,30 @@ const slugFromPath = Astro.url.pathname
   .replace(/\/$/, "");
 const sanitizedSlug = slugFromPath.replaceAll("/", "-");
 const titleTransitionName = `blog-title-${sanitizedSlug || "blog"}`;
+const articleTrail = slugFromPath
+  ? await getArticleTrail("blog", slugFromPath)
+  : { related: [] };
+const ogImageUrl = getArticleOgImageUrl(Astro.url.pathname, Astro.site);
+const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
+  "en-US",
+  {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  },
+);
 ---
 
 <StarLayout
   description={frontmatter.description || ""}
   title={frontmatter.title}
   image={frontmatter.image}
+  ogImageUrl={ogImageUrl}
   articlePublishedTime={new Date(frontmatter.releaseDate).toISOString()}
   articleModifiedTime={articleModifiedTime}
   articleAuthor="Maximilian Mauroner"
 >
+  <ReadingProgress client:load />
   <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
     {/* Hero Header Section */}
     <header
@@ -162,6 +180,16 @@ const titleTransitionName = `blog-title-${sanitizedSlug || "blog"}`;
           <div class="text-muted-foreground">
             {timeAgo(new Date(frontmatter.releaseDate))}
           </div>
+          {
+            frontmatter.minutesRead && (
+              <>
+                <div class="text-muted-foreground">•</div>
+                <div class="text-muted-foreground">{frontmatter.minutesRead}</div>
+              </>
+            )
+          }
+          <div class="text-muted-foreground">•</div>
+          <div class="text-muted-foreground">Updated {updatedDateLabel}</div>
         </div>
 
         {/* Title */}
@@ -209,4 +237,9 @@ const titleTransitionName = `blog-title-${sanitizedSlug || "blog"}`;
       )
     }
   </div>
+  <RelatedPosts
+    previous={articleTrail.previous}
+    next={articleTrail.next}
+    items={articleTrail.related}
+  />
 </StarLayout>

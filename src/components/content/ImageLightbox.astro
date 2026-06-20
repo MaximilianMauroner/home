@@ -1,0 +1,124 @@
+---
+// Click-to-zoom lightbox for images inside `.prose` article content.
+// Replaces the previous one-off Tailwind hack. Pure progressive enhancement:
+// images remain visible/clickable without JS.
+---
+
+<div
+  id="lightbox-overlay"
+  class="lightbox-overlay"
+  data-open="false"
+  aria-hidden="true"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Image preview"
+>
+  <button id="lightbox-close" class="lightbox-close" aria-label="Close image preview"
+    >&times;</button
+  >
+  <img id="lightbox-image" class="lightbox-image" src="" alt="" />
+</div>
+
+<style>
+  .lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: oklch(0.05 0.018 258 / 0.86);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+
+  .lightbox-overlay[data-open="true"] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .lightbox-image {
+    max-width: min(92vw, 1200px);
+    max-height: 88vh;
+    border-radius: 0.75rem;
+    box-shadow: 0 24px 60px oklch(0.05 0.02 258 / 0.6);
+    transform: scale(0.96);
+    transition: transform 200ms ease;
+  }
+
+  .lightbox-overlay[data-open="true"] .lightbox-image {
+    transform: scale(1);
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.75rem;
+    line-height: 1;
+    color: white;
+    background: oklch(0.2 0.02 258 / 0.6);
+    border-radius: 9999px;
+    transition: background 150ms ease;
+  }
+
+  .lightbox-close:hover {
+    background: oklch(0.3 0.03 258 / 0.8);
+  }
+
+  :global(.prose img) {
+    cursor: zoom-in;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lightbox-overlay,
+    .lightbox-image {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  function initLightbox() {
+    const overlay = document.getElementById("lightbox-overlay");
+    const image = document.getElementById("lightbox-image") as HTMLImageElement | null;
+    const closeBtn = document.getElementById("lightbox-close");
+    if (!overlay || !image || !closeBtn) return;
+
+    const open = (src: string, alt: string) => {
+      image.src = src;
+      image.alt = alt;
+      overlay.dataset.open = "true";
+      overlay.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    };
+
+    const close = () => {
+      overlay.dataset.open = "false";
+      overlay.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    };
+
+    document.querySelectorAll<HTMLImageElement>(".prose img").forEach((img) => {
+      if (img.dataset.lightboxBound) return;
+      img.dataset.lightboxBound = "true";
+      img.addEventListener("click", () => open(img.currentSrc || img.src, img.alt));
+    });
+
+    closeBtn.addEventListener("click", close);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && overlay.dataset.open === "true") close();
+    });
+  }
+
+  initLightbox();
+  document.addEventListener("astro:page-load", initLightbox);
+</script>

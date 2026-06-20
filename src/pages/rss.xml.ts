@@ -10,28 +10,34 @@ export const GET: APIRoute = async ({ site }) => {
   if (!site) {
     throw new Error("No site data found");
   }
-  const posts = blog.map((post) => ({
-    title: post.data.title,
-    pubDate: post.data.releaseDate,
-    description: post.data.description,
-    link: `/blog/${post.id}/`,
-  }));
-  logs.forEach((post) => {
-    posts.push({
+  const posts = [
+    ...blog.map((post) => ({
+      title: post.data.title,
+      pubDate: post.data.releaseDate,
+      description: post.data.description,
+      link: `/blog/${post.id}/`,
+      customData: `<guid isPermaLink="true">${new URL(`/blog/${post.id}/`, site).href}</guid>`,
+      categories: post.data.tags,
+    })),
+    ...logs.map((post) => ({
       title: post.data.title,
       pubDate: post.data.releaseDate,
       description: post.data.description,
       link: `/dev-log/${post.id}/`,
-    });
-  });
-  snacks.forEach((post) => {
-    posts.push({
+      customData: `<guid isPermaLink="true">${new URL(`/dev-log/${post.id}/`, site).href}</guid>`,
+      categories: post.data.tags,
+    })),
+    ...snacks.map((post) => ({
       title: post.data.title,
       pubDate: post.data.releaseDate,
       description: post.data.description,
       link: `/snacks/${post.id}/`,
-    });
-  });
+      customData: `<guid isPermaLink="true">${new URL(`/snacks/${post.id}/`, site).href}</guid>`,
+      categories: post.data.tags,
+    })),
+  ].sort(
+    (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime(),
+  );
   return rss({
     title: "Maximilian Mauroner - Blog, Dev Log & Snacks",
     description:

@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "Geist";
+  src: url("/Geist/Geist-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/JetBrains_Mono/JetBrainsMono-VariableFont_wght.ttf")
+    format("truetype");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -166,6 +183,36 @@ h6 {
 .animate-terminal-blink {
   animation: terminal-blink 1s infinite step-end;
   color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .typing-animation,
+  .typing-animation-delayed {
+    opacity: 1;
+    animation: none !important;
+  }
+
+  .animate-terminal-cursor,
+  .animate-blink,
+  .animate-terminal-blink,
+  .animate-bounce,
+  .animate-pulse,
+  .animate-fade-in {
+    animation: none !important;
+  }
 }
 
 @layer utilities {

@@ -1,27 +1,17 @@
 import { useMemo } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
+import {
+  compareMessagesByTimestamp,
+  dateKeyFromMessage,
+  gapHoursBetweenMessages,
+} from "../datetime";
 
 export const SilentPeriods = ({ messages, persons }: GraphProps) => {
   const silentData = useMemo(() => {
     if (messages.length < 2) return null;
 
-    // Sort messages by date and time
-    const sortedMessages = [...messages].sort((a, b) => {
-      const [aDay, aMonth, aYear] = a.date.split("/").map(Number);
-      const [bDay, bMonth, bYear] = b.date.split("/").map(Number);
-      const aDate = new Date(aYear, aMonth - 1, aDay);
-      const bDate = new Date(bYear, bMonth - 1, bDay);
-
-      if (aDate.getTime() !== bDate.getTime()) {
-        return aDate.getTime() - bDate.getTime();
-      }
-
-      // If same date, sort by time
-      const [aHour, aMin] = a.time.split(":").map(Number);
-      const [bHour, bMin] = b.time.split(":").map(Number);
-      return aHour * 60 + aMin - (bHour * 60 + bMin);
-    });
+    const sortedMessages = [...messages].sort(compareMessagesByTimestamp);
 
     // Find silent periods and revival patterns
     const silentPeriods: {
@@ -39,25 +29,8 @@ export const SilentPeriods = ({ messages, persons }: GraphProps) => {
       const prevMsg = sortedMessages[i - 1];
       const currMsg = sortedMessages[i];
 
-      // Calculate time gap
-      const prevDate = new Date();
-      const [prevDay, prevMonth, prevYear] = prevMsg.date
-        .split("/")
-        .map(Number);
-      const [prevHour, prevMin] = prevMsg.time.split(":").map(Number);
-      prevDate.setFullYear(prevYear, prevMonth - 1, prevDay);
-      prevDate.setHours(prevHour, prevMin, 0, 0);
-
-      const currDate = new Date();
-      const [currDay, currMonth, currYear] = currMsg.date
-        .split("/")
-        .map(Number);
-      const [currHour, currMin] = currMsg.time.split(":").map(Number);
-      currDate.setFullYear(currYear, currMonth - 1, currDay);
-      currDate.setHours(currHour, currMin, 0, 0);
-
-      const gapHours =
-        (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60);
+      const gapHours = gapHoursBetweenMessages(prevMsg, currMsg);
+      if (gapHours === null) continue;
 
       // Consider silent periods of 4+ hours
       if (gapHours >= 4) {
@@ -98,7 +71,8 @@ export const SilentPeriods = ({ messages, persons }: GraphProps) => {
         revivals: reviverStats.get(person.id) || 0,
         percentage: 0, // Will be calculated after
       }))
-      .filter((stat) => stat.revivals > 0);
+      .filter((stat) => stat.revivals > 0)
+      .sort((a, b) => b.revivals - a.revivals);
 
     const totalRevivals = reviverStatsArray.reduce(
       (sum, stat) => sum + stat.revivals,
@@ -124,13 +98,8 @@ export const SilentPeriods = ({ messages, persons }: GraphProps) => {
     // Prepare timeline data (showing gaps over time)
     const timelineData: { date: string; gapHours: number }[] = [];
     silentPeriods.forEach((period) => {
-      const [day, month, year] = period.endDate
-        .split(" ")[0]
-        .split("/")
-        .map(Number);
-      const date = new Date(year, month - 1, day);
       timelineData.push({
-        date: date.toISOString().split("T")[0],
+        date: dateKeyFromMessage({ date: period.endDate.split(" ")[0] }),
         gapHours: period.gapHours,
       });
     });

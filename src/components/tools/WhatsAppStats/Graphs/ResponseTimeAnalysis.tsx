@@ -2,27 +2,17 @@ import { useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
+import {
+  compareMessagesByTimestamp,
+  gapHoursBetweenMessages,
+  isDifferentCalendarDay,
+} from "../datetime";
 
 export const ResponseTimeAnalysis = ({ messages, persons }: GraphProps) => {
   const responseTimeData = useMemo(() => {
     if (messages.length < 2) return null;
 
-    // Sort messages by date and time
-    const sortedMessages = [...messages].sort((a, b) => {
-      const [aDay, aMonth, aYear] = a.date.split("/").map(Number);
-      const [bDay, bMonth, bYear] = b.date.split("/").map(Number);
-      const aDate = new Date(aYear, aMonth - 1, aDay);
-      const bDate = new Date(bYear, bMonth - 1, bDay);
-
-      if (aDate.getTime() !== bDate.getTime()) {
-        return aDate.getTime() - bDate.getTime();
-      }
-
-      // If same date, sort by time
-      const [aHour, aMin] = a.time.split(":").map(Number);
-      const [bHour, bMin] = b.time.split(":").map(Number);
-      return aHour * 60 + aMin - (bHour * 60 + bMin);
-    });
+    const sortedMessages = [...messages].sort(compareMessagesByTimestamp);
 
     // Calculate response times
     const responseTimes: { responder: number; timeMinutes: number }[] = [];
@@ -35,28 +25,16 @@ export const ResponseTimeAnalysis = ({ messages, persons }: GraphProps) => {
       // Skip if same person (not a response)
       if (prevMsg.personId === currMsg.personId) continue;
 
-      // Calculate time difference
-      const prevDate = new Date();
-      const [prevDay, prevMonth, prevYear] = prevMsg.date
-        .split("/")
-        .map(Number);
-      const [prevHour, prevMin] = prevMsg.time.split(":").map(Number);
-      prevDate.setFullYear(prevYear, prevMonth - 1, prevDay);
-      prevDate.setHours(prevHour, prevMin, 0, 0);
+      const gapHours = gapHoursBetweenMessages(prevMsg, currMsg);
+      if (gapHours === null) continue;
 
-      const currDate = new Date();
-      const [currDay, currMonth, currYear] = currMsg.date
-        .split("/")
-        .map(Number);
-      const [currHour, currMin] = currMsg.time.split(":").map(Number);
-      currDate.setFullYear(currYear, currMonth - 1, currDay);
-      currDate.setHours(currHour, currMin, 0, 0);
+      const startsNewConversation =
+        gapHours > 4 ||
+        (isDifferentCalendarDay(prevMsg, currMsg) && gapHours > 1);
+      const diffMinutes = gapHours * 60;
 
-      const diffMinutes =
-        (currDate.getTime() - prevDate.getTime()) / (1000 * 60);
-
-      // Only consider responses within 24 hours
-      if (diffMinutes > 0 && diffMinutes <= 24 * 60) {
+      // Only consider replies inside the same conversation.
+      if (diffMinutes > 0 && diffMinutes <= 24 * 60 && !startsNewConversation) {
         responseTimes.push({
           responder: currMsg.personId,
           timeMinutes: diffMinutes,

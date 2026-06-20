@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Pie } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
+import { dateFromMessage } from "../datetime";
 
 export const MessagesPerPerson = ({ messages, persons }: GraphProps) => {
   const totalMessages = messages.length;
@@ -32,10 +33,11 @@ export const MessagesPerPerson = ({ messages, persons }: GraphProps) => {
       dayMap.set(dateKey, (dayMap.get(dateKey) || 0) + 1);
 
       // Track min/max date
-      const [day, month, year] = message.date.split("/").map(Number);
-      const msgDate = new Date(year, month - 1, day);
-      if (!minDate || msgDate < minDate) minDate = msgDate;
-      if (!maxDate || msgDate > maxDate) maxDate = msgDate;
+      const msgDate = dateFromMessage(message);
+      if (msgDate) {
+        if (!minDate || msgDate < minDate) minDate = msgDate;
+        if (!maxDate || msgDate > maxDate) maxDate = msgDate;
+      }
     }
 
     const colorMap = getParticipantColors(persons.map((p) => p.name));

@@ -1,27 +1,18 @@
 import { useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
+import {
+  compareMessagesByTimestamp,
+  dateFromMessage,
+  gapHoursBetweenMessages,
+  isDifferentCalendarDay,
+} from "../datetime";
 
 export const ThreadLengthDistribution = ({ messages, persons }: GraphProps) => {
   const threadData = useMemo(() => {
     if (messages.length < 2) return null;
 
-    // Sort messages by date and time
-    const sortedMessages = [...messages].sort((a, b) => {
-      const [aDay, aMonth, aYear] = a.date.split("/").map(Number);
-      const [bDay, bMonth, bYear] = b.date.split("/").map(Number);
-      const aDate = new Date(aYear, aMonth - 1, aDay);
-      const bDate = new Date(bYear, bMonth - 1, bDay);
-
-      if (aDate.getTime() !== bDate.getTime()) {
-        return aDate.getTime() - bDate.getTime();
-      }
-
-      // If same date, sort by time
-      const [aHour, aMin] = a.time.split(":").map(Number);
-      const [bHour, bMin] = b.time.split(":").map(Number);
-      return aHour * 60 + aMin - (bHour * 60 + bMin);
-    });
+    const sortedMessages = [...messages].sort(compareMessagesByTimestamp);
 
     // Find thread boundaries and calculate thread lengths
     const threads: {
@@ -36,63 +27,38 @@ export const ThreadLengthDistribution = ({ messages, persons }: GraphProps) => {
       participants: new Set([sortedMessages[0].personId]),
     };
 
+    const getThreadDurationHours = (
+      startTime: (typeof sortedMessages)[number],
+      endTime: (typeof sortedMessages)[number],
+    ) => {
+      const startDate = dateFromMessage(startTime);
+      const endDate = dateFromMessage(endTime);
+      if (!startDate || !endDate) return 0;
+      return Math.max(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60),
+        0,
+      );
+    };
+
     for (let i = 1; i < sortedMessages.length; i++) {
       const prevMsg = sortedMessages[i - 1];
       const currMsg = sortedMessages[i];
 
-      // Calculate time gap
-      const prevDate = new Date();
-      const [prevDay, prevMonth, prevYear] = prevMsg.date
-        .split("/")
-        .map(Number);
-      const [prevHour, prevMin] = prevMsg.time.split(":").map(Number);
-      prevDate.setFullYear(prevYear, prevMonth - 1, prevDay);
-      prevDate.setHours(prevHour, prevMin, 0, 0);
-
-      const currDate = new Date();
-      const [currDay, currMonth, currYear] = currMsg.date
-        .split("/")
-        .map(Number);
-      const [currHour, currMin] = currMsg.time.split(":").map(Number);
-      currDate.setFullYear(currYear, currMonth - 1, currDay);
-      currDate.setHours(currHour, currMin, 0, 0);
-
-      const gapHours =
-        (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60);
+      const gapHours = gapHoursBetweenMessages(prevMsg, currMsg);
+      if (gapHours === null) continue;
 
       // End thread if gap is more than 4 hours or different day with 1+ hour gap
-      const isDifferentDay =
-        prevDay !== currDay || prevMonth !== currMonth || prevYear !== currYear;
-      const isThreadEnd = gapHours > 4 || (isDifferentDay && gapHours > 1);
+      const isThreadEnd =
+        gapHours > 4 ||
+        (isDifferentCalendarDay(prevMsg, currMsg) && gapHours > 1);
 
       if (isThreadEnd) {
-        // Save current thread
-        const startDate = new Date();
-        const [startDay, startMonth, startYear] = currentThread.startTime.date
-          .split("/")
-          .map(Number);
-        const [startHour, startMin] = currentThread.startTime.time
-          .split(":")
-          .map(Number);
-        startDate.setFullYear(startYear, startMonth - 1, startDay);
-        startDate.setHours(startHour, startMin, 0, 0);
-
-        const endDate = new Date();
-        const [endDay, endMonth, endYear] = currentThread.endTime.date
-          .split("/")
-          .map(Number);
-        const [endHour, endMin] = currentThread.endTime.time
-          .split(":")
-          .map(Number);
-        endDate.setFullYear(endYear, endMonth - 1, endDay);
-        endDate.setHours(endHour, endMin, 0, 0);
-
-        const durationHours =
-          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-
         threads.push({
           length: currentThread.length,
-          durationHours: Math.max(durationHours, 0.1), // Minimum 6 minutes
+          durationHours: getThreadDurationHours(
+            currentThread.startTime,
+            currentThread.endTime,
+          ),
           participants: new Set(currentThread.participants),
         });
 
@@ -113,32 +79,12 @@ export const ThreadLengthDistribution = ({ messages, persons }: GraphProps) => {
 
     // Don't forget the last thread
     if (currentThread.length > 0) {
-      const startDate = new Date();
-      const [startDay, startMonth, startYear] = currentThread.startTime.date
-        .split("/")
-        .map(Number);
-      const [startHour, startMin] = currentThread.startTime.time
-        .split(":")
-        .map(Number);
-      startDate.setFullYear(startYear, startMonth - 1, startDay);
-      startDate.setHours(startHour, startMin, 0, 0);
-
-      const endDate = new Date();
-      const [endDay, endMonth, endYear] = currentThread.endTime.date
-        .split("/")
-        .map(Number);
-      const [endHour, endMin] = currentThread.endTime.time
-        .split(":")
-        .map(Number);
-      endDate.setFullYear(endYear, endMonth - 1, endDay);
-      endDate.setHours(endHour, endMin, 0, 0);
-
-      const durationHours =
-        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-
       threads.push({
         length: currentThread.length,
-        durationHours: Math.max(durationHours, 0.1),
+        durationHours: getThreadDurationHours(
+          currentThread.startTime,
+          currentThread.endTime,
+        ),
         participants: new Set(currentThread.participants),
       });
     }
@@ -182,10 +128,14 @@ export const ThreadLengthDistribution = ({ messages, persons }: GraphProps) => {
       threads.reduce((sum, t) => sum + t.length, 0) / threads.length;
     const avgDuration =
       threads.reduce((sum, t) => sum + t.durationHours, 0) / threads.length;
+    const sortedLengths = [...threads]
+      .map((thread) => thread.length)
+      .sort((a, b) => a - b);
+    const midpoint = Math.floor(sortedLengths.length / 2);
     const medianLength =
-      [...threads].sort((a, b) => a.length - b.length)[
-        Math.floor(threads.length / 2)
-      ]?.length || 0;
+      sortedLengths.length % 2 === 0
+        ? (sortedLengths[midpoint - 1] + sortedLengths[midpoint]) / 2
+        : sortedLengths[midpoint];
     const avgParticipants =
       threads.reduce((sum, t) => sum + t.participants.size, 0) / threads.length;
 

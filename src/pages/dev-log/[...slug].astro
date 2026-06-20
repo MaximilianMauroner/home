@@ -1,5 +1,5 @@
 ---
-import { getLogs } from "@/utils/server/content";
+import { getArticleOgImageUrl, getLogs } from "@/utils/server/content";
 import { render } from "astro:content";
 
 import dayjs from "dayjs";
@@ -30,6 +30,7 @@ const lastModified = dayjs(remarkPluginFrontmatter.lastModified)
   .toISOString();
 const publishedDate = dayjs(entry.data.releaseDate).utc().toISOString();
 const postUrl = new URL(Astro.url.pathname, Astro.site);
+const ogImageUrl = getArticleOgImageUrl(Astro.url.pathname, Astro.site);
 
 const schema = {
   "@context": "https://schema.org",
@@ -38,9 +39,12 @@ const schema = {
   description: entry.data.description,
   keywords: entry.data.tags.join(", "),
   url: postUrl.toString(),
-  image: entry.data.image
-    ? new URL(entry.data.image, Astro.site).toString()
-    : undefined,
+  image: {
+    "@type": "ImageObject",
+    url: ogImageUrl,
+    width: 1200,
+    height: 630,
+  },
   author: {
     "@type": "Person",
     name: "Maximilian Mauroner",

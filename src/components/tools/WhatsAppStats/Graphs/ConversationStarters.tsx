@@ -2,27 +2,17 @@ import { useMemo } from "react";
 import { Bar, Pie } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
+import {
+  compareMessagesByTimestamp,
+  gapHoursBetweenMessages,
+  isDifferentCalendarDay,
+} from "../datetime";
 
 export const ConversationStarters = ({ messages, persons }: GraphProps) => {
   const conversationData = useMemo(() => {
     if (messages.length < 2) return null;
 
-    // Sort messages by date and time
-    const sortedMessages = [...messages].sort((a, b) => {
-      const [aDay, aMonth, aYear] = a.date.split("/").map(Number);
-      const [bDay, bMonth, bYear] = b.date.split("/").map(Number);
-      const aDate = new Date(aYear, aMonth - 1, aDay);
-      const bDate = new Date(bYear, bMonth - 1, bDay);
-
-      if (aDate.getTime() !== bDate.getTime()) {
-        return aDate.getTime() - bDate.getTime();
-      }
-
-      // If same date, sort by time
-      const [aHour, aMin] = a.time.split(":").map(Number);
-      const [bHour, bMin] = b.time.split(":").map(Number);
-      return aHour * 60 + aMin - (bHour * 60 + bMin);
-    });
+    const sortedMessages = [...messages].sort(compareMessagesByTimestamp);
 
     // Find conversation starts
     const conversationStarts = new Map<number, number>();
@@ -35,33 +25,15 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
       const prevMsg = sortedMessages[i - 1];
       const currMsg = sortedMessages[i];
 
-      // Calculate time gap
-      const prevDate = new Date();
-      const [prevDay, prevMonth, prevYear] = prevMsg.date
-        .split("/")
-        .map(Number);
-      const [prevHour, prevMin] = prevMsg.time.split(":").map(Number);
-      prevDate.setFullYear(prevYear, prevMonth - 1, prevDay);
-      prevDate.setHours(prevHour, prevMin, 0, 0);
-
-      const currDate = new Date();
-      const [currDay, currMonth, currYear] = currMsg.date
-        .split("/")
-        .map(Number);
-      const [currHour, currMin] = currMsg.time.split(":").map(Number);
-      currDate.setFullYear(currYear, currMonth - 1, currDay);
-      currDate.setHours(currHour, currMin, 0, 0);
-
-      const gapHours =
-        (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60);
+      const gapHours = gapHoursBetweenMessages(prevMsg, currMsg);
+      if (gapHours === null) continue;
 
       // Consider a conversation starter if:
       // 1. Gap is more than 4 hours, OR
       // 2. It's a different day and gap is more than 1 hour
-      const isDifferentDay =
-        prevDay !== currDay || prevMonth !== currMonth || prevYear !== currYear;
       const isConversationStart =
-        gapHours > 4 || (isDifferentDay && gapHours > 1);
+        gapHours > 4 ||
+        (isDifferentCalendarDay(prevMsg, currMsg) && gapHours > 1);
 
       if (isConversationStart) {
         const count = conversationStarts.get(currMsg.personId) || 0;
@@ -213,7 +185,7 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
           Total conversations identified: {conversationData.totalStarts}
         </p>
         <div className="mt-2 space-y-1">
-          {conversationData.stats
+          {[...conversationData.stats]
             .sort((a, b) => b.starts - a.starts)
             .map((stat) => (
               <div key={stat.person} className="text-xs">

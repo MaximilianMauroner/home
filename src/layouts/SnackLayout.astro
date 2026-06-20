@@ -1,9 +1,12 @@
 ---
 import FontmatterTagsList from "@/components/content/FontmatterTagsList.astro";
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
+import ReadingProgress from "@/components/content/ReadingProgress";
+import RelatedPosts from "@/components/content/RelatedPosts.astro";
 import TableOfContents from "@/components/content/TableOfContents";
 import { type HeadingType } from "@/utils/types";
 import { timeAgo } from "@/utils/helpers";
+import { getArticleOgImageUrl, getArticleTrail } from "@/utils/server/content";
 import StarLayout from "./StarLayout.astro";
 
 interface Props {
@@ -14,6 +17,7 @@ interface Props {
     releaseDate: Date | string;
     image?: string;
     lastModified?: string;
+    minutesRead?: string;
   };
   headings?: HeadingType[];
 }
@@ -69,16 +73,30 @@ const snackSchemes = [
 const scheme = snackSchemes[colorSchemeIndex];
 const slugFromPath = Astro.url.pathname.replace(/^\/snacks\//, "").replace(/\/$/, "");
 const titleTransitionName = `snack-title-${slugFromPath.replaceAll("/", "-") || "snack"}`;
+const articleTrail = slugFromPath
+  ? await getArticleTrail("snacks", slugFromPath)
+  : { related: [] };
+const ogImageUrl = getArticleOgImageUrl(Astro.url.pathname, Astro.site);
+const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
+  "en-US",
+  {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  },
+);
 ---
 
 <StarLayout
   description={frontmatter.description || ""}
   title={frontmatter.title}
   image={frontmatter.image}
+  ogImageUrl={ogImageUrl}
   articlePublishedTime={new Date(frontmatter.releaseDate).toISOString()}
   articleModifiedTime={articleModifiedTime}
   articleAuthor="Maximilian Mauroner"
 >
+  <ReadingProgress client:load />
   <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
     {/* Snack-style Header - like a note card */}
     <header
@@ -171,6 +189,20 @@ const titleTransitionName = `snack-title-${slugFromPath.replaceAll("/", "-") || 
           <div class="text-gray-600 dark:text-gray-400 font-serif italic">
             {timeAgo(new Date(frontmatter.releaseDate))}
           </div>
+          {
+            frontmatter.minutesRead && (
+              <>
+                <div class="text-gray-600 dark:text-gray-400">•</div>
+                <div class="text-gray-600 dark:text-gray-400 font-serif italic">
+                  {frontmatter.minutesRead}
+                </div>
+              </>
+            )
+          }
+          <div class="text-gray-600 dark:text-gray-400">•</div>
+          <div class="text-gray-600 dark:text-gray-400 font-serif italic">
+            Updated {updatedDateLabel}
+          </div>
         </div>
 
         {/* Title - handwritten style */}
@@ -227,6 +259,11 @@ const titleTransitionName = `snack-title-${slugFromPath.replaceAll("/", "-") || 
       )
     }
   </div>
+  <RelatedPosts
+    previous={articleTrail.previous}
+    next={articleTrail.next}
+    items={articleTrail.related}
+  />
 </StarLayout>
 
 <style>
@@ -255,5 +292,11 @@ const titleTransitionName = `snack-title-${slugFromPath.replaceAll("/", "-") || 
 
   .animate-fade-in {
     animation: fade-in 0.6s ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in {
+      animation: none !important;
+    }
   }
 </style>

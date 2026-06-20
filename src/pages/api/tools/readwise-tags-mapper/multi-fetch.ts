@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 
 import {
   extractHashtags,
-  getDocuments,
+  getDocumentPage,
 } from "@/components/tools/ReadwiseTagsMapper/utils/readwise";
 import { getAccessTokenFromRequest } from "@/components/tools/ReadwiseTagsMapper/utils/session";
 
@@ -30,12 +30,18 @@ export const POST: APIRoute = async ({ request }) => {
       ? body.cursor
       : null;
 
-  const docs = await getDocuments(token, locations, categories, cursor);
+  const { docs, nextPageCursor } = await getDocumentPage(
+    token,
+    locations,
+    categories,
+    cursor,
+  );
 
-  return Response.json(
-    docs.map((doc) => ({
+  return Response.json({
+    docs: docs.map((doc) => ({
       doc,
       tags: extractHashtags(doc?.summary),
     })),
-  );
+    nextPageCursor,
+  });
 };

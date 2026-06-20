@@ -67,7 +67,19 @@ const getTypeStyle = (type: "blog" | "log" | "snack") => {
 export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
   const [allItems, setAllItems] = useState<TimelineItem[]>([]);
   const [isVisible, setIsVisible] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => {
+      setPrefersReducedMotion(media.matches);
+      if (media.matches) setIsVisible(true);
+    };
+    updatePreference();
+    media.addEventListener("change", updatePreference);
+    return () => media.removeEventListener("change", updatePreference);
+  }, []);
 
   useEffect(() => {
     // Combine all items and sort by date
@@ -93,6 +105,11 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
   }, [blogs, logs, snacks]);
 
   useEffect(() => {
+    if (prefersReducedMotion) {
+      setIsVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -111,9 +128,11 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
         observer.unobserve(timelineRef.current);
       }
     };
-  }, []);
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
+    if (prefersReducedMotion) return;
+
     // Enable scroll snap on html for smooth snap scrolling when timeline is visible
     const html = document.documentElement;
     const observer = new IntersectionObserver(
@@ -141,7 +160,7 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
       html.style.scrollBehavior = "";
       html.style.scrollPaddingTop = "";
     };
-  }, []);
+  }, [prefersReducedMotion]);
 
   return (
     <section
@@ -161,8 +180,13 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
             className="mb-4 text-4xl font-extrabold tracking-tight text-gray-900 lg:text-5xl dark:text-gray-100"
             style={{
               opacity: isVisible ? 1 : 0,
-              transform: isVisible ? "translateY(0)" : "translateY(20px)",
-              transition: "opacity 0.6s ease-out, transform 0.6s ease-out",
+              transform:
+                prefersReducedMotion || isVisible
+                  ? "translateY(0)"
+                  : "translateY(20px)",
+              transition: prefersReducedMotion
+                ? "none"
+                : "opacity 0.6s ease-out, transform 0.6s ease-out",
             }}
           >
             timeline
@@ -171,9 +195,13 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
             className="text-lg font-light text-gray-600 sm:text-xl dark:text-gray-400"
             style={{
               opacity: isVisible ? 1 : 0,
-              transform: isVisible ? "translateY(0)" : "translateY(20px)",
-              transition:
-                "opacity 0.8s ease-out 0.2s, transform 0.8s ease-out 0.2s",
+              transform:
+                prefersReducedMotion || isVisible
+                  ? "translateY(0)"
+                  : "translateY(20px)",
+              transition: prefersReducedMotion
+                ? "none"
+                : "opacity 0.8s ease-out 0.2s, transform 0.8s ease-out 0.2s",
             }}
           >
             all posts, logs, and snacks sorted by date
@@ -186,14 +214,18 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
           <div
             className="absolute bottom-0 left-4 top-0 w-1 bg-gradient-to-b from-indigo-500/50 via-purple-500/50 to-pink-500/50 md:left-1/2 md:-translate-x-1/2 dark:from-indigo-400/30 dark:via-purple-400/30 dark:to-pink-400/30"
             style={{
-              animation: isVisible ? "drawLine 2s ease-out forwards" : "none",
+              animation:
+                isVisible && !prefersReducedMotion
+                  ? "drawLine 2s ease-out forwards"
+                  : "none",
             }}
           />
 
           {/* Timeline Items */}
           <div className="space-y-32 lg:space-y-40">
             {allItems.map((timelineItem, index) => {
-              const animationDelay = isVisible ? index * 150 : 0;
+              const animationDelay =
+                isVisible && !prefersReducedMotion ? index * 150 : 0;
               const typeStyle = getTypeStyle(timelineItem.type);
               const isLeft = index % 2 === 0;
 
@@ -218,10 +250,14 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
                       className={`ml-8 w-[calc(100%-2rem)] ${isLeft ? "md:ml-0 md:mr-auto md:w-[calc(50%-3rem)]" : "md:hidden"}`}
                       style={{
                         opacity: isVisible ? 1 : 0,
-                        transform: isVisible
-                          ? `translateX(${offsetX}px) scale(1)`
-                          : "translateX(-100px) scale(0.95)",
-                        transition: `opacity 0.8s ease-out ${animationDelay}ms, transform 0.8s ease-out ${animationDelay}ms`,
+                        transform: prefersReducedMotion
+                          ? "translateX(0) scale(1)"
+                          : isVisible
+                            ? `translateX(${offsetX}px) scale(1)`
+                            : "translateX(-100px) scale(0.95)",
+                        transition: prefersReducedMotion
+                          ? "none"
+                          : `opacity 0.8s ease-out ${animationDelay}ms, transform 0.8s ease-out ${animationDelay}ms`,
                       }}
                     >
                       {timelineItem.type === "blog" && (
@@ -259,7 +295,9 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
                         className={`transition-duration-[600ms] absolute left-full h-0.5 bg-gradient-to-r from-indigo-500/30 to-transparent transition-all ${isVisible ? "w-8 md:w-24" : "w-0"} ${isLeft ? "md:left-full md:from-indigo-500/30 md:to-transparent" : "md:left-auto md:right-full md:from-transparent md:to-indigo-500/30"}`}
                         style={{
                           opacity: isVisible ? 1 : 0,
-                          transitionDelay: `${animationDelay + 300}ms`,
+                          transitionDelay: prefersReducedMotion
+                            ? "0ms"
+                            : `${animationDelay + 300}ms`,
                         }}
                       />
 
@@ -268,8 +306,13 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
                         className={`relative ${typeStyle.dot} h-3 w-3 rounded-full border-2 border-white shadow-lg md:h-4 md:w-4 dark:border-gray-950`}
                         style={{
                           opacity: isVisible ? 1 : 0,
-                          transform: isVisible ? "scale(1)" : "scale(0)",
-                          transition: `opacity 0.5s ease-out ${animationDelay + 200}ms, transform 0.5s ease-out ${animationDelay + 200}ms`,
+                          transform:
+                            prefersReducedMotion || isVisible
+                              ? "scale(1)"
+                              : "scale(0)",
+                          transition: prefersReducedMotion
+                            ? "none"
+                            : `opacity 0.5s ease-out ${animationDelay + 200}ms, transform 0.5s ease-out ${animationDelay + 200}ms`,
                         }}
                       />
                     </div>
@@ -280,10 +323,14 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
                         className="hidden md:ml-auto md:mr-0 md:block md:w-[calc(50%-3rem)]"
                         style={{
                           opacity: isVisible ? 1 : 0,
-                          transform: isVisible
-                            ? `translateX(${-offsetX}px) scale(1)`
-                            : "translateX(100px) scale(0.95)",
-                          transition: `opacity 0.8s ease-out ${animationDelay}ms, transform 0.8s ease-out ${animationDelay}ms`,
+                          transform: prefersReducedMotion
+                            ? "translateX(0) scale(1)"
+                            : isVisible
+                              ? `translateX(${-offsetX}px) scale(1)`
+                              : "translateX(100px) scale(0.95)",
+                          transition: prefersReducedMotion
+                            ? "none"
+                            : `opacity 0.8s ease-out ${animationDelay}ms, transform 0.8s ease-out ${animationDelay}ms`,
                         }}
                       >
                         {timelineItem.type === "blog" && (
@@ -327,8 +374,13 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
             className="relative mt-16 flex justify-center"
             style={{
               opacity: isVisible ? 1 : 0,
-              transform: isVisible ? "translateY(0)" : "translateY(20px)",
-              transition: "opacity 0.8s ease-out, transform 0.8s ease-out",
+              transform:
+                prefersReducedMotion || isVisible
+                  ? "translateY(0)"
+                  : "translateY(20px)",
+              transition: prefersReducedMotion
+                ? "none"
+                : "opacity 0.8s ease-out, transform 0.8s ease-out",
             }}
           >
             <div className="relative z-10 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-xl dark:border-gray-950">

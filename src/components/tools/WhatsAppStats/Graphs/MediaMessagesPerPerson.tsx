@@ -1,22 +1,13 @@
 import { Pie } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
+import { isMediaPlaceholder } from "../messageClassification";
 
 export const MediaMessagesPerPerson = ({ messages, persons }: GraphProps) => {
-  const isMediaMessage = (text: string): boolean => {
-    // Media message patterns for both Android and macOS formats
-    const mediaPatterns = [
-      /^(image|video|audio|document|sticker|gif|contact|location) omitted$/i, // macOS format
-      /^<Media omitted>$/i, // Android format
-    ];
-
-    return mediaPatterns.some((pattern) => pattern.test(text.trim()));
-  };
-
   let totalMedia = 0;
   const mediaMessagesPerPerson = new Map<number, number>();
   for (const message of messages) {
-    if (isMediaMessage(message.text)) {
+    if (isMediaPlaceholder(message.text)) {
       const personId = message.personId;
       const count = mediaMessagesPerPerson.get(personId) || 0;
       mediaMessagesPerPerson.set(personId, count + 1);

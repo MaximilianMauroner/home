@@ -15,7 +15,6 @@ const navigation = [
     href: "/tags/",
     regex: "^/tags",
     current: false,
-    defaultHidden: true,
   },
 ];
 
@@ -34,9 +33,7 @@ navigation.forEach((item) => {
   item.current = regex.test(pathname);
 });
 
-const visibleNavigation = navigation.filter(
-  (item) => !item.defaultHidden || item.current
-);
+const visibleNavigation = navigation;
 const currentNavigation = navigation.filter((item) => item.current);
 const mobileMenuNavigation = navigation;
 ---

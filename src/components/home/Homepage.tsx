@@ -214,7 +214,16 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
     position: { x: number; y: number };
   } | null>(null);
   const [showHint, setShowHint] = useState(true);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => setPrefersReducedMotion(media.matches);
+    updatePreference();
+    media.addEventListener("change", updatePreference);
+    return () => media.removeEventListener("change", updatePreference);
+  }, []);
 
   // Transform the entries to match ContentItem format
   const transformedBlogs: ContentItem[] = blogs.map((blog) => ({
@@ -297,6 +306,11 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
     setName: Dispatch<SetStateAction<string>>,
     ogValue: string,
   ) => {
+    if (prefersReducedMotion) {
+      setName(ogValue);
+      return;
+    }
+
     let iteration = 0;
 
     const stringRemap = (str: string, iteration: number) => {
@@ -333,7 +347,7 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
     // Hide the hint after first interaction or after 10 seconds
     const timer = setTimeout(() => setShowHint(false), 10000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [prefersReducedMotion]);
 
   const downArrow = (
     <svg
@@ -381,11 +395,11 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
   const scrollToTimeline = useCallback(() => {
     if (timelineRef.current) {
       timelineRef.current.scrollIntoView({
-        behavior: "smooth",
+        behavior: prefersReducedMotion ? "auto" : "smooth",
         block: "start",
       });
     }
-  }, []);
+  }, [prefersReducedMotion]);
 
   return (
     <div className="relative min-h-screen bg-transparent text-indigo-700 dark:text-indigo-300">
@@ -415,7 +429,7 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
                     setShowHint(false);
                   }}
                   className={`cursor-pointer transition-all hover:scale-110 hover:text-violet-300 ${
-                    index === 0 && showHint
+                    index === 0 && showHint && !prefersReducedMotion
                       ? "relative before:absolute before:-inset-6 before:animate-wave-pulse-delayed before:rounded-full before:border before:border-violet-400/10 after:absolute after:-inset-3 after:animate-wave-pulse after:rounded-full after:border after:border-violet-400/20"
                       : ""
                   }`}
@@ -531,6 +545,7 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
 
 const AgeCalculator = () => {
   const birthday = new Date("2000-03-13 04:00:00");
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   const getDiff = (precision = 9) => {
     const now = dayjs();
@@ -541,17 +556,32 @@ const AgeCalculator = () => {
   const [age, setAge] = useState(getDiff(2) + "0000000");
 
   useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => setPrefersReducedMotion(media.matches);
+    updatePreference();
+    media.addEventListener("change", updatePreference);
+    return () => media.removeEventListener("change", updatePreference);
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setAge(getDiff(2));
+      return;
+    }
+
     // Small delay for smoother transition
+    let interval: ReturnType<typeof setInterval> | undefined;
     const timer = setTimeout(() => {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         setAge(getDiff());
       }, 50);
-
-      return () => clearInterval(interval);
     }, 100);
 
-    return () => clearTimeout(timer);
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      if (interval) clearInterval(interval);
+    };
+  }, [prefersReducedMotion]);
 
   return <>{age}</>;
 };

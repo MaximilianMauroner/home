@@ -2,6 +2,13 @@ import { useMemo, useState } from "react";
 import { Line } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
+import {
+  compareMessagesByTimestamp,
+  dateFromMessage,
+  dateKeyFromMessage,
+  enumerateDateKeys,
+} from "../datetime";
+import { isTextualMessage } from "../messageClassification";
 
 interface DayOption {
   value: number;
@@ -24,23 +31,24 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
   const chartData = useMemo(() => {
     if (!messages.length) return null;
 
-    // Group messages by date and person
     const messagesPerDatePerPerson = new Map<string, Map<number, number>>();
     const wordsPerDatePerPerson = new Map<string, Map<number, number>>();
-
-    // Parse all dates and sort them
-    const allDates = new Set<string>();
+    const sortedMessages = [...messages].sort(compareMessagesByTimestamp);
+    const firstDate = dateFromMessage(sortedMessages[0]);
+    const lastDate = dateFromMessage(sortedMessages[sortedMessages.length - 1]);
+    if (!firstDate || !lastDate) return null;
+    const sortedDates = enumerateDateKeys(firstDate, lastDate);
 
     for (const message of messages) {
-      allDates.add(message.date);
+      const dateKey = dateKeyFromMessage(message);
 
-      if (!messagesPerDatePerPerson.has(message.date)) {
-        messagesPerDatePerPerson.set(message.date, new Map());
-        wordsPerDatePerPerson.set(message.date, new Map());
+      if (!messagesPerDatePerPerson.has(dateKey)) {
+        messagesPerDatePerPerson.set(dateKey, new Map());
+        wordsPerDatePerPerson.set(dateKey, new Map());
       }
 
-      const messageMap = messagesPerDatePerPerson.get(message.date)!;
-      const wordMap = wordsPerDatePerPerson.get(message.date)!;
+      const messageMap = messagesPerDatePerPerson.get(dateKey)!;
+      const wordMap = wordsPerDatePerPerson.get(dateKey)!;
 
       // Count messages
       messageMap.set(
@@ -49,7 +57,7 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
       );
 
       // Count words
-      const wordCount = message.text
+      const wordCount = isTextualMessage(message.text)
         ? message.text.trim().split(/\s+/).length
         : 0;
       wordMap.set(
@@ -57,15 +65,6 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
         (wordMap.get(message.personId) || 0) + wordCount,
       );
     }
-
-    // Convert dates to sorted array
-    const sortedDates = Array.from(allDates).sort((a, b) => {
-      const [dayA, monthA, yearA] = a.split("/").map(Number);
-      const [dayB, monthB, yearB] = b.split("/").map(Number);
-      const dateA = new Date(yearA, monthA - 1, dayA);
-      const dateB = new Date(yearB, monthB - 1, dayB);
-      return dateA.getTime() - dateB.getTime();
-    });
 
     // Calculate running averages for each person
     const runningAverages = new Map<number, number[]>();

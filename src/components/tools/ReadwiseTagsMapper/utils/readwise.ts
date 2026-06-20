@@ -158,6 +158,36 @@ const fetchDocumentListApi = async (
   return fullData;
 };
 
+const fetchDocumentListPageApi = async (
+  token: string,
+  options: FetchDocumentListOptions = {},
+) => {
+  const queryParams = new URLSearchParams();
+  if (options.pageCursor) queryParams.append("pageCursor", options.pageCursor);
+  if (options.id) queryParams.append("id", options.id);
+  if (options.updatedAfter)
+    queryParams.append("updatedAfter", options.updatedAfter);
+  if (options.location) queryParams.append("location", options.location);
+  if (options.category) queryParams.append("category", options.category);
+  if (options.tags) {
+    options.tags
+      .filter((tag) => tag !== undefined)
+      .forEach((tag) => queryParams.append("tag", tag ?? ""));
+  }
+  if (typeof options.withHtmlContent === "boolean")
+    queryParams.append("withHtmlContent", String(options.withHtmlContent));
+  if (typeof options.withRawSourceUrl === "boolean")
+    queryParams.append("withRawSourceUrl", String(options.withRawSourceUrl));
+
+  const url = "https://readwise.io/api/v3/list/?" + queryParams.toString();
+  const response = await fetchWrapper<ReadwiseListResponse>(url, {
+    method: "GET",
+    authToken: token,
+  });
+
+  return readwiseListResponseSchema.parse(response);
+};
+
 export const updateDocumentApi = async (
   token: string,
   id: string,
@@ -206,6 +236,41 @@ export const getDocuments = async (
     }
   }
   return allDocs;
+};
+
+export const getDocumentPage = async (
+  token: string,
+  locations: string[],
+  categories: string[],
+  pageCursor: string | null = null,
+) => {
+  const selectedLocations = locations.length > 0 ? locations : ["archive"];
+  const selectedCategories = categories.length > 0 ? categories : ["article"];
+  const docs: ReadwiseItem[] = [];
+  let nextPageCursor: string | null = null;
+  const hasSingleFilterPair =
+    selectedLocations.length === 1 && selectedCategories.length === 1;
+
+  for (const loc of selectedLocations) {
+    const location = locationEnum.parse(loc);
+    for (const cat of selectedCategories) {
+      const category = categoryEnum.parse(cat);
+      const page = await fetchDocumentListPageApi(token, {
+        location,
+        category,
+        pageCursor: hasSingleFilterPair ? pageCursor : null,
+      });
+      docs.push(...page.results);
+      if (hasSingleFilterPair) {
+        nextPageCursor = page.nextPageCursor;
+      }
+    }
+  }
+
+  return {
+    docs,
+    nextPageCursor,
+  };
 };
 
 export const extractHashtags = (

@@ -1,7 +1,10 @@
 ---
 import "@/components/tools/toolStyles.css";
 import StarLayout from "@/layouts/StarLayout.astro";
-import { isToolActive } from "@/components/tools/toolCatalog.mjs";
+import {
+  getToolMetadata,
+  isToolActive,
+} from "@/components/tools/toolCatalog.mjs";
 import { getToolThemeClass } from "@/components/tools/toolTheme";
 
 const tools = import.meta.glob("./*/*.astro");
@@ -16,15 +19,37 @@ for (const path in tools) {
   const url = path.replace("src/pages", "").replace("/index.astro", "");
   const slug = url.split("/").filter(Boolean).pop() ?? "";
   if (tool.active === false || !isToolActive(slug)) continue;
+  const metadata = getToolMetadata(slug);
+  const chips = Array.from(
+    new Set(
+      [
+        metadata.category,
+        metadata.privacy === "account"
+          ? "account required"
+          : metadata.privacy === "local"
+            ? "local"
+            : metadata.privacy,
+        metadata.access !== "local" ? metadata.access : undefined,
+        ...metadata.labels,
+      ].filter(Boolean),
+    ),
+  );
   toolPages.push({
     title: tool.title,
     description: tool.description,
     url,
     slug,
+    ...metadata,
+    chips,
   });
 }
 
-toolPages.sort((first, second) => first.title.localeCompare(second.title));
+toolPages.sort((first, second) => {
+  if (second.featured !== first.featured) {
+    return second.featured - first.featured;
+  }
+  return first.title.localeCompare(second.title);
+});
 
 const breadcrumbSchema = {
   "@context": "https://schema.org",
@@ -46,6 +71,7 @@ const breadcrumbSchema = {
 };
 
 const toolCount = toolPages.length;
+const categories = Array.from(new Set(toolPages.map((tool) => tool.category)));
 ---
 
 <StarLayout
@@ -70,6 +96,15 @@ const toolCount = toolPages.length;
           {toolCount} tool{toolCount === 1 ? "" : "s"}
         </p>
       </div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        {
+          categories.map((category) => (
+            <span class="rounded-full border border-border/70 px-3 py-1 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              {category}
+            </span>
+          ))
+        }
+      </div>
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -83,13 +118,18 @@ const toolCount = toolPages.length;
               <div class="flex items-start justify-between gap-4">
                 <div class="flex min-w-0 items-center gap-3">
                   <span class="tool-accent-mark" aria-hidden="true" />
-                  <h2 class="text-lg font-semibold text-foreground">
+                  <h2 class="text-lg font-semibold leading-tight text-foreground">
                     {tool.title}
                   </h2>
                 </div>
-                <span class="font-mono text-xs text-muted-foreground">
-                  {tool.slug}
+                <span class="shrink-0 rounded-full bg-muted px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+                  {tool.status}
                 </span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                {tool.chips.map((label: string) => (
+                  <span class="tool-catalog-pill">{label}</span>
+                ))}
               </div>
               <p class="line-clamp-3 text-sm leading-6 text-muted-foreground">
                 {tool.description}

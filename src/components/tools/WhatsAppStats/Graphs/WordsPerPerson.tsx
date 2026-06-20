@@ -4,56 +4,57 @@ import type { GraphProps } from "./types";
 import { getParticipantColors, EMOJI_PATTERN } from "./utils";
 
 export const WordsPerPerson = ({ messages, persons }: GraphProps) => {
-  let totalMessages = 0;
+  const { messagesPerPerson, wordCountsPerPerson, pieData, totalWords } =
+    useMemo(() => {
+      const messagesPerPerson = new Map<number, number>();
+      const wordCountsPerPerson = new Map<number, number[]>();
+      let totalWords = 0;
+      for (const message of messages) {
+        const personId = message.personId;
+        const count = messagesPerPerson.get(personId) || 0;
+        const wordCount = message.text
+          .replace(EMOJI_PATTERN, "")
+          .trim()
+          .split(/\s+/).length;
+        totalWords += wordCount;
+        messagesPerPerson.set(personId, count + wordCount);
 
-  const { messagesPerPerson, wordCountsPerPerson, pieData } = useMemo(() => {
-    const messagesPerPerson = new Map<number, number>();
-    const wordCountsPerPerson = new Map<number, number[]>();
-    for (const message of messages) {
-      const personId = message.personId;
-      const count = messagesPerPerson.get(personId) || 0;
-      const wordCount = message.text
-        .replace(EMOJI_PATTERN, "")
-        .trim()
-        .split(/\s+/).length;
-      totalMessages += wordCount;
-      messagesPerPerson.set(personId, count + wordCount);
+        if (!wordCountsPerPerson.has(personId)) {
+          wordCountsPerPerson.set(personId, []);
+        }
+        wordCountsPerPerson.get(personId)!.push(wordCount);
 
-      if (!wordCountsPerPerson.has(personId)) {
-        wordCountsPerPerson.set(personId, []);
+        // Track messages per day per person
       }
-      wordCountsPerPerson.get(personId)!.push(wordCount);
 
-      // Track messages per day per person
-    }
+      const colorMap = getParticipantColors(persons.map((p) => p.name));
+      const labels = persons.map((p) => p.name);
+      const backgroundColor = persons.map((p) => colorMap[p.name].bg);
+      const borderColor = persons.map((p) => colorMap[p.name].border);
+      const pieData = {
+        labels,
+        datasets: [
+          {
+            label: "Words per user",
+            data: persons.map((p) => messagesPerPerson.get(p.id) || 0),
+            backgroundColor,
+            borderColor,
+            borderWidth: 2,
+          },
+        ],
+      };
 
-    const colorMap = getParticipantColors(persons.map((p) => p.name));
-    const labels = persons.map((p) => p.name);
-    const backgroundColor = persons.map((p) => colorMap[p.name].bg);
-    const borderColor = persons.map((p) => colorMap[p.name].border);
-    const pieData = {
-      labels,
-      datasets: [
-        {
-          label: "Words per user",
-          data: persons.map((p) => messagesPerPerson.get(p.id) || 0),
-          backgroundColor,
-          borderColor,
-          borderWidth: 2,
-        },
-      ],
-    };
-
-    return {
-      messagesPerPerson,
-      wordCountsPerPerson,
-      colorMap,
-      labels,
-      backgroundColor,
-      borderColor,
-      pieData,
-    };
-  }, [messages, persons]);
+      return {
+        messagesPerPerson,
+        wordCountsPerPerson,
+        colorMap,
+        labels,
+        backgroundColor,
+        borderColor,
+        pieData,
+        totalWords,
+      };
+    }, [messages, persons]);
 
   // Pie chart options with custom tooltip
   const pieOptions = useMemo(
@@ -100,7 +101,7 @@ export const WordsPerPerson = ({ messages, persons }: GraphProps) => {
         Words per Participant
       </h3>
       <p className="mb-4 text-sm text-muted-foreground">
-        Total Words: {totalMessages}
+        Total Words: {totalWords}
       </p>
       <div className="mx-auto aspect-square w-full">
         <Pie data={pieData} options={pieOptions} />

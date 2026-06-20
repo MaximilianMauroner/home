@@ -8,19 +8,22 @@ export const EmojiActivity = ({ messages, persons }: GraphProps) => {
     const emojiMap = new Map<string, number>();
     const emojiPerPerson: Record<string, Record<number, number>> = {};
 
+    const segmenter =
+      typeof Intl !== "undefined" && "Segmenter" in Intl
+        ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+        : null;
+
     messages.forEach((msg) => {
-      const emojis = msg.text.match(EMOJI_PATTERN);
+      const graphemes = segmenter
+        ? Array.from(segmenter.segment(msg.text), (segment) => segment.segment)
+        : Array.from(msg.text);
+      const emojis = graphemes.filter((grapheme) => {
+        const matches = grapheme.match(EMOJI_PATTERN);
+        return matches && grapheme.replace(EMOJI_PATTERN, "").trim() === "";
+      });
       if (emojis) {
         emojis.forEach((emoji) => {
-          // Skip if the emoji is a number (e.g., "1", "2", etc.)
-          if (!isNaN(Number(emoji))) return;
-          if (
-            emoji === "*" ||
-            emoji === "️" ||
-            emoji === "🏻" ||
-            emoji === "🏼"
-          )
-            return;
+          if (!Number.isNaN(Number(emoji)) || emoji === "*") return;
           emojiMap.set(emoji, (emojiMap.get(emoji) || 0) + 1);
           if (!emojiPerPerson[emoji]) emojiPerPerson[emoji] = {};
           emojiPerPerson[emoji][msg.personId] =

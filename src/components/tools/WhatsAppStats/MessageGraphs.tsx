@@ -1,4 +1,5 @@
 import type { Message, Person } from "./db";
+import { isTextualMessage } from "./messageClassification";
 import {
   GitHubStyleChart,
   MessagesPerPerson,
@@ -13,7 +14,6 @@ import {
   ConversationStarters,
   ThreadLengthDistribution,
   SilentPeriods,
-  EMOJI_PATTERN,
 } from "./Graphs";
 
 export default function MessageGraphs({
@@ -24,16 +24,17 @@ export default function MessageGraphs({
   persons: Person[];
 }) {
   if (!messages || messages.length === 0) {
-    return null;
+    return (
+      <div className="mt-4 rounded-lg border p-4 text-sm text-muted-foreground">
+        No messages found for this chat and year.
+      </div>
+    );
   }
   const year = messages[0].year;
 
   const filteredMessages = messages.filter((e) => {
-    // Filter out media messages and messages that only contain emojis (ignoring whitespace)
-    return (
-      e.text !== "<Media omitted>" &&
-      e.text.replace(EMOJI_PATTERN, "").trim().length > 0
-    );
+    // Filter out media/deleted placeholders and emoji-only messages.
+    return isTextualMessage(e.text);
   });
 
   return (
@@ -69,7 +70,7 @@ export default function MessageGraphs({
           <EmojiActivity messages={messages} persons={persons} />
         </div>
         <div className="col-span-2 rounded-lg border p-1 sm:p-4">
-          <WordActivity messages={messages} persons={persons} />
+          <WordActivity messages={filteredMessages} persons={persons} />
         </div>
         <div className="col-span-2 rounded-lg border p-1 sm:p-4">
           <ResponseTimeAnalysis messages={messages} persons={persons} />

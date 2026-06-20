@@ -1,0 +1,98 @@
+---
+import type {
+  AdjacentContentItem,
+  RelatedItem,
+} from "@/utils/server/content";
+
+interface Props {
+  items: RelatedItem[];
+  previous?: AdjacentContentItem;
+  next?: AdjacentContentItem;
+}
+
+const { items, previous, next } = Astro.props;
+
+const kindLabel: Record<RelatedItem["kind"], string> = {
+  blog: "blog",
+  "dev-log": "dev-log",
+  snacks: "snack",
+  tool: "tool",
+};
+
+const hasRelated = items.length > 0;
+---
+
+{
+  (items.length > 0 || previous || next) && (
+    <aside
+      class="mx-auto mt-16 max-w-5xl px-4 sm:px-6 lg:px-8"
+      aria-label="Article trails"
+    >
+      {!hasRelated && (previous || next) && (
+        <nav class="mb-10 grid gap-4 sm:grid-cols-2" aria-label="Previous and next">
+          {previous && (
+            <a
+              href={previous.url}
+              class="group rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur-sm transition-all hover:border-indigo-500/50 hover:bg-card/90"
+            >
+              <span class="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                Previous
+              </span>
+              <span class="mt-2 block font-semibold text-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                {previous.title}
+              </span>
+            </a>
+          )}
+          {next && (
+            <a
+              href={next.url}
+              class="group rounded-2xl border border-border/60 bg-card/60 p-5 text-right backdrop-blur-sm transition-all hover:border-indigo-500/50 hover:bg-card/90 sm:col-start-2"
+            >
+              <span class="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                Next
+              </span>
+              <span class="mt-2 block font-semibold text-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                {next.title}
+              </span>
+            </a>
+          )}
+        </nav>
+      )}
+
+      {hasRelated && (
+        <>
+          <h2 class="mb-6 font-mono text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Related
+          </h2>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {items.map((item) => (
+              <a
+                href={item.url}
+                class="group relative flex flex-col gap-2 rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur-sm transition-all hover:border-indigo-500/50 hover:bg-card/90"
+              >
+                <span
+                  class:list={[
+                    "w-fit rounded-full px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider",
+                    item.kind === "tool"
+                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                      : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+                  ]}
+                >
+                  {kindLabel[item.kind]}
+                </span>
+                <span class="font-semibold text-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                  {item.title}
+                </span>
+                {item.description && (
+                  <span class="line-clamp-2 text-sm text-muted-foreground">
+                    {item.description}
+                  </span>
+                )}
+              </a>
+            ))}
+          </div>
+        </>
+      )}
+    </aside>
+  )
+}
