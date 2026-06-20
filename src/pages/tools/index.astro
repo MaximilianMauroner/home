@@ -1,6 +1,7 @@
 ---
 import "@/components/tools/toolStyles.css";
 import StarLayout from "@/layouts/StarLayout.astro";
+import { isToolActive } from "@/components/tools/toolCatalog.mjs";
 import { getToolThemeClass } from "@/components/tools/toolTheme";
 
 const tools = import.meta.glob("./*/*.astro");
@@ -14,7 +15,7 @@ for (const path in tools) {
   };
   const url = path.replace("src/pages", "").replace("/index.astro", "");
   const slug = url.split("/").filter(Boolean).pop() ?? "";
-  if (tool.active === false) continue;
+  if (tool.active === false || !isToolActive(slug)) continue;
   toolPages.push({
     title: tool.title,
     description: tool.description,
@@ -22,6 +23,8 @@ for (const path in tools) {
     slug,
   });
 }
+
+toolPages.sort((first, second) => first.title.localeCompare(second.title));
 
 const breadcrumbSchema = {
   "@context": "https://schema.org",

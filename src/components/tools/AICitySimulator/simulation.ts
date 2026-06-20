@@ -12,6 +12,18 @@ export type MapNodeKey =
 
 type LocalSectorKey = "retail" | "food" | "housing";
 
+/** One sampled month, kept so the UI can draw the city's trajectory over time. */
+export type HistoryPoint = {
+  month: number;
+  stability: number;
+  unemployment: number;
+  aiAdoption: number;
+  budget: number;
+};
+
+/** How many months of trajectory we retain (30 years is far past any run). */
+export const MAX_HISTORY_POINTS = 360;
+
 export type SimulatorState = {
   month: number;
   /** Where the player wants adoption to go. */
@@ -35,6 +47,7 @@ export type SimulatorState = {
   isPlaying: boolean;
   speed: SimulationSpeed;
   selectedNode: MapNodeKey;
+  history: HistoryPoint[];
 };
 
 export type EconomySnapshot = {
@@ -442,8 +455,18 @@ function computeFlows(state: SimulatorState): EconomyFlows {
   };
 }
 
-export function createInitialSimulatorState(): SimulatorState {
+function historyPointFromSnapshot(snapshot: EconomySnapshot): HistoryPoint {
   return {
+    month: snapshot.month,
+    stability: snapshot.stability,
+    unemployment: snapshot.unemploymentRate,
+    aiAdoption: snapshot.aiAdoption,
+    budget: snapshot.cityBudget,
+  };
+}
+
+export function createInitialSimulatorState(): SimulatorState {
+  const base: SimulatorState = {
     month: 0,
     aiAdoptionTarget: 0,
     aiAdoption: 0,
@@ -463,7 +486,11 @@ export function createInitialSimulatorState(): SimulatorState {
     isPlaying: false,
     speed: 1,
     selectedNode: "whiteCollar",
+    history: [],
   };
+
+  base.history = [historyPointFromSnapshot(getEconomySnapshot(base))];
+  return base;
 }
 
 export function isPersistedSimulatorState(
@@ -769,7 +796,7 @@ export function simulateMonth(state: SimulatorState): SimulatorState {
     state.consumerConfidence +
     (confidenceTarget - state.consumerConfidence) * 0.22;
 
-  return {
+  const nextState: SimulatorState = {
     ...state,
     month: state.month + 1,
     aiAdoption,
@@ -781,6 +808,14 @@ export function simulateMonth(state: SimulatorState): SimulatorState {
     shortTermUnemployed: Math.max(0, shortTermUnemployed),
     longTermUnemployed: Math.max(0, longTermUnemployed),
   };
+
+  const previousHistory = Array.isArray(state.history) ? state.history : [];
+  const history = [
+    ...previousHistory,
+    historyPointFromSnapshot(getEconomySnapshot(nextState)),
+  ].slice(-MAX_HISTORY_POINTS);
+
+  return { ...nextState, history };
 }
 
 export function getCollapseWarnings(snapshot: EconomySnapshot) {

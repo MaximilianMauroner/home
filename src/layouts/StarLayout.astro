@@ -8,6 +8,7 @@ interface Props {
   articlePublishedTime?: string;
   articleModifiedTime?: string;
   articleAuthor?: string;
+  noindex?: boolean;
 }
 
 const {
@@ -17,6 +18,7 @@ const {
   articlePublishedTime,
   articleModifiedTime,
   articleAuthor,
+  noindex,
 } = Astro.props;
 ---
 
@@ -27,6 +29,7 @@ const {
   articlePublishedTime={articlePublishedTime}
   articleModifiedTime={articleModifiedTime}
   articleAuthor={articleAuthor}
+  noindex={noindex}
 >
   <div
     transition:persist="starfield"

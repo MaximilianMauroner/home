@@ -23,6 +23,52 @@ export function TagWorkspace({
   sampleText,
   selectedTags,
 }: TagWorkspaceProps) {
+  const hasActiveDocument = Boolean(
+    activeDocId ||
+      activeDocUrl ||
+      sampleText ||
+      documentTags.length > 0 ||
+      extractedTags.length > 0,
+  );
+  const summaryId = "readwise-document-summary";
+
+  if (!hasActiveDocument) {
+    return (
+      <section className="tool-panel-lg flex min-w-0 flex-1 flex-col gap-4 lg:p-8">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
+            Tag update workspace
+          </h2>
+          <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+            Fetch a single document or a batch to review the summary, compare
+            existing tags, and apply the selected updates.
+          </p>
+        </div>
+
+        <div className="grid gap-3 text-sm text-card-foreground sm:grid-cols-3">
+          <div className="rounded-lg border border-border bg-background px-4 py-3">
+            <p className="font-semibold text-foreground">1. Fetch</p>
+            <p className="mt-1 text-muted-foreground">
+              Use a document ID or the batch filters.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border bg-background px-4 py-3">
+            <p className="font-semibold text-foreground">2. Review</p>
+            <p className="mt-1 text-muted-foreground">
+              Inspect the summary and tag suggestions.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border bg-background px-4 py-3">
+            <p className="font-semibold text-foreground">3. Apply</p>
+            <p className="mt-1 text-muted-foreground">
+              Save only the selected tags back to Readwise.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="tool-panel-lg flex min-w-0 flex-1 flex-col gap-6 lg:p-8">
       <div className="flex flex-col gap-2">
@@ -49,12 +95,15 @@ export function TagWorkspace({
       </div>
 
       <div className="space-y-3">
-        <label className="tool-label block">Document summary</label>
+        <label htmlFor={summaryId} className="tool-label block">
+          Document summary
+        </label>
         <textarea
+          id={summaryId}
           value={sampleText}
           readOnly
           rows={8}
-          className="tool-field h-[400px] w-full resize-none leading-relaxed"
+          className="tool-field min-h-48 w-full resize-y leading-relaxed lg:min-h-80"
         />
       </div>
 
@@ -116,7 +165,9 @@ function TagGroup({
           tags.map((tag) => (
             <button
               key={tag}
+              type="button"
               onClick={() => onToggleTag(tag)}
+              aria-pressed={selectedTags.has(tag)}
               className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
                 selectedTags.has(tag)
                   ? "border-primary bg-primary text-primary-foreground"

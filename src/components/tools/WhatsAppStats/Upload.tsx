@@ -423,6 +423,9 @@ export function HandlewhatsappData() {
     void messageCount;
   }, []);
 
+  const uploadInputId = "whatsapp-chat-export";
+  const uploadHelpId = "whatsapp-upload-help";
+
   return (
     <div className="tool-panel">
       <div
@@ -431,24 +434,54 @@ export function HandlewhatsappData() {
         onDrop={handleDrop}
       >
         <input
+          id={uploadInputId}
           type="file"
           accept=".txt,.zip"
           multiple
           onChange={handleFileChange}
-          className="hidden"
-          id="file-upload"
+          className="sr-only"
+          aria-describedby={uploadHelpId}
         />
         <label
-          htmlFor="file-upload"
+          htmlFor={uploadInputId}
           className="tool-button cursor-pointer"
         >
           Choose files
         </label>
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
+        <p
+          id={uploadHelpId}
+          className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground"
+        >
           Drag in a WhatsApp chat export, or choose one or more `.txt` or `.zip`
           files from Android or macOS.
         </p>
-        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+        <div className="mx-auto mt-5 grid max-w-3xl gap-4 border-t border-border pt-5 text-left text-sm sm:grid-cols-3">
+          <div>
+            <h2 className="font-semibold text-foreground">Local import</h2>
+            <p className="mt-1 leading-6 text-muted-foreground">
+              Files are parsed in the browser and stored locally for this tool.
+            </p>
+          </div>
+          <div>
+            <h2 className="font-semibold text-foreground">Accepted files</h2>
+            <p className="mt-1 leading-6 text-muted-foreground">
+              Use the exported chat `.txt` directly or a `.zip` containing that
+              text file.
+            </p>
+          </div>
+          <div>
+            <h2 className="font-semibold text-foreground">After import</h2>
+            <p className="mt-1 leading-6 text-muted-foreground">
+              The dashboard calculates participants, message volume, words, and
+              media placeholders.
+            </p>
+          </div>
+        </div>
+        {error && (
+          <p className="mt-3 text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
         {files.length > 0 && (
           <ul className="mt-3 text-sm text-emerald-500">
             {files.map((file) => (
@@ -457,7 +490,7 @@ export function HandlewhatsappData() {
           </ul>
         )}
         {loading && (
-          <div className="mt-4 w-full">
+          <div className="mt-4 w-full" role="status" aria-live="polite">
             <div className="h-2 rounded-full bg-muted">
               <div
                 className="h-2 animate-pulse rounded-full bg-primary"

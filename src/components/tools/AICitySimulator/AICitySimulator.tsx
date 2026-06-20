@@ -10,6 +10,7 @@ import { useEffect, useId, useState } from "react";
 import {
   AI_CITY_SIMULATOR_STORAGE_KEY,
   type EconomySnapshot,
+  type HistoryPoint,
   type MapNodeKey,
   type SimulatorState,
   SIMULATION_BASELINES,
@@ -37,6 +38,7 @@ type FlowPathProps = {
   color: string;
   delay?: number;
   duration?: number;
+  markerId: string;
   maxAmount: number;
   path: string;
 };
@@ -79,97 +81,149 @@ const MAP_NODES: MapNodeConfig[] = [
     label: "Outside Clients",
     caption: "External demand",
     shape: "rect",
-    x: 48,
-    y: 70,
-    width: 176,
-    height: 92,
+    x: 44,
+    y: 232,
+    width: 180,
+    height: 112,
   },
   {
     key: "whiteCollar",
     label: "White Collar Workers",
     caption: "50% of city jobs",
     shape: "rect",
-    x: 270,
-    y: 76,
-    width: 344,
-    height: 186,
+    x: 275,
+    y: 64,
+    width: 300,
+    height: 148,
   },
   {
     key: "cityHall",
     label: "City Hall",
     caption: "Taxes and support",
     shape: "rect",
-    x: 766,
-    y: 82,
-    width: 176,
-    height: 96,
+    x: 754,
+    y: 78,
+    width: 196,
+    height: 112,
   },
   {
     key: "schoolClinic",
     label: "School / Clinic",
     caption: "Public services",
     shape: "rect",
-    x: 748,
-    y: 246,
-    width: 194,
-    height: 108,
+    x: 754,
+    y: 314,
+    width: 196,
+    height: 112,
   },
   {
     key: "retail",
     label: "Retail",
     caption: "Shops and goods",
-    shape: "pill",
-    x: 72,
-    y: 326,
-    width: 176,
-    height: 98,
+    shape: "rect",
+    x: 52,
+    y: 366,
+    width: 178,
+    height: 112,
   },
   {
     key: "households",
     label: "Households",
     caption: "Workers and demand",
-    shape: "pill",
-    x: 260,
-    y: 372,
-    width: 308,
-    height: 120,
+    shape: "rect",
+    x: 300,
+    y: 344,
+    width: 250,
+    height: 132,
   },
   {
     key: "food",
     label: "Food",
     caption: "Cafes and groceries",
-    shape: "pill",
-    x: 86,
-    y: 476,
-    width: 162,
-    height: 84,
+    shape: "rect",
+    x: 52,
+    y: 498,
+    width: 178,
+    height: 112,
   },
   {
     key: "housing",
     label: "Housing",
     caption: "Rent and upkeep",
-    shape: "pill",
-    x: 586,
-    y: 434,
+    shape: "rect",
+    x: 590,
+    y: 452,
     width: 196,
-    height: 102,
+    height: 112,
   },
 ];
 
 const AI_ADOPTION_PRESETS = [0, 0.25, 0.5, 0.75, 1] as const;
 
+type AnchorSide = "top" | "bottom" | "left" | "right";
+
+const NODE_BY_KEY = Object.fromEntries(
+  MAP_NODES.map((node) => [node.key, node]),
+) as Record<MapNodeKey, MapNodeConfig>;
+
+function anchorPoint(node: MapNodeConfig, side: AnchorSide) {
+  const w = node.width ?? 0;
+  const h = node.height ?? 0;
+  switch (side) {
+    case "top":
+      return { x: node.x + w / 2, y: node.y };
+    case "bottom":
+      return { x: node.x + w / 2, y: node.y + h };
+    case "left":
+      return { x: node.x, y: node.y + h / 2 };
+    case "right":
+      return { x: node.x + w, y: node.y + h / 2 };
+  }
+}
+
+function sideNormal(side: AnchorSide) {
+  switch (side) {
+    case "top":
+      return { x: 0, y: -1 };
+    case "bottom":
+      return { x: 0, y: 1 };
+    case "left":
+      return { x: -1, y: 0 };
+    case "right":
+      return { x: 1, y: 0 };
+  }
+}
+
+// Build a smooth connector that leaves the source node and arrives at the
+// target node perpendicular to each edge, so flows always visibly attach to
+// the boxes they link instead of floating across the map.
+function connector(
+  fromKey: MapNodeKey,
+  fromSide: AnchorSide,
+  toKey: MapNodeKey,
+  toSide: AnchorSide,
+  curve = 0.42,
+) {
+  const a = anchorPoint(NODE_BY_KEY[fromKey], fromSide);
+  const b = anchorPoint(NODE_BY_KEY[toKey], toSide);
+  const distance = Math.hypot(b.x - a.x, b.y - a.y);
+  const offset = clamp(distance * curve, 36, 150);
+  const na = sideNormal(fromSide);
+  const nb = sideNormal(toSide);
+  const c1 = { x: a.x + na.x * offset, y: a.y + na.y * offset };
+  const c2 = { x: b.x + nb.x * offset, y: b.y + nb.y * offset };
+  return `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`;
+}
+
 const FLOW_PATHS = {
-  externalRevenue: "M 224 116 C 250 118, 270 130, 286 142",
-  wages: "M 438 262 C 436 304, 406 344, 376 372",
-  retailSpending: "M 264 420 C 220 404, 196 392, 168 378",
-  foodSpending: "M 264 456 C 224 474, 198 492, 170 512",
-  housingSpending: "M 564 444 C 590 446, 618 458, 648 474",
-  whiteTaxes: "M 614 154 C 664 154, 716 146, 766 130",
-  retailTaxes: "M 248 356 C 470 324, 622 228, 766 136",
-  foodTaxes: "M 248 516 C 450 420, 620 258, 766 148",
-  housingTaxes: "M 782 476 C 812 398, 820 286, 840 176",
-  services: "M 854 178 C 854 204, 850 224, 848 246",
-  support: "M 766 146 C 676 222, 592 308, 524 386",
+  externalRevenue: connector("outsideClients", "right", "whiteCollar", "left"),
+  wages: connector("whiteCollar", "bottom", "households", "top"),
+  retailSpending: connector("households", "left", "retail", "right"),
+  foodSpending: connector("households", "left", "food", "right"),
+  housingSpending: connector("households", "right", "housing", "left"),
+  whiteTaxes: connector("whiteCollar", "right", "cityHall", "left"),
+  services: connector("cityHall", "bottom", "schoolClinic", "top"),
+  support: connector("cityHall", "left", "households", "right"),
 } as const;
 
 function clamp(value: number, min: number, max: number) {
@@ -487,12 +541,13 @@ function FlowPath({
   color,
   delay = 0,
   duration = 5.2,
+  markerId,
   maxAmount,
   path,
 }: FlowPathProps) {
   const ratio = maxAmount === 0 ? 0 : clamp(amount / maxAmount, 0, 1);
-  const strokeWidth = 2 + ratio * 8;
-  const opacity = 0.18 + ratio * 0.54;
+  const strokeWidth = 1.6 + ratio * 3.2;
+  const routeOpacity = amount > 0 ? 0.16 + ratio * 0.24 : 0.08;
 
   return (
     <g>
@@ -500,111 +555,319 @@ function FlowPath({
         d={path}
         fill="none"
         stroke={color}
-        strokeOpacity={opacity}
+        strokeOpacity={routeOpacity}
         strokeWidth={strokeWidth}
         strokeLinecap="round"
-        strokeDasharray="8 10"
+        markerEnd={`url(#${markerId})`}
       />
       {amount > 0 && (
-        <>
-          <circle r={4 + ratio * 3} fill={color} opacity={0.92}>
-            <animateMotion
-              dur={`${duration}s`}
-              begin={`${delay}s`}
-              repeatCount="indefinite"
-              path={path}
-            />
-          </circle>
-          <circle r={2.5 + ratio * 2} fill={color} opacity={0.62}>
-            <animateMotion
-              dur={`${duration * 1.16}s`}
-              begin={`${delay + duration / 2}s`}
-              repeatCount="indefinite"
-              path={path}
-            />
-          </circle>
-        </>
+        <path
+          d={path}
+          fill="none"
+          stroke={color}
+          strokeOpacity={0.42 + ratio * 0.22}
+          strokeWidth={Math.max(1.6, strokeWidth * 0.78)}
+          strokeLinecap="round"
+          strokeDasharray="22 150"
+        >
+          <animate
+            attributeName="stroke-dashoffset"
+            begin={`${delay}s`}
+            dur={`${duration}s`}
+            from="172"
+            repeatCount="indefinite"
+            to="0"
+          />
+        </path>
       )}
     </g>
   );
 }
 
-function MetricCard({
-  label,
-  value,
+function FlowLegendChip({
+  color,
   detail,
-  tone = "stable",
-  meter = 0.5,
-}: MetricCardProps) {
-  const barColor =
-    tone === "critical"
-      ? "oklch(0.66 0.18 28)"
-      : tone === "warning"
-        ? "oklch(0.76 0.15 82)"
-        : "oklch(0.63 0.11 188)";
-
+  label,
+}: {
+  color: string;
+  detail: string;
+  label: string;
+}) {
   return (
-    <div
-      className="rounded-[1.15rem] border px-4 py-4"
+    <span
+      className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs text-muted-foreground"
       style={{
-        borderColor: "color-mix(in oklch, var(--tool-accent) 18%, hsl(var(--border)) 82%)",
-        background:
-          "linear-gradient(180deg, color-mix(in oklch, hsl(var(--card)) 94%, var(--tool-accent) 6%) 0%, color-mix(in oklch, hsl(var(--card)) 97%, oklch(0.98 0.004 190) 3%) 100%)",
+        borderColor: "var(--map-legend-border)",
+        backgroundColor: "var(--map-legend-bg)",
       }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {label}
-        </p>
-        <span
-          className="mt-1 h-2.5 w-2.5 rounded-full"
-          style={{ backgroundColor: barColor }}
-          aria-hidden="true"
+      <span
+        className="h-2 w-6 shrink-0 rounded-full"
+        style={{ backgroundColor: color }}
+        aria-hidden="true"
+      />
+      <span>
+        <span className="font-semibold text-foreground">{label}</span>
+        <span className="hidden sm:inline">: {detail}</span>
+      </span>
+    </span>
+  );
+}
+
+function toneColor(tone: "stable" | "warning" | "critical") {
+  if (tone === "critical") return "oklch(0.66 0.19 28)";
+  if (tone === "warning") return "oklch(0.77 0.15 78)";
+  return "oklch(0.7 0.12 190)";
+}
+
+type TimelineChartProps = {
+  history: HistoryPoint[];
+  stabilityColor: string;
+};
+
+// A growing trajectory of the city: stability and unemployment read against a
+// shared 0-100 axis (they cross as a city tips over), with AI adoption rising
+// behind them as the underlying driver.
+function TimelineChart({ history, stabilityColor }: TimelineChartProps) {
+  const W = 1000;
+  const H = 300;
+  const padL = 30;
+  const padR = 20;
+  const padT = 22;
+  const padB = 30;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const started = history.length > 1;
+  const first = history[0];
+  const last = history[history.length - 1];
+  const m0 = first ? first.month : 0;
+  const latest = last ? last.month : 0;
+  const span = Math.max(latest - m0, 12);
+
+  const xFor = (month: number) => padL + ((month - m0) / span) * plotW;
+  const yFor = (value: number) => padT + (1 - clamp(value, 0, 100) / 100) * plotH;
+
+  const linePath = (selector: (point: HistoryPoint) => number) =>
+    history
+      .map(
+        (point, index) =>
+          `${index === 0 ? "M" : "L"} ${xFor(point.month).toFixed(1)} ${yFor(
+            selector(point),
+          ).toFixed(1)}`,
+      )
+      .join(" ");
+
+  const areaPath = (selector: (point: HistoryPoint) => number) =>
+    history.length
+      ? `${linePath(selector)} L ${xFor(latest).toFixed(1)} ${yFor(0).toFixed(
+          1,
+        )} L ${xFor(m0).toFixed(1)} ${yFor(0).toFixed(1)} Z`
+      : "";
+
+  const stabilityOf = (point: HistoryPoint) => point.stability;
+  const unemploymentOf = (point: HistoryPoint) => point.unemployment;
+  const adoptionOf = (point: HistoryPoint) => point.aiAdoption * 100;
+
+  const gridGuides = [25, 50, 75];
+  const monthTicks = started
+    ? Array.from({ length: 5 }, (_, index) =>
+        Math.round(m0 + (span * index) / 4),
+      ).filter((value, index, all) => all.indexOf(value) === index)
+    : [];
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="block aspect-[1000/300] w-full"
+      role="img"
+      aria-label="City stability, unemployment, and AI adoption over time"
+    >
+      {/* horizontal guides */}
+      {gridGuides.map((value) => (
+        <line
+          key={`guide-${value}`}
+          x1={padL}
+          x2={W - padR}
+          y1={yFor(value)}
+          y2={yFor(value)}
+          stroke="var(--map-grid)"
+          strokeWidth={1}
+          strokeOpacity={0.4}
         />
+      ))}
+
+      {/* crisis threshold */}
+      <line
+        x1={padL}
+        x2={W - padR}
+        y1={yFor(30)}
+        y2={yFor(30)}
+        stroke="oklch(0.66 0.19 28)"
+        strokeWidth={1}
+        strokeDasharray="3 6"
+        strokeOpacity={0.55}
+      />
+      <text
+        x={W - padR}
+        y={yFor(30) - 6}
+        textAnchor="end"
+        fontSize={11}
+        fontWeight={600}
+        fill="oklch(0.66 0.19 28)"
+        fillOpacity={0.85}
+      >
+        crisis line
+      </text>
+
+      {started ? (
+        <>
+          {/* AI adoption: the underlying driver, faint behind everything */}
+          <path d={areaPath(adoptionOf)} fill="var(--tool-accent)" fillOpacity={0.1} />
+          <path
+            d={linePath(adoptionOf)}
+            fill="none"
+            stroke="var(--tool-accent)"
+            strokeOpacity={0.5}
+            strokeWidth={1.6}
+            strokeDasharray="2 5"
+            strokeLinecap="round"
+          />
+
+          {/* Unemployment */}
+          <path
+            d={linePath(unemploymentOf)}
+            fill="none"
+            stroke="var(--timeline-unemployment)"
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Stability: the hero line, tone-coloured */}
+          <path d={areaPath(stabilityOf)} fill={stabilityColor} fillOpacity={0.12} />
+          <path
+            d={linePath(stabilityOf)}
+            fill="none"
+            stroke={stabilityColor}
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle
+            cx={xFor(latest)}
+            cy={yFor(last.stability)}
+            r={4.5}
+            fill={stabilityColor}
+            stroke="hsl(var(--card))"
+            strokeWidth={2}
+          />
+
+          {monthTicks.map((month) => (
+            <text
+              key={`tick-${month}`}
+              x={xFor(month)}
+              y={H - 8}
+              textAnchor="middle"
+              fontSize={11}
+              fill="var(--map-metric)"
+              fillOpacity={0.65}
+            >
+              m{month}
+            </text>
+          ))}
+        </>
+      ) : (
+        <text
+          x={W / 2}
+          y={H / 2}
+          textAnchor="middle"
+          fontSize={15}
+          fill="var(--map-metric)"
+          fillOpacity={0.7}
+        >
+          Press play. The city&apos;s trajectory draws here, month by month.
+        </text>
+      )}
+    </svg>
+  );
+}
+
+// A dense readout row: label, value, and a thin meter. Tone colour only shows
+// up when a metric is under strain, so a calm city reads calm.
+function Vital({ label, value, detail, tone = "stable", meter = 0.5 }: MetricCardProps) {
+  const color = toneColor(tone);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="text-sm font-semibold tabular-nums text-foreground">
+          {value}
+        </span>
       </div>
-      <div className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-        {value}
-      </div>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p>
-      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted/80">
+      <div className="h-1 overflow-hidden rounded-full bg-muted/70">
         <div
-          className="h-full rounded-full transition-[width] duration-200 ease-out"
+          className="h-full rounded-full transition-[width] duration-300 ease-out"
           style={{
             width: `${clamp(meter, 0, 1) * 100}%`,
-            backgroundColor: barColor,
+            backgroundColor: color,
           }}
         />
       </div>
+      {detail && (
+        <p className="text-xs leading-5 text-muted-foreground/80">{detail}</p>
+      )}
     </div>
   );
 }
 
 function MapNode({ config, selected, snapshot, onSelect }: MapNodeProps) {
   const metricLines = getNodeMetricLines(config.key, snapshot);
+  const width = config.width ?? 0;
+  const height = config.height ?? 0;
+  const isPrimary = config.key === "whiteCollar";
+  const isCompact = height <= 102;
+  const radius = config.shape === "pill" ? 24 : 18;
+  const inset = isPrimary ? 28 : 20;
+  const titleX = config.width ? config.x + inset : config.x;
+  const titleY = config.shape === "circle" ? config.y - 16 : config.y + (isPrimary ? 44 : 31);
+  const captionY = config.shape === "circle" ? config.y + 6 : config.y + (isPrimary ? 74 : 55);
+  const metricStartY =
+    config.shape === "circle"
+      ? config.y + 32
+      : config.y + (isPrimary ? 112 : isCompact ? 76 : 86);
+  const metricStep = isPrimary ? 22 : isCompact ? 16 : 18;
+  const captionWidth = Math.min(
+    Math.max(config.caption.length * (isPrimary ? 7.4 : 6.7) + 24, isPrimary ? 142 : 92),
+    Math.max(width - inset * 2, 80),
+  );
+  const captionHeight = isPrimary ? 22 : 18;
   const accentFill =
-    config.key === "whiteCollar"
-      ? "oklch(0.72 0.09 185)"
+    isPrimary
+      ? "var(--map-node-primary)"
       : config.key === "cityHall" || config.key === "schoolClinic"
-        ? "oklch(0.8 0.03 210)"
+        ? "var(--map-node-civic)"
         : config.key === "outsideClients"
-          ? "oklch(0.83 0.05 200)"
-          : "oklch(0.87 0.028 190)";
+          ? "var(--map-node-external)"
+          : "var(--map-node)";
 
   const borderColor =
-    config.key === "whiteCollar"
-      ? "oklch(0.55 0.09 185)"
+    isPrimary
+      ? "var(--map-node-border-primary)"
       : selected
-        ? "oklch(0.56 0.09 196)"
-        : "oklch(0.73 0.03 205)";
-  const textColor =
-    config.key === "whiteCollar" ? "oklch(0.22 0.03 196)" : "oklch(0.28 0.02 205)";
+        ? "var(--map-node-border-selected)"
+        : "var(--map-node-border)";
+  const textColor = isPrimary ? "var(--map-text-primary)" : "var(--map-text)";
 
   const handleSelect = () => onSelect(config.key);
 
   return (
     <g
+      className="group outline-none"
       role="button"
       tabIndex={0}
+      aria-label={`Inspect ${config.label}`}
       aria-pressed={selected}
       onClick={handleSelect}
       onKeyDown={(event) => {
@@ -615,6 +878,22 @@ function MapNode({ config, selected, snapshot, onSelect }: MapNodeProps) {
       }}
       style={{ cursor: "pointer" }}
     >
+      <title>
+        {selected ? "Selected" : "Select"} {config.label}
+      </title>
+      {selected && config.shape !== "circle" && (
+        <rect
+          x={config.x - 7}
+          y={config.y - 7}
+          width={width + 14}
+          height={height + 14}
+          rx={radius + 7}
+          fill="var(--map-selection-fill)"
+          stroke="var(--map-selection)"
+          strokeWidth={3}
+        />
+      )}
+
       {config.shape === "circle" ? (
         <circle
           cx={config.x}
@@ -628,56 +907,67 @@ function MapNode({ config, selected, snapshot, onSelect }: MapNodeProps) {
         <rect
           x={config.x}
           y={config.y}
-          width={config.width}
-          height={config.height}
-          rx={config.shape === "pill" ? 28 : 22}
+          width={width}
+          height={height}
+          rx={radius}
           fill={accentFill}
           stroke={borderColor}
-          strokeWidth={selected ? 4 : 2}
+          strokeWidth={selected ? 3 : 1.8}
+        />
+      )}
+
+      {!selected && config.shape !== "circle" && (
+        <rect
+          className="opacity-0 transition-opacity duration-150 group-hover:opacity-70 group-focus-visible:opacity-100"
+          x={config.x + 3}
+          y={config.y + 3}
+          width={width - 6}
+          height={height - 6}
+          rx={Math.max(radius - 3, 12)}
+          fill="none"
+          stroke="var(--map-node-border-selected)"
+          strokeWidth={2.4}
         />
       )}
 
       {selected && config.shape !== "circle" && (
-        <rect
-          x={(config.x ?? 0) - 8}
-          y={(config.y ?? 0) - 8}
-          width={(config.width ?? 0) + 16}
-          height={(config.height ?? 0) + 16}
-          rx={config.shape === "pill" ? 34 : 28}
-          fill="none"
-          stroke="oklch(0.62 0.08 188 / 0.32)"
-          strokeWidth={4}
-          strokeDasharray="10 10"
+        <circle
+          cx={config.x + width - 19}
+          cy={config.y + 19}
+          r={5}
+          fill="var(--map-selected-dot)"
         />
       )}
 
       <text
-        x={(config.width ? config.x + config.width / 2 : config.x)}
-        y={
-          config.shape === "circle"
-            ? config.y - 16
-            : config.y + (config.key === "whiteCollar" ? 48 : 34)
-        }
-        textAnchor="middle"
+        x={titleX}
+        y={titleY}
+        textAnchor={config.shape === "circle" ? "middle" : "start"}
         fill={textColor}
-        fontSize={config.key === "whiteCollar" ? 24 : 18}
+        fontSize={isPrimary ? 20 : isCompact ? 15 : 16}
         fontWeight={700}
       >
         {config.label}
       </text>
 
+      {config.shape !== "circle" && (
+        <rect
+          x={titleX - 2}
+          y={captionY - captionHeight + 5}
+          width={captionWidth}
+          height={captionHeight}
+          rx={captionHeight / 2}
+          fill={isPrimary ? "var(--map-caption-bg-primary)" : "var(--map-caption-bg)"}
+        />
+      )}
       <text
-        x={(config.width ? config.x + config.width / 2 : config.x)}
-        y={
-          config.shape === "circle"
-            ? config.y + 6
-            : config.y + (config.key === "whiteCollar" ? 78 : 58)
-        }
-        textAnchor="middle"
-        fill="oklch(0.39 0.02 204)"
-        fontSize={13}
-        fontWeight={600}
-        letterSpacing="0.08em"
+        x={titleX + (config.shape === "circle" ? 0 : 10)}
+        y={captionY}
+        textAnchor={config.shape === "circle" ? "middle" : "start"}
+        fill="var(--map-caption)"
+        fontSize={isPrimary ? 11 : 10.5}
+        fontWeight={700}
+        letterSpacing="0"
       >
         {config.caption.toUpperCase()}
       </text>
@@ -685,17 +975,12 @@ function MapNode({ config, selected, snapshot, onSelect }: MapNodeProps) {
       {metricLines.map((line, index) => (
         <text
           key={`${config.key}-${line}`}
-          x={(config.width ? config.x + config.width / 2 : config.x)}
-          y={
-            config.shape === "circle"
-              ? config.y + 32 + index * 22
-              : config.y +
-                (config.key === "whiteCollar" ? 118 : 86) +
-                index * 20
-          }
-          textAnchor="middle"
-          fill="oklch(0.3 0.02 204)"
-          fontSize={14}
+          x={titleX}
+          y={metricStartY + index * metricStep}
+          textAnchor={config.shape === "circle" ? "middle" : "start"}
+          fill="var(--map-metric)"
+          fontSize={isPrimary ? 13.5 : isCompact ? 11.5 : 12}
+          fontWeight={600}
         >
           {line}
         </text>
@@ -724,6 +1009,7 @@ function readStoredState() {
     return {
       ...parsed,
       isPlaying: false,
+      history: Array.isArray(parsed.history) ? parsed.history : [],
     };
   } catch (error) {
     console.warn("Unable to read AI City Simulator state.", error);
@@ -735,6 +1021,7 @@ export default function AICitySimulator() {
   const [state, setState] = useState<SimulatorState>(createInitialSimulatorState);
   const [hydrated, setHydrated] = useState(false);
   const gradientId = useId().replace(/:/g, "");
+  const flowArrowId = `city-flow-arrow-${gradientId}`;
 
   useEffect(() => {
     const storedState = readStoredState();
@@ -786,6 +1073,129 @@ export default function AICitySimulator() {
     snapshot.publicServiceCost,
     snapshot.unemploymentSupport,
   );
+  const metricCards: MetricCardProps[] = [
+    {
+      label: "Month",
+      value: formatInteger(snapshot.month),
+      detail: state.isPlaying
+        ? `Advancing at ${getSpeedLabel(state.speed)}`
+        : "Paused at the current city snapshot",
+      meter: Math.min(snapshot.month / 24, 1),
+    },
+    {
+      label: "AI Adoption",
+      value: formatPercent(snapshot.aiAdoption * 100),
+      detail:
+        snapshot.aiAdoptionTarget > snapshot.aiAdoption + 0.005
+          ? `Rolling out toward the ${formatPercent(snapshot.aiAdoptionTarget * 100)} target`
+          : snapshot.aiAdoptionTarget < snapshot.aiAdoption - 0.005
+            ? `Slowly unwinding toward the ${formatPercent(snapshot.aiAdoptionTarget * 100)} target`
+            : "Adoption has reached the current target",
+      meter: snapshot.aiAdoption,
+    },
+    {
+      label: "Stability",
+      value: formatPercent(snapshot.stability),
+      detail:
+        "Composite of unemployment, budget pressure, demand, services, and exodus",
+      tone: stabilityTone,
+      meter: snapshot.stability / 100,
+    },
+    {
+      label: "Unemployment",
+      value: formatPercent(snapshot.unemploymentRate),
+      detail: `${formatInteger(snapshot.unemploymentWorkers)} without work, ${formatPercent(snapshot.longTermShare * 100)} of them for over 6 months`,
+      tone:
+        snapshot.unemploymentRate > 18
+          ? "critical"
+          : snapshot.unemploymentRate >
+              SIMULATION_BASELINES.naturalUnemploymentRate + 2
+            ? "warning"
+            : "stable",
+      meter: clamp(snapshot.unemploymentRate / 30, 0, 1),
+    },
+    {
+      label: "Household Income",
+      value: formatCurrency(snapshot.householdIncome),
+      detail:
+        snapshot.unemploymentSupportNeed === 0
+          ? "No unemployment support is needed yet"
+          : `${formatCurrency(snapshot.unemploymentSupport)} of ${formatCurrency(snapshot.unemploymentSupportNeed)} support still reaching households`,
+      meter: clamp(snapshot.householdIncome / 5_400_000, 0, 1),
+    },
+    {
+      label: "City Budget",
+      value: formatCurrency(snapshot.cityBudget),
+      detail: `${formatDeltaCurrency(snapshot.fiscalBalance)} this month after ${formatCurrency(snapshot.publicServiceCost)} in services and ${formatCurrency(snapshot.unemploymentSupport)} in support`,
+      tone:
+        snapshot.cityBudget < 0 || snapshot.fiscalBalance < 0
+          ? "critical"
+          : "stable",
+      meter: clamp((snapshot.cityBudget + 2_000_000) / 4_000_000, 0, 1),
+    },
+    {
+      label: "Demand",
+      value: formatPercent(snapshot.demand),
+      detail: `Projected next month: ${formatPercent(snapshot.projectedNextDemand)}`,
+      tone: snapshot.demand < 90 ? "warning" : "stable",
+      meter: snapshot.demand / 120,
+    },
+    {
+      label: "White Collar Profit",
+      value: formatCurrency(snapshot.whiteCollarProfit),
+      detail: `${formatCurrency(snapshot.whiteCollarRevenue)} revenue against ${formatCurrency(snapshot.whiteCollarPayroll)} payroll`,
+      meter: clamp(snapshot.whiteCollarProfit / 5_000_000, 0, 1),
+    },
+    {
+      label: "AI Leakage Cost",
+      value: formatCurrency(snapshot.aiLeakageCost),
+      detail: "Spend leaving the city for external AI inputs and tooling",
+      tone: snapshot.aiLeakageCost > 500_000 ? "warning" : "stable",
+      meter: clamp(snapshot.aiLeakageCost / 900_000, 0, 1),
+    },
+    {
+      label: "Labor Force",
+      value: formatInteger(snapshot.laborForce),
+      detail:
+        snapshot.outMigrants > 0
+          ? `${formatInteger(snapshot.outMigrants)} residents have left the city for good`
+          : "Nobody has left the city yet",
+      tone:
+        snapshot.outMigrants > 60
+          ? "critical"
+          : snapshot.outMigrants > 20
+            ? "warning"
+            : "stable",
+      meter: clamp(
+        snapshot.laborForce / SIMULATION_BASELINES.totalWorkforce,
+        0,
+        1,
+      ),
+    },
+    {
+      label: "White Collar Wage",
+      value: formatCurrency(snapshot.whiteCollarWage),
+      detail:
+        "Wage index tracks labor slack and AI productivity pressure against the baseline",
+      tone: snapshot.wageIndex < 0.92 ? "warning" : "stable",
+      meter: clamp((snapshot.wageIndex - 0.75) / 0.37, 0, 1),
+    },
+    {
+      label: "New AI-Era Jobs",
+      value: formatInteger(snapshot.newRoleWorkers),
+      detail:
+        "Oversight, integration, and services that only exist once AI is embedded",
+      meter: clamp(snapshot.newRoleWorkers / 110, 0, 1),
+    },
+    {
+      label: "Consumer Confidence",
+      value: formatPercent(snapshot.consumerConfidence * 100),
+      detail:
+        "Households cut discretionary spending when the labor market and safety net weaken",
+      tone: snapshot.consumerConfidence < 0.85 ? "warning" : "stable",
+      meter: clamp(snapshot.consumerConfidence, 0, 1),
+    },
+  ];
 
   const resetState = () => {
     if (typeof window !== "undefined") {
@@ -801,25 +1211,71 @@ export default function AICitySimulator() {
     }));
   };
 
+  const stabilityColor = toneColor(stabilityTone);
+  const previousPoint =
+    state.history.length > 1
+      ? state.history[state.history.length - 2]
+      : undefined;
+  const stabilityDelta = previousPoint
+    ? snapshot.stability - previousPoint.stability
+    : 0;
+  const stabilityState =
+    stabilityTone === "stable"
+      ? "Holding steady"
+      : stabilityTone === "warning"
+        ? "Under strain"
+        : "In crisis";
+
+  const metricByLabel = new Map(
+    metricCards.map((metric) => [metric.label, metric]),
+  );
+  const vitalGroups: { title: string; labels: string[] }[] = [
+    {
+      title: "Labor market",
+      labels: [
+        "Unemployment",
+        "Labor Force",
+        "New AI-Era Jobs",
+        "White Collar Wage",
+      ],
+    },
+    {
+      title: "Public money",
+      labels: [
+        "City Budget",
+        "Household Income",
+        "White Collar Profit",
+        "AI Leakage Cost",
+      ],
+    },
+    {
+      title: "Adoption & demand",
+      labels: ["AI Adoption", "Demand", "Consumer Confidence"],
+    },
+  ];
+
   return (
     <div className="tools-shell-wide flex flex-col gap-6">
       <section className="tool-panel-lg overflow-hidden">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-3">
             <p className="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--tool-accent-text)]">
-              Municipal Dashboard Prototype
+              Automation, traced through a city
             </p>
             <div className="space-y-2">
               <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.55rem]">
                 AI City Simulator
               </h1>
-              <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
                 Set an AI adoption target for the white-collar sector and watch
                 the shock ripple through a 1,000-worker city over months:
                 gradual rollout, capped layoff waves, long-term unemployment,
-                wage erosion, new AI-era jobs, strained budgets, and eventually
-                out-migration. Scale the city up mentally to a region or
-                country — the relative dynamics stay the same.
+                wage erosion, new AI-era jobs, strained budgets, and
+                out-migration.
+                <span className="hidden sm:inline">
+                  {" "}Scale the city up mentally to a region or country: the
+                  relative dynamics stay the same.
+                </span>
               </p>
             </div>
           </div>
@@ -830,7 +1286,7 @@ export default function AICitySimulator() {
               borderColor:
                 "color-mix(in oklch, var(--tool-accent) 28%, hsl(var(--border)) 72%)",
               background:
-                "linear-gradient(135deg, color-mix(in oklch, var(--tool-accent) 12%, hsl(var(--card)) 88%) 0%, color-mix(in oklch, oklch(0.97 0.004 190) 76%, var(--tool-accent) 24%) 100%)",
+                "linear-gradient(135deg, color-mix(in oklch, hsl(var(--card)) 90%, var(--tool-accent) 10%) 0%, color-mix(in oklch, hsl(var(--card)) 78%, var(--tool-accent) 22%) 100%)",
             }}
           >
             <div className="flex items-center gap-3">
@@ -868,23 +1324,29 @@ export default function AICitySimulator() {
         <section
           className="rounded-[1.4rem] border px-5 py-4"
           style={{
-            borderColor: "oklch(0.78 0.11 80 / 0.65)",
-            background:
-              "linear-gradient(180deg, oklch(0.96 0.03 85) 0%, oklch(0.985 0.012 90) 100%)",
+            borderColor: "var(--tool-warn-border)",
+            background: "var(--tool-warn-bg)",
           }}
         >
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div className="flex gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-              <div className="space-y-1">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-900">
+          <div className="flex flex-col gap-4 md:flex-row md:items-stretch md:gap-6">
+            <div className="flex flex-1 gap-3">
+              <AlertTriangle
+                className="mt-0.5 h-5 w-5 shrink-0"
+                style={{ color: "var(--tool-warn-icon)" }}
+              />
+              <div className="space-y-1.5">
+                <p
+                  className="text-sm font-semibold uppercase tracking-[0.18em]"
+                  style={{ color: "var(--tool-warn-title)" }}
+                >
                   Collapse Warning
                 </p>
                 <div className="space-y-1">
                   {warnings.map((warning) => (
                     <p
                       key={warning}
-                      className="text-sm leading-6 text-amber-950/85"
+                      className="text-sm leading-6"
+                      style={{ color: "var(--tool-warn-text)" }}
                     >
                       {warning}
                     </p>
@@ -892,16 +1354,22 @@ export default function AICitySimulator() {
                 </div>
               </div>
             </div>
-            <p className="max-w-md text-sm leading-6 text-amber-950/75">
+            <p
+              className="text-sm leading-6 md:max-w-xs md:border-l md:pl-6"
+              style={{
+                color: "var(--tool-warn-text)",
+                borderColor: "var(--tool-warn-divider)",
+              }}
+            >
               {getNarrative(snapshot)}
             </p>
           </div>
         </section>
       )}
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(20rem,0.9fr)]">
-        <div className="tool-panel-lg space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <section className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(20rem,0.9fr)]">
+        <div className="tool-panel-lg flex min-w-0 flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">
                 City map
@@ -913,28 +1381,39 @@ export default function AICitySimulator() {
                 {formatInteger(SIMULATION_BASELINES.totalWorkforce)} jobs.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
-              <span className="rounded-full bg-muted px-3 py-1.5">
+            <div className="flex flex-wrap gap-2 text-xs font-medium text-muted-foreground sm:justify-end">
+              <span
+                className="rounded-full border px-3 py-1.5"
+                style={{
+                  borderColor: "var(--map-legend-border)",
+                  backgroundColor: "var(--map-legend-bg)",
+                }}
+              >
                 Demand {formatPercent(snapshot.demand)}
               </span>
-              <span className="rounded-full bg-muted px-3 py-1.5">
+              <span
+                className="rounded-full border px-3 py-1.5"
+                style={{
+                  borderColor: "var(--map-legend-border)",
+                  backgroundColor: "var(--map-legend-bg)",
+                }}
+              >
                 Next month {formatPercent(snapshot.projectedNextDemand)}
               </span>
             </div>
           </div>
 
           <div
-            className="overflow-hidden rounded-[1.45rem] border p-3"
+            className="flex flex-1 items-center overflow-x-auto overflow-y-hidden rounded-[1.25rem] border p-2.5 sm:p-3"
             style={{
-              borderColor:
-                "color-mix(in oklch, var(--tool-accent) 24%, hsl(var(--border)) 76%)",
+              borderColor: "var(--map-panel-border)",
               background:
-                "linear-gradient(180deg, oklch(0.985 0.006 190) 0%, oklch(0.96 0.012 192) 100%)",
+                "linear-gradient(180deg, var(--map-panel-from) 0%, var(--map-panel-to) 100%)",
             }}
           >
             <svg
-              viewBox="0 0 1000 620"
-              className="h-full w-full"
+              viewBox="0 0 1000 640"
+              className="block aspect-[1000/640] min-w-[42rem] w-full"
               aria-label="Interactive city economy map"
             >
               <defs>
@@ -945,39 +1424,51 @@ export default function AICitySimulator() {
                   x2="100%"
                   y2="100%"
                 >
-                  <stop offset="0%" stopColor="oklch(0.95 0.015 190)" />
-                  <stop offset="100%" stopColor="oklch(0.92 0.02 195)" />
+                  <stop offset="0%" stopColor="var(--map-surface-from)" />
+                  <stop offset="100%" stopColor="var(--map-surface-to)" />
                 </linearGradient>
+                <marker
+                  id={flowArrowId}
+                  markerHeight="12"
+                  markerUnits="userSpaceOnUse"
+                  markerWidth="12"
+                  orient="auto"
+                  refX="10"
+                  refY="6"
+                  viewBox="0 0 12 12"
+                >
+                  <path d="M 1 2 L 10 6 L 1 10 z" fill="context-stroke" />
+                </marker>
               </defs>
 
               <rect
                 x="12"
                 y="12"
                 width="976"
-                height="596"
+                height="616"
                 rx="28"
                 fill={`url(#city-grid-${gradientId})`}
               />
-              <g opacity="0.32">
+              <g style={{ opacity: "var(--map-grid-opacity)" }}>
                 {Array.from({ length: 9 }).map((_, index) => (
                   <line
                     key={`h-${index}`}
                     x1="40"
                     x2="960"
-                    y1={60 + index * 60}
-                    y2={60 + index * 60}
-                    stroke="oklch(0.77 0.02 198)"
+                    y1={66 + index * 60}
+                    y2={66 + index * 60}
+                    stroke="var(--map-grid)"
                     strokeWidth="1"
                   />
                 ))}
                 {Array.from({ length: 10 }).map((_, index) => (
                   <line
                     key={`v-${index}`}
-                    y1="40"
-                    y2="580"
+                    y1="42"
+                    y2="600"
                     x1={68 + index * 92}
                     x2={68 + index * 92}
-                    stroke="oklch(0.77 0.02 198)"
+                    stroke="var(--map-grid)"
                     strokeWidth="1"
                   />
                 ))}
@@ -985,14 +1476,16 @@ export default function AICitySimulator() {
 
               <FlowPath
                 amount={snapshot.outsideRevenue}
-                color="oklch(0.56 0.08 202)"
+                color="var(--map-flow-revenue)"
+                markerId={flowArrowId}
                 maxAmount={maxFlowAmount}
                 path={FLOW_PATHS.externalRevenue}
                 duration={4.6}
               />
               <FlowPath
                 amount={snapshot.whiteCollarPayroll}
-                color="oklch(0.6 0.1 168)"
+                color="var(--map-flow-wage)"
+                markerId={flowArrowId}
                 maxAmount={maxFlowAmount}
                 path={FLOW_PATHS.wages}
                 duration={4.2}
@@ -1000,7 +1493,8 @@ export default function AICitySimulator() {
               />
               <FlowPath
                 amount={snapshot.sectorRevenue.retail}
-                color="oklch(0.73 0.1 78)"
+                color="var(--map-flow-spending)"
+                markerId={flowArrowId}
                 maxAmount={maxFlowAmount}
                 path={FLOW_PATHS.retailSpending}
                 duration={5.4}
@@ -1008,7 +1502,8 @@ export default function AICitySimulator() {
               />
               <FlowPath
                 amount={snapshot.sectorRevenue.food}
-                color="oklch(0.7 0.11 55)"
+                color="var(--map-flow-spending)"
+                markerId={flowArrowId}
                 maxAmount={maxFlowAmount}
                 path={FLOW_PATHS.foodSpending}
                 duration={5.7}
@@ -1016,53 +1511,33 @@ export default function AICitySimulator() {
               />
               <FlowPath
                 amount={snapshot.sectorRevenue.housing}
-                color="oklch(0.65 0.07 145)"
+                color="var(--map-flow-spending)"
+                markerId={flowArrowId}
                 maxAmount={maxFlowAmount}
                 path={FLOW_PATHS.housingSpending}
                 duration={5.1}
                 delay={0.2}
               />
               <FlowPath
-                amount={snapshot.taxRevenue * 0.42}
-                color="oklch(0.55 0.08 216)"
+                amount={snapshot.taxRevenue}
+                color="var(--map-flow-civic)"
+                markerId={flowArrowId}
                 maxAmount={maxFlowAmount}
                 path={FLOW_PATHS.whiteTaxes}
                 duration={4.7}
               />
               <FlowPath
-                amount={snapshot.taxRevenue * 0.22}
-                color="oklch(0.55 0.08 216)"
-                maxAmount={maxFlowAmount}
-                path={FLOW_PATHS.retailTaxes}
-                duration={6.2}
-                delay={0.4}
-              />
-              <FlowPath
-                amount={snapshot.taxRevenue * 0.14}
-                color="oklch(0.55 0.08 216)"
-                maxAmount={maxFlowAmount}
-                path={FLOW_PATHS.foodTaxes}
-                duration={6.5}
-                delay={0.9}
-              />
-              <FlowPath
-                amount={snapshot.taxRevenue * 0.22}
-                color="oklch(0.55 0.08 216)"
-                maxAmount={maxFlowAmount}
-                path={FLOW_PATHS.housingTaxes}
-                duration={5.8}
-                delay={0.7}
-              />
-              <FlowPath
                 amount={snapshot.publicServiceCost}
-                color="oklch(0.68 0.05 196)"
+                color="var(--map-flow-civic)"
+                markerId={flowArrowId}
                 maxAmount={maxFlowAmount}
                 path={FLOW_PATHS.services}
                 duration={3.9}
               />
               <FlowPath
                 amount={snapshot.unemploymentSupport}
-                color="oklch(0.75 0.08 110)"
+                color="var(--map-flow-support)"
+                markerId={flowArrowId}
                 maxAmount={maxFlowAmount}
                 path={FLOW_PATHS.support}
                 duration={5}
@@ -1083,20 +1558,36 @@ export default function AICitySimulator() {
             </svg>
           </div>
 
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full bg-muted px-3 py-1.5">
-              Blue: taxes and outside revenue
-            </span>
-            <span className="rounded-full bg-muted px-3 py-1.5">
-              Green: wages and household support
-            </span>
-            <span className="rounded-full bg-muted px-3 py-1.5">
-              Gold: local spending
-            </span>
+          <div className="flex flex-wrap gap-2">
+            <FlowLegendChip
+              color="var(--map-flow-revenue)"
+              label="Revenue"
+              detail="outside demand"
+            />
+            <FlowLegendChip
+              color="var(--map-flow-wage)"
+              label="Payroll"
+              detail="wages to households"
+            />
+            <FlowLegendChip
+              color="var(--map-flow-spending)"
+              label="Spending"
+              detail="household demand"
+            />
+            <FlowLegendChip
+              color="var(--map-flow-civic)"
+              label="Civic"
+              detail="taxes and services"
+            />
+            <FlowLegendChip
+              color="var(--map-flow-support)"
+              label="Support"
+              detail="benefits to households"
+            />
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className="tool-panel-lg space-y-5">
             <div className="space-y-2">
               <h2 className="text-lg font-semibold text-foreground">
@@ -1301,128 +1792,94 @@ export default function AICitySimulator() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Month"
-          value={formatInteger(snapshot.month)}
-          detail={
-            state.isPlaying
-              ? `Advancing at ${getSpeedLabel(state.speed)}`
-              : "Paused at the current city snapshot"
-          }
-          meter={Math.min(snapshot.month / 24, 1)}
-        />
-        <MetricCard
-          label="AI Adoption"
-          value={formatPercent(snapshot.aiAdoption * 100)}
-          detail={
-            snapshot.aiAdoptionTarget > snapshot.aiAdoption + 0.005
-              ? `Rolling out toward the ${formatPercent(snapshot.aiAdoptionTarget * 100)} target`
-              : snapshot.aiAdoptionTarget < snapshot.aiAdoption - 0.005
-                ? `Slowly unwinding toward the ${formatPercent(snapshot.aiAdoptionTarget * 100)} target`
-                : "Adoption has reached the current target"
-          }
-          meter={snapshot.aiAdoption}
-        />
-        <MetricCard
-          label="Stability"
-          value={formatPercent(snapshot.stability)}
-          detail="Composite of unemployment, budget pressure, demand, services, and exodus"
-          tone={stabilityTone}
-          meter={snapshot.stability / 100}
-        />
-        <MetricCard
-          label="Unemployment"
-          value={formatPercent(snapshot.unemploymentRate)}
-          detail={`${formatInteger(snapshot.unemploymentWorkers)} without work, ${formatPercent(snapshot.longTermShare * 100)} of them for over 6 months`}
-          tone={
-            snapshot.unemploymentRate > 18
-              ? "critical"
-              : snapshot.unemploymentRate >
-                  SIMULATION_BASELINES.naturalUnemploymentRate + 2
-                ? "warning"
-                : "stable"
-          }
-          meter={clamp(snapshot.unemploymentRate / 30, 0, 1)}
-        />
-        <MetricCard
-          label="Household Income"
-          value={formatCurrency(snapshot.householdIncome)}
-          detail={
-            snapshot.unemploymentSupportNeed === 0
-              ? "No unemployment support is needed yet"
-              : `${formatCurrency(snapshot.unemploymentSupport)} of ${formatCurrency(snapshot.unemploymentSupportNeed)} support still reaching households`
-          }
-          meter={clamp(snapshot.householdIncome / 5_400_000, 0, 1)}
-        />
-        <MetricCard
-          label="City Budget"
-          value={formatCurrency(snapshot.cityBudget)}
-          detail={`${formatDeltaCurrency(snapshot.fiscalBalance)} this month after ${formatCurrency(snapshot.publicServiceCost)} in services and ${formatCurrency(snapshot.unemploymentSupport)} in support`}
-          tone={
-            snapshot.cityBudget < 0 || snapshot.fiscalBalance < 0
-              ? "critical"
-              : "stable"
-          }
-          meter={clamp((snapshot.cityBudget + 2_000_000) / 4_000_000, 0, 1)}
-        />
-        <MetricCard
-          label="Demand"
-          value={formatPercent(snapshot.demand)}
-          detail={`Projected next month: ${formatPercent(snapshot.projectedNextDemand)}`}
-          tone={snapshot.demand < 90 ? "warning" : "stable"}
-          meter={snapshot.demand / 120}
-        />
-        <MetricCard
-          label="White Collar Profit"
-          value={formatCurrency(snapshot.whiteCollarProfit)}
-          detail={`${formatCurrency(snapshot.whiteCollarRevenue)} revenue against ${formatCurrency(snapshot.whiteCollarPayroll)} payroll`}
-          meter={clamp(snapshot.whiteCollarProfit / 5_000_000, 0, 1)}
-        />
-        <MetricCard
-          label="AI Leakage Cost"
-          value={formatCurrency(snapshot.aiLeakageCost)}
-          detail="Spend leaving the city for external AI inputs and tooling"
-          tone={snapshot.aiLeakageCost > 500_000 ? "warning" : "stable"}
-          meter={clamp(snapshot.aiLeakageCost / 900_000, 0, 1)}
-        />
-        <MetricCard
-          label="Labor Force"
-          value={formatInteger(snapshot.laborForce)}
-          detail={
-            snapshot.outMigrants > 0
-              ? `${formatInteger(snapshot.outMigrants)} residents have left the city for good`
-              : "Nobody has left the city yet"
-          }
-          tone={
-            snapshot.outMigrants > 60
-              ? "critical"
-              : snapshot.outMigrants > 20
-                ? "warning"
-                : "stable"
-          }
-          meter={clamp(snapshot.laborForce / SIMULATION_BASELINES.totalWorkforce, 0, 1)}
-        />
-        <MetricCard
-          label="White Collar Wage"
-          value={formatCurrency(snapshot.whiteCollarWage)}
-          detail={`Wage index at ${formatPercent(snapshot.wageIndex * 100)} of baseline — slack erodes pay, AI productivity lifts it`}
-          tone={snapshot.wageIndex < 0.92 ? "warning" : "stable"}
-          meter={clamp((snapshot.wageIndex - 0.75) / 0.37, 0, 1)}
-        />
-        <MetricCard
-          label="New AI-Era Jobs"
-          value={formatInteger(snapshot.newRoleWorkers)}
-          detail="Oversight, integration, and services that only exist once AI is embedded"
-          meter={clamp(snapshot.newRoleWorkers / 110, 0, 1)}
-        />
-        <MetricCard
-          label="Consumer Confidence"
-          value={formatPercent(snapshot.consumerConfidence * 100)}
-          detail="Households cut discretionary spending when the labor market and safety net weaken"
-          tone={snapshot.consumerConfidence < 0.85 ? "warning" : "stable"}
-          meter={clamp(snapshot.consumerConfidence, 0, 1)}
-        />
+      <section className="tool-panel-lg space-y-5">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--tool-accent-text)]">
+              City stability over time
+            </p>
+            <div className="mt-2 flex items-baseline gap-3">
+              <span
+                className="text-5xl font-semibold tabular-nums tracking-tight"
+                style={{ color: stabilityColor }}
+              >
+                {formatPercent(snapshot.stability)}
+              </span>
+              {Math.abs(stabilityDelta) >= 0.1 && (
+                <span
+                  className="text-sm font-semibold tabular-nums"
+                  style={{
+                    color:
+                      stabilityDelta > 0
+                        ? "oklch(0.7 0.13 165)"
+                        : "oklch(0.66 0.19 28)",
+                  }}
+                >
+                  {stabilityDelta > 0 ? "▲" : "▼"}{" "}
+                  {Math.abs(stabilityDelta).toFixed(1)}/mo
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-sm font-medium text-muted-foreground">
+              {stabilityState} at month {snapshot.month}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-2.5 w-4 rounded-full"
+                style={{ backgroundColor: stabilityColor }}
+                aria-hidden="true"
+              />
+              Stability
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-2.5 w-4 rounded-full"
+                style={{ backgroundColor: "var(--timeline-unemployment)" }}
+                aria-hidden="true"
+              />
+              Unemployment {formatPercent(snapshot.unemploymentRate)}
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-2.5 w-4 rounded-full opacity-60"
+                style={{ backgroundColor: "var(--tool-accent)" }}
+                aria-hidden="true"
+              />
+              AI adoption {formatPercent(snapshot.aiAdoption * 100)}
+            </span>
+          </div>
+        </div>
+
+        <div
+          className="overflow-hidden rounded-[1.25rem] border p-3"
+          style={{
+            borderColor: "var(--map-panel-border)",
+            background:
+              "linear-gradient(180deg, var(--map-panel-from) 0%, var(--map-panel-to) 100%)",
+          }}
+        >
+          <TimelineChart history={state.history} stabilityColor={stabilityColor} />
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {vitalGroups.map((group) => (
+          <div key={group.title} className="tool-panel-lg space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {group.title}
+            </p>
+            <div className="space-y-4">
+              {group.labels.map((label) => {
+                const metric = metricByLabel.get(label);
+                if (!metric) return null;
+                return <Vital key={label} {...metric} />;
+              })}
+            </div>
+          </div>
+        ))}
       </section>
 
       {!hydrated && (

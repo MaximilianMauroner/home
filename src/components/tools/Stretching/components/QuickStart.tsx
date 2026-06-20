@@ -20,9 +20,9 @@ export function QuickStart({
       <section className="tool-panel-lg">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-4">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Time to Stretch
-            </h1>
+            </h2>
             <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
               Take a moment to care for your body. Choose a routine and begin your practice.
             </p>

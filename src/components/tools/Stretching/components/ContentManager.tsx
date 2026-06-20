@@ -300,9 +300,9 @@ export function ContentManager({
                         <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
                           ⏱️ {formatTime(stretch.duration)}
                         </span>
-                        {((stretch as any).repetitions || 1) > 1 && (
+                        {(stretch.repetitions || 1) > 1 && (
                           <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-                            🔁 {(stretch as any).repetitions || 1}x ({formatTime(stretch.duration * ((stretch as any).repetitions || 1))} total)
+                            🔁 {stretch.repetitions || 1}x ({formatTime(stretch.duration * (stretch.repetitions || 1))} total)
                           </span>
                         )}
                       </div>

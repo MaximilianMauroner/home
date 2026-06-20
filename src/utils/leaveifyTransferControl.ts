@@ -97,23 +97,24 @@ function wakeWaiters(state: TransferControlState) {
   }
 }
 
-function waitForStateChange(state: TransferControlState) {
+async function waitForStateChange(state: TransferControlState) {
   let waiter: (() => void) | undefined;
-  const promise = new Promise<void>((resolve) => {
-    waiter = () => {
-      if (waiter) {
-        state.waiters.delete(waiter);
-      }
-      resolve();
-    };
-    state.waiters.add(waiter);
-  });
 
-  return promise.finally(() => {
+  try {
+    await new Promise<void>((resolve) => {
+      waiter = () => {
+        if (waiter) {
+          state.waiters.delete(waiter);
+        }
+        resolve();
+      };
+      state.waiters.add(waiter);
+    });
+  } finally {
     if (waiter) {
       state.waiters.delete(waiter);
     }
-  });
+  }
 }
 
 function throwIfStopped(state: TransferControlState) {

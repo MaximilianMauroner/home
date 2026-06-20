@@ -20,10 +20,10 @@ export function RoutineForm({ routine, stretches, onSubmit, onCancel }: RoutineF
       return;
     }
     const totalDuration = stretches.reduce((total, s) => {
-      const reps = (s as any).repetitions || 1;
+      const reps = s.repetitions || 1;
       return total + (s.duration * reps);
     }, 0);
-    
+
     onSubmit({
       name: name.trim(),
       goal: goal.trim(),
@@ -36,7 +36,7 @@ export function RoutineForm({ routine, stretches, onSubmit, onCancel }: RoutineF
   };
 
   const totalDuration = stretches.reduce((total, s) => {
-    const reps = (s as any).repetitions || 1;
+    const reps = s.repetitions || 1;
     return total + (s.duration * reps);
   }, 0);
 
@@ -85,7 +85,7 @@ export function RoutineForm({ routine, stretches, onSubmit, onCancel }: RoutineF
           <div>Total Duration: <span className="font-semibold text-foreground">{formatTime(totalDuration)}</span></div>
           <div>Number of Stretches: <span className="font-semibold text-foreground">{stretches.length}</span></div>
           <div>Total Steps: <span className="font-semibold text-foreground">
-            {stretches.reduce((total, s) => total + ((s as any).repetitions || 1), 0)}
+            {stretches.reduce((total, s) => total + (s.repetitions || 1), 0)}
           </span></div>
         </div>
       </div>

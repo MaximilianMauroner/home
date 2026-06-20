@@ -1,12 +1,20 @@
 ---
-export const active = false;
 export const title = "Malen nach Zahlen";
 export const description = "A fun coloring game where you can color by numbers";
 import MalenNachZahlen from "@/components/tools/MalenNachZahlen";
+import { isToolActive } from "@/components/tools/toolCatalog.mjs";
 import StarLayout from "@/layouts/StarLayout.astro";
+
+if (!isToolActive("malen-nach-zahlen")) {
+  return Astro.redirect("/tools/", 302);
+}
 ---
 
-<StarLayout title={title} description={description}>
+<StarLayout
+  title={title}
+  description={description}
+  noindex={false}
+>
   <section>
     <MalenNachZahlen client:only />
   </section>

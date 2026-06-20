@@ -346,11 +346,12 @@ export default function PaceCalculator() {
               </header>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="space-y-2">
+                <label htmlFor="pace-kph" className="space-y-2">
                   <span className="block text-sm font-medium text-muted-foreground">
                     Kilometres per hour (KPH)
                   </span>
                   <input
+                    id="pace-kph"
                     type="number"
                     inputMode="decimal"
                     min={0}
@@ -361,11 +362,12 @@ export default function PaceCalculator() {
                   />
                 </label>
 
-                <label className="space-y-2">
+                <label htmlFor="pace-mph" className="space-y-2">
                   <span className="block text-sm font-medium text-muted-foreground">
                     Miles per hour (MPH)
                   </span>
                   <input
+                    id="pace-mph"
                     type="number"
                     inputMode="decimal"
                     min={0}
@@ -379,10 +381,11 @@ export default function PaceCalculator() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
-                  <span>Adjust speed</span>
+                  <label htmlFor="pace-speed-range">Adjust speed</label>
                   <span>{formatNumber(kph, 1)} kph</span>
                 </div>
                 <input
+                  id="pace-speed-range"
                   type="range"
                   min={4}
                   max={40}
@@ -446,39 +449,44 @@ export default function PaceCalculator() {
             </header>
 
             <div className="space-y-6">
-              {DISTANCES.map((distance) => (
-                <div
-                  key={distance.key}
-                  className="tool-subpanel transition-colors hover:border-primary/40"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h3 className="text-base font-semibold text-foreground">
-                        {distance.label}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {distance.description}
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:w-56">
-                      <label className="space-y-2">
-                        <span className="tool-label">
-                          Finish time
-                        </span>
-                        <input
-                          type="time"
-                          step={1}
-                          value={timeInputs[distance.key]}
-                          onChange={(event) =>
-                            handleTimeChange(event.target.value, distance.key)
-                          }
-                          className="tool-field h-11 w-full bg-card text-base font-medium"
-                        />
-                      </label>
+              {DISTANCES.map((distance) => {
+                const finishTimeId = `pace-${distance.key}-finish-time`;
+
+                return (
+                  <div
+                    key={distance.key}
+                    className="tool-subpanel transition-colors hover:border-primary/40"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="text-base font-semibold text-foreground">
+                          {distance.label}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {distance.description}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-2 sm:w-56">
+                        <label htmlFor={finishTimeId} className="space-y-2">
+                          <span className="tool-label">
+                            Finish time
+                          </span>
+                          <input
+                            id={finishTimeId}
+                            type="time"
+                            step={1}
+                            value={timeInputs[distance.key]}
+                            onChange={(event) =>
+                              handleTimeChange(event.target.value, distance.key)
+                            }
+                            className="tool-field h-11 w-full bg-card text-base font-medium"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>

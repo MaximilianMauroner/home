@@ -27,10 +27,120 @@
   --tool-accent: oklch(0.72 0.072 188);
   --tool-accent-foreground: oklch(0.2 0.022 194);
   --tool-accent-text: oklch(0.48 0.075 190);
+
+  /* City map surface */
+  --map-panel-from: oklch(0.985 0.006 190);
+  --map-panel-to: oklch(0.955 0.012 192);
+  --map-panel-border: color-mix(
+    in oklch,
+    var(--tool-accent) 24%,
+    hsl(var(--border)) 76%
+  );
+  --map-surface-from: oklch(0.965 0.014 190);
+  --map-surface-to: oklch(0.925 0.02 195);
+  --map-grid: oklch(0.74 0.022 198);
+  --map-grid-opacity: 0.26;
+  --map-legend-bg: oklch(0.97 0.006 190 / 0.86);
+  --map-legend-border: oklch(0.83 0.025 195);
+
+  /* City map nodes */
+  --map-node: oklch(0.875 0.03 190);
+  --map-node-primary: oklch(0.68 0.1 183);
+  --map-node-civic: oklch(0.805 0.032 210);
+  --map-node-external: oklch(0.83 0.055 200);
+  --map-node-border: oklch(0.69 0.034 204);
+  --map-node-border-primary: oklch(0.5 0.095 185);
+  --map-node-border-selected: oklch(0.5 0.1 190);
+  --map-selection: oklch(0.58 0.095 188 / 0.62);
+  --map-selection-fill: oklch(0.74 0.07 188 / 0.16);
+  --map-selected-dot: oklch(0.43 0.12 188);
+  --map-text-primary: oklch(0.17 0.032 196);
+  --map-text: oklch(0.22 0.024 205);
+  --map-caption: oklch(0.29 0.034 198);
+  --map-caption-bg: oklch(0.95 0.015 194 / 0.78);
+  --map-caption-bg-primary: oklch(0.86 0.045 184 / 0.54);
+  --map-metric: oklch(0.25 0.022 204);
+
+  /* City map flows */
+  --map-flow-revenue: oklch(0.48 0.09 210);
+  --map-flow-wage: oklch(0.48 0.105 160);
+  --map-flow-spending: oklch(0.62 0.115 78);
+  --map-flow-civic: oklch(0.5 0.075 220);
+  --map-flow-support: oklch(0.52 0.1 126);
+
+  /* Collapse warning banner */
+  --tool-warn-bg: linear-gradient(
+    180deg,
+    oklch(0.965 0.03 85) 0%,
+    oklch(0.985 0.012 90) 100%
+  );
+  --tool-warn-border: oklch(0.8 0.1 80 / 0.65);
+  --tool-warn-title: oklch(0.46 0.09 68);
+  --tool-warn-text: oklch(0.44 0.06 66);
+  --tool-warn-icon: oklch(0.58 0.13 58);
+  --tool-warn-divider: oklch(0.78 0.08 78 / 0.5);
+
+  /* Trajectory timeline (unemployment kept off the stability/adoption hues) */
+  --timeline-unemployment: oklch(0.55 0.18 300);
 }
 
 .dark .tool-theme-ai-city {
   --tool-accent-text: oklch(0.8 0.062 190);
+
+  /* City map surface */
+  --map-panel-from: oklch(0.205 0.022 200);
+  --map-panel-to: oklch(0.15 0.018 205);
+  --map-panel-border: color-mix(
+    in oklch,
+    var(--tool-accent) 30%,
+    oklch(0.28 0.014 255) 70%
+  );
+  --map-surface-from: oklch(0.225 0.024 198);
+  --map-surface-to: oklch(0.165 0.02 202);
+  --map-grid: oklch(0.49 0.024 200);
+  --map-grid-opacity: 0.18;
+  --map-legend-bg: oklch(0.22 0.015 200 / 0.72);
+  --map-legend-border: oklch(0.37 0.025 200);
+
+  /* City map nodes */
+  --map-node: oklch(0.34 0.032 200);
+  --map-node-primary: oklch(0.5 0.085 185);
+  --map-node-civic: oklch(0.375 0.032 210);
+  --map-node-external: oklch(0.415 0.052 200);
+  --map-node-border: oklch(0.52 0.036 205);
+  --map-node-border-primary: oklch(0.68 0.09 185);
+  --map-node-border-selected: oklch(0.75 0.09 190);
+  --map-selection: oklch(0.76 0.095 190 / 0.68);
+  --map-selection-fill: oklch(0.7 0.08 190 / 0.12);
+  --map-selected-dot: oklch(0.82 0.1 185);
+  --map-text-primary: oklch(0.98 0.013 190);
+  --map-text: oklch(0.95 0.016 200);
+  --map-caption: oklch(0.83 0.035 198);
+  --map-caption-bg: oklch(0.24 0.02 200 / 0.72);
+  --map-caption-bg-primary: oklch(0.34 0.035 188 / 0.68);
+  --map-metric: oklch(0.9 0.02 200);
+
+  /* City map flows */
+  --map-flow-revenue: oklch(0.68 0.095 210);
+  --map-flow-wage: oklch(0.72 0.11 160);
+  --map-flow-spending: oklch(0.78 0.13 78);
+  --map-flow-civic: oklch(0.69 0.08 220);
+  --map-flow-support: oklch(0.76 0.1 126);
+
+  /* Collapse warning banner */
+  --tool-warn-bg: linear-gradient(
+    180deg,
+    oklch(0.34 0.05 72 / 0.55) 0%,
+    oklch(0.27 0.035 70 / 0.5) 100%
+  );
+  --tool-warn-border: oklch(0.62 0.1 72 / 0.42);
+  --tool-warn-title: oklch(0.87 0.09 80);
+  --tool-warn-text: oklch(0.85 0.055 82);
+  --tool-warn-icon: oklch(0.82 0.13 72);
+  --tool-warn-divider: oklch(0.62 0.08 75 / 0.32);
+
+  /* Trajectory timeline (unemployment kept off the stability/adoption hues) */
+  --timeline-unemployment: oklch(0.74 0.16 300);
 }
 
 .tool-theme-frequency {

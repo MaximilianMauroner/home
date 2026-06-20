@@ -11,10 +11,10 @@ type GameGenerationResult = {
   baseAlpha: number;
 };
 
-const START_AMOUNT = 20;
-const START_LEVEL = 50;
-const MAX_AMOUNT = 50;
-const MAX_LEVEL = 100;
+const START_AMOUNT = 4;
+const START_LEVEL = 20;
+const MAX_AMOUNT = 7;
+const MAX_LEVEL = 95;
 
 const STORAGE_KEYS = {
   state: "last-state",
@@ -36,6 +36,15 @@ const readNumberFromStorage = (key: string, fallback: number) => {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
+
+const clampNumber = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
+const clampGridSize = (value: number) =>
+  clampNumber(Math.floor(value), START_AMOUNT, MAX_AMOUNT);
+
+const clampLevel = (value: number) =>
+  clampNumber(Math.floor(value), START_LEVEL, MAX_LEVEL);
 
 const hextToAlpha = (hex: string) => {
   if (!hex || hex.length < 9) {
@@ -64,18 +73,12 @@ function fullColorHex(r: number, g: number, b: number, a: number) {
   };
 }
 
-function getBiasedRandomAbovePercent(difficulty: number, bias = 1.5): number {
-  const percent = Math.max(0, Math.min(100, difficulty));
-  const minimum = percent * bias;
-
-  if (minimum >= 100) {
-    return getBiasedRandomAbovePercent(difficulty, bias - 0.1);
-  }
-
-  const maximum = 99.99999999;
-  const randomValue = Math.random();
-  const randomNumber = minimum - randomValue * (maximum - minimum);
-  return Math.floor((randomNumber / 100) * 255);
+function getTargetAlphaForLevel(level: number): number {
+  const difficulty = clampNumber(level, START_LEVEL, MAX_LEVEL) / 100;
+  const easiestGap = 86;
+  const hardestGap = 7;
+  const alphaGap = Math.round(easiestGap - difficulty * (easiestGap - hardestGap));
+  return clampNumber(255 - alphaGap, 1, 254);
 }
 
 function extractAlphaFromGrid(grid: ColourBlock[][]) {
@@ -126,8 +129,23 @@ function safeParseGrid(value: string | null): ColourBlock[][] | null {
   }
 }
 
+function getGridSize(grid: ColourBlock[][] | null) {
+  if (!grid || grid.length === 0) {
+    return 0;
+  }
+
+  const firstRowLength = grid[0]?.length ?? 0;
+  if (!firstRowLength) {
+    return 0;
+  }
+
+  const isSquare = grid.length === firstRowLength;
+  const rowsMatch = grid.every((row) => row.length === firstRowLength);
+  return isSquare && rowsMatch ? firstRowLength : 0;
+}
+
 function generateGame(size: number, level: number): GameGenerationResult {
-  const normalizedSize = Math.max(1, Math.min(MAX_AMOUNT, Math.floor(size)));
+  const normalizedSize = clampGridSize(size);
 
   const baseColour = fullColorHex(
     Math.floor(Math.random() * 255),
@@ -141,7 +159,7 @@ function generateGame(size: number, level: number): GameGenerationResult {
     isTarget: false,
   };
 
-  const alphaOffset = getBiasedRandomAbovePercent(level);
+  const alphaOffset = getTargetAlphaForLevel(level);
   const targetColour = `#${baseColour.red}${baseColour.green}${baseColour.blue}${rgbToHex(alphaOffset)}`;
 
   const targetBlock: ColourBlock = {
@@ -198,11 +216,12 @@ export default function ColourGame() {
       return;
     }
 
-    const storedAmount = readNumberFromStorage(
-      STORAGE_KEYS.amount,
-      START_AMOUNT,
+    const storedAmount = clampGridSize(
+      readNumberFromStorage(STORAGE_KEYS.amount, START_AMOUNT),
     );
-    const storedLevel = readNumberFromStorage(STORAGE_KEYS.level, START_LEVEL);
+    const storedLevel = clampLevel(
+      readNumberFromStorage(STORAGE_KEYS.level, START_LEVEL),
+    );
     const storedCount = readNumberFromStorage(STORAGE_KEYS.count, 0);
     const storedGrid = safeParseGrid(
       window.localStorage.getItem(STORAGE_KEYS.state),
@@ -212,7 +231,7 @@ export default function ColourGame() {
     setLevel(storedLevel);
     setCount(storedCount);
 
-    if (storedGrid) {
+    if (storedGrid && getGridSize(storedGrid) === storedAmount) {
       setGrid(storedGrid);
       const { targetAlpha: storedTargetAlpha, baseAlpha: storedBaseAlpha } =
         extractAlphaFromGrid(storedGrid);
@@ -264,11 +283,6 @@ export default function ColourGame() {
         return;
       }
 
-      const nextGame = generateGame(amount, level);
-      setGrid(nextGame.grid);
-      setTargetAlpha(nextGame.targetAlpha);
-      setBaseAlpha(nextGame.baseAlpha);
-
       let completedThresholds = 0;
       let nextLevel = level;
       let nextAmount = amount;
@@ -292,6 +306,10 @@ export default function ColourGame() {
         return;
       }
 
+      const nextGame = generateGame(nextAmount, nextLevel);
+      setGrid(nextGame.grid);
+      setTargetAlpha(nextGame.targetAlpha);
+      setBaseAlpha(nextGame.baseAlpha);
       setLevel(nextLevel);
       setAmount(nextAmount);
       setCount(nextCount);
@@ -369,9 +387,8 @@ export default function ColourGame() {
               Colour Contrast Trainer
             </h1>
             <p className="max-w-xl text-base leading-relaxed text-card-foreground">
-              Spot the odd alpha channel. Each correct pick increases the
-              opacity gap or expands the grid. Miss it and you&apos;re back to
-              basics.
+              Spot the odd alpha channel. Each correct pick shrinks the opacity
+              gap or expands the grid. Miss it and you&apos;re back to basics.
             </p>
           </div>
 
@@ -425,7 +442,7 @@ export default function ColourGame() {
               style={{
                 gridTemplateColumns: `repeat(${amount}, minmax(0, 1fr))`,
                 gridTemplateRows: `repeat(${amount}, minmax(0, 1fr))`,
-                gap: 0,
+                gap: amount >= 7 ? 3 : 4,
                 width: "100%",
                 maxWidth: `${boardSize}px`,
                 maxHeight: `${boardSize}px`,
@@ -442,12 +459,8 @@ export default function ColourGame() {
                     data-key={`${rowIndex}-${columnIndex}`}
                     onClick={() => handleGuess(block.isTarget)}
                     style={{ backgroundColor: block.colour }}
-                    className="block h-full w-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                    aria-label={
-                      block.isTarget
-                        ? "Potential target colour"
-                        : "Regular colour"
-                    }
+                    className="block h-full w-full rounded-[3px] focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    aria-label={`Colour tile row ${rowIndex + 1}, column ${columnIndex + 1}`}
                   />
                 )),
               )}
@@ -477,8 +490,8 @@ export default function ColourGame() {
             Difficulty snapshot
           </h3>
           <p className="text-sm">
-            Difficulty adjusts by increasing opacity contrast and grid density.
-            Keep the streak going to push both limits.
+            Difficulty adjusts by shrinking the opacity gap and increasing grid
+            density. Keep the streak going to push both limits.
           </p>
 
           <div className="grid gap-4">

@@ -44,6 +44,10 @@ export function WorkflowControls({
     filterCount > 0 ? `Adjust filters (${filterCount})` : "Adjust filters";
   const locationSummary = locations.join(", ");
   const categorySummary = categories.join(", ");
+  const singleModeId = "readwise-mode-single";
+  const batchModeId = "readwise-mode-batch";
+  const documentIdInputId = "readwise-document-id";
+  const cursorInputId = "readwise-cursor";
 
   return (
     <section className="tool-panel flex flex-col gap-4">
@@ -52,36 +56,44 @@ export function WorkflowControls({
           <h2 className="text-base font-semibold text-gray-900 lg:text-lg dark:text-gray-100">
             Workflow controls
           </h2>
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1 dark:border-neutral-800 dark:bg-neutral-950">
+          <div
+            className="flex items-center gap-1 rounded-lg border border-border bg-background p-1 dark:border-neutral-800 dark:bg-neutral-950"
+            role="radiogroup"
+            aria-label="Readwise fetch mode"
+          >
             <label
-              className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+              htmlFor={singleModeId}
+              className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary ${
                 runSingle
                   ? "bg-primary text-primary-foreground"
                   : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
               }`}
             >
               <input
+                id={singleModeId}
                 type="radio"
                 name="runMode"
                 checked={runSingle}
                 onChange={() => onSetRunSingle(true)}
-                className="hidden"
+                className="sr-only"
               />
               Single
             </label>
             <label
-              className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+              htmlFor={batchModeId}
+              className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary ${
                 !runSingle
                   ? "bg-primary text-primary-foreground"
                   : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
               }`}
             >
               <input
+                id={batchModeId}
                 type="radio"
                 name="runMode"
                 checked={!runSingle}
                 onChange={() => onSetRunSingle(false)}
-                className="hidden"
+                className="sr-only"
               />
               Batch
             </label>
@@ -91,9 +103,10 @@ export function WorkflowControls({
 
       {runSingle ? (
         <div className="flex flex-col gap-3">
-          <label className="flex-1">
+          <label htmlFor={documentIdInputId} className="flex-1">
             <span className="tool-label">Document ID</span>
             <input
+              id={documentIdInputId}
               value={documentId}
               onChange={(event) => onSetDocumentId(event.target.value)}
               placeholder="Document ID (e.g. d_123456)"
@@ -101,6 +114,7 @@ export function WorkflowControls({
             />
           </label>
           <button
+            type="button"
             onClick={onFetchSingle}
             disabled={isFetchingSingle}
             className="tool-button"
@@ -150,8 +164,11 @@ export function WorkflowControls({
               />
 
               <div className="space-y-2">
-                <span className="tool-label block">Cursor (optional)</span>
+                <label htmlFor={cursorInputId} className="tool-label block">
+                  Cursor (optional)
+                </label>
                 <input
+                  id={cursorInputId}
                   type="text"
                   value={cursor ?? ""}
                   onChange={(event) => onSetCursor(event.target.value)}
@@ -163,6 +180,7 @@ export function WorkflowControls({
           )}
 
           <button
+            type="button"
             onClick={onFetchBatch}
             disabled={isFetchingBatch}
             className="tool-button"
@@ -197,7 +215,9 @@ function FilterOptions({
         {options.map((option) => (
           <button
             key={option}
+            type="button"
             onClick={() => onToggle(option)}
+            aria-pressed={selectedOptions.includes(option)}
             className={`rounded-md border px-3 py-1.5 text-xs capitalize transition-colors ${
               selectedOptions.includes(option)
                 ? "border-primary bg-primary text-primary-foreground"

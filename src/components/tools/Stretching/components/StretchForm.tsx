@@ -13,7 +13,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
   const [name, setName] = useState(stretch?.name || "");
   const [description, setDescription] = useState(stretch?.description || "");
   const [duration, setDuration] = useState(stretch?.duration || 60);
-  const [repetitions, setRepetitions] = useState((stretch as any)?.repetitions || 1);
+  const [repetitions, setRepetitions] = useState(stretch?.repetitions || 1);
   const [image, setImage] = useState(stretch?.image || "");
   const [how, setHow] = useState(stretch?.how || "");
   const [lookFor, setLookFor] = useState(stretch?.lookFor || "");

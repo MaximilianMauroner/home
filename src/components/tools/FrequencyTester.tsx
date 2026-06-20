@@ -260,6 +260,11 @@ const FrequencyTester = () => {
   const frequencyRange = { min: 20, max: 20000 };
 
   const frequencyDifference = Math.abs(leftFrequency - rightFrequency);
+  const leftRangeId = "frequency-left-range";
+  const leftNumberId = "frequency-left-number";
+  const rightRangeId = "frequency-right-range";
+  const rightNumberId = "frequency-right-number";
+  const volumeRangeId = "frequency-volume-range";
 
   return (
     <div className="tools-shell flex max-w-5xl flex-col gap-6">
@@ -368,9 +373,13 @@ const FrequencyTester = () => {
                 </span>
                 <span className="text-sm text-muted-foreground">Hz</span>
               </div>
-              <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <label
+                htmlFor={leftRangeId}
+                className="flex flex-col gap-2 text-sm text-muted-foreground"
+              >
                 <span>Fine adjustment</span>
                 <input
+                  id={leftRangeId}
                   type="range"
                   min={frequencyRange.min}
                   max={frequencyRange.max}
@@ -382,21 +391,28 @@ const FrequencyTester = () => {
                   className="accent-primary"
                 />
               </label>
-              <input
-                type="number"
-                min={frequencyRange.min}
-                max={frequencyRange.max}
-                value={leftFrequency}
-                onChange={(event) => {
-                  const value = Number.isFinite(event.target.valueAsNumber)
-                    ? event.target.valueAsNumber
-                    : leftFrequency;
-                  setLeftFrequency(
-                    Math.max(frequencyRange.min, Math.min(frequencyRange.max, value)),
-                  );
-                }}
-                className="tool-field w-full text-base"
-              />
+              <label
+                htmlFor={leftNumberId}
+                className="flex flex-col gap-2 text-sm text-muted-foreground"
+              >
+                <span>Exact frequency</span>
+                <input
+                  id={leftNumberId}
+                  type="number"
+                  min={frequencyRange.min}
+                  max={frequencyRange.max}
+                  value={leftFrequency}
+                  onChange={(event) => {
+                    const value = Number.isFinite(event.target.valueAsNumber)
+                      ? event.target.valueAsNumber
+                      : leftFrequency;
+                    setLeftFrequency(
+                      Math.max(frequencyRange.min, Math.min(frequencyRange.max, value)),
+                    );
+                  }}
+                  className="tool-field w-full text-base"
+                />
+              </label>
               <button
                 type="button"
                 onClick={toggleLeft}
@@ -421,9 +437,13 @@ const FrequencyTester = () => {
                 </span>
                 <span className="text-sm text-muted-foreground">Hz</span>
               </div>
-              <label className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <label
+                htmlFor={rightRangeId}
+                className="flex flex-col gap-2 text-sm text-muted-foreground"
+              >
                 <span>Fine adjustment</span>
                 <input
+                  id={rightRangeId}
                   type="range"
                   min={frequencyRange.min}
                   max={frequencyRange.max}
@@ -435,21 +455,28 @@ const FrequencyTester = () => {
                   className="accent-primary"
                 />
               </label>
-              <input
-                type="number"
-                min={frequencyRange.min}
-                max={frequencyRange.max}
-                value={rightFrequency}
-                onChange={(event) => {
-                  const value = Number.isFinite(event.target.valueAsNumber)
-                    ? event.target.valueAsNumber
-                    : rightFrequency;
-                  setRightFrequency(
-                    Math.max(frequencyRange.min, Math.min(frequencyRange.max, value)),
-                  );
-                }}
-                className="tool-field w-full text-base"
-              />
+              <label
+                htmlFor={rightNumberId}
+                className="flex flex-col gap-2 text-sm text-muted-foreground"
+              >
+                <span>Exact frequency</span>
+                <input
+                  id={rightNumberId}
+                  type="number"
+                  min={frequencyRange.min}
+                  max={frequencyRange.max}
+                  value={rightFrequency}
+                  onChange={(event) => {
+                    const value = Number.isFinite(event.target.valueAsNumber)
+                      ? event.target.valueAsNumber
+                      : rightFrequency;
+                    setRightFrequency(
+                      Math.max(frequencyRange.min, Math.min(frequencyRange.max, value)),
+                    );
+                  }}
+                  className="tool-field w-full text-base"
+                />
+              </label>
               <button
                 type="button"
                 onClick={toggleRight}
@@ -465,9 +492,10 @@ const FrequencyTester = () => {
               <span className="font-semibold text-foreground">Master controls</span>
               <Volume2 className="h-4 w-4 text-primary" />
             </div>
-            <label className="flex flex-col gap-2 text-sm">
+            <label htmlFor={volumeRangeId} className="flex flex-col gap-2 text-sm">
               <span>Output level</span>
               <input
+                id={volumeRangeId}
                 type="range"
                 min={0}
                 max={1}

@@ -5,6 +5,7 @@ My personal website and blog, built with Astro. Visit at [mauroner.net](https://
 ## 👋 About
 
 This is where I document my journey, share technical insights, and build useful tools. Feel free to explore my:
+
 - Development logs tracking my projects' progress
 - Blog posts about tech, programming, and personal experiences
 - Tools I've built to solve specific problems
@@ -13,7 +14,7 @@ This is where I document my journey, share technical insights, and build useful 
 
 - **Blog Posts**: Technical articles and personal thoughts
 - **Dev Logs**: Regular updates about my projects and learnings
-- **Tools**: 
+- **Tools**:
   - WhatsApp Chat Statistics
   - Spotify Listening History Analysis
   - More coming soon...
@@ -45,12 +46,13 @@ This is where I document my journey, share technical insights, and build useful 
 
 ## 🧞 Commands
 
-| Command           | Action                                    |
-| :--------------- | :---------------------------------------- |
-| `npm install`    | Install dependencies                      |
-| `npm run dev`    | Start dev server at `localhost:4321`      |
-| `npm run build`  | Build for production to `./dist/`         |
-| `npm run preview`| Preview production build locally          |
+| Command           | Action                               |
+| :---------------- | :----------------------------------- |
+| `bun install`     | Install dependencies                 |
+| `bun run dev`     | Start dev server at `localhost:4321` |
+| `bun run test`    | Run the Vitest test suite            |
+| `bun run build`   | Build for production to `./dist/`    |
+| `bun run preview` | Preview production build locally     |
 
 ## 📝 Adding Content
 
@@ -61,5 +63,6 @@ This is where I document my journey, share technical insights, and build useful 
 ## 📫 Contact
 
 Feel free to reach out or follow my work:
+
 - Website: [mauroner.net](https://www.mauroner.net)
 - GitHub: [@maximilianmauroner](https://github.com/MaximilianMauroner)

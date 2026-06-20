@@ -66,7 +66,11 @@ export default function SpotifyStats() {
       }
 
       setFiles(extractedFiles);
-      setStatus(`Successfully extracted ${extractedFiles.length} files`);
+      setStatus(
+        extractedFiles.length > 0
+          ? `Successfully extracted ${extractedFiles.length} files`
+          : "No Spotify Audio JSON files were found in that zip.",
+      );
     } catch (error) {
       setStatus("Error processing zip file");
       console.error(error);
@@ -240,17 +244,26 @@ export default function SpotifyStats() {
     ),
     [sortedTracks],
   );
+  const uploadInputId = "spotify-data-export";
+  const uploadHelpId = "spotify-data-export-help";
+  const timeframePresetId = "spotify-timeframe-preset";
+  const timeframeCustomId = "spotify-timeframe-custom";
+  const timeframeSelectId = "spotify-timeframe";
+  const startDateId = "spotify-start-date";
+  const endDateId = "spotify-end-date";
 
   return (
     <div className="space-y-5">
       <div className="tool-panel">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <label className="flex-1 space-y-2">
+          <label htmlFor={uploadInputId} className="flex-1 space-y-2">
             <span className="tool-label">Spotify data export (.zip)</span>
             <input
+              id={uploadInputId}
               ref={fileInputRef}
               type="file"
               accept=".zip"
+              aria-describedby={uploadHelpId}
               onChange={handleFileUpload}
               disabled={isLoading}
               className="tool-field h-11 w-full file:mr-4 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
@@ -258,6 +271,7 @@ export default function SpotifyStats() {
           </label>
           {tracks.size > 0 && (
             <button
+              type="button"
               onClick={resetData}
               disabled={isLoading}
               className="tool-button-danger sm:mt-7"
@@ -266,7 +280,18 @@ export default function SpotifyStats() {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <p
+          id={uploadHelpId}
+          className="mt-3 text-sm leading-6 text-muted-foreground"
+        >
+          Use a Spotify Extended Streaming History zip that contains JSON files
+          with Audio in the filename.
+        </p>
+        <div
+          className="flex items-center gap-2"
+          role={status.toLowerCase().includes("error") ? "alert" : "status"}
+          aria-live="polite"
+        >
           {status && (
             <p className="flex-1 text-sm text-muted-foreground">
               {status}
@@ -277,6 +302,32 @@ export default function SpotifyStats() {
           )}
         </div>
       </div>
+
+      {tracks.size === 0 && (
+        <section className="grid gap-4 text-sm md:grid-cols-3">
+          <div className="rounded-lg border border-border bg-card px-4 py-4">
+            <h2 className="font-semibold text-foreground">Local processing</h2>
+            <p className="mt-2 leading-6 text-muted-foreground">
+              The zip is parsed in the browser and the file is not sent to an
+              app endpoint.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border bg-card px-4 py-4">
+            <h2 className="font-semibold text-foreground">Expected input</h2>
+            <p className="mt-2 leading-6 text-muted-foreground">
+              Export Extended Streaming History from Spotify and keep the JSON
+              files inside the downloaded zip.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border bg-card px-4 py-4">
+            <h2 className="font-semibold text-foreground">Result preview</h2>
+            <p className="mt-2 leading-6 text-muted-foreground">
+              After parsing, the tool shows top artists and tracks for a preset
+              or custom date range.
+            </p>
+          </div>
+        </section>
+      )}
 
       {tracks.size > 0 && (
         <div className="relative space-y-4">
@@ -301,18 +352,22 @@ export default function SpotifyStats() {
 
           <div className="tool-panel space-y-4">
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2">
+              <label htmlFor={timeframePresetId} className="flex items-center gap-2">
                 <input
+                  id={timeframePresetId}
                   type="radio"
+                  name="spotify-timeframe-mode"
                   checked={!isCustomRange}
                   onChange={() => setIsCustomRange(false)}
                   className="h-4 w-4"
                 />
                 <span>Preset range</span>
               </label>
-              <label className="flex items-center gap-2">
+              <label htmlFor={timeframeCustomId} className="flex items-center gap-2">
                 <input
+                  id={timeframeCustomId}
                   type="radio"
+                  name="spotify-timeframe-mode"
                   checked={isCustomRange}
                   onChange={() => setIsCustomRange(true)}
                   className="h-4 w-4"
@@ -322,23 +377,28 @@ export default function SpotifyStats() {
             </div>
 
             {!isCustomRange ? (
-              <select
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-                className="tool-field flex h-10 w-full"
-              >
-                <option value="month">Last Month</option>
-                <option value="6months">Last 6 Months</option>
-                <option value="year">Last Year</option>
-                <option value="all">All Time</option>
-              </select>
+              <label htmlFor={timeframeSelectId} className="space-y-2">
+                <span className="tool-label">Preset timeframe</span>
+                <select
+                  id={timeframeSelectId}
+                  value={timeframe}
+                  onChange={(e) => setTimeframe(e.target.value)}
+                  className="tool-field flex h-10 w-full"
+                >
+                  <option value="month">Last Month</option>
+                  <option value="6months">Last 6 Months</option>
+                  <option value="year">Last Year</option>
+                  <option value="all">All Time</option>
+                </select>
+              </label>
             ) : (
               <div className="flex gap-4">
                 <div className="flex-1 space-y-2">
-                  <label className="text-sm text-muted-foreground">
+                  <label htmlFor={startDateId} className="text-sm text-muted-foreground">
                     Start Date
                   </label>
                   <input
+                    id={startDateId}
                     type="date"
                     value={pendingDateRange.start}
                     onChange={(e) =>
@@ -351,10 +411,11 @@ export default function SpotifyStats() {
                   />
                 </div>
                 <div className="flex-1 space-y-2">
-                  <label className="text-sm text-muted-foreground">
+                  <label htmlFor={endDateId} className="text-sm text-muted-foreground">
                     End Date
                   </label>
                   <input
+                    id={endDateId}
                     type="date"
                     value={pendingDateRange.end}
                     onChange={(e) =>
@@ -370,6 +431,7 @@ export default function SpotifyStats() {
             )}
             {isCustomRange && (
               <button
+                type="button"
                 onClick={() => {
                   setDateRange(pendingDateRange);
                   handleProcessFile();
