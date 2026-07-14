@@ -1,6 +1,5 @@
 ---
 import BlogPreview from "@/components/content/BlogPreview";
-import PostImageLoader from "@/components/content/PostImageLoader.astro";
 import StarLayout from "@/layouts/StarLayout.astro";
 import { getBlogs } from "@/utils/server/content";
 
@@ -55,17 +54,7 @@ const breadcrumbSchema = {
               class="min-w-0 animate-fade-in"
               style={`animation-delay: ${index * 50}ms;`}
             >
-              <BlogPreview blog={blog} client:idle>
-                {blog.data.image && blog.data.image.trim() !== "" && (
-                  <div slot="image" class="absolute inset-0 overflow-hidden">
-                    <PostImageLoader
-                      className="h-full w-full object-cover"
-                      imagePath={blog.data.image}
-                      altText={blog.data.title}
-                    />
-                  </div>
-                )}
-              </BlogPreview>
+              <BlogPreview blog={blog} />
             </div>
           ))
         }
