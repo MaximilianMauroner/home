@@ -30,7 +30,6 @@ const {
   noindex = false,
 } = Astro.props;
 import "@/styles/globals.css";
-import { ClientRouter } from "astro:transitions";
 import Posthog from "@/components/layout/Posthog.astro";
 
 // Normalize trailing slashes - ensure all URLs end with trailing slash (except root)
@@ -66,8 +65,12 @@ if (image && images[image]) {
     height: 1024,
   });
 }
-const metaImageUrl = ogImageUrl ?? new URL(img.src, Astro.site).href;
+const metaImageUrl = ogImageUrl ?? new URL(img.src, Astro.site ?? Astro.url).href;
 const ogType = articlePublishedTime ? "article" : "website";
+const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
+  /^www\./,
+  "",
+);
 ---
 
 <html lang="en">
@@ -155,7 +158,6 @@ const ogType = articlePublishedTime ? "article" : "website";
         <meta name="robots" content="index, follow" />
       )
     }
-    <ClientRouter />
     {import.meta.env.PROD && <Posthog />}
 
     <!-- Website Schema for Sitelinks Optimization -->
@@ -230,37 +232,83 @@ const ogType = articlePublishedTime ? "article" : "website";
     }
 
     <script is:inline>
-      const toggleDarkMode = (darkMode) => {
+      const setColorTheme = (darkMode, isInteraction = true) => {
+        if (isInteraction) {
+          document.documentElement.classList.add("theme-changing");
+        }
         document.documentElement.classList.toggle("dark", darkMode);
         localStorage.setItem("theme", darkMode ? "dark" : "light");
+        if (isInteraction) {
+          requestAnimationFrame(() => {
+            document.documentElement.classList.remove("theme-changing");
+          });
+        }
       };
+      window.setColorTheme = setColorTheme;
       const storedTheme = localStorage.getItem("theme");
 
       if (storedTheme) {
-        toggleDarkMode(storedTheme === "dark");
+        setColorTheme(storedTheme === "dark", false);
       } else {
         const systemDark = window.matchMedia(
           "(prefers-color-scheme: dark)"
         ).matches;
-        toggleDarkMode(systemDark);
+        setColorTheme(systemDark, false);
       }
       document.addEventListener("astro:after-swap", () => {
         const storedTheme = localStorage.getItem("theme");
         if (storedTheme) {
-          toggleDarkMode(storedTheme === "dark");
+          setColorTheme(storedTheme === "dark", false);
         }
       });
     </script>
   </>
   <body lang="en" class="flex min-h-dvh flex-col">
     <Header />
-    <main
-      class="flex-1"
-      transition:name="page-content"
-      transition:animate="fade"
-    >
+    <main class="min-w-0 flex-1">
       <slot />
     </main>
     <Footer />
+    <script is:inline define:vars={{ siteHostname }}>
+      const setLinkTarget = (link, originalTarget, originalRel) => {
+        const url = new URL(link.href);
+        const isExternal =
+          (url.protocol === "http:" || url.protocol === "https:") &&
+          url.hostname !== siteHostname &&
+          url.hostname !== `www.${siteHostname}` &&
+          url.origin !== window.location.origin;
+
+        if (isExternal) {
+          link.target = "_blank";
+          link.relList.add("noopener", "noreferrer");
+        } else {
+          link.removeAttribute("target");
+        }
+
+        setTimeout(() => {
+          if (originalTarget === null) link.removeAttribute("target");
+          else link.setAttribute("target", originalTarget);
+
+          if (originalRel === null) link.removeAttribute("rel");
+          else link.setAttribute("rel", originalRel);
+        });
+      };
+
+      window.linkTargetController?.abort();
+      window.linkTargetController = new AbortController();
+      document.addEventListener(
+        "click",
+        (event) => {
+          if (!(event.target instanceof Element)) return;
+          const link = event.target.closest("a[href]");
+          if (!link) return;
+
+          const originalTarget = link.getAttribute("target");
+          const originalRel = link.getAttribute("rel");
+          setLinkTarget(link, originalTarget, originalRel);
+        },
+        { capture: true, signal: window.linkTargetController.signal }
+      );
+    </script>
   </body>
 </html>

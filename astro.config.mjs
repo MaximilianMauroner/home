@@ -12,13 +12,18 @@ import sitemap from "@astrojs/sitemap";
 import expressiveCode from "astro-expressive-code";
 import { remarkReadingTime } from "./plugins/remark-reading-time.mjs";
 import { remarkModifiedTime } from "./plugins/remark-modified-time.mjs";
-import { isInactiveToolUrl } from "./src/components/tools/toolCatalog.mjs";
+import { isInactiveToolUrl } from "./src/components/tools/toolCatalog.ts";
 
 import vercel from "@astrojs/vercel";
 
 // https://astro.build/config
 export default defineConfig({
   site: "https://www.mauroner.net",
+  vite: {
+    optimizeDeps: {
+      include: ["dayjs", "dayjs/plugin/weekOfYear"],
+    },
+  },
   integrations: [
     tailwind({ applyBaseStyles: false }),
     react(),

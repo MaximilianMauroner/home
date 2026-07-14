@@ -1,93 +1,36 @@
 import { useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
-import {
-  compareMessagesByTimestamp,
-  dateFromMessage,
-  gapHoursBetweenMessages,
-  isDifferentCalendarDay,
-} from "../datetime";
+import { dateFromMessage } from "../datetime";
+import { splitConversationThreads } from "../conversationMetrics";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
-export const ThreadLengthDistribution = ({ messages, persons }: GraphProps) => {
+export const ThreadLengthDistribution = ({ messages }: GraphProps) => {
   const threadData = useMemo(() => {
     if (messages.length < 2) return null;
 
-    const sortedMessages = [...messages].sort(compareMessagesByTimestamp);
-
-    // Find thread boundaries and calculate thread lengths
-    const threads: {
-      length: number;
-      durationHours: number;
-      participants: Set<number>;
-    }[] = [];
-    let currentThread = {
-      length: 1,
-      startTime: sortedMessages[0],
-      endTime: sortedMessages[0],
-      participants: new Set([sortedMessages[0].personId]),
-    };
-
-    const getThreadDurationHours = (
-      startTime: (typeof sortedMessages)[number],
-      endTime: (typeof sortedMessages)[number],
-    ) => {
-      const startDate = dateFromMessage(startTime);
-      const endDate = dateFromMessage(endTime);
-      if (!startDate || !endDate) return 0;
-      return Math.max(
-        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60),
-        0,
+    const threads = splitConversationThreads(messages).map((thread) => {
+      const startMessage = thread.messages[0];
+      const endMessage = thread.messages[thread.messages.length - 1];
+      const startDate = dateFromMessage(startMessage);
+      const endDate = dateFromMessage(endMessage);
+      const participants = new Set(
+        thread.messages.map((message) => message.personId),
       );
-    };
-
-    for (let i = 1; i < sortedMessages.length; i++) {
-      const prevMsg = sortedMessages[i - 1];
-      const currMsg = sortedMessages[i];
-
-      const gapHours = gapHoursBetweenMessages(prevMsg, currMsg);
-      if (gapHours === null) continue;
-
-      // End thread if gap is more than 4 hours or different day with 1+ hour gap
-      const isThreadEnd =
-        gapHours > 4 ||
-        (isDifferentCalendarDay(prevMsg, currMsg) && gapHours > 1);
-
-      if (isThreadEnd) {
-        threads.push({
-          length: currentThread.length,
-          durationHours: getThreadDurationHours(
-            currentThread.startTime,
-            currentThread.endTime,
-          ),
-          participants: new Set(currentThread.participants),
-        });
-
-        // Start new thread
-        currentThread = {
-          length: 1,
-          startTime: currMsg,
-          endTime: currMsg,
-          participants: new Set([currMsg.personId]),
-        };
-      } else {
-        // Continue current thread
-        currentThread.length++;
-        currentThread.endTime = currMsg;
-        currentThread.participants.add(currMsg.personId);
-      }
-    }
-
-    // Don't forget the last thread
-    if (currentThread.length > 0) {
-      threads.push({
-        length: currentThread.length,
-        durationHours: getThreadDurationHours(
-          currentThread.startTime,
-          currentThread.endTime,
-        ),
-        participants: new Set(currentThread.participants),
-      });
-    }
+      const durationHours =
+        startDate && endDate
+          ? Math.max(
+              (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60),
+              0,
+            )
+          : 0;
+      return {
+        length: thread.messages.length,
+        durationHours,
+        participants,
+      };
+    });
 
     // Create length distribution buckets
     const lengthBuckets = new Map<string, number>();
@@ -151,14 +94,15 @@ export const ThreadLengthDistribution = ({ messages, persons }: GraphProps) => {
         avgParticipants: avgParticipants,
       },
     };
-  }, [messages, persons]);
+  }, [messages]);
 
   if (!threadData || threadData.threads.length === 0) {
     return (
       <div>
-        <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-          Thread Length Distribution
-        </h3>
+        <ChartHeader
+          title="Thread Length Distribution"
+          assumption={CHART_ASSUMPTIONS.threadLength}
+        />
         <p className="text-sm text-muted-foreground">
           Not enough data to analyze thread patterns.
         </p>
@@ -267,9 +211,10 @@ export const ThreadLengthDistribution = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Thread Length Distribution
-      </h3>
+      <ChartHeader
+        title="Thread Length Distribution"
+        assumption={CHART_ASSUMPTIONS.threadLength}
+      />
       <div className="mb-4 text-sm text-muted-foreground">
         <p>Analysis of conversation thread lengths and durations</p>
         <div className="mt-2 grid grid-cols-2 gap-4 text-xs">

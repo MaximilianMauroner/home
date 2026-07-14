@@ -216,7 +216,21 @@ export const calculateReciprocity = (
 
 export const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export const calculateWeekdayHourMatrix = (messages: Message[]) => {
+interface BusiestWeekdayHour {
+  weekday: string;
+  hour: number;
+  count: number;
+}
+
+interface WeekdayHourMatrix {
+  matrix: number[][];
+  maxCount: number;
+  busiest: BusiestWeekdayHour | null;
+}
+
+export const calculateWeekdayHourMatrix = (
+  messages: Message[],
+): WeekdayHourMatrix => {
   const matrix = WEEKDAY_LABELS.map(() => Array(24).fill(0) as number[]);
 
   for (const message of messages) {

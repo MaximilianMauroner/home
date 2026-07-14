@@ -38,7 +38,7 @@ export function DocumentList({
             Select a document to review its tags
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1 text-[11px] font-medium">
+        <div className="flex flex-col items-end gap-1 text-xs font-medium">
           <span className="inline-flex w-max items-center gap-1 rounded-md bg-indigo-100 px-2 py-1 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">
             {fetchedDocs.length} total
           </span>
@@ -170,11 +170,11 @@ function DocumentCard({
           <span className="text-sm font-semibold text-gray-800 transition-colors hover:text-indigo-600 dark:text-gray-100 dark:hover:text-indigo-300">
             {doc.title ?? "(no title)"}
           </span>
-          <div className="mt-1 line-clamp-2 break-all text-[11px] text-gray-500 dark:text-gray-400">
+          <div className="mt-1 line-clamp-2 break-all text-xs text-gray-500 dark:text-gray-400">
             {doc.url}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1 text-[11px] font-semibold">
+        <div className="flex flex-col items-end gap-1 text-xs font-semibold">
           {hasDiff ? (
             <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-1 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200">
               Delta {suggestedTags.length} tags
@@ -196,7 +196,7 @@ function DocumentCard({
               event.preventDefault();
               onToggleSelection(doc.id);
             }}
-            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition-colors ${
+            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${
               isSelected
                 ? "border-emerald-400 bg-emerald-100 text-emerald-700 dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:text-emerald-200"
                 : "border-gray-200 bg-white text-gray-600 hover:border-indigo-200 dark:border-neutral-800 dark:bg-neutral-900 dark:text-gray-300 dark:hover:border-indigo-500/40"
@@ -236,7 +236,7 @@ function DocumentCard({
         )}
 
         {extracted.length === 0 && existing.length === 0 && (
-          <span className="rounded-md border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-200">
+          <span className="rounded-md border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-200">
             No tags yet
           </span>
         )}
@@ -265,7 +265,7 @@ function TagPreview({
   return (
     <div>
       <span
-        className={`text-[11px] font-semibold uppercase tracking-wide ${labelClass}`}
+        className={`text-xs font-semibold uppercase tracking-wide ${labelClass}`}
       >
         {label}
       </span>
@@ -273,7 +273,7 @@ function TagPreview({
         {tags.slice(0, maxVisible).map((tag) => (
           <span
             key={`${label}-${tag}`}
-            className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${tagClass}`}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium ${tagClass}`}
           >
             {prefix}
             {tag}
@@ -281,7 +281,7 @@ function TagPreview({
         ))}
         {tags.length > maxVisible && (
           <span
-            className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${tagClass}`}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium ${tagClass}`}
           >
             +{tags.length - maxVisible} more
           </span>

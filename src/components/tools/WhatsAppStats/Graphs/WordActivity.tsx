@@ -3,6 +3,8 @@ import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors, EMOJI_PATTERN } from "./utils";
 import { COMMON_WORDS } from "@/lib/words";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const WordActivity = ({ messages, persons }: GraphProps) => {
   // Build word counts per person and total
@@ -40,9 +42,10 @@ export const WordActivity = ({ messages, persons }: GraphProps) => {
   if (sortedWords.length === 0) {
     return (
       <div>
-        <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-          Word Usage
-        </h3>
+        <ChartHeader
+          title="Word Usage"
+          assumption={CHART_ASSUMPTIONS.wordUsage}
+        />
         <p className="text-sm text-muted-foreground">No words found.</p>
       </div>
     );
@@ -86,9 +89,11 @@ export const WordActivity = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <h3 className="mb-2 mt-8 text-sm font-semibold sm:mb-4 sm:text-base">
-        Word Usage (Top 30, excluding common words)
-      </h3>
+      <ChartHeader
+        title="Word Usage (Top 30, excluding common words)"
+        assumption={CHART_ASSUMPTIONS.wordUsage}
+        className="mt-8"
+      />
       <div className="mb-4 flex flex-col flex-wrap text-sm text-muted-foreground">
         {persons.map((p) => {
           let maxWord = null;

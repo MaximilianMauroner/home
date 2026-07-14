@@ -1,10 +1,9 @@
 import type { Message, Person } from "./db";
+import type { ReactNode } from "react";
 import { isTextualMessage } from "./messageClassification";
 import {
   GitHubStyleChart,
-  MessagesPerPerson,
-  WordsPerPerson,
-  MediaMessagesPerPerson,
+  ParticipantDistribution,
   ActivityByTime,
   ActivityByDay,
   EmojiActivity,
@@ -14,7 +13,49 @@ import {
   ConversationStarters,
   ThreadLengthDistribution,
   SilentPeriods,
+  ConversationInsights,
 } from "./Graphs";
+
+const sections = [
+  { id: "overview", label: "Overview" },
+  { id: "participants", label: "Participants" },
+  { id: "timing", label: "Timing" },
+  { id: "language", label: "Language" },
+  { id: "dynamics", label: "Dynamics" },
+];
+
+function ChartSection({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-24">
+      <h2 className="mb-3 text-lg font-semibold tracking-tight sm:text-xl">
+        {title}
+      </h2>
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">{children}</div>
+    </section>
+  );
+}
+
+function ChartCard({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-lg border p-3 sm:p-5 ${className}`}>
+      {children}
+    </div>
+  );
+}
 
 export default function MessageGraphs({
   messages,
@@ -38,53 +79,74 @@ export default function MessageGraphs({
   });
 
   return (
-    <>
-      <div className="mt-4 grid gap-4 overflow-x-scroll sm:mt-8 sm:gap-8 md:grid-cols-2">
-        {/* Add this new section before other charts */}
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
-          <div className="w-full overflow-x-auto">
-            <GitHubStyleChart messages={messages} year={year} />
-          </div>
+    <div className="mt-6 space-y-8 sm:mt-10">
+      <nav
+        aria-label="Stats sections"
+        className="sticky top-20 z-20 -mx-2 overflow-x-auto border-y border-border/80 bg-background/90 px-2 py-2 backdrop-blur dark:border-neutral-800 dark:bg-background/90"
+      >
+        <div className="flex min-w-max gap-2">
+          {sections.map((section) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              {section.label}
+            </a>
+          ))}
         </div>
-      </div>
-      <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 md:grid-cols-2">
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4 md:col-span-1">
-          <MessagesPerPerson messages={messages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4 md:col-span-1">
-          <WordsPerPerson messages={filteredMessages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4 md:col-span-1">
-          <MediaMessagesPerPerson messages={messages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+      </nav>
+
+      <ChartSection id="overview" title="Overview">
+        <ChartCard className="lg:col-span-2">
+          <GitHubStyleChart messages={messages} year={year} />
+        </ChartCard>
+        <ChartCard className="lg:col-span-2">
+          <ConversationInsights messages={messages} persons={persons} />
+        </ChartCard>
+      </ChartSection>
+
+      <ChartSection id="participants" title="Participant Balance">
+        <ChartCard className="lg:col-span-2">
+          <ParticipantDistribution messages={messages} persons={persons} />
+        </ChartCard>
+      </ChartSection>
+
+      <ChartSection id="timing" title="Timing Patterns">
+        <ChartCard className="lg:col-span-2">
           <ActivityByTime messages={messages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+        </ChartCard>
+        <ChartCard className="lg:col-span-2">
           <ActivityByDay messages={messages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+        </ChartCard>
+        <ChartCard className="lg:col-span-2">
           <RunningAverageMessages messages={messages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+        </ChartCard>
+      </ChartSection>
+
+      <ChartSection id="language" title="Language And Emoji">
+        <ChartCard className="lg:col-span-2">
           <EmojiActivity messages={messages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+        </ChartCard>
+        <ChartCard className="lg:col-span-2">
           <WordActivity messages={filteredMessages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+        </ChartCard>
+      </ChartSection>
+
+      <ChartSection id="dynamics" title="Conversation Dynamics">
+        <ChartCard>
           <ResponseTimeAnalysis messages={messages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+        </ChartCard>
+        <ChartCard>
           <ConversationStarters messages={messages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+        </ChartCard>
+        <ChartCard>
           <ThreadLengthDistribution messages={messages} persons={persons} />
-        </div>
-        <div className="col-span-2 rounded-lg border p-1 sm:p-4">
+        </ChartCard>
+        <ChartCard>
           <SilentPeriods messages={messages} persons={persons} />
-        </div>
-      </div>
-    </>
+        </ChartCard>
+      </ChartSection>
+    </div>
   );
 }

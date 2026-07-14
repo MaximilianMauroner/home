@@ -77,7 +77,9 @@ function getTargetAlphaForLevel(level: number): number {
   const difficulty = clampNumber(level, START_LEVEL, MAX_LEVEL) / 100;
   const easiestGap = 86;
   const hardestGap = 7;
-  const alphaGap = Math.round(easiestGap - difficulty * (easiestGap - hardestGap));
+  const alphaGap = Math.round(
+    easiestGap - difficulty * (easiestGap - hardestGap),
+  );
   return clampNumber(255 - alphaGap, 1, 254);
 }
 
@@ -383,9 +385,6 @@ export default function ColourGame() {
       <section className="tool-panel-lg">
         <div className="grid gap-6 md:grid-cols-[1.1fr_0.9fr] md:items-center">
           <div className="space-y-4">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Colour Contrast Trainer
-            </h1>
             <p className="max-w-xl text-base leading-relaxed text-card-foreground">
               Spot the odd alpha channel. Each correct pick shrinks the opacity
               gap or expands the grid. Miss it and you&apos;re back to basics.
@@ -394,25 +393,19 @@ export default function ColourGame() {
 
           <div className="tool-subpanel grid gap-4 text-sm text-card-foreground">
             <div className="flex items-center justify-between">
-              <span className="tool-label">
-                Level
-              </span>
+              <span className="tool-label">Level</span>
               <span className="text-lg font-semibold text-foreground">
                 {level}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="tool-label">
-                Grid size
-              </span>
+              <span className="tool-label">Grid size</span>
               <span className="text-lg font-semibold text-foreground">
                 {amount} × {amount}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="tool-label">
-                Streak
-              </span>
+              <span className="tool-label">Streak</span>
               <span className="text-lg font-semibold text-foreground">
                 {count}
               </span>
@@ -496,9 +489,7 @@ export default function ColourGame() {
 
           <div className="grid gap-4">
             <div className="tool-subpanel">
-              <span className="tool-label">
-                Target alpha
-              </span>
+              <span className="tool-label">Target alpha</span>
               <p className="mt-2 text-2xl font-semibold text-foreground">
                 {targetAlpha}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
@@ -508,9 +499,7 @@ export default function ColourGame() {
             </div>
 
             <div className="tool-subpanel">
-              <span className="tool-label">
-                Base alpha
-              </span>
+              <span className="tool-label">Base alpha</span>
               <p className="mt-2 text-2xl font-semibold text-foreground">
                 {baseAlpha}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
@@ -520,9 +509,7 @@ export default function ColourGame() {
             </div>
 
             <div className="tool-subpanel border-primary/30 bg-card">
-              <span className="tool-label">
-                Contrast ratio
-              </span>
+              <span className="tool-label">Contrast ratio</span>
               <p className="mt-2 text-2xl font-semibold text-foreground">
                 {difficultyPercent}%
               </p>
@@ -532,9 +519,7 @@ export default function ColourGame() {
             </div>
 
             <div className="tool-subpanel border-emerald-500/40 bg-card">
-              <span className="tool-label">
-                Alpha difference
-              </span>
+              <span className="tool-label">Alpha difference</span>
               <p className="mt-2 text-2xl font-semibold text-foreground">
                 {alphaDifference}
               </p>

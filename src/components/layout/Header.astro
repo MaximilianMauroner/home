@@ -33,9 +33,7 @@ navigation.forEach((item) => {
   item.current = regex.test(pathname);
 });
 
-const visibleNavigation = navigation;
 const currentNavigation = navigation.filter((item) => item.current);
-const mobileMenuNavigation = navigation;
 ---
 
 <header
@@ -47,11 +45,13 @@ const mobileMenuNavigation = navigation;
   <div class="site-header-shell">
     <a href="/" class="brand-home" aria-label="Maximilian Mauroner home">
       <span class="brand-orbit" aria-hidden="true">
+        <span class="brand-fallback">MM</span>
         <Image
           src={ImgAstronaut}
           loading="eager"
           alt=""
           class="brand-image"
+          onerror="this.remove()"
         />
       </span>
       <span class="brand-copy">
@@ -60,7 +60,7 @@ const mobileMenuNavigation = navigation;
     </a>
 
     <nav class="desktop-nav" aria-label="Main navigation">
-      {visibleNavigation.map((item) => <NavItem item={item} class="nav-item--desktop" />)}
+      {navigation.map((item) => <NavItem item={item} class="nav-item--desktop" />)}
     </nav>
 
     <div class="mobile-utility-actions" role="group" aria-label="Site utilities">
@@ -96,7 +96,7 @@ const mobileMenuNavigation = navigation;
       <button
         id="menu-toggle"
         class="menu-button"
-        aria-label="Toggle navigation menu"
+        aria-label="Open navigation menu"
         aria-controls="mobile-menu"
         aria-expanded="false"
       >
@@ -167,7 +167,7 @@ const mobileMenuNavigation = navigation;
       <div class="mobile-menu-panel">
         <div class="mobile-menu-list">
           {
-            mobileMenuNavigation.map((item) => (
+            navigation.map((item) => (
               <NavItem
                 item={item}
                 class="nav-item--mobile-menu"
@@ -181,26 +181,70 @@ const mobileMenuNavigation = navigation;
 </header>
 
 <script>
-  const menuToggle = document.getElementById("menu-toggle");
-  const mobileMenu = document.getElementById("mobile-menu");
-  const siteHeader = menuToggle?.closest(".site-header");
-  let isOpen = false;
+  const mobileMenuWindow = window as Window & {
+    __siteMobileMenuListenerBound?: boolean;
+  };
 
-  const handleOpen = (event: Event) => {
-    event.preventDefault();
-    isOpen = !isOpen;
+  const setMobileMenuState = (menuToggle: HTMLButtonElement, isOpen: boolean) => {
+    const mobileMenu = document.getElementById("mobile-menu");
+    const siteHeader = menuToggle.closest(".site-header");
+
     if (mobileMenu) {
       mobileMenu.dataset.open = String(isOpen);
       mobileMenu.setAttribute("aria-hidden", String(!isOpen));
       mobileMenu.toggleAttribute("inert", !isOpen);
     }
+
     if (siteHeader instanceof HTMLElement) {
       siteHeader.dataset.menuOpen = String(isOpen);
     }
-    menuToggle?.setAttribute("aria-expanded", String(isOpen));
+
+    menuToggle.setAttribute("aria-expanded", String(isOpen));
+    menuToggle.setAttribute(
+      "aria-label",
+      isOpen ? "Close navigation menu" : "Open navigation menu",
+    );
   };
 
-  menuToggle?.addEventListener("click", handleOpen);
+  const getMenuToggle = () => {
+    const menuToggle = document.getElementById("menu-toggle");
+    return menuToggle instanceof HTMLButtonElement ? menuToggle : null;
+  };
+
+  const closeMobileMenu = () => {
+    const menuToggle = getMenuToggle();
+    if (menuToggle) {
+      setMobileMenuState(menuToggle, false);
+    }
+  };
+
+  if (!mobileMenuWindow.__siteMobileMenuListenerBound) {
+    mobileMenuWindow.__siteMobileMenuListenerBound = true;
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const menuToggle = target.closest("#menu-toggle");
+      if (!(menuToggle instanceof HTMLButtonElement)) return;
+
+      event.preventDefault();
+      const isOpen = menuToggle.getAttribute("aria-expanded") !== "true";
+      setMobileMenuState(menuToggle, isOpen);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        const menuToggle = getMenuToggle();
+        if (menuToggle?.getAttribute("aria-expanded") === "true") {
+          closeMobileMenu();
+          menuToggle.focus();
+        }
+      }
+    });
+
+    document.addEventListener("astro:before-swap", closeMobileMenu);
+  }
 </script>
 
 <style>
@@ -346,6 +390,14 @@ const mobileMenuNavigation = navigation;
     max-width: none;
     object-fit: contain;
     transform: translate(-50%, -50%);
+  }
+
+  .brand-fallback {
+    position: relative;
+    z-index: 0;
+    color: var(--header-muted);
+    font: 700 0.62rem/1 "JetBrains_Mono", monospace;
+    letter-spacing: 0.04em;
   }
 
   .brand-copy {

@@ -1,5 +1,8 @@
 import type { APIRoute } from "astro";
-import { getBlogs, getLogs, getSnacks } from "@/utils/server/content";
+import {
+  ARTICLE_COLLECTIONS,
+  getArticlesByCollection,
+} from "@/utils/server/content";
 import { renderOgImage, type OgCollection } from "@/utils/server/og";
 
 interface OgProps {
@@ -10,46 +13,22 @@ interface OgProps {
 }
 
 export async function getStaticPaths() {
-  const [blogs, logs, snacks] = await Promise.all([
-    getBlogs(),
-    getLogs(),
-    getSnacks(),
-  ]);
-
   const paths: { params: { slug: string }; props: OgProps }[] = [];
 
-  for (const entry of blogs) {
-    paths.push({
-      params: { slug: `blog/${entry.id}` },
-      props: {
-        title: entry.data.title,
-        description: entry.data.description,
-        collection: "blog",
-        releaseDate: entry.data.releaseDate,
-      },
-    });
-  }
-  for (const entry of logs) {
-    paths.push({
-      params: { slug: `dev-log/${entry.id}` },
-      props: {
-        title: entry.data.title,
-        description: entry.data.description,
-        collection: "dev-log",
-        releaseDate: entry.data.releaseDate,
-      },
-    });
-  }
-  for (const entry of snacks) {
-    paths.push({
-      params: { slug: `snacks/${entry.id}` },
-      props: {
-        title: entry.data.title,
-        description: entry.data.description,
-        collection: "snacks",
-        releaseDate: entry.data.releaseDate,
-      },
-    });
+  for (const descriptor of ARTICLE_COLLECTIONS) {
+    const entries = await getArticlesByCollection(descriptor.collection);
+    const pathSegment = descriptor.pathPrefix.replace(/^\/|\/$/g, "");
+    for (const entry of entries) {
+      paths.push({
+        params: { slug: `${pathSegment}/${entry.id}` },
+        props: {
+          title: entry.data.title,
+          description: entry.data.description,
+          collection: descriptor.ogCollection,
+          releaseDate: entry.data.releaseDate,
+        },
+      });
+    }
   }
 
   return paths;

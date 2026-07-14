@@ -3,19 +3,14 @@ import { Pie } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
 import { dateFromMessage } from "../datetime";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const MessagesPerPerson = ({ messages, persons }: GraphProps) => {
   const totalMessages = messages.length;
 
-  const {
-    messagesPerPerson,
-    messagesPerDayPerPerson,
-    pieData,
-    firstDate,
-    lastDate,
-  } = useMemo(() => {
+  const { messagesPerPerson, pieData, firstDate, lastDate } = useMemo(() => {
     const messagesPerPerson = new Map<number, number>();
-    const messagesPerDayPerPerson = new Map<number, Map<string, number>>();
     let minDate: Date | null = null;
     let maxDate: Date | null = null;
 
@@ -23,14 +18,6 @@ export const MessagesPerPerson = ({ messages, persons }: GraphProps) => {
       const personId = message.personId;
       const count = messagesPerPerson.get(personId) || 0;
       messagesPerPerson.set(personId, count + 1);
-
-      // Track messages per day per person
-      if (!messagesPerDayPerPerson.has(personId)) {
-        messagesPerDayPerPerson.set(personId, new Map());
-      }
-      const dateKey = message.date;
-      const dayMap = messagesPerDayPerPerson.get(personId)!;
-      dayMap.set(dateKey, (dayMap.get(dateKey) || 0) + 1);
 
       // Track min/max date
       const msgDate = dateFromMessage(message);
@@ -59,7 +46,6 @@ export const MessagesPerPerson = ({ messages, persons }: GraphProps) => {
 
     return {
       messagesPerPerson,
-      messagesPerDayPerPerson,
       colorMap,
       labels,
       backgroundColor,
@@ -103,14 +89,15 @@ export const MessagesPerPerson = ({ messages, persons }: GraphProps) => {
         },
       },
     }),
-    [messagesPerPerson, messagesPerDayPerPerson, persons, firstDate, lastDate],
+    [messagesPerPerson, persons, firstDate, lastDate],
   );
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Messages per Participant
-      </h3>
+      <ChartHeader
+        title="Messages per Participant"
+        assumption={CHART_ASSUMPTIONS.messagesPerPerson}
+      />
       <p className="mb-4 text-sm text-muted-foreground">
         Total Messages: {totalMessages}
       </p>

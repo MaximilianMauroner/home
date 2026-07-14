@@ -1,0 +1,104 @@
+---
+import DevLogConceptGallery from "@/components/design/DevLogConceptGallery.astro";
+import StarLayout from "@/layouts/StarLayout.astro";
+import { getLogs } from "@/utils/server/content";
+
+const [log] = await getLogs();
+
+if (!log) {
+  throw new Error("The design playground needs at least one dev-log entry.");
+}
+
+const conceptGroups = [
+  {
+    source: "Strata Cut studies",
+    concepts: [
+      { name: "Strata Cut", variant: "strata-cut", motif: "Geological cross-section" },
+      { name: "Faultline", variant: "strata-faultline", motif: "Tectonic editorial split" },
+      { name: "Core Sample", variant: "strata-core-sample", motif: "Vertical archive extraction" },
+      { name: "Terraced Layers", variant: "strata-terrace", motif: "Stepped sediment shelves" },
+      { name: "Night Seam", variant: "strata-night-seam", motif: "Luminous mineral survey" },
+    ],
+  },
+  {
+    source: "Patchbay Release studies",
+    concepts: [
+      { name: "Patchbay Release", variant: "patchbay-release", motif: "Oscilloscope rack" },
+      { name: "Broadcast Bay", variant: "patchbay-broadcast", motif: "Live transmission desk" },
+      { name: "Matrix Router", variant: "patchbay-matrix", motif: "Signal routing matrix" },
+      { name: "Signal Flow", variant: "patchbay-signal-flow", motif: "Cable path instrument" },
+      { name: "Portable Rack", variant: "patchbay-portable", motif: "Compact field console" },
+    ],
+  },
+  {
+    source: "Patchbay Memo studies",
+    concepts: [
+      { name: "Patchbay Memo", variant: "patchbay-memo", motif: "Modular studio panel" },
+      { name: "Operator Console", variant: "patchbay-console", motif: "Control-room memorandum" },
+      { name: "Cable Map", variant: "patchbay-cable-map", motif: "Connected socket diagram" },
+      { name: "Label Maker", variant: "patchbay-label-maker", motif: "Taped hardware annotation" },
+      { name: "Service Bay", variant: "patchbay-service-bay", motif: "Open maintenance chassis" },
+    ],
+  },
+] as const;
+---
+
+<StarLayout
+  title="Dev-log card design studies"
+  description="Focused variations on three selected dev-log card directions."
+  noindex
+>
+  <div class="design-page">
+    <header class="design-intro">
+      <p>Temporary design playground</p>
+      <h1>Three directions.<br />Fifteen studies.</h1>
+      <span>
+        Five focused variations each for Strata Cut, Patchbay Release, and
+        Patchbay Memo—all using the same real dev-log entry.
+      </span>
+    </header>
+
+    <DevLogConceptGallery log={log} groups={conceptGroups} startIndex={1} />
+  </div>
+</StarLayout>
+
+<style>
+  .design-page {
+    width: min(100% - 2rem, 76rem);
+    margin-inline: auto;
+    padding-block: 5rem 8rem;
+  }
+
+  .design-intro { max-width: 56rem; }
+
+  .design-intro p {
+    color: rgb(79 70 229);
+    font: 750 0.68rem "JetBrains_Mono", monospace;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .design-intro h1 {
+    margin-top: 0.9rem;
+    font-size: clamp(2.8rem, 8vw, 6rem);
+    font-weight: 760;
+    line-height: 0.9;
+    letter-spacing: -0.065em;
+  }
+
+  .design-intro span {
+    display: block;
+    max-width: 42rem;
+    margin-top: 1.6rem;
+    color: rgb(82 82 91);
+    font-size: 1.05rem;
+    line-height: 1.7;
+  }
+
+  :global(.dark) .design-intro p { color: rgb(165 180 252); }
+  :global(.dark) .design-intro span { color: rgb(161 161 170); }
+
+  @media (max-width: 700px) {
+    .design-page { width: min(100% - 1.25rem, 76rem); padding-top: 3rem; }
+  }
+</style>

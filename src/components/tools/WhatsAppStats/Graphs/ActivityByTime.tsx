@@ -3,6 +3,7 @@ import { Line } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { hourFromTime } from "../datetime";
 import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const ActivityByTime = ({ messages, persons }: GraphProps) => {
   // Prepare data
@@ -91,7 +92,7 @@ export const ActivityByTime = ({ messages, persons }: GraphProps) => {
     <>
       <ChartHeader
         title="Activity by Hour"
-        assumption="Buckets every parsed message by the normalized local hour stored in the WhatsApp export. Media and deleted placeholders are included because this chart measures activity, not text content."
+        assumption={CHART_ASSUMPTIONS.activityByHour}
       />
       <p className="mb-4 text-sm text-muted-foreground">
         Most Active Hour:{" "}

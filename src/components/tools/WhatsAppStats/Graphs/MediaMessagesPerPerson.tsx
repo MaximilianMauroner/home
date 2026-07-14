@@ -2,6 +2,8 @@ import { Pie } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
 import { isMediaPlaceholder } from "../messageClassification";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const MediaMessagesPerPerson = ({ messages, persons }: GraphProps) => {
   let totalMedia = 0;
@@ -51,14 +53,25 @@ export const MediaMessagesPerPerson = ({ messages, persons }: GraphProps) => {
 
   // Hide the component if no media messages found
   if (totalMedia === 0) {
-    return null;
+    return (
+      <>
+        <ChartHeader
+          title="Media Messages per Participant"
+          assumption={CHART_ASSUMPTIONS.mediaMessages}
+        />
+        <p className="text-sm text-muted-foreground">
+          No media placeholders found in the loaded messages.
+        </p>
+      </>
+    );
   }
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Media Messages per Participant
-      </h3>
+      <ChartHeader
+        title="Media Messages per Participant"
+        assumption={CHART_ASSUMPTIONS.mediaMessages}
+      />
       <p className="mb-4 text-sm text-muted-foreground">
         Total Media Messages: {totalMedia}
       </p>

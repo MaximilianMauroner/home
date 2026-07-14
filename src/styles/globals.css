@@ -81,11 +81,39 @@
   }
 }
 @layer base {
+  .theme-changing *,
+  .theme-changing *::before,
+  .theme-changing *::after {
+    transition: none !important;
+  }
+
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .site-page-header {
+    @apply mx-auto mb-8 max-w-screen-sm text-center lg:mb-16;
+  }
+
+  .site-page-title {
+    @apply mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl dark:text-gray-400;
+  }
+
+  .site-page-description {
+    @apply font-light text-gray-500 sm:text-xl;
+  }
+
+  .site-chip {
+    @apply inline-flex min-h-11 items-center justify-center rounded-md px-3 py-2 text-sm font-semibold no-underline md:min-h-0 md:px-2.5 md:py-1 md:text-xs;
+  }
+
+  .site-action {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 px-2 py-2 text-sm font-semibold no-underline;
   }
 }
 h1,

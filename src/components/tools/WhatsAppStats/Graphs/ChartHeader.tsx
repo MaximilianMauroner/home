@@ -12,8 +12,8 @@ export const ChartHeader = ({
   assumption,
   className = "",
 }: ChartHeaderProps) => (
-  <div className={`mb-2 flex items-center gap-2 sm:mb-4 ${className}`}>
-    <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
+  <div className={`mb-3 flex items-center gap-2 sm:mb-4 ${className}`}>
+    <h3 className="text-base font-semibold sm:text-lg">{title}</h3>
     <span className="group relative inline-flex">
       <button
         type="button"

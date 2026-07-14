@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { Pie } from "react-chartjs-2";
 import type { GraphProps } from "./types";
-import { getParticipantColors, EMOJI_PATTERN } from "./utils";
+import { getParticipantColors } from "./utils";
+import { countWords } from "../conversationMetrics";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const WordsPerPerson = ({ messages, persons }: GraphProps) => {
   const { messagesPerPerson, wordCountsPerPerson, pieData, totalWords } =
@@ -12,10 +15,7 @@ export const WordsPerPerson = ({ messages, persons }: GraphProps) => {
       for (const message of messages) {
         const personId = message.personId;
         const count = messagesPerPerson.get(personId) || 0;
-        const wordCount = message.text
-          .replace(EMOJI_PATTERN, "")
-          .trim()
-          .split(/\s+/).length;
+        const wordCount = countWords(message.text);
         totalWords += wordCount;
         messagesPerPerson.set(personId, count + wordCount);
 
@@ -66,11 +66,11 @@ export const WordsPerPerson = ({ messages, persons }: GraphProps) => {
               const personIdx = context.dataIndex;
               const person = persons[personIdx];
               const personId = person.id;
-              const totalWords = messagesPerPerson.get(personId) || 0;
+              const personWords = messagesPerPerson.get(personId) || 0;
               const wordCounts = wordCountsPerPerson.get(personId) || [];
               const numMessages = wordCounts.length;
               const avg =
-                numMessages > 0 ? (totalWords / numMessages).toFixed(2) : "0";
+                numMessages > 0 ? (personWords / numMessages).toFixed(2) : "0";
               // Median calculation
               let median = "0";
               if (numMessages > 0) {
@@ -83,7 +83,7 @@ export const WordsPerPerson = ({ messages, persons }: GraphProps) => {
               }
               // Messages per day
               return [
-                `${totalWords} words`,
+                `${personWords} words`,
                 `${avg} words/msg (average)`,
                 `${median} words/msg (median)`,
               ];
@@ -97,9 +97,10 @@ export const WordsPerPerson = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Words per Participant
-      </h3>
+      <ChartHeader
+        title="Words per Participant"
+        assumption={CHART_ASSUMPTIONS.wordsPerPerson}
+      />
       <p className="mb-4 text-sm text-muted-foreground">
         Total Words: {totalWords}
       </p>

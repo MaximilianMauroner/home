@@ -12,6 +12,24 @@ type TagViewProps = {
   preSelectedTag?: string;
   initialSearchQuery?: string;
 };
+
+type SearchablePost =
+  | CollectionEntry<"blog">
+  | CollectionEntry<"log">
+  | CollectionEntry<"snacks">;
+
+const searchQueryInPost = (search: string, post: SearchablePost) => {
+  if (!search.trim()) return true;
+
+  const searchLower = search.toLowerCase();
+  return (
+    post.data.title.toLowerCase().includes(searchLower) ||
+    post.data.description.toLowerCase().includes(searchLower) ||
+    post.data.tags.some((tag) => tag.toLowerCase().includes(searchLower)) ||
+    Boolean(post.body?.toLowerCase().includes(searchLower))
+  );
+};
+
 export default function TagView({
   blogs,
   logs,
@@ -24,48 +42,15 @@ export default function TagView({
     preSelectedTag ?? null,
   );
 
-  const searchQueryInPost = (
-    search: string,
-    post:
-      | CollectionEntry<"blog">
-      | CollectionEntry<"log">
-      | CollectionEntry<"snacks">,
-  ) => {
-    if (!search || search.trim() === "") {
-      return true;
-    }
-    const searchLower = search.toLowerCase();
-    if (post.data.title.toLowerCase().includes(searchLower)) {
-      return true;
-    }
-    if (post.data.description.toLowerCase().includes(searchLower)) {
-      return true;
-    }
-    if (post.data.tags.some(tag => tag.toLowerCase().includes(searchLower))) {
-      return true;
-    }
-    if (post.body?.toLowerCase().includes(searchLower)) {
-      return true;
-    }
-
-    return false;
-  };
-
   // Read search from URL on client side to ensure it's correct after hydration
-  const [search, setSearch] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get('q') || initialSearchQuery || "";
-    }
-    return initialSearchQuery || "";
-  });
+  const [search, setSearch] = useState(initialSearchQuery);
   const isInitialMount = useRef(true);
-  
+
   // Ensure search is synced with URL on mount (in case of hydration mismatch)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
-      const urlSearch = urlParams.get('q') || "";
+      const urlSearch = urlParams.get("q") || "";
       if (urlSearch !== search) {
         setSearch(urlSearch);
       }
@@ -77,7 +62,7 @@ export default function TagView({
   const { selectedBlogs, selectedLogs, selectedSnacks } = useMemo(() => {
     // Ensure we're using the current search value
     const currentSearch = search.trim();
-    
+
     const selBlogs = blogs
       .filter((blog) =>
         selectedTag ? blog.data.tags.includes(selectedTag) : true,
@@ -93,12 +78,20 @@ export default function TagView({
         selectedTag ? snack.data.tags.includes(selectedTag) : true,
       )
       .filter((snack) => searchQueryInPost(currentSearch, snack));
-    return { selectedBlogs: selBlogs, selectedLogs: selLogs, selectedSnacks: selSnacks };
+    return {
+      selectedBlogs: selBlogs,
+      selectedLogs: selLogs,
+      selectedSnacks: selSnacks,
+    };
   }, [blogs, logs, snacks, selectedTag, search]);
 
   const activePostCount =
     selectedBlogs.length + selectedLogs.length + selectedSnacks.length;
   const totalPostCount = blogs.length + logs.length + snacks.length;
+  const clearSearch = () => {
+    setSearch("");
+    requestAnimationFrame(() => document.getElementById("tag-search")?.focus());
+  };
 
   // Update URL when search changes (but don't add to history stack)
   useEffect(() => {
@@ -107,19 +100,22 @@ export default function TagView({
       isInitialMount.current = false;
       return;
     }
-    
+
     const url = new URL(window.location.href);
     if (search) {
-      url.searchParams.set('q', search);
+      url.searchParams.set("q", search);
     } else {
-      url.searchParams.delete('q');
+      url.searchParams.delete("q");
     }
-    window.history.replaceState({}, '', url.toString());
+    window.history.replaceState({}, "", url.toString());
   }, [search]);
 
   return (
     <>
-      <div className="grid grid-cols-6 gap-4 p-4">
+      <div className="sticky top-[4.5rem] z-30 bg-background/95 p-4 backdrop-blur lg:static lg:bg-transparent lg:backdrop-blur-none">
+        <Search search={search} setSearch={setSearch} />
+      </div>
+      <div className="grid grid-cols-6 gap-4 px-4 pb-4">
         <div className="col-span-6 md:col-span-2">
           <TagList
             tags={tags}
@@ -135,7 +131,8 @@ export default function TagView({
             activePostCount={activePostCount}
             totalPostCount={totalPostCount}
             search={search}
-            setSearch={setSearch}
+            selectedTag={selectedTag}
+            onClearSearch={clearSearch}
           />
         </div>
       </div>
@@ -152,21 +149,24 @@ const TagList = ({
   selectedTag: string | null;
   setSelectedTag: (tag: string | null) => void;
 }) => {
-  const [isExpanded, setIsExpanded] = useState(selectedTag == null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <div className="sticky top-28">
       <div className="mb-4 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-2xl font-bold">Tags:</h3>
+          <h2 className="text-2xl font-bold">Tags:</h2>
           <span className="font-mono text-2xl text-muted-foreground">
             ({tags.size})
           </span>
         </div>
         <button
+          type="button"
           onClick={() => setIsExpanded((prev) => !prev)}
-          className="rounded-full p-1 hover:bg-accent"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
           aria-label={isExpanded ? "Collapse tag list" : "Expand tag list"}
+          aria-expanded={isExpanded}
+          aria-controls="tag-list"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -187,21 +187,29 @@ const TagList = ({
         </button>
       </div>
       <ul
+        id="tag-list"
         className="flex flex-wrap gap-2 sm:gap-6 md:gap-3 lg:gap-4"
         aria-label="All tags with blog post counts"
       >
         {Array.from(tags)
-          .filter(([tag]) => isExpanded || tag === selectedTag)
           .sort((a, b) => {
             return a[0].localeCompare(b[0]);
           })
           .map(([tagName, count]) => (
-            <li key={tagName}>
+            <li
+              key={tagName}
+              className={
+                isExpanded || tagName === selectedTag
+                  ? ""
+                  : "hidden lg:list-item"
+              }
+            >
               <button
+                type="button"
+                aria-pressed={selectedTag === tagName}
                 onClick={() => {
                   if (selectedTag === tagName) {
                     setSelectedTag(null);
-                    setIsExpanded(true);
                     window.location.href = "/tags/";
                   } else {
                     setSelectedTag(tagName);
@@ -209,7 +217,7 @@ const TagList = ({
                   }
                 }}
                 className={
-                  "relative inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold text-foreground" +
+                  "relative inline-flex min-h-11 w-fit items-center whitespace-nowrap rounded-full border px-3 py-2 text-sm font-semibold text-foreground md:min-h-0 md:px-2.5 md:py-0.5" +
                   (selectedTag === tagName
                     ? " outline-none ring-2 ring-ring"
                     : "")
@@ -252,7 +260,8 @@ const PostList = ({
   activePostCount,
   totalPostCount,
   search,
-  setSearch,
+  selectedTag,
+  onClearSearch,
 }: {
   blogs: CollectionEntry<"blog">[];
   logs: CollectionEntry<"log">[];
@@ -260,7 +269,8 @@ const PostList = ({
   activePostCount: number;
   totalPostCount: number;
   search: string;
-  setSearch: (search: string) => void;
+  selectedTag: string | null;
+  onClearSearch: () => void;
 }) => {
   const items = [
     ...blogs.map((blog) => ({
@@ -284,8 +294,8 @@ const PostList = ({
   ];
   items.sort((a, b) => {
     return (
-      b.content.data.releaseDate.getTime() -
-      a.content.data.releaseDate.getTime()
+      new Date(b.content.data.releaseDate).getTime() -
+      new Date(a.content.data.releaseDate).getTime()
     );
   });
   return (
@@ -293,15 +303,36 @@ const PostList = ({
       <div className="mb-4 flex justify-between gap-2">
         <div className="flex items-center">
           <h2 className="text-2xl font-bold">Posts:</h2>
-          <span className="font-mono text-2xl text-muted-foreground">
+          <span
+            className="font-mono text-2xl text-muted-foreground"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             ({activePostCount + "/" + totalPostCount})
           </span>
         </div>
-        <div>
-          <Search search={search} setSearch={setSearch} />
-        </div>
       </div>
       <div className="space-y-4">
+        {items.length === 0 && (
+          <div className="rounded-lg border border-dashed border-border bg-muted/40 p-6 text-center">
+            <h3 className="text-lg font-semibold">No matching posts</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {search.trim()
+                ? `No posts match “${search.trim()}”${selectedTag ? ` in “${selectedTag}”` : ""}.`
+                : `There are no posts tagged “${selectedTag}”.`}
+            </p>
+            {search.trim() && (
+              <button
+                type="button"
+                onClick={onClearSearch}
+                className="mt-4 inline-flex min-h-11 items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-semibold hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
+        )}
         {items.map((item) => {
           if (item.type === "blog") {
             return (
@@ -338,60 +369,41 @@ const Search = ({
   search: string;
   setSearch: (search: string) => void;
 }) => {
-  const [isActive, setIsActive] = useState(!!search);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    // Auto-show search if there's a query
-    if (search) {
-      setIsActive(true);
-    }
-  }, [search]);
   return (
-    <div className="relative flex">
-      <input
-        id="search"
-        type="text"
-        ref={inputRef}
-        value={search}
-        onInput={(e) => setSearch(e.currentTarget.value)}
-        className={
-          "flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 pr-8 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 " +
-          (!isActive ? " hidden" : " ")
-        }
-        placeholder="Search"
-      />
-      <button
-        onClick={() => {
-          if (isActive) {
-            // Closing search - clear it
-            setSearch("");
-          }
-          setIsActive(!isActive);
-          if (!isActive && inputRef.current) {
-            setTimeout(() => {
-              inputRef.current?.focus();
-            }, 50);
-          }
-        }}
-        className="absolute right-2 top-2"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-4 w-4 text-muted-foreground"
+    <div className="mx-auto w-full max-w-screen-xl">
+      <label htmlFor="tag-search" className="mb-2 block text-sm font-medium">
+        Search posts
+      </label>
+      <div className="relative">
+        <input
+          id="tag-search"
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.currentTarget.value)}
+          className="flex min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 pl-11 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          placeholder="Search titles, descriptions, tags, and content"
+        />
+        <span
+          className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
+          aria-hidden="true"
         >
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="m21 21-4.3-4.3"></path>
-        </svg>
-      </button>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5 text-muted-foreground"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </span>
+      </div>
     </div>
   );
 };

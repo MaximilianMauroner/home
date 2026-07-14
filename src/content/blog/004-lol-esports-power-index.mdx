@@ -1,0 +1,337 @@
+---
+layout: "@/layouts/BlogLayout.astro"
+title: "I got annoyed at LoL Esports' Global Power Rankings, so I built my own"
+description: "A transparent, series-aware LoL esports power index built around opponent strength, international results, roster continuity, recent form, and uncertainty."
+tags:
+  - league-of-legends
+  - esports
+  - power-rankings
+  - elo
+  - data
+  - typescript
+  - railway
+published: true
+releaseDate: 2026-07-13
+lastModified: "2026-07-13"
+---
+
+I finished the first public draft of the [LoL Esports Power Index](https://lol.lab4code.com/).
+
+It is my attempt at a global League of Legends team ranking that does not just output a number, but also shows where that number came from: the model version, data sources, coverage window, rating components, uncertainty, and the assumptions behind the calculation.
+
+The project started because Riot's [Global Power Rankings](https://lolesports.com/en-US/gpr) annoyed me.
+
+To be fair, Riot does publish the broad ingredients. The official ranking considers team and regional strength, recent performance, match context, opponent strength, and in-game execution. There is also a [dev diary explaining the original Elo-based approach](https://lolesports.com/news/dev-diary-unveiling-the-global-power-rankings).
+
+My problem was not that there was literally no explanation. It was that I still could not audit the result.
+
+Why did one team move by twelve points and another by three? How much should a Bo5 matter compared with a Bo1? What happens after three players are replaced? How confident is the model about a team with little international evidence? Which exact matches and model version produced today's score?
+
+Those are the questions I wanted the page to answer.
+
+Then I heard Jatt and Vedius discuss the same general problem in [Mind the Gap, episode 9 on the JLXP channel](https://www.youtube.com/watch?v=BPWmNIkMwRw&t=1685s). The Global Power Rankings segment starts at 28:05. What stuck with me was the idea that, with enough refinement and enough trust in the model, a ranking like this might eventually become useful for tournament formats and seeding.
+
+That gave me the final push to build the thing instead of only complaining about it.
+
+## What I wanted to change
+
+The Power Index is built around five decisions:
+
+- Wins are weighted by opponent strength and the strength of the league each team comes from.
+- International tournaments have more influence than ordinary domestic matches.
+- A Bo3 or Bo5 is scored as one series, not as several unrelated wins and losses.
+- Recent form and roster changes matter, but neither should permanently overwrite a team's longer-term strength.
+- Uncertainty, source provenance, model versions, and methodology should be visible rather than hidden behind one authoritative-looking score.
+
+The result is still a model. It is not objective truth just because it outputs a precise number.
+
+For a first version, I am satisfied with it. The rankings react sensibly to upsets, international results, inactivity, and roster changes. The overall output passes a basic smell test. That is not the same as proving that it predicts better than another system, though. More on that later.
+
+## How the Power Index works
+
+The model is related to Elo, but it does not treat every win as equally meaningful.
+
+A team's internal power is split into separate components:
+
+```text
+Team Power =
+    League Strength
+    + Stable Team Strength
+    + Roster Strength
+    + Recent Form
+```
+
+Each component answers a different question:
+
+- **League strength:** How competitive is the environment in which this team normally plays?
+- **Stable team strength:** How much long-term evidence has the team slot or organization earned?
+- **Roster strength:** How much of that evidence is supported by the currently observed lineup?
+- **Recent form:** Is the team temporarily performing above or below its usual level?
+
+Keeping these components separate matters. A short winning streak should affect the current ranking, but it should not permanently redefine the team's underlying strength. In the same way, an organization should not keep all of its old rating after replacing most of its roster.
+
+### Expected result and surprise
+
+Before a series, the model converts the power difference into an expected win probability.
+
+```text
+expected = SERIES_WIN_PROBABILITY(
+    teamA.power,
+    teamB.power,
+    seriesFormat,
+    ratingUncertainty
+)
+```
+
+For a Bo3 or Bo5, the game-level expectation is converted into the probability of winning the complete series.
+
+Uncertainty pulls extreme predictions back toward 50%. A team with little evidence, a newly rebuilt roster, or weak connections to international competition should not receive the same confidence as a stable team with a large body of recent matches.
+
+The main rating signal is the difference between what happened and what the model expected:
+
+```text
+surprise = actual result - expected result
+```
+
+If a team had a 75% chance to win and won, the result is mostly expected and causes a modest update. If it had a 20% chance and still won, the upset supplies much stronger evidence.
+
+This is how beating a strong opponent becomes more valuable than collecting another routine win against a weak one.
+
+### Match context and tournament importance
+
+The surprise is multiplied by the amount of evidence the series should provide:
+
+```text
+evidence =
+    surprise
+    × tournamentImportance
+    × seriesDecisiveness
+    × uncertaintyMultiplier
+    × rosterVolatilityMultiplier
+```
+
+Worlds and MSI bracket series receive the most influence. International stages and domestic playoffs carry substantial weight. Regular-season matches remain useful, but move ratings less. Post-Worlds preseason matches are discounted.
+
+A sweep receives a small decisiveness bonus, but a 3-0 is still one completed Bo5 rather than three independent wins. Otherwise, long series would dominate the ranking merely because they contain more games.
+
+### Stable strength and recent form
+
+For ordinary domestic series, most evidence goes into stable team strength and a smaller share goes into recent form:
+
+```text
+stable change = evidence × 90%
+form change   = evidence × 10%
+```
+
+Recent form loses 12% of its previous value after each completed series, is capped, and also decays heavily across patches, split breaks, and seasons.
+
+A hot streak therefore matters now, but disappears unless the team keeps performing.
+
+### League strength
+
+League ratings move only through eligible international competition between teams from different leagues.
+
+Domestic matches cannot tell the model whether a league is globally strong. They only redistribute strength inside that league.
+
+For a cross-league international series, 12% of the update goes to league strength. The remaining 88% is split 90/10 between stable team strength and recent form. That produces the slightly odd-looking implementation shares of 79.2%, 8.8%, and 12%.
+
+If an LEC team beats an LCK team that was strongly favored, the result supplies evidence about both teams and both leagues. Beating a weak international representative supplies less league evidence than beating an elite one.
+
+After an international tournament, the model also compares each league's actual stage progression with what its representatives were expected to achieve. The placement adjustment is deliberately small and capped so that it does not simply count the same tournament twice.
+
+### Roster changes and uncertainty
+
+When a lineup changes, the model measures continuity by player and role.
+
+```text
+retainedStrength =
+    previousStrength
+    × rosterContinuity
+```
+
+A mostly unchanged roster keeps most of its earned strength. A heavily rebuilt roster moves closer to its league baseline and receives more uncertainty.
+
+Uncertainty represents confidence, not quality. It starts high when evidence is limited, falls as meaningful matches are played, and rises after major roster changes. It affects both the prediction itself and how quickly the model is willing to learn from new results.
+
+Very uncertain, inactive, or poorly connected teams can remain visible as provisional entries without being treated as fully ranked teams.
+
+### What the main rating deliberately excludes
+
+Kills, gold differences, and objective statistics are tracked separately, but they do not directly increase the main team rating.
+
+The primary model learns from resolved series results. This avoids rewarding a team once for winning and again for the statistics produced by that same win, and it reduces the risk of post-match information leaking into what is supposed to be a pre-match estimate.
+
+That is a design trade-off, not a claim that in-game statistics contain no predictive signal. A future model could prove that some of those features improve out-of-sample predictions. For this version, I preferred a result-based rating that is easier to reason about and harder to accidentally double-count.
+
+<details>
+<summary><strong>Show the simplified calculation pseudocode</strong></summary>
+
+```text
+START every team and league with a baseline rating
+
+SORT all matches chronologically
+
+FOR each day:
+
+    DECAY old information
+        regress inactive team ratings toward the baseline
+        regress league ratings toward their prior
+        reduce short-term form after patches, splits, and seasons
+
+    CHECK roster changes
+        compare each team's current lineup with its previous lineup
+
+        IF the roster changed:
+            regress some team strength toward the baseline
+            increase rating uncertainty
+
+    FREEZE all pre-match ratings for the day
+        // Today's results cannot affect today's earlier predictions
+
+    GROUP games into complete Bo1, Bo3, or Bo5 series
+
+    FOR each series:
+
+        powerA =
+            leagueStrengthA
+            + stableTeamStrengthA
+            + rosterStrengthA
+            + recentFormA
+
+        powerB =
+            leagueStrengthB
+            + stableTeamStrengthB
+            + rosterStrengthB
+            + recentFormB
+
+        expectedA = SERIES_WIN_PROBABILITY(
+            powerA,
+            powerB,
+            seriesFormat,
+            ratingUncertainty
+        )
+
+        actualA = 1 if Team A won the series, otherwise 0
+
+        surprise = actualA - expectedA
+
+        evidence =
+            surprise
+            × tournamentImportance
+            × seriesDecisiveness
+            × uncertaintyMultiplier
+            × rosterVolatilityMultiplier
+
+        IF this is an international series between different leagues:
+            stableShare = 79.2%
+            formShare   = 8.8%
+            leagueShare = 12%
+        ELSE:
+            stableShare = 90%
+            formShare   = 10%
+            leagueShare = 0%
+
+        stableTeamStrengthA += evidence × stableShare
+        stableTeamStrengthB -= evidence × stableShare
+
+        recentFormA = CLAMP(
+            recentFormA × 0.88 + evidence × formShare
+        )
+
+        recentFormB = CLAMP(
+            recentFormB × 0.88 - evidence × formShare
+        )
+
+        IF this is an international series between different leagues:
+            update both league ratings using the same surprise
+
+        reduce uncertainty for both teams
+
+AFTER a completed international tournament:
+
+    expectedPlacement = estimate progress from pre-tournament ratings
+    placementSurprise = actualPlacement - expectedPlacement
+
+    apply a small, capped adjustment to each league
+
+FOR each team:
+
+    internalPower =
+        leagueStrength
+        + stableTeamStrength
+        + rosterStrength
+        + recentForm
+        + smallContextAdjustment
+
+    publicPowerIndex =
+        CLAMP(
+            1800 + (internalPower - 1500) × 3.25,
+            1000,
+            3000
+        )
+
+FILTER the public leaderboard using:
+    minimum match volume
+    recent activity
+    rating uncertainty
+    roster evidence
+    globally connected league data
+
+SORT eligible teams by publicPowerIndex
+```
+
+</details>
+
+## The development side
+
+I also used this project as an excuse to test how far I could get with [Railway](https://railway.com/) while configuring as little infrastructure by hand as possible.
+
+The basic workflow is intentionally boring:
+
+- Buckets store the fetched source data and generated model snapshots.
+- A `fetch` job refreshes the underlying match and roster data.
+- A `crunch` job processes the chronology and produces a new ranking snapshot.
+- The site reads the latest accepted snapshot rather than recalculating everything on request.
+
+The primary match source is [Oracle's Elixir](https://oracleselixir.com/), with Leaguepedia Cargo used to fill gaps. Every published snapshot includes its source provenance, coverage window, generation time, and model/config version.
+
+I also compare the broad shape of a generated ranking with Riot's official GPR before it reaches the live site. This is only a test for catching results that are completely wrong, not a calibration target. The point of this project is not to reproduce Riot's numbers. But if my pipeline suddenly declares a disconnected, inactive team the best team in the world, I would rather catch that before deployment.
+
+Most of the development time did not go into one clever formula. It went into small tuning problems:
+
+- deciding how quickly old evidence should decay
+- stopping recent form from becoming a second permanent rating
+- handling incomplete or inconsistent roster data
+- connecting leagues that rarely play each other
+- preventing a Bo5 from behaving like five independent matches
+- choosing eligibility rules that do not produce a leaderboard full of stale teams
+- and exposing enough information to make the score understandable without turning every page into a spreadsheet.
+
+The design was probably the harder part. I wanted to show ratings, trends, league context, uncertainty, roster state, recent results, source information, and methodology without overwhelming the user.
+
+I think it mostly works. We will see 💀
+
+## Is it actually better?
+
+The honest answer is split.
+
+I think it is already better at **explainability**. The model's assumptions are explicit, the score is decomposed, snapshots are versioned, and uncertainty is visible.
+
+I have not yet demonstrated that it is better at **prediction**. The rankings look coherent and react in ways that make sense, but it's only a feeling for now.
+
+So: I am happy with the first draft. I am not calling the problem solved.
+
+## What is next
+
+The two main product features left are:
+
+1. A **predictions page** that loads upcoming schedules and shows series win probabilities for international tournaments and the six main leagues covered by the project.
+2. Dedicated **tournament pages** that understand each event's format and let you simulate results. For example, what happens to a bracket, qualification path, or seed if a particular team wins.
+
+The less visible task is the formal evaluation work described above. That is the part required before making any serious claim about using the model for seeding.
+
+Other than that, the project is much closer to “finished enough to use” than most of my side projects ever get.
+
+And Riot: if you want the page, hit me up at [a-lot-of-money@relay.mauroner.net](mailto:a-lot-of-money@relay.mauroner.net).
+
+Only partially a joke.

@@ -125,7 +125,7 @@ export function WorkflowControls({
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-1 font-medium text-gray-600 dark:border-neutral-800 dark:bg-neutral-950/40 dark:text-gray-200">
               Locations: {locationSummary}
             </span>

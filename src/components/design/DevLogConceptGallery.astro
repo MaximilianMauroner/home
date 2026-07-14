@@ -1,0 +1,592 @@
+---
+import type { CollectionEntry } from "astro:content";
+import PostImageLoader from "@/components/content/PostImageLoader.astro";
+
+interface Concept {
+  name: string;
+  variant: string;
+  motif: string;
+}
+
+interface ConceptGroup {
+  source: string;
+  concepts: readonly Concept[];
+}
+
+interface Props {
+  log: CollectionEntry<"log">;
+  groups: readonly ConceptGroup[];
+  startIndex?: number;
+}
+
+const { log, groups, startIndex = 6 } = Astro.props;
+const imagePath = log.data.image?.trim() || null;
+const releaseDate = new Date(log.data.releaseDate);
+const fullDate = releaseDate.toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+const isoDate = releaseDate.toISOString();
+const href = `/dev-log/${log.id}/`;
+const entryId = log.id.split("/").filter(Boolean).at(-1) ?? "—";
+const [year = "—", issue = entryId] = log.id.split("/");
+let conceptIndex = startIndex;
+---
+
+<div class="generated-gallery">
+  {
+    groups.map((group) => (
+      <section class="source-group" aria-label={`${group.source} concepts`}>
+        <header class="source-heading">
+          <span>{group.source}</span>
+          <strong>Five focused variations</strong>
+        </header>
+        <div class="concept-list">
+          {group.concepts.map((concept) => {
+            const number = String(conceptIndex++).padStart(2, "0");
+            return (
+              <section class="concept-section" aria-labelledby={`concept-${number}`}>
+                <div class="concept-label">
+                  <span>{number} · {group.source}</span>
+                  <h2 id={`concept-${number}`}>{concept.name}</h2>
+                </div>
+                <article class={`concept-card ${concept.variant}`}>
+                  <div class="concept-decoration" aria-hidden="true">
+                    <i></i><i></i><i></i><i></i><i></i>
+                  </div>
+                  <header class="concept-meta">
+                    <span>DEV / {year}.{issue}</span>
+                    <time datetime={isoDate}>{fullDate}</time>
+                  </header>
+                  <div class="concept-visual" aria-hidden="true">
+                    {imagePath ? (
+                      <PostImageLoader
+                        imagePath={imagePath}
+                        altText=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <strong>{year.slice(-2)} / {issue}</strong>
+                    )}
+                  </div>
+                  <div class="concept-copy">
+                    <span class="concept-kicker">{concept.motif}</span>
+                    <h3><a href={href}>{log.data.title}</a></h3>
+                    <p>{log.data.description}</p>
+                    <ul aria-label="Topics">
+                      {log.data.tags.map((tag, index) => (
+                        <li style={`--tag-index:${index}`}>{tag}</li>
+                      ))}
+                    </ul>
+                    <footer>
+                      <span>{entryId.padStart(2, "0")} / {year}</span>
+                      <span aria-hidden="true">Open entry ↗</span>
+                    </footer>
+                  </div>
+                </article>
+              </section>
+            );
+          })}
+        </div>
+      </section>
+    ))
+  }
+</div>
+
+<style>
+  .generated-gallery { margin-top: 6rem; }
+  .source-group { margin-top: 9rem; }
+  .source-group:first-child { margin-top: 0; }
+  .source-heading {
+    display: flex; align-items: end; justify-content: space-between; gap: 1rem;
+    padding-bottom: 1rem; border-bottom: 1px solid rgb(212 212 216);
+  }
+  .source-heading span, .concept-label span {
+    color: rgb(79 70 229); font: 750 .66rem "JetBrains_Mono", monospace;
+    letter-spacing: .16em; text-transform: uppercase;
+  }
+  .source-heading strong { font-size: clamp(1.3rem, 4vw, 2rem); letter-spacing: -.04em; }
+  .concept-section { margin-top: 6rem; }
+  .concept-label { margin-bottom: 1rem; }
+  .concept-label h2 { margin-top: .25rem; font-size: 1.45rem; font-weight: 680; letter-spacing: -.035em; }
+
+  .concept-card {
+    --card-accent: #4f46e5; --card-surface: #fff; --card-ink: #18181b; --card-muted: #52525b; --card-line: #d4d4d8;
+    position: relative; isolation: isolate; display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(12rem, .8fr);
+    min-height: 25rem; max-width: 68rem; overflow: hidden;
+    border: 1px solid var(--card-line); border-radius: var(--radius-lg);
+    background: var(--card-surface); color: var(--card-ink);
+  }
+  .concept-meta {
+    position: absolute; z-index: 5; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; gap: 1rem; padding: .8rem 1rem;
+    border-bottom: 1px solid var(--card-line); color: var(--card-muted);
+    font: 700 .62rem "JetBrains_Mono", monospace; letter-spacing: .12em; text-transform: uppercase;
+  }
+  .concept-visual { position: relative; grid-column: 2; min-height: 25rem; overflow: hidden; border-left: 1px solid var(--card-line); background: color-mix(in srgb, var(--card-accent) 12%, var(--card-surface)); }
+  .concept-visual :global(img) { height: 100%; width: 100%; object-fit: cover; transition: transform 280ms ease, filter 280ms ease; }
+  .concept-copy { z-index: 2; display: flex; min-width: 0; flex-direction: column; grid-column: 1; grid-row: 1; padding: 4.5rem 2rem 1.6rem; }
+  .concept-kicker { color: var(--card-accent); font: 750 .65rem "JetBrains_Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
+  .concept-copy h3 { max-width: 16ch; margin-top: 1rem; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 740; line-height: .98; letter-spacing: -.055em; }
+  .concept-copy h3 a:hover { color: var(--card-accent); }
+  .concept-copy p { max-width: 52ch; margin-top: 1rem; color: var(--card-muted); line-height: 1.65; }
+  .concept-copy ul { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.25rem; }
+  .concept-copy li { padding: .3rem .5rem; border: 1px solid var(--card-line); font: 700 .62rem "JetBrains_Mono", monospace; text-transform: uppercase; }
+  .concept-copy footer { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-top: auto; padding-top: 1.25rem; border-top: 1px solid var(--card-line); color: var(--card-muted); font: 750 .64rem "JetBrains_Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+  .concept-copy footer span:last-child { color: var(--card-accent); }
+  .concept-decoration { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+  .concept-decoration i { position: absolute; display: block; }
+  .concept-card:hover .concept-visual :global(img) { transform: scale(1.025); }
+  .concept-card a:focus-visible { outline: 3px solid var(--card-accent); outline-offset: 4px; border-radius: 2px; }
+
+  /* 06 — landscape route map */
+  .topographic-route { --card-surface:#ece8d4; --card-ink:#23352c; --card-muted:#55675d; --card-line:#89998d; --card-accent:#ef5b36; background-image: repeating-radial-gradient(ellipse at 90% 20%, transparent 0 22px, rgb(35 53 44 / .13) 23px 24px); }
+  .topographic-route .concept-visual { margin: 3.5rem 1rem 1rem 0; min-height: 20rem; clip-path: polygon(8% 2%,100% 0,96% 88%,70% 100%,5% 92%,0 30%); border: 0; }
+  .topographic-route .concept-copy li { position: relative; border: 0; padding-left: 1.2rem; }
+  .topographic-route .concept-copy li::before { content:""; position:absolute; left:0; top:50%; width:.65rem; aspect-ratio:1; border:2px solid var(--card-accent); border-radius:50%; transform:translateY(-50%); }
+  .topographic-route .concept-decoration i:first-child { left:8%; right:8%; bottom:4rem; height:3px; background:var(--card-accent); rotate:-5deg; }
+
+  /* 07 — radial dispatch */
+  .orbital-dispatch { --card-surface:#f5f0e5; --card-ink:#171b4b; --card-muted:#50547b; --card-line:#9ba4dd; --card-accent:#3158d8; grid-template-columns: 42% 58%; }
+  .orbital-dispatch .concept-visual { grid-column:1; grid-row:1; align-self:center; width:17rem; min-height:17rem; margin:3rem auto 1rem; border:1px solid var(--card-accent); border-radius:50%; }
+  .orbital-dispatch .concept-copy { grid-column:2; padding-left:1rem; }
+  .orbital-dispatch .concept-decoration i:nth-child(1), .orbital-dispatch .concept-decoration i:nth-child(2) { left:4%; top:13%; width:42%; aspect-ratio:1; border:1px dashed var(--card-accent); border-radius:50%; }
+  .orbital-dispatch .concept-decoration i:nth-child(2) { scale:1.25 .65; }
+  .orbital-dispatch .concept-copy li { border-radius:999px; }
+
+  /* 08 — modular patch panel */
+  .patchbay-memo { --card-surface:#242421; --card-ink:#f3e9cc; --card-muted:#beb49c; --card-line:#5e5d54; --card-accent:#ff4e38; grid-template-columns:repeat(3,1fr); padding:3.6rem .9rem .9rem; gap:.6rem; background-image:repeating-linear-gradient(90deg,transparent 0 3px,#ffffff05 3px 4px); }
+  .patchbay-memo .concept-meta { background:#141413; }
+  .patchbay-memo .concept-visual { grid-column:3; grid-row:1; min-height:20rem; border:2px inset #5e5d54; border-radius:.4rem; }
+  .patchbay-memo .concept-copy { grid-column:1 / 3; padding:1.4rem; border:2px inset #5e5d54; background:#1b1b19; }
+  .patchbay-memo .concept-copy li { padding-left:1.5rem; border:0; background:radial-gradient(circle at .55rem 50%,#111 0 4px,#eee 4px 6px,transparent 6px); }
+  .patchbay-memo .concept-copy footer span:last-child { padding:.7rem 1rem; border:1px solid #ff4e38; background:#4a1711; }
+
+  /* 09 — three folded chart panels */
+  .foldout-atlas { --card-surface:#f4e8c5; --card-ink:#142d4f; --card-muted:#435873; --card-line:#142d4f; --card-accent:#df553d; grid-template-columns:30% 40% 30%; }
+  .foldout-atlas .concept-visual { grid-column:1; grid-row:1; border:0; filter:saturate(.75); }
+  .foldout-atlas .concept-copy { grid-column:2 / 4; margin-top:3rem; padding:1.5rem; background-image:linear-gradient(#315a8b17 1px,transparent 1px),linear-gradient(90deg,#315a8b17 1px,transparent 1px); background-size:2rem 2rem; box-shadow:inset 12px 0 16px -16px #142d4f,inset -12px 0 16px -16px #142d4f; }
+  .foldout-atlas .concept-copy ul { display:grid; grid-template-columns:1fr 1fr; }
+  .foldout-atlas .concept-copy li { border:0; }
+
+  /* 10 — cassette object */
+  .field-cassette { --card-surface:#c8ed6f; --card-ink:#132315; --card-muted:#3e5439; --card-line:#132315; --card-accent:#e3442c; margin-inline:auto; max-width:58rem; min-height:27rem; grid-template-columns:1fr; padding:4rem 2rem 1.5rem; border:8px solid #252923; border-radius:2rem; box-shadow:inset 0 0 0 3px #ffffff55; }
+  .field-cassette .concept-meta { top:.8rem; left:1rem; right:1rem; border:0; }
+  .field-cassette .concept-visual { grid-column:1; grid-row:1; width:58%; min-height:9rem; max-height:9rem; margin:8.5rem auto 0; border:7px solid #e8e7d8; border-radius:4.5rem; clip-path:polygon(8% 0,92% 0,100% 100%,0 100%); }
+  .field-cassette .concept-copy { grid-column:1; grid-row:1; padding:0; }
+  .field-cassette .concept-copy h3 { max-width:20ch; font-size:2.3rem; }
+  .field-cassette .concept-copy p { max-width:38rem; }
+  .field-cassette .concept-copy ul { margin-top:auto; padding-top:1rem; border-top:3px solid; }
+  .field-cassette .concept-copy footer { border:0; }
+  .field-cassette .concept-decoration i:nth-child(-n+4) { width:.7rem; aspect-ratio:1; border:2px solid; border-radius:50%; }
+  .field-cassette .concept-decoration i:nth-child(1){left:1rem;top:1rem}.field-cassette .concept-decoration i:nth-child(2){right:1rem;top:1rem}.field-cassette .concept-decoration i:nth-child(3){left:1rem;bottom:1rem}.field-cassette .concept-decoration i:nth-child(4){right:1rem;bottom:1rem}
+
+  /* 11 — oscilloscope rack */
+  .patchbay-release { --card-surface:#090c0a; --card-ink:#d9ffe4; --card-muted:#81a98d; --card-line:#31543b; --card-accent:#7cff45; grid-template-columns:minmax(0,1fr) 38%; background-image:repeating-linear-gradient(0deg,transparent 0 4px,#ffffff05 4px 5px); }
+  .patchbay-release .concept-visual { align-self:center; width:18rem; min-height:18rem; margin:3.5rem auto 1rem; border:8px solid #28342b; border-radius:50%; filter:grayscale(1) contrast(1.3) sepia(.3) hue-rotate(55deg); }
+  .patchbay-release .concept-copy li { border:0; border-radius:999px; padding-left:1.7rem; background:radial-gradient(circle at .7rem,#101512 0 4px,#b9c4bc 4px 6px,transparent 6px); }
+  .patchbay-release .concept-kicker::before { content:"● "; color:#ff3b30; }
+
+  /* 12 — transit map */
+  .metro-merge { --card-surface:#f5ead1; --card-ink:#152b50; --card-muted:#566277; --card-line:#152b50; --card-accent:#e64f32; grid-template-columns:28% 72%; }
+  .metro-merge .concept-visual { grid-column:1; grid-row:1; align-self:center; width:12rem; min-height:12rem; margin:3rem auto 1rem; border:10px solid #f5ead1; outline:6px solid var(--card-accent); border-radius:50%; }
+  .metro-merge .concept-copy { grid-column:2; padding-left:2.5rem; }
+  .metro-merge .concept-copy::before { content:""; position:absolute; left:24%; right:4%; top:52%; z-index:-1; height:8px; background:var(--card-accent); }
+  .metro-merge .concept-copy li { border-radius:999px; background:var(--card-surface); border:4px solid var(--card-accent); }
+
+  /* 13 — layered technical schematic */
+  .exploded-blueprint { --card-surface:#073a66; --card-ink:#e8f8ff; --card-muted:#a8d4ea; --card-line:#4b91bb; --card-accent:#ff9d38; grid-template-columns:45% 55%; background-image:linear-gradient(#ffffff12 1px,transparent 1px),linear-gradient(90deg,#ffffff12 1px,transparent 1px); background-size:1.5rem 1.5rem; overflow:visible; margin:1rem; }
+  .exploded-blueprint .concept-visual { grid-column:1; grid-row:1; min-height:19rem; margin:4.5rem -1rem 2rem 2rem; border:1px solid #8ed4ff; box-shadow:-12px 12px 0 #0c4c7b; opacity:.78; }
+  .exploded-blueprint .concept-copy { grid-column:2; margin:5.5rem 1.2rem 1.2rem -1rem; padding:1.5rem; border:1px solid #8ed4ff; background:#073a66e8; box-shadow:12px -12px 0 #0c4c7b; }
+  .exploded-blueprint .concept-copy li::before { content:counter(list-item,decimal-leading-zero) " "; color:var(--card-accent); }
+
+  /* 14 — split astronomy index */
+  .orbit-index { --card-surface:#07101f; --card-ink:#e9f6ff; --card-muted:#9ab0c4; --card-line:#344b62; --card-accent:#58d8ff; grid-template-columns:58% 42%; background-image:radial-gradient(circle,#fff 0 1px,transparent 1.5px); background-size:37px 43px; }
+  .orbit-index .concept-visual { grid-column:1; grid-row:1; align-self:center; width:19rem; min-height:19rem; margin:3.5rem auto 1rem; border:1px solid #58d8ff; border-radius:50%; box-shadow:0 0 0 2.5rem #07101f,0 0 0 calc(2.5rem + 1px) #344b62; }
+  .orbit-index .concept-copy { grid-column:2; padding-left:1rem; }
+  .orbit-index .concept-copy li { border-radius:999px; }
+
+  /* 15 — fanned execution frames */
+  .cascading-stack { --card-surface:#f5f4ef; --card-ink:#18181b; --card-muted:#57535e; --card-line:#25232a; --card-accent:#5b42e8; margin:2rem; overflow:visible; box-shadow:-12px -12px 0 #44d7d0,12px 12px 0 #b8f23e,22px 22px 0 #ff7a45; transform:rotate(-.5deg); }
+  .cascading-stack .concept-visual { margin:1rem; min-height:22rem; transform:rotate(2deg) translate(8px,-8px); border:3px solid #25232a; }
+  .cascading-stack .concept-copy { margin:1rem; border:3px solid #25232a; background:#f5f4ef; }
+  .cascading-stack:hover { box-shadow:-18px -18px 0 #44d7d0,18px 18px 0 #b8f23e,30px 30px 0 #ff7a45; }
+
+  /* 16 — broadcast signal monitor */
+  .signal-monitor { --card-surface:#07130e; --card-ink:#d8ffe7; --card-muted:#82b491; --card-line:#315441; --card-accent:#67ff9b; grid-template-columns:42% 58%; border-radius:0; }
+  .signal-monitor .concept-visual { grid-column:1; grid-row:1; margin-top:2.5rem; filter:grayscale(1) contrast(1.25) sepia(.2) hue-rotate(70deg); }
+  .signal-monitor .concept-copy { grid-column:2; padding-left:2rem; border-left:1px solid var(--card-line); }
+  .signal-monitor .concept-copy li { display:grid; grid-template-columns:1.5rem 1fr; width:100%; border-width:1px 0 0; }
+  .signal-monitor .concept-decoration { background:repeating-linear-gradient(0deg,transparent 0 3px,#67ff9b0d 3px 4px); }
+  .signal-monitor .concept-kicker::before { content:"● "; text-shadow:0 0 12px #67ff9b; }
+
+  /* 17 — scientific specimen slide */
+  .specimen-slide { --card-surface:#eef5d8; --card-ink:#153f37; --card-muted:#41675f; --card-line:#153f37; --card-accent:#d45132; grid-template-columns:40% 60%; border-radius:0; box-shadow:inset 0 0 0 .45rem #dce8bd; }
+  .specimen-slide .concept-visual { grid-column:1; grid-row:1; align-self:center; width:18rem; min-height:18rem; margin:3.5rem auto 1rem; border:.7rem solid #f8fae9; outline:1px solid #153f37; border-radius:50%; box-shadow:0 1rem 2.5rem #315d3b30; }
+  .specimen-slide .concept-copy { grid-column:2; }
+  .specimen-slide .concept-copy h3 { font-family:Georgia,serif; font-weight:600; font-size:clamp(2.3rem,6vw,4.3rem); }
+  .specimen-slide .concept-copy li { display:grid; grid-template-columns:1.2rem 1fr; border-width:0 0 1px; }
+  .specimen-slide .concept-copy li::before { content:counter(list-item,upper-alpha); color:var(--card-accent); }
+
+  /* 18 — git commit graph */
+  .commit-graph { --card-surface:#f4f2ed; --card-ink:#201f1b; --card-muted:#5f5b52; --card-line:#201f1b; --card-accent:#ff5b37; grid-template-columns:5rem minmax(0,1fr) 32%; border-radius:0; box-shadow:6px 6px 0 #201f1b; }
+  .commit-graph .concept-visual { grid-column:3; grid-row:1; margin:3.5rem 1rem 1rem; min-height:20rem; border:1px solid; }
+  .commit-graph .concept-copy { grid-column:2; padding-left:1rem; }
+  .commit-graph .concept-decoration i:nth-child(1) { left:2.5rem; top:0; bottom:0; width:3px; background:var(--card-accent); }
+  .commit-graph .concept-decoration i:nth-child(n+2) { left:2rem; width:1rem; aspect-ratio:1; border:3px solid var(--card-accent); border-radius:50%; background:var(--card-surface); }
+  .commit-graph .concept-decoration i:nth-child(2){top:25%}.commit-graph .concept-decoration i:nth-child(3){top:50%;background:var(--card-accent)}.commit-graph .concept-decoration i:nth-child(4){top:75%}
+  .commit-graph .concept-copy li::before { content:"+ "; color:#008a4b; }
+
+  /* 19 — overlapping desktop windows */
+  .window-manager { --card-surface:#8ba9ff; --card-ink:#171717; --card-muted:#4c4c4c; --card-line:#171717; --card-accent:#3726c7; display:block; min-height:34rem; border-radius:0; }
+  .window-manager .concept-visual { position:absolute; inset:3.5rem 31% 5rem 2rem; min-height:0; border:1px solid; box-shadow:8px 8px 0 #17171735; }
+  .window-manager .concept-visual::before { content:"●  ●  ●    preview.img"; position:absolute; z-index:2; inset:0 0 auto; height:2rem; padding:.55rem; border-bottom:1px solid; background:#ece9df; font:.62rem "JetBrains_Mono",monospace; }
+  .window-manager .concept-copy { position:absolute; right:2rem; bottom:4rem; width:min(57%,34rem); min-height:20rem; padding:3.3rem 2rem 1.5rem; border:1px solid; background:#f8f5ec; box-shadow:8px 8px 0 #17171735; }
+  .window-manager .concept-copy::before { content:"entry.txt                         — □ ×"; position:absolute; inset:0 0 auto; height:2rem; padding:.55rem; border-bottom:1px solid; background:#ece9df; font:.62rem "JetBrains_Mono",monospace; }
+  .window-manager .concept-meta { top:auto; bottom:0; background:#171717; color:#fff; }
+
+  /* 20 — accordion navigation chart */
+  .accordion-dispatch { --card-surface:#f7edcf; --card-ink:#172a4a; --card-muted:#526078; --card-line:#172a4a; --card-accent:#e85e3f; grid-template-columns:22% 34% 44%; border-radius:0; }
+  .accordion-dispatch .concept-meta { right:auto; bottom:0; width:22%; flex-direction:column; justify-content:flex-end; background:#e85e3f; color:#fff; border:0; }
+  .accordion-dispatch .concept-visual { grid-column:2; grid-row:1; min-height:28rem; border-inline:1px solid; }
+  .accordion-dispatch .concept-copy { grid-column:3; padding-left:1.4rem; background-image:linear-gradient(#315a8b18 1px,transparent 1px),linear-gradient(90deg,#315a8b18 1px,transparent 1px); background-size:2rem 2rem; box-shadow:inset 12px 0 16px -16px #172a4a; }
+
+  /* 21 — full-card contour plate */
+  .contour-plate { --card-surface:#fafaf9; --card-ink:#292524; --card-muted:#66615e; --card-line:#a8a29e; --card-accent:#4f46e5; display:block; min-height:24rem; background-image:repeating-radial-gradient(ellipse at 85% 20%,transparent 0 26px,#29252418 27px 28px); }
+  .contour-plate .concept-visual { position:absolute; z-index:1; top:3.6rem; right:1.5rem; width:10rem; min-height:10rem; border:1px dashed; border-radius:50%; }
+  .contour-plate .concept-copy { position:absolute; inset:auto 0 0; max-width:70%; background:linear-gradient(90deg,#fafaf9 75%,transparent); }
+  .contour-plate .concept-copy h3 { font-size:clamp(2rem,5vw,3.8rem); }
+
+  /* 22 — single graph node with connective rail */
+  .commit-rail { --card-surface:#fff; --card-ink:#18181b; --card-muted:#52525b; --card-line:#d4d4d8; --card-accent:#4f46e5; grid-template-columns:4rem minmax(0,1fr) 7rem; min-height:18rem; overflow:visible; margin-left:1rem; }
+  .commit-rail .concept-visual { grid-column:3; grid-row:1; min-height:7rem; height:7rem; margin:4rem 1rem 0 0; border-radius:var(--radius-md); }
+  .commit-rail .concept-copy { grid-column:2; padding-left:1rem; }
+  .commit-rail .concept-copy h3 { font-size:2.3rem; }
+  .commit-rail .concept-decoration i:first-child { left:1.4rem; top:-6rem; bottom:-6rem; width:2px; background:var(--card-line); }
+  .commit-rail .concept-decoration i:nth-child(2) { left:.98rem; top:5.2rem; width:.9rem; aspect-ratio:1; border-radius:50%; background:var(--card-accent); box-shadow:0 0 0 5px var(--card-surface); }
+  .commit-rail .concept-copy li { border-radius:999px; }
+
+  /* 23 — unified diff */
+  .patch-file { --card-surface:#fafafa; --card-ink:#27272a; --card-muted:#52525b; --card-line:#a1a1aa; --card-accent:#7c3aed; grid-template-columns:1fr; min-height:22rem; border-radius:var(--radius-md); font-family:"JetBrains_Mono",monospace; }
+  .patch-file .concept-visual { grid-column:1; grid-row:1; align-self:end; min-height:8rem; max-height:8rem; border:0; border-top:1px solid var(--card-line); opacity:.8; }
+  .patch-file .concept-copy { grid-column:1; grid-row:1; padding:4rem 1rem 9rem 2.5rem; background:linear-gradient(90deg,#22c55e18 0 2rem,transparent 2rem); }
+  .patch-file .concept-copy::before { content:"@@ " attr(data-date) " @@"; }
+  .patch-file .concept-copy h3 { max-width:none; font-size:1.7rem; }
+  .patch-file .concept-copy h3::before,.patch-file .concept-copy p::before { content:"+"; position:absolute; left:.75rem; color:#16a34a; }
+  .patch-file .concept-copy li { border:0; background:#22c55e16; }
+  .patch-file .concept-copy li::before { content:"+ "; color:#16a34a; }
+
+  /* 24 — record sleeve and exposed disc */
+  .record-sleeve { --card-surface:transparent; --card-ink:#18181b; --card-muted:#52525b; --card-line:#27272a; --card-accent:#4f46e5; grid-template-columns:19rem minmax(0,1fr); overflow:visible; border:0; }
+  .record-sleeve .concept-visual { grid-column:1; grid-row:1; z-index:2; width:16rem; min-height:16rem; align-self:center; margin-left:0; border:1px solid; box-shadow:3px 4px 0 #0002; }
+  .record-sleeve .concept-visual::after { content:""; position:absolute; z-index:-1; top:9%; right:-5rem; width:82%; aspect-ratio:1; border-radius:50%; background:repeating-radial-gradient(circle,#18181b 0 2px,#303036 2px 4px); transition:transform 350ms ease; }
+  .record-sleeve:hover .concept-visual::after { transform:translateX(1.5rem) rotate(24deg); }
+  .record-sleeve .concept-copy { grid-column:2; padding-left:2.5rem; }
+  .record-sleeve .concept-copy ul { counter-reset:track; display:block; }
+  .record-sleeve .concept-copy li { border:0; }
+  .record-sleeve .concept-copy li::before { counter-increment:track; content:"B" counter(track) ". "; color:var(--card-accent); }
+  .record-sleeve .concept-meta { display:none; }
+
+  /* 25 — horizontal level meter */
+  .signal-meter { --card-surface:#fff; --card-ink:#18181b; --card-muted:#52525b; --card-line:#a1a1aa; --card-accent:#4f46e5; grid-template-columns:5rem minmax(0,1fr) 12rem; min-height:16rem; }
+  .signal-meter .concept-visual { grid-column:3; grid-row:1; min-height:16rem; filter:saturate(.7) contrast(1.05); }
+  .signal-meter .concept-copy { grid-column:2; padding:3.5rem 1.5rem 1rem; }
+  .signal-meter .concept-copy h3 { font-size:2.2rem; }
+  .signal-meter .concept-copy p { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .signal-meter .concept-copy li { border-radius:999px; }
+  .signal-meter .concept-copy li::before { content:""; display:inline-block; width:.45rem; aspect-ratio:1; margin-right:.35rem; border-radius:50%; background:var(--card-accent); }
+  .signal-meter .concept-decoration { left:1rem; top:4rem; bottom:1rem; width:3rem; display:flex; flex-direction:column; justify-content:center; gap:.45rem; }
+  .signal-meter .concept-decoration i { position:static; height:5px; background:var(--card-accent); }
+  .signal-meter .concept-decoration i:nth-child(n+4){opacity:.2}
+
+  /* 26 — geological cross-section */
+  .strata-cut {
+    --card-surface:#d9c89e; --card-ink:#2f281e; --card-muted:#635642; --card-line:#675840; --card-accent:#a7522d;
+    grid-template-columns:1fr; grid-template-rows:auto 7rem 1fr; min-height:30rem;
+    background:linear-gradient(172deg,#e7dbc0 0 24%,#cfa66d 24.3% 42%,#9f7651 42.3% 57%,#5e493a 57.3% 62%,#d9c89e 62.3%);
+  }
+  .strata-cut .concept-meta { background:#e7dbc0; color:#443c30; }
+  .strata-cut .concept-visual { grid-column:1; grid-row:2; min-height:8rem; margin-top:1.2rem; border:0; clip-path:polygon(0 15%,16% 2%,35% 20%,57% 5%,76% 18%,100% 0,100% 82%,78% 100%,55% 84%,31% 100%,12% 80%,0 95%); filter:saturate(.65); }
+  .strata-cut .concept-copy { grid-column:1; grid-row:3; padding:1.5rem 2rem; background:#d9c89e; clip-path:polygon(0 6%,18% 0,38% 7%,58% 1%,80% 8%,100% 2%,100% 100%,0 100%); }
+  .strata-cut .concept-copy h3 { max-width:none; font-family:Georgia,serif; }
+  .strata-cut .concept-copy li { border:0; padding-left:1.2rem; }
+  .strata-cut .concept-copy li::before { content:"◆"; margin-left:-1.2rem; margin-right:.4rem; color:var(--card-accent); }
+
+  /* 27 — photographic contact sheet */
+  .contact-proof {
+    --card-surface:#ededeb; --card-ink:#151515; --card-muted:#555; --card-line:#151515; --card-accent:#d93d2c;
+    grid-template-columns:repeat(12,1fr); grid-template-rows:3rem 1fr; gap:4px; padding:4px;
+    border:0; border-radius:0; background:#151515;
+  }
+  .contact-proof .concept-meta { position:relative; grid-column:1 / 13; grid-row:1; background:#ededeb; }
+  .contact-proof .concept-visual { grid-column:1 / 8; grid-row:2; min-height:27rem; border:0; }
+  .contact-proof .concept-visual::before { content:"A1"; position:absolute; z-index:2; top:.5rem; left:.5rem; padding:.2rem .35rem; background:#151515; color:#fff; font:.6rem "JetBrains_Mono",monospace; }
+  .contact-proof .concept-copy { grid-column:8 / 13; grid-row:2; padding:1.5rem; background:#ededeb; }
+  .contact-proof .concept-copy::before { content:"A2 / B2"; color:#777; font:.6rem "JetBrains_Mono",monospace; }
+  .contact-proof .concept-copy h3 { margin-top:2rem; font-size:clamp(2rem,5vw,3.6rem); }
+  .contact-proof .concept-copy li { border:0; border-bottom:1px solid; }
+
+  /* 28 — abstract waypoint canvas */
+  .waypoint-atlas {
+    --card-surface:#edf0de; --card-ink:#253328; --card-muted:#5b685d; --card-line:#7c8d7f; --card-accent:#e04c31;
+    display:block; min-height:32rem; overflow:hidden;
+    background-image:radial-gradient(circle at 12% 20%,#ffffff 0 2px,transparent 3px),radial-gradient(circle at 55% 66%,#e04c31 0 3px,transparent 4px),linear-gradient(165deg,transparent 48%,#7c8d7f55 49% 49.5%,transparent 50%);
+  }
+  .waypoint-atlas .concept-visual { position:absolute; right:2rem; bottom:2rem; width:15rem; min-height:15rem; border:0; border-radius:54% 46% 61% 39% / 44% 61% 39% 56%; }
+  .waypoint-atlas .concept-copy { position:absolute; inset:3.5rem 0 0; padding:2rem; }
+  .waypoint-atlas .concept-copy h3 { max-width:12ch; }
+  .waypoint-atlas .concept-copy p { max-width:28rem; margin-top:auto; margin-bottom:3rem; padding:1rem; border:1px solid var(--card-line); background:#edf0dee8; }
+  .waypoint-atlas .concept-copy ul { position:absolute; left:42%; top:46%; display:grid; gap:1rem; }
+  .waypoint-atlas .concept-copy li { position:relative; border:0; padding-left:1rem; }
+  .waypoint-atlas .concept-copy li::before { content:""; position:absolute; left:0; top:.4rem; width:.5rem; aspect-ratio:1; border:2px solid var(--card-accent); border-radius:50%; }
+
+  /* 29 — camera iris */
+  .iris-dispatch {
+    --card-surface:#f2efe8; --card-ink:#191815; --card-muted:#605d56; --card-line:#9c978d; --card-accent:#4f46e5;
+    grid-template-columns:1fr; min-height:38rem; overflow:hidden;
+  }
+  .iris-dispatch .concept-meta { justify-content:center; gap:2rem; border:0; }
+  .iris-dispatch .concept-visual { grid-column:1; grid-row:1; align-self:start; justify-self:center; width:21rem; min-height:21rem; margin-top:3.5rem; border:1rem solid #d8d3c9; outline:2rem solid #292824; border-radius:50%; clip-path:circle(50%); }
+  .iris-dispatch .concept-decoration i:first-child { top:2.2rem; left:50%; width:25rem; aspect-ratio:1; translate:-50%; border-radius:50%; background:repeating-conic-gradient(#252420 0 12deg,#6d6960 12deg 24deg); opacity:.35; transition:rotate 320ms ease; }
+  .iris-dispatch:hover .concept-decoration i:first-child { rotate:8deg; }
+  .iris-dispatch .concept-copy { grid-column:1; grid-row:1; align-self:end; min-height:19rem; margin-top:20rem; padding:2rem; background:#f2efe8; }
+  .iris-dispatch .concept-copy h3 { max-width:20ch; margin-inline:auto; text-align:center; font-size:clamp(2.2rem,6vw,4rem); }
+  .iris-dispatch .concept-copy > span { text-align:center; }
+  .iris-dispatch .concept-copy p { margin-inline:auto; text-align:center; }
+  .iris-dispatch .concept-copy ul { justify-content:center; }
+
+  /* 30 — plotted constellation */
+  .constellation-index {
+    --card-surface:#eeeae3; --card-ink:#25243a; --card-muted:#65647a; --card-line:#9c9aaa; --card-accent:#6259d7;
+    display:block; min-height:34rem;
+    background-image:radial-gradient(circle at 15% 15%,#6259d7 0 2px,transparent 3px),radial-gradient(circle at 68% 29%,#6259d7 0 1px,transparent 2px),radial-gradient(circle at 42% 76%,#6259d7 0 2px,transparent 3px),radial-gradient(ellipse at center,#ffffff88,transparent 65%);
+  }
+  .constellation-index .concept-meta { width:35%; top:2rem; left:4%; right:auto; border:1px solid var(--card-line); background:#eeeae3; }
+  .constellation-index .concept-visual { position:absolute; top:4rem; right:3rem; width:15rem; min-height:15rem; border:1px solid var(--card-accent); border-radius:50%; box-shadow:0 0 0 1.8rem #eeeae3,0 0 0 calc(1.8rem + 1px) var(--card-line); }
+  .constellation-index .concept-copy { position:absolute; inset:7rem 0 0; padding:2rem; }
+  .constellation-index .concept-copy h3 { max-width:12ch; }
+  .constellation-index .concept-copy p { position:absolute; left:7%; bottom:4rem; width:38%; padding:1rem; border:1px solid var(--card-line); background:#eeeae3e8; }
+  .constellation-index .concept-copy ul { position:absolute; right:25%; bottom:4rem; width:20%; }
+  .constellation-index .concept-copy li { border:0; padding:.15rem; }
+  .constellation-index .concept-copy li::before { content:"✦ "; color:var(--card-accent); }
+  .constellation-index .concept-copy footer { position:absolute; right:2rem; bottom:1rem; width:25%; }
+  .constellation-index .concept-decoration i:nth-child(1) { left:18%; top:30%; width:52%; height:1px; background:var(--card-line); rotate:-8deg; }
+  .constellation-index .concept-decoration i:nth-child(2) { left:38%; top:54%; width:38%; height:1px; background:var(--card-line); rotate:22deg; }
+
+  /* Strata family */
+  .strata-faultline {
+    --card-surface:#ead9b9; --card-ink:#32271e; --card-muted:#6d5b4c; --card-line:#8d735e; --card-accent:#d6502f;
+    grid-template-columns:48% 52%; min-height:29rem; overflow:hidden;
+    background:linear-gradient(162deg,#f1e7d1 0 34%,#d9b889 34.3% 48%,#704f3d 48.3% 53%,#c88659 53.3% 68%,#ead9b9 68.3%);
+  }
+  .strata-faultline .concept-visual { grid-column:1; grid-row:1; margin:3.5rem -3rem 0 1rem; min-height:24rem; border:0; clip-path:polygon(0 7%,75% 0,100% 38%,78% 100%,0 91%); filter:sepia(.18) saturate(.75); }
+  .strata-faultline .concept-copy { grid-column:2; margin:5rem 1rem 1rem -1rem; padding:2rem; background:#ead9b9e8; clip-path:polygon(10% 0,100% 8%,100% 100%,0 92%,8% 48%,0 19%); }
+  .strata-faultline .concept-copy h3 { font-family:Georgia,serif; }
+  .strata-faultline .concept-decoration i:first-child { left:46%; top:2rem; bottom:-2rem; width:8px; background:var(--card-accent); rotate:8deg; }
+
+  .strata-core-sample {
+    --card-surface:#eee1c5; --card-ink:#2c2a25; --card-muted:#686256; --card-line:#777064; --card-accent:#a74428;
+    grid-template-columns:9rem minmax(0,1fr); min-height:31rem; padding-left:2rem;
+    background:repeating-linear-gradient(0deg,#eee1c5 0 3.8rem,#ded0b3 3.8rem 7.6rem);
+  }
+  .strata-core-sample .concept-meta { left:2rem; background:#2c2a25; color:#f3ead6; }
+  .strata-core-sample .concept-visual { grid-column:1; grid-row:1; width:5rem; min-height:26rem; margin:3.5rem auto 1rem; border:6px solid #f5eedf; border-radius:3rem; filter:saturate(.7) contrast(1.05); box-shadow:0 0 0 1px var(--card-line); }
+  .strata-core-sample .concept-copy { grid-column:2; padding-left:2rem; }
+  .strata-core-sample .concept-copy li { border:0; border-bottom:2px solid var(--card-accent); }
+  .strata-core-sample .concept-decoration i:nth-child(-n+5) { left:.6rem; width:1rem; height:1px; background:var(--card-line); }
+  .strata-core-sample .concept-decoration i:nth-child(1){top:20%}.strata-core-sample .concept-decoration i:nth-child(2){top:35%}.strata-core-sample .concept-decoration i:nth-child(3){top:50%}.strata-core-sample .concept-decoration i:nth-child(4){top:65%}.strata-core-sample .concept-decoration i:nth-child(5){top:80%}
+
+  .strata-terrace {
+    --card-surface:#d8c593; --card-ink:#2b3026; --card-muted:#5c6254; --card-line:#65705d; --card-accent:#e26035;
+    display:block; min-height:32rem;
+    background:linear-gradient(180deg,#edf0d4 0 20%,#d9d0a7 20% 38%,#b5a870 38% 57%,#867b53 57% 72%,#4e5542 72%);
+  }
+  .strata-terrace .concept-visual { position:absolute; top:4.5rem; right:2rem; width:43%; min-height:14rem; border:8px solid #edf0d4; clip-path:polygon(8% 0,100% 0,100% 86%,0 100%,0 14%); }
+  .strata-terrace .concept-copy { position:absolute; inset:5.5rem auto 1.5rem 1.5rem; width:57%; min-height:24rem; padding:1.6rem; background:#edf0d4e8; clip-path:polygon(0 0,88% 0,100% 13%,92% 100%,0 92%); }
+  .strata-terrace .concept-copy h3 { font-family:Georgia,serif; }
+  .strata-terrace .concept-copy footer { margin-top:2rem; }
+
+  .strata-night-seam {
+    --card-surface:#111817; --card-ink:#e9f0d2; --card-muted:#9ea989; --card-line:#465047; --card-accent:#d8ff54;
+    grid-template-columns:1fr; grid-template-rows:auto 9rem 1fr; min-height:30rem;
+    background:linear-gradient(174deg,#18211d 0 28%,#334032 28.3% 41%,#b9d94a 41.3% 43%,#252b25 43.3% 64%,#111817 64.3%);
+    box-shadow:inset 0 0 3rem #d8ff5410;
+  }
+  .strata-night-seam .concept-visual { grid-column:1; grid-row:2; min-height:9rem; margin-top:1rem; border:0; clip-path:polygon(0 18%,18% 4%,38% 21%,58% 0,79% 18%,100% 5%,100% 80%,81% 96%,61% 78%,42% 100%,19% 82%,0 95%); filter:grayscale(.4) contrast(1.2); box-shadow:0 0 2rem #d8ff5466; }
+  .strata-night-seam .concept-copy { grid-column:1; grid-row:3; padding-top:2rem; background:#111817; }
+  .strata-night-seam .concept-copy li { border-color:#d8ff5466; }
+
+  /* Patchbay Release family */
+  .patchbay-broadcast {
+    --card-surface:#0b1114; --card-ink:#e5fbff; --card-muted:#8ba9b0; --card-line:#36545a; --card-accent:#ff4f3d;
+    grid-template-columns:58% 42%; min-height:29rem; background:repeating-linear-gradient(90deg,transparent 0 5px,#ffffff05 5px 6px);
+  }
+  .patchbay-broadcast .concept-visual { grid-column:1; grid-row:1; margin:4rem 1rem 1rem; min-height:23rem; border:10px solid #1b282c; border-radius:1.2rem; filter:grayscale(.7) contrast(1.25); }
+  .patchbay-broadcast .concept-visual::after { content:"LIVE"; position:absolute; top:1rem; left:1rem; padding:.35rem .55rem; background:#ff4f3d; color:#fff; font:800 .62rem "JetBrains_Mono",monospace; letter-spacing:.12em; }
+  .patchbay-broadcast .concept-copy { grid-column:2; padding-left:1rem; }
+  .patchbay-broadcast .concept-copy li { border-radius:999px; }
+  .patchbay-broadcast .concept-kicker::before { content:"● "; color:#ff4f3d; }
+
+  .patchbay-matrix {
+    --card-surface:#151918; --card-ink:#ebf0e9; --card-muted:#9ca69f; --card-line:#4b544e; --card-accent:#f8cd38;
+    grid-template-columns:42% 58%; min-height:28rem; padding:3.5rem 1rem 1rem; gap:1rem;
+    background-image:radial-gradient(circle,#303a34 0 3px,transparent 4px); background-size:2.2rem 2.2rem;
+  }
+  .patchbay-matrix .concept-meta { background:#0c0f0e; }
+  .patchbay-matrix .concept-visual { grid-column:1; grid-row:1; min-height:22rem; border:4px inset #4b544e; filter:grayscale(1) sepia(.4) hue-rotate(75deg); }
+  .patchbay-matrix .concept-copy { grid-column:2; padding:1.5rem; border:4px inset #4b544e; background:#151918f2; }
+  .patchbay-matrix .concept-copy ul { display:grid; grid-template-columns:1fr 1fr; }
+  .patchbay-matrix .concept-copy li { min-height:2.6rem; padding-left:2rem; background:radial-gradient(circle at .8rem 50%,#070908 0 5px,#e6e9e7 5px 7px,transparent 7px); }
+
+  .patchbay-signal-flow {
+    --card-surface:#101311; --card-ink:#f1eee5; --card-muted:#aaa79e; --card-line:#555951; --card-accent:#63df66;
+    display:block; min-height:31rem; background:linear-gradient(135deg,#151916,#0b0d0c);
+  }
+  .patchbay-signal-flow .concept-visual { position:absolute; right:2rem; top:5rem; width:18rem; min-height:18rem; border:10px solid #292e2a; border-radius:50%; filter:grayscale(1) contrast(1.3) sepia(.2) hue-rotate(70deg); }
+  .patchbay-signal-flow .concept-copy { position:absolute; inset:4rem 19rem 1.5rem 1.5rem; padding:1.5rem; border:2px inset #555951; background:#101311e8; }
+  .patchbay-signal-flow .concept-copy li { border:0; padding-left:1.7rem; background:radial-gradient(circle at .7rem,#060706 0 4px,#eee 4px 6px,transparent 6px); }
+  .patchbay-signal-flow .concept-decoration i { height:4px; border-radius:999px; transform-origin:left; }
+  .patchbay-signal-flow .concept-decoration i:nth-child(1){left:8%;top:28%;width:76%;background:#63df66;rotate:6deg}.patchbay-signal-flow .concept-decoration i:nth-child(2){left:15%;top:66%;width:67%;background:#ff5a42;rotate:-9deg}.patchbay-signal-flow .concept-decoration i:nth-child(3){left:34%;top:48%;width:48%;background:#5da6ff;rotate:14deg}
+
+  .patchbay-portable {
+    --card-surface:#55604c; --card-ink:#f4f0d8; --card-muted:#ced0bc; --card-line:#20251d; --card-accent:#ffb12e;
+    grid-template-columns:1fr 14rem; min-height:24rem; margin-top:2rem; overflow:visible; border:8px solid #2b3027; border-radius:1.2rem; box-shadow:inset 0 0 0 3px #77816e,8px 10px 0 #0002;
+  }
+  .patchbay-portable::before { content:""; position:absolute; top:-2.4rem; left:50%; width:10rem; height:2rem; translate:-50%; border:8px solid #2b3027; border-bottom:0; border-radius:1rem 1rem 0 0; }
+  .patchbay-portable .concept-meta { background:#2b3027; color:#f4f0d8; }
+  .patchbay-portable .concept-visual { width:11rem; min-height:11rem; align-self:center; margin:3rem auto 1rem; border:7px solid #343a30; border-radius:50%; filter:grayscale(.8); }
+  .patchbay-portable .concept-copy { padding-right:1rem; }
+  .patchbay-portable .concept-copy h3 { font-size:clamp(1.9rem,4vw,3rem); }
+
+  /* Patchbay Memo family */
+  .patchbay-console {
+    --card-surface:#1b1d1a; --card-ink:#f3ead3; --card-muted:#b2aa98; --card-line:#61635a; --card-accent:#ff6245;
+    grid-template-columns:32% 68%; min-height:29rem; padding:3.6rem .9rem .9rem; gap:.7rem; background:#242622;
+  }
+  .patchbay-console .concept-meta { background:#11120f; }
+  .patchbay-console .concept-visual { grid-column:1; grid-row:1; min-height:23rem; border:3px inset #61635a; filter:grayscale(.8) contrast(1.2); }
+  .patchbay-console .concept-copy { grid-column:2; padding:1.5rem; border:3px inset #61635a; background:#171916; }
+  .patchbay-console .concept-copy ul { display:grid; grid-template-columns:repeat(2,1fr); }
+  .patchbay-console .concept-copy li { padding:.65rem; border:1px solid #61635a; background:#22241f; }
+  .patchbay-console .concept-copy footer span:last-child { padding:.7rem; background:#6b2519; border:1px solid #ff6245; }
+
+  .patchbay-cable-map {
+    --card-surface:#e9e5d8; --card-ink:#272921; --card-muted:#626458; --card-line:#67695e; --card-accent:#d5442d;
+    display:block; min-height:31rem; border-radius:0; background-image:linear-gradient(#7772 1px,transparent 1px),linear-gradient(90deg,#7772 1px,transparent 1px); background-size:2rem 2rem;
+  }
+  .patchbay-cable-map .concept-visual { position:absolute; right:2rem; bottom:2rem; width:16rem; min-height:16rem; border:6px solid #272921; border-radius:50%; filter:grayscale(.8); }
+  .patchbay-cable-map .concept-copy { position:absolute; inset:4rem 18rem 1.5rem 1.5rem; padding:1.5rem; background:#e9e5d8e8; border:2px solid #272921; }
+  .patchbay-cable-map .concept-copy li { border:0; padding-left:1.5rem; background:radial-gradient(circle at .55rem,#272921 0 4px,#e9e5d8 4px 6px,#272921 6px 7px,transparent 7px); }
+  .patchbay-cable-map .concept-decoration i { height:5px; border:2px solid #272921; border-radius:999px; }
+  .patchbay-cable-map .concept-decoration i:nth-child(1){left:9%;top:37%;width:75%;background:#e64e34;rotate:8deg}.patchbay-cable-map .concept-decoration i:nth-child(2){left:24%;top:65%;width:58%;background:#3576c8;rotate:-12deg}.patchbay-cable-map .concept-decoration i:nth-child(3){left:46%;top:50%;width:38%;background:#e6bb35;rotate:18deg}
+
+  .patchbay-label-maker {
+    --card-surface:#d7d0bc; --card-ink:#151512; --card-muted:#514f46; --card-line:#151512; --card-accent:#f04d32;
+    grid-template-columns:1fr 35%; min-height:27rem; padding:4rem 1rem 1rem; gap:1rem; border:6px solid #2a2a25; border-radius:.6rem; background:repeating-linear-gradient(90deg,#d7d0bc 0 8px,#cec6b0 8px 9px);
+  }
+  .patchbay-label-maker .concept-meta { background:#2a2a25; color:#f4eddc; }
+  .patchbay-label-maker .concept-visual { align-self:center; min-height:18rem; border:8px solid #f1ead8; rotate:2deg; box-shadow:4px 5px 0 #0003; filter:saturate(.75); }
+  .patchbay-label-maker .concept-copy { padding:1.4rem; background:#d7d0bc; border:2px solid #151512; }
+  .patchbay-label-maker .concept-kicker, .patchbay-label-maker .concept-copy h3, .patchbay-label-maker .concept-copy li { display:inline; padding:.25rem .45rem; background:#151512; color:#f4eddc; box-decoration-break:clone; }
+  .patchbay-label-maker .concept-copy h3 { display:block; width:max-content; max-width:90%; margin-top:1rem; font-family:"JetBrains_Mono",monospace; font-size:clamp(1.5rem,4vw,2.5rem); line-height:1.25; }
+  .patchbay-label-maker .concept-copy p { padding:.7rem; background:#f1ead8; border:1px dashed #151512; }
+
+  .patchbay-service-bay {
+    --card-surface:#aeb1a8; --card-ink:#171915; --card-muted:#50544b; --card-line:#363a33; --card-accent:#f05a35;
+    grid-template-columns:40% 60%; min-height:29rem; padding:4rem 1rem 1rem; gap:.8rem; border:8px ridge #74786f; border-radius:.25rem; background:linear-gradient(135deg,#c7cac1,#8f938a);
+  }
+  .patchbay-service-bay .concept-meta { background:#30342d; color:#f4f0df; }
+  .patchbay-service-bay .concept-visual { grid-column:1; grid-row:1; min-height:23rem; border:8px ridge #74786f; filter:grayscale(.5) contrast(1.1); }
+  .patchbay-service-bay .concept-copy { grid-column:2; padding:1.5rem; border:8px ridge #74786f; background:#b9bcb3; }
+  .patchbay-service-bay .concept-copy li { border:2px inset #74786f; background:#c9ccc3; }
+  .patchbay-service-bay .concept-decoration i:nth-child(-n+4) { width:.8rem; aspect-ratio:1; border:2px solid #363a33; border-radius:50%; background:#8f938a; }
+  .patchbay-service-bay .concept-decoration i:nth-child(1){left:1rem;top:1rem}.patchbay-service-bay .concept-decoration i:nth-child(2){right:1rem;top:1rem}.patchbay-service-bay .concept-decoration i:nth-child(3){left:1rem;bottom:1rem}.patchbay-service-bay .concept-decoration i:nth-child(4){right:1rem;bottom:1rem}
+
+  :global(.dark) .source-heading { border-color:rgb(63 63 70); }
+  :global(.dark) .source-heading span, :global(.dark) .concept-label span { color:rgb(165 180 252); }
+  :global(.dark) .contour-plate, :global(.dark) .commit-rail, :global(.dark) .patch-file, :global(.dark) .signal-meter,
+  :global(.dark) .contact-proof, :global(.dark) .iris-dispatch, :global(.dark) .constellation-index { --card-surface:#111113; --card-ink:#f4f4f5; --card-muted:#a1a1aa; --card-line:#3f3f46; --card-accent:#a5b4fc; }
+  :global(.dark) .record-sleeve { --card-ink:#f4f4f5; --card-muted:#a1a1aa; --card-line:#d4d4d8; --card-accent:#a5b4fc; }
+
+  @media (max-width: 720px) {
+    .source-heading { align-items:start; flex-direction:column; }
+    .source-group { margin-top:7rem; }
+    .concept-section { margin-top:4.5rem; }
+    .concept-card, .orbital-dispatch, .patchbay-memo, .foldout-atlas, .patchbay-release,
+    .metro-merge, .exploded-blueprint, .orbit-index, .signal-monitor, .specimen-slide,
+    .commit-graph, .accordion-dispatch, .record-sleeve, .signal-meter, .strata-cut,
+    .contact-proof, .waypoint-atlas, .iris-dispatch, .constellation-index {
+      grid-template-columns:1fr; min-height:0; margin-inline:0;
+    }
+    .concept-meta { position:relative; }
+    .concept-visual, .orbital-dispatch .concept-visual, .patchbay-memo .concept-visual,
+    .foldout-atlas .concept-visual, .patchbay-release .concept-visual, .metro-merge .concept-visual,
+    .exploded-blueprint .concept-visual, .orbit-index .concept-visual, .signal-monitor .concept-visual,
+    .specimen-slide .concept-visual, .commit-graph .concept-visual, .accordion-dispatch .concept-visual,
+    .record-sleeve .concept-visual, .signal-meter .concept-visual, .strata-cut .concept-visual,
+    .contact-proof .concept-visual, .waypoint-atlas .concept-visual, .iris-dispatch .concept-visual,
+    .constellation-index .concept-visual, .strata-faultline .concept-visual,
+    .strata-core-sample .concept-visual, .strata-terrace .concept-visual,
+    .strata-night-seam .concept-visual, .patchbay-broadcast .concept-visual,
+    .patchbay-matrix .concept-visual, .patchbay-signal-flow .concept-visual,
+    .patchbay-portable .concept-visual, .patchbay-console .concept-visual,
+    .patchbay-cable-map .concept-visual, .patchbay-label-maker .concept-visual,
+    .patchbay-service-bay .concept-visual {
+      position:relative; inset:auto; grid-column:1; grid-row:auto; order:1; width:auto;
+      min-height:13rem; height:13rem; margin:0; border-width:0 0 1px; border-radius:0;
+      box-shadow:none; transform:none;
+    }
+    .concept-copy, .orbital-dispatch .concept-copy, .patchbay-memo .concept-copy,
+    .foldout-atlas .concept-copy, .patchbay-release .concept-copy, .metro-merge .concept-copy,
+    .exploded-blueprint .concept-copy, .orbit-index .concept-copy, .signal-monitor .concept-copy,
+    .specimen-slide .concept-copy, .commit-graph .concept-copy, .accordion-dispatch .concept-copy,
+    .record-sleeve .concept-copy, .signal-meter .concept-copy, .strata-cut .concept-copy,
+    .contact-proof .concept-copy, .waypoint-atlas .concept-copy, .iris-dispatch .concept-copy,
+    .constellation-index .concept-copy, .strata-faultline .concept-copy,
+    .strata-core-sample .concept-copy, .strata-terrace .concept-copy,
+    .strata-night-seam .concept-copy, .patchbay-broadcast .concept-copy,
+    .patchbay-matrix .concept-copy, .patchbay-signal-flow .concept-copy,
+    .patchbay-portable .concept-copy, .patchbay-console .concept-copy,
+    .patchbay-cable-map .concept-copy, .patchbay-label-maker .concept-copy,
+    .patchbay-service-bay .concept-copy {
+      position:relative; inset:auto; grid-column:1; grid-row:auto; order:2; width:auto;
+      min-height:22rem; margin:0; padding:1.5rem; border-width:0; box-shadow:none; transform:none;
+    }
+    .concept-copy h3 { font-size:clamp(1.8rem,10vw,2.7rem); }
+    .concept-copy p { white-space:normal; }
+    .field-cassette { padding:3.5rem 1rem 1rem; }
+    .field-cassette .concept-visual { margin-top:9rem; height:7rem; min-height:7rem; border:5px solid #e8e7d8; border-radius:4rem; }
+    .field-cassette .concept-copy { position:absolute; inset:3.5rem 1rem 1rem; min-height:0; }
+    .field-cassette .concept-copy h3 { font-size:1.7rem; }
+    .field-cassette .concept-copy p { display:none; }
+    .window-manager { display:flex; flex-direction:column; min-height:0; padding:1rem; }
+    .window-manager .concept-meta { position:static; order:3; margin:1rem -1rem -1rem; }
+    .window-manager .concept-copy { margin-top:-1rem; margin-left:1rem; }
+    .contour-plate { display:flex; min-height:0; }
+    .contour-plate .concept-copy { position:relative; max-width:none; background:var(--card-surface); }
+    .commit-rail { margin-left:0; }
+    .commit-rail .concept-decoration i:first-child { left:.65rem; }
+    .commit-rail .concept-decoration i:nth-child(2) { left:.24rem; }
+    .commit-rail .concept-copy { padding-left:1.5rem; }
+    .patch-file .concept-copy { padding-bottom:9rem; }
+    .record-sleeve .concept-visual::after { right:-2.5rem; }
+    .strata-terrace, .patchbay-signal-flow, .patchbay-cable-map { display:grid; }
+    .strata-core-sample .concept-meta { left:0; }
+    .strata-cut .concept-copy { clip-path:none; }
+    .contact-proof { gap:3px; padding:3px; }
+    .waypoint-atlas, .constellation-index { display:flex; flex-direction:column; }
+    .waypoint-atlas .concept-copy p, .waypoint-atlas .concept-copy ul,
+    .constellation-index .concept-copy p, .constellation-index .concept-copy ul,
+    .constellation-index .concept-copy footer { position:static; width:auto; margin:1rem 0 0; }
+    .iris-dispatch .concept-visual { width:auto; max-width:17rem; align-self:center; border-width:.7rem; outline-width:1rem; border-radius:50%; }
+    .iris-dispatch .concept-copy { margin-top:0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .concept-card, .concept-visual :global(img), .record-sleeve .concept-visual::after { transition:none; }
+    .concept-card:hover .concept-visual :global(img), .record-sleeve:hover .concept-visual::after { transform:none; }
+  }
+</style>

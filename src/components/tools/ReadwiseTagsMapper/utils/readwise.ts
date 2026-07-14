@@ -115,53 +115,7 @@ const fetchWrapper = async <T>(
   }
 };
 
-const fetchDocumentListApi = async (
-  token: string,
-  options: FetchDocumentListOptions = {},
-) => {
-  let fullData: ReadwiseItem[] = [];
-  let nextPageCursor: string | null = options.pageCursor ?? null;
-
-  while (true) {
-    const queryParams = new URLSearchParams();
-    if (nextPageCursor) queryParams.append("pageCursor", nextPageCursor);
-    if (options.id) queryParams.append("id", options.id);
-    if (options.updatedAfter)
-      queryParams.append("updatedAfter", options.updatedAfter);
-    if (options.location) queryParams.append("location", options.location);
-    if (options.category) queryParams.append("category", options.category);
-    if (options.tags) {
-      options.tags
-        .filter((tag) => tag !== undefined)
-        .forEach((tag) => queryParams.append("tag", tag ?? ""));
-    }
-    if (typeof options.withHtmlContent === "boolean")
-      queryParams.append("withHtmlContent", String(options.withHtmlContent));
-    if (typeof options.withRawSourceUrl === "boolean")
-      queryParams.append("withRawSourceUrl", String(options.withRawSourceUrl));
-
-    const url = "https://readwise.io/api/v3/list/?" + queryParams.toString();
-    const response = await fetchWrapper<ReadwiseListResponse>(url, {
-      method: "GET",
-      authToken: token,
-    });
-
-    const parsedResponse = readwiseListResponseSchema.parse(response);
-
-    const results = parsedResponse.results ?? [];
-    fullData.push(...results);
-    if (options.id) break; // id lookups return at most one page
-    nextPageCursor = parsedResponse.nextPageCursor ?? null;
-    if (!nextPageCursor) break;
-  }
-
-  return fullData;
-};
-
-const fetchDocumentListPageApi = async (
-  token: string,
-  options: FetchDocumentListOptions = {},
-) => {
+const buildDocumentListUrl = (options: FetchDocumentListOptions = {}) => {
   const queryParams = new URLSearchParams();
   if (options.pageCursor) queryParams.append("pageCursor", options.pageCursor);
   if (options.id) queryParams.append("id", options.id);
@@ -179,13 +133,42 @@ const fetchDocumentListPageApi = async (
   if (typeof options.withRawSourceUrl === "boolean")
     queryParams.append("withRawSourceUrl", String(options.withRawSourceUrl));
 
-  const url = "https://readwise.io/api/v3/list/?" + queryParams.toString();
+  return "https://readwise.io/api/v3/list/?" + queryParams.toString();
+};
+
+const fetchDocumentListPageApi = async (
+  token: string,
+  options: FetchDocumentListOptions = {},
+) => {
+  const url = buildDocumentListUrl(options);
   const response = await fetchWrapper<ReadwiseListResponse>(url, {
     method: "GET",
     authToken: token,
   });
 
   return readwiseListResponseSchema.parse(response);
+};
+
+const fetchDocumentListApi = async (
+  token: string,
+  options: FetchDocumentListOptions = {},
+) => {
+  const fullData: ReadwiseItem[] = [];
+  let nextPageCursor: string | null = options.pageCursor ?? null;
+
+  while (true) {
+    const page = await fetchDocumentListPageApi(token, {
+      ...options,
+      pageCursor: nextPageCursor,
+    });
+
+    fullData.push(...(page.results ?? []));
+    if (options.id) break; // id lookups return at most one page
+    nextPageCursor = page.nextPageCursor ?? null;
+    if (!nextPageCursor) break;
+  }
+
+  return fullData;
 };
 
 export const updateDocumentApi = async (

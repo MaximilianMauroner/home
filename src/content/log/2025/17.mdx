@@ -1,7 +1,7 @@
 ---
 layout: "@/layouts/LogLayout.astro"
-title: "Custom DynDNS for FirtzBox"
-description: "Using Serverless to handle the DynDNS setup for free, with my FritzBox. Allowing me to update Cloudflare records without issues"
+title: "Custom DynDNS for FritzBox"
+description: "Using serverless functions to handle DynDNS for free and update Cloudflare records reliably."
 tags:
   - dyndns
   - fritzbox
@@ -12,23 +12,23 @@ published: true
 releaseDate: 2025-04-30
 ---
 
-# 💡 Idea
+## 💡 Idea
 
-So basically at home I have a fritzbox router, and I have a home server, and a homeassistant that runs on a raspberry pi. And since i don't have a static IP, i want to somehow have the ability to access the server/pi from outside via a dns query.
-The problem is that for that to work i need to have a dynamic dns record which updates whenever the ip of the router changes. Thankfully my router comes with a built-in dyndns function, sadly it doesn't work with cloudflare.
-But since all it does is fire a get request to a specific url, I can just use a serverless function to handle the request and update the dns record.
+At home, I have a FritzBox router, a home server, and Home Assistant running on a Raspberry Pi. Since I don't have a static IP address, I need a way to access the server and Pi from outside through DNS.
+That requires a dynamic DNS record that updates whenever the router's IP address changes. My router has a built-in DynDNS function, but it doesn't work with Cloudflare.
+Since it only sends a GET request to a specific URL, I can use a serverless function to handle the request and update the DNS record.
 The code for this is quite simple, and can be seen here [fritz-dns](https://github.com/MaximilianMauroner/fritz-ddns)
 
-I copied the idea from the old php code I used before, to host on my server, but since I didn't want to pay for a server, I decided to use vercel serverless functions.
+I adapted the idea from the old PHP code I previously hosted on my server. Since I didn't want to pay for another server, I decided to use Vercel serverless functions.
 [Original idea](https://github.com/1rfsNet/Fritz-Box-Cloudflare-DynDNS)
 
-The only thing I had to change was migrate it to js, and then use the cloudflare library to update the dns record. I use a random token, to validate that only I can send the request, and then I just update the dns record with the new ip.
+I only had to migrate it to JavaScript and use the Cloudflare library to update the DNS record. A random token ensures that only I can send the request, then the function updates the DNS record with the new IP address.
 
 That's it. This week was kinda short, but that's because I didn't do that much, since it took like 2 hours to find out what the problem was 😂
 
 ---
 
-# 🛠️ Code
+## 🛠️ Code
 
 ```ts
 import { NextRequest, NextResponse } from "next/server";

@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors, EMOJI_PATTERN } from "./utils";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const EmojiActivity = ({ messages, persons }: GraphProps) => {
   const emojiCounts = useMemo(() => {
@@ -21,15 +23,13 @@ export const EmojiActivity = ({ messages, persons }: GraphProps) => {
         const matches = grapheme.match(EMOJI_PATTERN);
         return matches && grapheme.replace(EMOJI_PATTERN, "").trim() === "";
       });
-      if (emojis) {
-        emojis.forEach((emoji) => {
-          if (!Number.isNaN(Number(emoji)) || emoji === "*") return;
-          emojiMap.set(emoji, (emojiMap.get(emoji) || 0) + 1);
-          if (!emojiPerPerson[emoji]) emojiPerPerson[emoji] = {};
-          emojiPerPerson[emoji][msg.personId] =
-            (emojiPerPerson[emoji][msg.personId] || 0) + 1;
-        });
-      }
+      emojis.forEach((emoji) => {
+        if (!Number.isNaN(Number(emoji)) || emoji === "*") return;
+        emojiMap.set(emoji, (emojiMap.get(emoji) || 0) + 1);
+        if (!emojiPerPerson[emoji]) emojiPerPerson[emoji] = {};
+        emojiPerPerson[emoji][msg.personId] =
+          (emojiPerPerson[emoji][msg.personId] || 0) + 1;
+      });
     });
 
     // Sort emojis by usage descending (no slice, show all)
@@ -40,25 +40,26 @@ export const EmojiActivity = ({ messages, persons }: GraphProps) => {
   if (emojiCounts.sorted.length === 0) {
     return (
       <div>
-        <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-          Emoji Usage
-        </h3>
+        <ChartHeader
+          title="Emoji Usage"
+          assumption={CHART_ASSUMPTIONS.emojiUsage}
+        />
         <p className="text-sm text-muted-foreground">No emojis found.</p>
       </div>
     );
   }
 
   // Only show the top 30 emojis
-  emojiCounts.sorted = emojiCounts.sorted.slice(0, 30);
+  const topEmoji = emojiCounts.sorted.slice(0, 30);
 
   // Prepare stacked datasets: one for each person
   const colorMap = getParticipantColors(persons.map((p) => p.name));
   const personColors = persons.map((p) => colorMap[p.name]);
   const data = {
-    labels: emojiCounts.sorted.map(([emoji]) => emoji),
+    labels: topEmoji.map(([emoji]) => emoji),
     datasets: persons.map((p, idx) => ({
       label: p.name,
-      data: emojiCounts.sorted.map(
+      data: topEmoji.map(
         ([emoji]) => emojiCounts.emojiPerPerson[emoji]?.[p.id] || 0,
       ),
       backgroundColor: personColors[idx % personColors.length].bg,
@@ -90,9 +91,10 @@ export const EmojiActivity = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Emoji Usage
-      </h3>
+      <ChartHeader
+        title="Emoji Usage"
+        assumption={CHART_ASSUMPTIONS.emojiUsage}
+      />
       <div className="mb-4 flex flex-col flex-wrap text-sm text-muted-foreground">
         {persons
           .map((p) => {

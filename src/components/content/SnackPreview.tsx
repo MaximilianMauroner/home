@@ -1,7 +1,7 @@
 import type { CollectionEntry } from "astro:content";
 import TagsList from "./TagsList";
 import type { ReactNode } from "react";
-import { timeAgo } from "@/utils/helpers";
+import RelativeDate from "./RelativeDate";
 
 export default function SnackPreview({
   snack,
@@ -122,13 +122,13 @@ export default function SnackPreview({
             </p>
 
             <div className="mb-3 text-[10px] font-medium italic text-amber-800/70 sm:text-xs dark:text-amber-300/80">
-              {timeAgo(snack.data.releaseDate)}
+              <RelativeDate date={snack.data.releaseDate} />
             </div>
 
             <div className="mt-auto">
               <a
                 href={`/snacks/${snack.id}/`}
-                className="group/link inline-flex items-center gap-1.5 text-xs font-medium text-gray-900 transition-all hover:text-amber-800 dark:text-gray-100 dark:hover:text-amber-200"
+                className="site-action group/link gap-1.5 font-medium text-gray-900 transition-all hover:text-amber-800 dark:text-gray-100 dark:hover:text-amber-200"
                 style={{ fontStyle: "italic" }}
               >
                 <span>see more →</span>

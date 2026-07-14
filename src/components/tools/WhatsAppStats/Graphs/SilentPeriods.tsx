@@ -6,6 +6,9 @@ import {
   dateKeyFromMessage,
   gapHoursBetweenMessages,
 } from "../datetime";
+import { formatHours } from "../conversationMetrics";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const SilentPeriods = ({ messages, persons }: GraphProps) => {
   const silentData = useMemo(() => {
@@ -24,6 +27,7 @@ export const SilentPeriods = ({ messages, persons }: GraphProps) => {
 
     const gapDistribution = new Map<string, number>();
     const reviverStats = new Map<number, number>();
+    const personById = new Map(persons.map((person) => [person.id, person]));
 
     for (let i = 1; i < sortedMessages.length; i++) {
       const prevMsg = sortedMessages[i - 1];
@@ -34,13 +38,13 @@ export const SilentPeriods = ({ messages, persons }: GraphProps) => {
 
       // Consider silent periods of 4+ hours
       if (gapHours >= 4) {
-        const reviverPerson = persons.find((p) => p.id === currMsg.personId);
+        const reviverPerson = personById.get(currMsg.personId);
         silentPeriods.push({
           gapHours,
           reviver: currMsg.personId,
           reviverName: reviverPerson?.name || "Unknown",
-          startDate: prevMsg.date + " " + prevMsg.time,
-          endDate: currMsg.date + " " + currMsg.time,
+          startDate: `${prevMsg.date} ${prevMsg.time}`,
+          endDate: `${currMsg.date} ${currMsg.time}`,
         });
 
         // Update reviver stats
@@ -121,9 +125,10 @@ export const SilentPeriods = ({ messages, persons }: GraphProps) => {
   if (!silentData || silentData.silentPeriods.length === 0) {
     return (
       <div>
-        <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-          Silent Periods Analysis
-        </h3>
+        <ChartHeader
+          title="Silent Periods Analysis"
+          assumption={CHART_ASSUMPTIONS.silentPeriods}
+        />
         <p className="text-sm text-muted-foreground">
           No significant silent periods found (4+ hours with no messages).
         </p>
@@ -272,9 +277,10 @@ export const SilentPeriods = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Silent Periods Analysis
-      </h3>
+      <ChartHeader
+        title="Silent Periods Analysis"
+        assumption={CHART_ASSUMPTIONS.silentPeriods}
+      />
       <div className="mb-4 text-sm text-muted-foreground">
         <p>
           Analysis of conversation gaps (4+ hours) and who revives conversations
@@ -283,12 +289,8 @@ export const SilentPeriods = ({ messages, persons }: GraphProps) => {
           <div>
             <strong>Silent Period Statistics:</strong>
             <div>Total periods: {silentData.stats.totalSilentPeriods}</div>
-            <div>
-              Average gap: {(silentData.stats.avgGap / 24).toFixed(1)} days
-            </div>
-            <div>
-              Longest gap: {(silentData.stats.longestGap / 24).toFixed(1)} days
-            </div>
+            <div>Average gap: {formatHours(silentData.stats.avgGap)}</div>
+            <div>Longest gap: {formatHours(silentData.stats.longestGap)}</div>
           </div>
           <div>
             <strong>Top Conversation Revivers:</strong>

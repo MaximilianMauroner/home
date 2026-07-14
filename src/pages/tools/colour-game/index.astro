@@ -10,7 +10,11 @@ import StarLayout from "@/layouts/StarLayout.astro";
 ---
 
 <StarLayout title={title} description={description}>
-  <ToolPage theme={getToolThemeClass("colour-game")}>
+  <ToolPage
+    theme={getToolThemeClass("colour-game")}
+    title={title}
+    description={description}
+  >
     <ColourGame client:only="react" />
   </ToolPage>
 </StarLayout>

@@ -6,19 +6,24 @@ import StarLayout from "@/layouts/StarLayout.astro";
 
 <StarLayout title="404 - Page Not Found" description="The page you're looking for doesn't exist">
   <div
-    class="my-auto flex flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8"
+    class="my-auto flex flex-col items-center justify-center bg-background px-4 py-8 sm:px-6 sm:py-12 lg:px-8"
   >
     <div class="mx-auto max-w-md text-center">
-      <Picture
-        src={ImgAstronaut}
-        formats={["avif"]}
-        loading="eager"
-        alt="404 Error showing an astronaut"
-        class="mx-auto"
-        style="aspect-ratio: 200 / 200; object-fit: cover;"
-      />
+      <div
+        class="mx-auto h-32 w-32 sm:h-48 sm:w-48"
+        data-404-illustration
+      >
+        <Picture
+          src={ImgAstronaut}
+          formats={["avif"]}
+          loading="eager"
+          alt="An astronaut floating in space"
+          class="h-full w-full object-contain"
+          onerror="this.closest('[data-404-illustration]')?.remove()"
+        />
+      </div>
       <h1
-        class="mt-8 text-4xl font-bold tracking-tight text-foreground sm:text-5xl"
+        class="mt-5 text-4xl font-bold tracking-tight text-foreground sm:mt-8 sm:text-5xl"
       >
         Oops, page not found!
       </h1>

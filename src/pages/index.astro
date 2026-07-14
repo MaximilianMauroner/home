@@ -2,9 +2,12 @@
 import { getBlogs, getLogs, getSnacks } from "@/utils/server/content";
 import Homepage from "@/components/home/Homepage";
 import StarLayout from "@/layouts/StarLayout.astro";
+import dayjs from "dayjs";
 const blogs = await getBlogs();
 const logs = await getLogs();
 const snacks = await getSnacks();
+const initialAge =
+  dayjs().diff(dayjs("2000-03-13T04:00:00Z"), "year").toString();
 ---
 
 <StarLayout
@@ -12,5 +15,11 @@ const snacks = await getSnacks();
   description="Just a dev sharing cool stuff: code snippets that work, dev stories that might help, and random tech tools I think are neat. Nothing fancy, just things I find interesting in the world of programming."
 >
   <h1 class="sr-only">Maximilian Mauroner</h1>
-  <Homepage blogs={blogs} logs={logs} snacks={snacks} client:load />
+  <Homepage
+    blogs={blogs}
+    logs={logs}
+    snacks={snacks}
+    initialAge={initialAge}
+    client:load
+  />
 </StarLayout>

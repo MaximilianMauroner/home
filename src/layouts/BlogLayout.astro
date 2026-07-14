@@ -65,65 +65,94 @@ const tags = frontmatter.tags ?? [];
 >
   <ReadingProgress client:load />
 
-  <main class="blog-detail-page animate-fade-in">
-    <header class="blog-detail-map">
+  <div class="blog-detail-page animate-fade-in mx-auto w-[min(72rem,calc(100%_-_2rem))] py-[clamp(2rem,6vw,4.5rem)] motion-reduce:animate-none max-[720px]:w-[min(72rem,calc(100%_-_1.25rem))] max-[720px]:pb-12 max-[720px]:pt-4">
+    <header class="blog-detail-map relative isolate flex min-h-[31rem] flex-col overflow-hidden rounded-[var(--radius-md)] border bg-[var(--map)] p-[clamp(1.35rem,4vw,3rem)] text-[var(--ink)] max-[720px]:min-h-0 max-[720px]:p-[1.1rem]">
       {
         frontmatter.image && (
-          <figure class="blog-detail-image" aria-hidden="true">
+          <figure
+            class="blog-detail-image absolute inset-[0_0_4.5rem_auto] -z-[3] m-0 w-[66%] overflow-hidden max-[720px]:bottom-[5.5rem] max-[720px]:w-[90%] max-[720px]:opacity-[0.42]"
+            aria-hidden="true"
+          >
             <PostImageLoader
               imagePath={frontmatter.image}
               altText=""
-              className="blog-detail-image-source"
+              className="blog-detail-image-source h-full w-full object-cover"
             />
           </figure>
         )
       }
 
-      <div class="blog-detail-contours" aria-hidden="true">
+      <div
+        class="blog-detail-contours pointer-events-none absolute right-[-4%] top-[47%] -z-[1] aspect-[1.2] w-[min(54%,34rem)] -translate-y-1/2 -rotate-[7deg] max-[720px]:-right-36 max-[720px]:w-[27rem] max-[720px]:opacity-[0.52]"
+        aria-hidden="true"
+      >
         <span></span><span></span><span></span><span></span><span></span>
         <i></i>
       </div>
 
-      <div class="blog-detail-meta">
+      <div class="blog-detail-meta flex items-center justify-between gap-4 border-b pb-[0.7rem] font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.08em] text-[var(--marker)] max-[720px]:pb-2">
         <time datetime={releaseDate.toISOString()}>{publishedDateLabel}</time>
         <span>{frontmatter.type ?? "Essay"}</span>
       </div>
 
-      <div class="blog-detail-intro">
-        <h1 transition:name={titleTransitionName}>{frontmatter.title}</h1>
+      <div class="blog-detail-intro flex flex-1 flex-col justify-center pb-8 pt-6 max-[720px]:pb-6 max-[720px]:pt-[1.35rem]">
+        <h1
+          class="mb-[1.2rem] max-w-[14ch] text-balance text-[clamp(3rem,7vw,6.4rem)] font-[780] leading-[0.88] tracking-[-0.065em] text-inherit max-[720px]:mb-[0.8rem] max-[720px]:text-[clamp(2.35rem,11.5vw,3.3rem)] max-[720px]:leading-[0.9]"
+          transition:name={titleTransitionName}
+        >
+          {frontmatter.title}
+        </h1>
         {
           frontmatter.description && (
-            <p>{frontmatter.description}</p>
+            <p class="m-0 max-w-[58ch] text-[clamp(0.95rem,1.7vw,1.15rem)] leading-[1.55] max-[720px]:text-[0.9rem] max-[720px]:leading-[1.48]">
+              {frontmatter.description}
+            </p>
           )
         }
       </div>
 
-      <footer class="blog-detail-footer">
+      <footer class="blog-detail-footer flex items-end justify-between gap-4 border-t pt-[0.8rem] font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.08em] max-[720px]:flex-col max-[720px]:items-stretch max-[720px]:gap-[0.8rem]">
         {
           tags.length > 0 && (
-            <ol aria-label="Topics">
+            <ol
+              class="m-0 flex list-none flex-wrap gap-x-[0.9rem] gap-y-[0.4rem] p-0 max-[720px]:grid max-[720px]:grid-cols-2 max-[720px]:gap-x-[0.65rem]"
+              aria-label="Topics"
+            >
               {tags.map((tag, index) => (
-                <li>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <a href={`/tags/${tag}/`}>{tag}</a>
+                <li class="flex gap-[0.28rem] max-[720px]:min-w-0 max-[720px]:text-[0.64rem]">
+                  <span class="text-[var(--marker)]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <a
+                    class="text-inherit no-underline hover:underline hover:underline-offset-[0.2em] focus-visible:underline focus-visible:underline-offset-[0.2em] max-[720px]:truncate"
+                    href={`/tags/${tag}/`}
+                  >
+                    {tag}
+                  </a>
                 </li>
               ))}
             </ol>
           )
         }
-        <div class="blog-detail-reading-meta" aria-label="Article details">
+        <div
+          class="blog-detail-reading-meta flex shrink-0 flex-wrap justify-end gap-x-[0.8rem] gap-y-[0.35rem] text-[var(--marker)] max-[720px]:justify-start max-[720px]:text-[0.64rem]"
+          aria-label="Article details"
+        >
           {frontmatter.minutesRead && <span>{frontmatter.minutesRead}</span>}
           <span>Updated {updatedDateLabel}</span>
         </div>
       </footer>
     </header>
 
-    <div class="blog-detail-body">
-      <div class="blog-detail-body-label" aria-hidden="true">
+    <div class="blog-detail-body mx-auto mt-[clamp(2.5rem,7vw,5.5rem)] w-[min(54rem,calc(100%_-_clamp(0rem,4vw,4rem)))] overflow-hidden rounded-[var(--radius-md)] border max-[720px]:mt-9 max-[720px]:w-full">
+      <div
+        class="blog-detail-body-label flex items-center justify-between gap-4 border-b px-[clamp(1.25rem,4vw,2.5rem)] py-[0.85rem] font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.08em] text-[var(--marker)] max-[720px]:px-[1.1rem] max-[720px]:py-3 max-[720px]:text-[0.6rem]"
+        aria-hidden="true"
+      >
         <span>Reading route</span>
         <span>Follow trail ↓</span>
       </div>
-      <article class="blog-detail-prose prose prose-lg prose-slate dark:prose-invert">
+      <article class="blog-detail-prose prose prose-lg prose-slate max-w-none p-[clamp(1.5rem,5vw,3.5rem)] dark:prose-invert max-[720px]:p-[1.2rem] max-[720px]:text-base">
         <slot />
       </article>
     </div>
@@ -133,7 +162,7 @@ const tags = frontmatter.tags ?? [];
         <TableOfContents headingsArr={headings} client:idle />
       )
     }
-  </main>
+  </div>
 
   <div class="blog-detail-related">
     <RelatedPosts

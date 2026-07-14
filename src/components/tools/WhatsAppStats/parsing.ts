@@ -17,6 +17,14 @@ export interface ParsedChat {
   messages: ParsedMessage[];
 }
 
+export interface ParseProgress {
+  parsedMessages: number;
+  processedLines: number;
+  totalLines: number;
+}
+
+export type ParseProgressCallback = (progress: ParseProgress) => void;
+
 const INVISIBLE_CHARS = /[\u200e\u200f\u202a-\u202e]/g;
 const DATE_PATTERN = String.raw`\d{1,2}[./]\d{1,2}[./]\d{2,4}`;
 const TIME_PATTERN = String.raw`\d{1,2}:\d{2}(?::\d{2})?\s*(?:[ap]\.?m\.?)?`;
@@ -88,12 +96,26 @@ const cleanMessageText = (text: string): string =>
     .trim();
 
 /** Parse a full chat export into participants and structured messages. */
-export const parseChat = (text: string): ParsedChat => {
+export const parseChat = (
+  text: string,
+  onProgress?: ParseProgressCallback,
+): ParsedChat => {
   const lines = text.split(/\r?\n/);
   const participants = new Set<string>();
   const messages: ParsedMessage[] = [];
   let current: MessageStart | null = null;
   let currentTextLines: string[] = [];
+
+  const reportProgress = (processedLines: number, force = false) => {
+    if (!onProgress) return;
+    if (!force && processedLines % 500 !== 0) return;
+
+    onProgress({
+      parsedMessages: messages.length,
+      processedLines,
+      totalLines: lines.length,
+    });
+  };
 
   const flush = () => {
     if (!current) return;
@@ -114,26 +136,30 @@ export const parseChat = (text: string): ParsedChat => {
     currentTextLines = [];
   };
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     const start = parseMessageStart(line);
     if (start) {
       flush();
       current = start;
       currentTextLines = [start.text];
+      reportProgress(index + 1);
       continue;
     }
 
     if (startsWithTimestamp(line)) {
       flush();
+      reportProgress(index + 1);
       continue;
     }
 
     if (current) {
       currentTextLines.push(line);
     }
+    reportProgress(index + 1);
   }
 
   flush();
+  reportProgress(lines.length, true);
 
   return { participants: Array.from(participants), messages };
 };

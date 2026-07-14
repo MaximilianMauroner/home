@@ -1,18 +1,19 @@
 import { useMemo } from "react";
-import { Bar, Pie } from "react-chartjs-2";
+import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
 import {
-  compareMessagesByTimestamp,
-  gapHoursBetweenMessages,
-  isDifferentCalendarDay,
-} from "../datetime";
+  getConversationRestarts,
+  sortMessagesByTimestamp,
+} from "../conversationMetrics";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const ConversationStarters = ({ messages, persons }: GraphProps) => {
   const conversationData = useMemo(() => {
     if (messages.length < 2) return null;
 
-    const sortedMessages = [...messages].sort(compareMessagesByTimestamp);
+    const sortedMessages = sortMessagesByTimestamp(messages);
 
     // Find conversation starts
     const conversationStarts = new Map<number, number>();
@@ -21,28 +22,13 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
     // First message is always a conversation starter
     conversationStarts.set(sortedMessages[0].personId, 1);
 
-    for (let i = 1; i < sortedMessages.length; i++) {
-      const prevMsg = sortedMessages[i - 1];
-      const currMsg = sortedMessages[i];
-
-      const gapHours = gapHoursBetweenMessages(prevMsg, currMsg);
-      if (gapHours === null) continue;
-
-      // Consider a conversation starter if:
-      // 1. Gap is more than 4 hours, OR
-      // 2. It's a different day and gap is more than 1 hour
-      const isConversationStart =
-        gapHours > 4 ||
-        (isDifferentCalendarDay(prevMsg, currMsg) && gapHours > 1);
-
-      if (isConversationStart) {
-        const count = conversationStarts.get(currMsg.personId) || 0;
-        conversationStarts.set(currMsg.personId, count + 1);
-        conversationDetails.push({
-          starter: currMsg.personId,
-          gapHours,
-        });
-      }
+    for (const restart of getConversationRestarts(sortedMessages)) {
+      const count = conversationStarts.get(restart.current.personId) || 0;
+      conversationStarts.set(restart.current.personId, count + 1);
+      conversationDetails.push({
+        starter: restart.current.personId,
+        gapHours: restart.gapHours,
+      });
     }
 
     // Calculate statistics
@@ -60,6 +46,7 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
         person: person.name,
         starts,
         avgGapHours: avgGap,
+        restartCount: details.length,
         percentage: 0, // Will be calculated after
       };
     });
@@ -75,9 +62,10 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
   if (!conversationData || conversationData.totalStarts === 0) {
     return (
       <div>
-        <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-          Conversation Starters
-        </h3>
+        <ChartHeader
+          title="Conversation Starters"
+          assumption={CHART_ASSUMPTIONS.conversationStarters}
+        />
         <p className="text-sm text-muted-foreground">
           Not enough data to analyze conversation patterns.
         </p>
@@ -86,23 +74,6 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
   }
 
   const colorMap = getParticipantColors(persons.map((p) => p.name));
-
-  const pieData = {
-    labels: conversationData.stats.map((stat) => stat.person),
-    datasets: [
-      {
-        label: "Conversations Started",
-        data: conversationData.stats.map((stat) => stat.starts),
-        backgroundColor: conversationData.stats.map(
-          (stat) => colorMap[stat.person]?.bg || "#36A2EB",
-        ),
-        borderColor: conversationData.stats.map(
-          (stat) => colorMap[stat.person]?.border || "#36A2EB",
-        ),
-        borderWidth: 2,
-      },
-    ],
-  };
 
   const barData = {
     labels: conversationData.stats.map((stat) => stat.person),
@@ -121,28 +92,6 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
     ],
   };
 
-  const pieOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        display: true,
-        position: "bottom" as const,
-      },
-      tooltip: {
-        callbacks: {
-          label: function (context: any) {
-            const stat = conversationData.stats[context.dataIndex];
-            return [
-              `${stat.starts} conversations started`,
-              `${stat.percentage.toFixed(1)}% of total`,
-              `Avg gap: ${stat.avgGapHours.toFixed(1)} hours`,
-            ];
-          },
-        },
-      },
-    },
-  };
-
   const barOptions = {
     responsive: true,
     plugins: {
@@ -154,7 +103,9 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
             return [
               `${stat.starts} conversations started`,
               `${stat.percentage.toFixed(1)}% of total`,
-              `Avg gap: ${stat.avgGapHours.toFixed(1)} hours`,
+              stat.restartCount > 0
+                ? `Avg restart gap: ${stat.avgGapHours.toFixed(1)} hours`
+                : "Avg restart gap: n/a",
             ];
           },
         },
@@ -173,9 +124,10 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Conversation Starters
-      </h3>
+      <ChartHeader
+        title="Conversation Starters"
+        assumption={CHART_ASSUMPTIONS.conversationStarters}
+      />
       <div className="mb-4 text-sm text-muted-foreground">
         <p>
           Who initiates conversations most often (after 4+ hour gaps or 1+ hour
@@ -190,24 +142,18 @@ export const ConversationStarters = ({ messages, persons }: GraphProps) => {
             .map((stat) => (
               <div key={stat.person} className="text-xs">
                 <strong>{stat.person}</strong>: {stat.starts} conversations (
-                {stat.percentage.toFixed(1)}%), avg gap{" "}
-                {stat.avgGapHours.toFixed(1)} hours
+                {stat.percentage.toFixed(1)}%), avg restart gap{" "}
+                {stat.restartCount > 0
+                  ? `${stat.avgGapHours.toFixed(1)} hours`
+                  : "n/a"}
               </div>
             ))}
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <h4 className="mb-2 text-xs font-medium">Distribution</h4>
-          <div className="aspect-square">
-            <Pie data={pieData} options={pieOptions} />
-          </div>
-        </div>
-        <div>
-          <h4 className="mb-2 text-xs font-medium">Count Comparison</h4>
-          <Bar data={barData} options={barOptions} />
-        </div>
+      <div>
+        <h4 className="mb-2 text-sm font-medium">Count Comparison</h4>
+        <Bar data={barData} options={barOptions} />
       </div>
     </>
   );

@@ -2,9 +2,9 @@
 import "@/components/tools/toolStyles.css";
 import StarLayout from "@/layouts/StarLayout.astro";
 import {
-  getToolMetadata,
+  requireToolMetadata,
   isToolActive,
-} from "@/components/tools/toolCatalog.mjs";
+} from "@/components/tools/toolCatalog";
 import { getToolThemeClass } from "@/components/tools/toolTheme";
 
 const tools = import.meta.glob("./*/*.astro");
@@ -19,7 +19,7 @@ for (const path in tools) {
   const url = path.replace("src/pages", "").replace("/index.astro", "");
   const slug = url.split("/").filter(Boolean).pop() ?? "";
   if (tool.active === false || !isToolActive(slug)) continue;
-  const metadata = getToolMetadata(slug);
+  const metadata = requireToolMetadata(slug);
   const chips = Array.from(
     new Set(
       [
@@ -31,13 +31,13 @@ for (const path in tools) {
             : metadata.privacy,
         metadata.access !== "local" ? metadata.access : undefined,
         ...metadata.labels,
-      ].filter(Boolean),
+      ].filter((label): label is string => Boolean(label)),
     ),
   );
   toolPages.push({
     title: tool.title,
     description: tool.description,
-    url,
+    url: `/tools/${slug}/`,
     slug,
     ...metadata,
     chips,
@@ -111,7 +111,7 @@ const categories = Array.from(new Set(toolPages.map((tool) => tool.category)));
       {
         toolPages.map((tool) => (
           <a
-            href={tool.url + "/"}
+            href={tool.url}
             class={`tool-card tool-theme group ${getToolThemeClass(tool.slug)}`}
           >
             <div class="space-y-3">

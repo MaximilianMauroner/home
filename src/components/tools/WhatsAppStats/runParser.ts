@@ -1,13 +1,16 @@
-import { parseChat, type ParsedChat } from "./parsing";
+import { parseChat, type ParsedChat, type ParseProgress } from "./parsing";
 import type { ParserResponse } from "./parser.worker";
 
 /**
  * Parse a chat export off the main thread via a web worker. Falls back to
  * synchronous parsing when workers are unavailable (e.g. SSR or older runtimes).
  */
-export function runParser(text: string): Promise<ParsedChat> {
+export function runParser(
+  text: string,
+  onProgress?: (progress: ParseProgress) => void,
+): Promise<ParsedChat> {
   if (typeof Worker === "undefined") {
-    return Promise.resolve(parseChat(text));
+    return Promise.resolve(parseChat(text, onProgress));
   }
 
   return new Promise((resolve, reject) => {
@@ -18,14 +21,19 @@ export function runParser(text: string): Promise<ParsedChat> {
       });
     } catch {
       // Fallback if the worker can't be constructed.
-      resolve(parseChat(text));
+      resolve(parseChat(text, onProgress));
       return;
     }
 
     worker.onmessage = (event: MessageEvent<ParserResponse>) => {
       const data = event.data;
+      if (data.type === "progress") {
+        onProgress?.(data.progress);
+        return;
+      }
+
       worker.terminate();
-      if (data.ok) resolve(data.result);
+      if (data.type === "success") resolve(data.result);
       else reject(new Error(data.error));
     };
     worker.onerror = (event) => {

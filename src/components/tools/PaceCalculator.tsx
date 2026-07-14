@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-type DistanceKey =
-  | "fiveK"
-  | "tenK"
-  | "halfMarathon"
-  | "marathon";
+type DistanceKey = "fiveK" | "tenK" | "halfMarathon" | "marathon";
 
 type DistanceDefinition = {
   key: DistanceKey;
@@ -129,10 +125,7 @@ export default function PaceCalculator() {
   );
   const [showSpeedTable, setShowSpeedTable] = useState(false);
 
-  const minutesPerKm = useMemo(
-    () => (kph > 0 ? 60 / kph : 0),
-    [kph],
-  );
+  const minutesPerKm = useMemo(() => (kph > 0 ? 60 / kph : 0), [kph]);
 
   const minutesPerMile = useMemo(
     () => (minutesPerKm > 0 ? minutesPerKm / MILES_PER_KM : 0),
@@ -206,8 +199,7 @@ export default function PaceCalculator() {
     const totalMinutes = parseTimeToMinutes(value);
     if (!totalMinutes) return;
 
-    const nextKph =
-      distanceDefinition.distanceKm / (totalMinutes / 60);
+    const nextKph = distanceDefinition.distanceKm / (totalMinutes / 60);
 
     if (!Number.isFinite(nextKph) || nextKph <= 0) return;
 
@@ -219,9 +211,6 @@ export default function PaceCalculator() {
       <section className="tool-panel-lg">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-4">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Pace &amp; Distance Calculator
-            </h1>
             <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
               Convert speeds, estimate race finish times, and understand your
               effort instantly. The calculator keeps KPH, MPH, and race splits
@@ -414,9 +403,7 @@ export default function PaceCalculator() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="tool-subpanel">
-                  <span className="tool-label">
-                    Minutes per kilometre
-                  </span>
+                  <span className="tool-label">Minutes per kilometre</span>
                   <p className="mt-2 text-2xl font-semibold text-foreground">
                     {minutesPerKm > 0
                       ? minutesToTimeString(minutesPerKm)
@@ -424,9 +411,7 @@ export default function PaceCalculator() {
                   </p>
                 </div>
                 <div className="tool-subpanel">
-                  <span className="tool-label">
-                    Minutes per mile
-                  </span>
+                  <span className="tool-label">Minutes per mile</span>
                   <p className="mt-2 text-2xl font-semibold text-foreground">
                     {minutesPerMile > 0
                       ? minutesToTimeString(minutesPerMile)
@@ -468,9 +453,7 @@ export default function PaceCalculator() {
                       </div>
                       <div className="flex flex-col gap-2 sm:w-56">
                         <label htmlFor={finishTimeId} className="space-y-2">
-                          <span className="tool-label">
-                            Finish time
-                          </span>
+                          <span className="tool-label">Finish time</span>
                           <input
                             id={finishTimeId}
                             type="time"

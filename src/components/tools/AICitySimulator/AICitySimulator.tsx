@@ -646,7 +646,8 @@ function TimelineChart({ history, stabilityColor }: TimelineChartProps) {
   const span = Math.max(latest - m0, 12);
 
   const xFor = (month: number) => padL + ((month - m0) / span) * plotW;
-  const yFor = (value: number) => padT + (1 - clamp(value, 0, 100) / 100) * plotH;
+  const yFor = (value: number) =>
+    padT + (1 - clamp(value, 0, 100) / 100) * plotH;
 
   const linePath = (selector: (point: HistoryPoint) => number) =>
     history
@@ -712,7 +713,7 @@ function TimelineChart({ history, stabilityColor }: TimelineChartProps) {
         x={W - padR}
         y={yFor(30) - 6}
         textAnchor="end"
-        fontSize={11}
+        fontSize={12}
         fontWeight={600}
         fill="oklch(0.66 0.19 28)"
         fillOpacity={0.85}
@@ -723,7 +724,11 @@ function TimelineChart({ history, stabilityColor }: TimelineChartProps) {
       {started ? (
         <>
           {/* AI adoption: the underlying driver, faint behind everything */}
-          <path d={areaPath(adoptionOf)} fill="var(--tool-accent)" fillOpacity={0.1} />
+          <path
+            d={areaPath(adoptionOf)}
+            fill="var(--tool-accent)"
+            fillOpacity={0.1}
+          />
           <path
             d={linePath(adoptionOf)}
             fill="none"
@@ -745,7 +750,11 @@ function TimelineChart({ history, stabilityColor }: TimelineChartProps) {
           />
 
           {/* Stability: the hero line, tone-coloured */}
-          <path d={areaPath(stabilityOf)} fill={stabilityColor} fillOpacity={0.12} />
+          <path
+            d={areaPath(stabilityOf)}
+            fill={stabilityColor}
+            fillOpacity={0.12}
+          />
           <path
             d={linePath(stabilityOf)}
             fill="none"
@@ -769,7 +778,7 @@ function TimelineChart({ history, stabilityColor }: TimelineChartProps) {
               x={xFor(month)}
               y={H - 8}
               textAnchor="middle"
-              fontSize={11}
+              fontSize={12}
               fill="var(--map-metric)"
               fillOpacity={0.65}
             >
@@ -795,7 +804,13 @@ function TimelineChart({ history, stabilityColor }: TimelineChartProps) {
 
 // A dense readout row: label, value, and a thin meter. Tone colour only shows
 // up when a metric is under strain, so a calm city reads calm.
-function Vital({ label, value, detail, tone = "stable", meter = 0.5 }: MetricCardProps) {
+function Vital({
+  label,
+  value,
+  detail,
+  tone = "stable",
+  meter = 0.5,
+}: MetricCardProps) {
   const color = toneColor(tone);
 
   return (
@@ -831,33 +846,38 @@ function MapNode({ config, selected, snapshot, onSelect }: MapNodeProps) {
   const radius = config.shape === "pill" ? 24 : 18;
   const inset = isPrimary ? 28 : 20;
   const titleX = config.width ? config.x + inset : config.x;
-  const titleY = config.shape === "circle" ? config.y - 16 : config.y + (isPrimary ? 44 : 31);
-  const captionY = config.shape === "circle" ? config.y + 6 : config.y + (isPrimary ? 74 : 55);
+  const titleY =
+    config.shape === "circle"
+      ? config.y - 16
+      : config.y + (isPrimary ? 44 : 31);
+  const captionY =
+    config.shape === "circle" ? config.y + 6 : config.y + (isPrimary ? 74 : 55);
   const metricStartY =
     config.shape === "circle"
       ? config.y + 32
       : config.y + (isPrimary ? 112 : isCompact ? 76 : 86);
   const metricStep = isPrimary ? 22 : isCompact ? 16 : 18;
   const captionWidth = Math.min(
-    Math.max(config.caption.length * (isPrimary ? 7.4 : 6.7) + 24, isPrimary ? 142 : 92),
+    Math.max(
+      config.caption.length * (isPrimary ? 7.4 : 6.7) + 24,
+      isPrimary ? 142 : 92,
+    ),
     Math.max(width - inset * 2, 80),
   );
   const captionHeight = isPrimary ? 22 : 18;
-  const accentFill =
-    isPrimary
-      ? "var(--map-node-primary)"
-      : config.key === "cityHall" || config.key === "schoolClinic"
-        ? "var(--map-node-civic)"
-        : config.key === "outsideClients"
-          ? "var(--map-node-external)"
-          : "var(--map-node)";
+  const accentFill = isPrimary
+    ? "var(--map-node-primary)"
+    : config.key === "cityHall" || config.key === "schoolClinic"
+      ? "var(--map-node-civic)"
+      : config.key === "outsideClients"
+        ? "var(--map-node-external)"
+        : "var(--map-node)";
 
-  const borderColor =
-    isPrimary
-      ? "var(--map-node-border-primary)"
-      : selected
-        ? "var(--map-node-border-selected)"
-        : "var(--map-node-border)";
+  const borderColor = isPrimary
+    ? "var(--map-node-border-primary)"
+    : selected
+      ? "var(--map-node-border-selected)"
+      : "var(--map-node-border)";
   const textColor = isPrimary ? "var(--map-text-primary)" : "var(--map-text)";
 
   const handleSelect = () => onSelect(config.key);
@@ -957,7 +977,11 @@ function MapNode({ config, selected, snapshot, onSelect }: MapNodeProps) {
           width={captionWidth}
           height={captionHeight}
           rx={captionHeight / 2}
-          fill={isPrimary ? "var(--map-caption-bg-primary)" : "var(--map-caption-bg)"}
+          fill={
+            isPrimary
+              ? "var(--map-caption-bg-primary)"
+              : "var(--map-caption-bg)"
+          }
         />
       )}
       <text
@@ -965,7 +989,7 @@ function MapNode({ config, selected, snapshot, onSelect }: MapNodeProps) {
         y={captionY}
         textAnchor={config.shape === "circle" ? "middle" : "start"}
         fill="var(--map-caption)"
-        fontSize={isPrimary ? 11 : 10.5}
+        fontSize={12}
         fontWeight={700}
         letterSpacing="0"
       >
@@ -979,7 +1003,7 @@ function MapNode({ config, selected, snapshot, onSelect }: MapNodeProps) {
           y={metricStartY + index * metricStep}
           textAnchor={config.shape === "circle" ? "middle" : "start"}
           fill="var(--map-metric)"
-          fontSize={isPrimary ? 13.5 : isCompact ? 11.5 : 12}
+          fontSize={isPrimary ? 13.5 : 12}
           fontWeight={600}
         >
           {line}
@@ -1018,7 +1042,9 @@ function readStoredState() {
 }
 
 export default function AICitySimulator() {
-  const [state, setState] = useState<SimulatorState>(createInitialSimulatorState);
+  const [state, setState] = useState<SimulatorState>(
+    createInitialSimulatorState,
+  );
   const [hydrated, setHydrated] = useState(false);
   const gradientId = useId().replace(/:/g, "");
   const flowArrowId = `city-flow-arrow-${gradientId}`;
@@ -1259,13 +1285,10 @@ export default function AICitySimulator() {
       <section className="tool-panel-lg overflow-hidden">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-3">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-[color:var(--tool-accent-text)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[color:var(--tool-accent-text)]">
               Automation, traced through a city
             </p>
             <div className="space-y-2">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.55rem]">
-                AI City Simulator
-              </h1>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
                 Set an AI adoption target for the white-collar sector and watch
                 the shock ripple through a 1,000-worker city over months:
@@ -1273,7 +1296,8 @@ export default function AICitySimulator() {
                 wage erosion, new AI-era jobs, strained budgets, and
                 out-migration.
                 <span className="hidden sm:inline">
-                  {" "}Scale the city up mentally to a region or country: the
+                  {" "}
+                  Scale the city up mentally to a region or country: the
                   relative dynamics stay the same.
                 </span>
               </p>
@@ -1413,7 +1437,7 @@ export default function AICitySimulator() {
           >
             <svg
               viewBox="0 0 1000 640"
-              className="block aspect-[1000/640] min-w-[42rem] w-full"
+              className="block aspect-[1000/640] w-full min-w-[42rem]"
               aria-label="Interactive city economy map"
             >
               <defs>
@@ -1645,7 +1669,9 @@ export default function AICitySimulator() {
                       type="button"
                       onClick={() => setAiAdoptionTarget(preset)}
                       aria-pressed={active}
-                      className={active ? "tool-button" : "tool-button-secondary"}
+                      className={
+                        active ? "tool-button" : "tool-button-secondary"
+                      }
                       aria-label={`Set AI adoption target to ${presetPercent} percent`}
                     >
                       {presetPercent}%
@@ -1717,7 +1743,9 @@ export default function AICitySimulator() {
                       onClick={() =>
                         setState((current) => ({ ...current, speed }))
                       }
-                      className={active ? "tool-button" : "tool-button-secondary"}
+                      className={
+                        active ? "tool-button" : "tool-button-secondary"
+                      }
                     >
                       {getSpeedLabel(speed)}
                     </button>
@@ -1735,7 +1763,7 @@ export default function AICitySimulator() {
                   "color-mix(in oklch, hsl(var(--card)) 90%, var(--tool-accent) 10%)",
               }}
             >
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--tool-accent-text)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--tool-accent-text)]">
                 Immediate read
               </p>
               <p className="mt-2 text-base font-semibold text-foreground">
@@ -1754,7 +1782,7 @@ export default function AICitySimulator() {
 
           <section className="tool-panel-lg space-y-4">
             <div>
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--tool-accent-text)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--tool-accent-text)]">
                 Selected node
               </p>
               <h2 className="mt-2 text-lg font-semibold text-foreground">
@@ -1795,7 +1823,7 @@ export default function AICitySimulator() {
       <section className="tool-panel-lg space-y-5">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[color:var(--tool-accent-text)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--tool-accent-text)]">
               City stability over time
             </p>
             <div className="mt-2 flex items-baseline gap-3">
@@ -1861,7 +1889,10 @@ export default function AICitySimulator() {
               "linear-gradient(180deg, var(--map-panel-from) 0%, var(--map-panel-to) 100%)",
           }}
         >
-          <TimelineChart history={state.history} stabilityColor={stabilityColor} />
+          <TimelineChart
+            history={state.history}
+            stabilityColor={stabilityColor}
+          />
         </div>
       </section>
 

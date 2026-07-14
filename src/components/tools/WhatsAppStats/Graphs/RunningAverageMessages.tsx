@@ -2,13 +2,14 @@ import { useMemo, useState } from "react";
 import { Line } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
+import { countWords, sortMessagesByTimestamp } from "../conversationMetrics";
 import {
-  compareMessagesByTimestamp,
   dateFromMessage,
   dateKeyFromMessage,
   enumerateDateKeys,
 } from "../datetime";
-import { isTextualMessage } from "../messageClassification";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 interface DayOption {
   value: number;
@@ -33,7 +34,7 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
 
     const messagesPerDatePerPerson = new Map<string, Map<number, number>>();
     const wordsPerDatePerPerson = new Map<string, Map<number, number>>();
-    const sortedMessages = [...messages].sort(compareMessagesByTimestamp);
+    const sortedMessages = sortMessagesByTimestamp(messages);
     const firstDate = dateFromMessage(sortedMessages[0]);
     const lastDate = dateFromMessage(sortedMessages[sortedMessages.length - 1]);
     if (!firstDate || !lastDate) return null;
@@ -57,9 +58,7 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
       );
 
       // Count words
-      const wordCount = isTextualMessage(message.text)
-        ? message.text.trim().split(/\s+/).length
-        : 0;
+      const wordCount = countWords(message.text);
       wordMap.set(
         message.personId,
         (wordMap.get(message.personId) || 0) + wordCount,
@@ -108,13 +107,12 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
     // Calculate statistics for each person
     const stats = persons.map((person) => {
       const personData = runningAverages.get(person.id) || [];
-      const validData = personData.filter((value) => value > 0);
 
       return {
         personId: person.id,
         name: person.name,
-        min: validData.length > 0 ? Math.min(...validData) : 0,
-        max: validData.length > 0 ? Math.max(...validData) : 0,
+        min: personData.length > 0 ? Math.min(...personData) : 0,
+        max: personData.length > 0 ? Math.max(...personData) : 0,
       };
     });
 
@@ -193,10 +191,13 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold sm:text-base">
-          Running Average {metricType === "messages" ? "Messages" : "Words"} per
-          Participant
-        </h3>
+        <ChartHeader
+          title={`Running Average ${
+            metricType === "messages" ? "Messages" : "Words"
+          } per Participant`}
+          assumption={CHART_ASSUMPTIONS.runningAverage}
+          className="mb-0 sm:mb-0"
+        />
         <div className="flex gap-2">
           <select
             value={metricType}
@@ -225,14 +226,14 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
 
       {/* Statistics Table */}
       {chartData?.stats && (
-        <div className="mb-4 overflow-hidden rounded-lg border bg-card">
-          <div className="border-b bg-muted/50 px-4 py-3">
+        <div className="mb-4 overflow-hidden border-y">
+          <div className="border-b bg-muted/30 px-4 py-3">
             <h4 className="text-sm font-semibold text-card-foreground">
               {metricType === "messages" ? "Messages" : "Words"} per Day
               Statistics
             </h4>
           </div>
-          <div className="overflow-x-auto">
+          <div className="tool-scroll-area overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/30">

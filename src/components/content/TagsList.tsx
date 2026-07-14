@@ -32,11 +32,11 @@ export default function TagsList({ tags }: { tags: string[] }) {
           border-radius: var(--radius-sm);
         }
       `}</style>
-      <div className="tags-scroll inline-flex max-w-full flex-nowrap gap-2 overflow-auto lg:flex-nowrap">
+      <div className="tags-scroll flex w-full min-w-0 max-w-full flex-nowrap gap-2 overflow-x-auto">
         {kebabCasedTags.map((tag) => (
           <a
             key={tag}
-            className="flex-shrink-0 whitespace-nowrap rounded-md border border-transparent bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground no-underline hover:bg-primary hover:text-primary-foreground"
+            className="site-chip flex-shrink-0 whitespace-nowrap border border-transparent bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground"
             href={"/tags/" + tag + "/"}
           >
             {tag}

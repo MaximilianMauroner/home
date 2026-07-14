@@ -13,16 +13,14 @@ import {
 } from "chart.js";
 import {
   isClearedAtom,
-  isDataUploadedAtom,
   showNamesAtom,
-  uploadedChatIdAtom,
   whatsappDB,
   type Chat,
   type Message,
   type Person,
 } from "./db";
 import { HandlewhatsappData } from "./Upload";
-import { compareMessagesByTimestamp } from "./datetime";
+import { compareMessagesByTimestamp, dateFromMessage } from "./datetime";
 
 ChartJS.register(
   CategoryScale,
@@ -41,8 +39,6 @@ import MessageGraphs from "./MessageGraphs";
 
 export default function WhatsappStats() {
   const [_, setIsCleared] = useAtom(isClearedAtom);
-  const [isDataUploaded, setIsDataUploaded] = useAtom(isDataUploadedAtom);
-  const [uploadedChatId, setUploadedChatId] = useAtom(uploadedChatIdAtom);
   const [showNames, setShowNames] = useAtom(showNamesAtom);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedChat, setSelectedChat] = useState<number>();
@@ -73,7 +69,6 @@ export default function WhatsappStats() {
     localStorage.removeItem("showNames");
     setChats([]);
     setSelectedChat(undefined);
-    setUploadedChatId(null);
     setIsCleared(true);
     setMessages([]);
     setPersons([]);
@@ -135,19 +130,12 @@ export default function WhatsappStats() {
     setChats(chatsDB);
   }, []);
 
-  useEffect(() => {
-    if (isDataUploaded) {
-      fetchChatCount(uploadedChatId);
-      setIsDataUploaded(false);
-      setUploadedChatId(null);
-    }
-  }, [
-    fetchChatCount,
-    isDataUploaded,
-    setIsDataUploaded,
-    setUploadedChatId,
-    uploadedChatId,
-  ]);
+  const handleImportComplete = useCallback(
+    (chatIds: number[]) => {
+      void fetchChatCount(chatIds.at(-1) ?? null);
+    },
+    [fetchChatCount],
+  );
 
   useEffect(() => {
     if (!selectedChat || !selectedYear) {
@@ -221,61 +209,103 @@ export default function WhatsappStats() {
         ...person,
         name: `Person ${index + 1}`,
       }));
+  const selectedChatName =
+    chats.find((chat) => chat.id === selectedChat)?.name ?? "Selected chat";
+  const firstMessageDate = message[0] ? dateFromMessage(message[0]) : null;
+  const lastMessageDate = message.at(-1)
+    ? dateFromMessage(message.at(-1)!)
+    : null;
+  const dateRange =
+    firstMessageDate && lastMessageDate
+      ? `${firstMessageDate.toLocaleDateString()} - ${lastMessageDate.toLocaleDateString()}`
+      : "No messages loaded";
+  const contextStats = [
+    { label: "Chat", value: selectedChatName },
+    { label: "Year", value: selectedYear?.toString() ?? "n/a" },
+    { label: "Messages", value: message.length.toLocaleString() },
+    { label: "Participants", value: personsDynamic.length.toString() },
+    { label: "Date span", value: dateRange },
+    { label: "Names", value: showNames ? "Visible" : "Hidden" },
+  ];
 
   if (chats.length === 0) {
     return (
       <>
-        <HandlewhatsappData />
+        <HandlewhatsappData onImportComplete={handleImportComplete} />
       </>
     );
   }
 
   return (
     <>
-      <HandlewhatsappData />
-      <div className="mt-4 flex flex-wrap items-center justify-start gap-x-2 gap-y-2 sm:mb-8">
-        <select
-          value={selectedChat ?? ""}
-          onChange={(e) => setSelectedChat(+e.target.value)}
-          className="max-w-[200px] rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-        >
-          {chats.map((chat) => (
-            <option key={chat.id} value={chat.id}>
-              {chat.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={selectedYear ?? ""}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-          disabled={availableYears.length === 0}
-        >
-          {availableYears.length === 0 && <option value="">No years</option>}
-          {availableYears.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={() => {
-            localStorage.setItem("showNames", String(!showNames));
-            setShowNames(!showNames);
-          }}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
-        >
-          {showNames ? "Hide Names" : "Show Names"}
-        </button>
-        <button
-          type="button"
-          onClick={clearSavedData}
-          className="rounded-md bg-destructive px-3 py-1.5 text-sm text-destructive-foreground hover:bg-destructive/90"
-        >
-          Clear Data
-        </button>
+      <HandlewhatsappData compact onImportComplete={handleImportComplete} />
+      <div className="mt-5 flex flex-col gap-3 border-b border-border/80 pb-4 sm:mb-7 lg:flex-row lg:items-end lg:justify-between dark:border-neutral-800">
+        <div className="grid gap-3 sm:grid-cols-[minmax(16rem,24rem)_8rem]">
+          <label className="space-y-1">
+            <span className="tool-label text-xs">Chat</span>
+            <select
+              value={selectedChat ?? ""}
+              onChange={(e) => setSelectedChat(+e.target.value)}
+              className="tool-field h-9 w-full py-0"
+            >
+              {chats.map((chat) => (
+                <option key={chat.id} value={chat.id}>
+                  {chat.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="tool-label text-xs">Year</span>
+            <select
+              value={selectedYear ?? ""}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="tool-field h-9 w-full py-0"
+              disabled={availableYears.length === 0}
+            >
+              {availableYears.length === 0 && (
+                <option value="">No years</option>
+              )}
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.setItem("showNames", String(!showNames));
+              setShowNames(!showNames);
+            }}
+            className="tool-button-secondary min-h-9 px-3"
+          >
+            {showNames ? "Hide Names" : "Show Names"}
+          </button>
+          <button
+            type="button"
+            onClick={clearSavedData}
+            className="tool-button-danger min-h-9 px-3"
+          >
+            Clear Data
+          </button>
+        </div>
       </div>
+      <dl className="mt-3 grid gap-x-6 gap-y-3 border-b border-border/70 pb-4 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 dark:border-neutral-800">
+        {contextStats.map((stat) => (
+          <div key={stat.label} className="min-w-0">
+            <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">
+              {stat.label}
+            </dt>
+            <dd className="mt-1 truncate font-medium text-foreground">
+              {stat.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
       <div>
         {personsDynamic.length > 0 && (
           <div className="flex flex-col gap-2">

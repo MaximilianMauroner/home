@@ -1,3 +1,16 @@
+export type ToolStatus = "stable" | "beta" | "experimental" | "inactive";
+export type ToolPrivacy = "local" | "account";
+
+export interface ToolMetadata {
+  category: string;
+  status: ToolStatus;
+  featured: number;
+  privacy: ToolPrivacy;
+  access: string;
+  labels: string[];
+  tags: string[];
+}
+
 export const TOOL_CATALOG = {
   "ai-city-simulator": {
     category: "simulation",
@@ -89,7 +102,9 @@ export const TOOL_CATALOG = {
     labels: ["local file", "no account"],
     tags: ["whatsapp", "data-analysis", "privacy"],
   },
-};
+} satisfies Record<string, ToolMetadata>;
+
+export type ToolSlug = keyof typeof TOOL_CATALOG;
 
 export const INACTIVE_TOOL_SLUGS = new Set(
   Object.entries(TOOL_CATALOG)
@@ -97,18 +112,16 @@ export const INACTIVE_TOOL_SLUGS = new Set(
     .map(([slug]) => slug),
 );
 
-export function getToolMetadata(slug) {
-  return (
-    TOOL_CATALOG[slug] ?? {
-      category: "utility",
-      status: "active",
-      featured: 10,
-      privacy: "unknown",
-      access: "unknown",
-      labels: [],
-      tags: [],
-    }
-  );
+export function getToolMetadata(slug: string): ToolMetadata | undefined {
+  return TOOL_CATALOG[slug as ToolSlug];
+}
+
+export function requireToolMetadata(slug: string): ToolMetadata {
+  const metadata = getToolMetadata(slug);
+  if (!metadata) {
+    throw new Error(`Missing tool metadata for "${slug}".`);
+  }
+  return metadata;
 }
 
 export function getActiveToolCatalog() {
@@ -117,11 +130,11 @@ export function getActiveToolCatalog() {
     .map(([slug, metadata]) => ({ slug, ...metadata }));
 }
 
-export function isToolActive(slug) {
+export function isToolActive(slug: string) {
   return !INACTIVE_TOOL_SLUGS.has(slug);
 }
 
-export function isInactiveToolUrl(url) {
+export function isInactiveToolUrl(url: string) {
   const pathname = new URL(url).pathname;
 
   for (const slug of INACTIVE_TOOL_SLUGS) {

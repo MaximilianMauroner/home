@@ -39,6 +39,4 @@ export type { Message, Person, Chat };
 export { whatsappDB };
 
 export const isClearedAtom = atom(false);
-export const isDataUploadedAtom = atom(false);
-export const uploadedChatIdAtom = atom<number | null>(null);
 export const showNamesAtom = atom(false);

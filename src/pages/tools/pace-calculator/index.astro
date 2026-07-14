@@ -10,7 +10,11 @@ import StarLayout from "@/layouts/StarLayout.astro";
 ---
 
 <StarLayout title={title} description={description}>
-  <ToolPage theme={getToolThemeClass("pace-calculator")}>
+  <ToolPage
+    theme={getToolThemeClass("pace-calculator")}
+    title={title}
+    description={description}
+  >
     <PaceCalculator client:only="react" />
   </ToolPage>
 </StarLayout>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { BlogType, LogType, SnackType } from "@/utils/server/content";
 import BlogPreview from "@/components/content/BlogPreview";
 import LogPreview from "@/components/content/LogPreview";
@@ -9,6 +9,8 @@ interface TimelineProps {
   blogs: BlogType[];
   logs: LogType[];
   snacks: SnackType[];
+  expanded: boolean;
+  onExpand: () => void;
 }
 
 type TimelineItem = {
@@ -64,11 +66,191 @@ const getTypeStyle = (type: "blog" | "log" | "snack") => {
   return style;
 };
 
-export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
-  const [allItems, setAllItems] = useState<TimelineItem[]>([]);
-  const [isVisible, setIsVisible] = useState(false);
+const TimelineCardSkeleton = () => (
+  <article
+    className="h-72 rounded-2xl border border-border/50 bg-card/80 p-6 shadow-sm backdrop-blur-xl sm:p-8 dark:bg-card/80"
+    aria-label="Loading timeline item"
+    aria-busy="true"
+  >
+    <div className="flex h-full animate-pulse flex-col">
+      <div className="mb-5 flex gap-2">
+        <div className="h-6 w-16 rounded-full bg-indigo-200/70 dark:bg-indigo-900/50" />
+        <div className="h-6 w-20 rounded-full bg-purple-200/60 dark:bg-purple-900/40" />
+      </div>
+      <div className="mb-4 h-3 w-24 rounded-full bg-muted" />
+      <div className="space-y-3">
+        <div className="h-7 w-11/12 rounded-full bg-muted" />
+        <div className="h-7 w-7/12 rounded-full bg-muted" />
+      </div>
+      <div className="mt-6 space-y-2">
+        <div className="h-3 w-full rounded-full bg-muted" />
+        <div className="h-3 w-5/6 rounded-full bg-muted" />
+        <div className="h-3 w-2/3 rounded-full bg-muted" />
+      </div>
+      <div className="mt-auto flex items-center justify-between border-t border-border/50 pt-4">
+        <div className="h-4 w-20 rounded-full bg-muted" />
+        <div className="h-9 w-28 rounded-full bg-indigo-200/60 dark:bg-indigo-900/40" />
+      </div>
+    </div>
+  </article>
+);
+
+const TimelineEntry = ({
+  timelineItem,
+  index,
+  prefersReducedMotion,
+}: {
+  timelineItem: TimelineItem;
+  index: number;
+  prefersReducedMotion: boolean;
+}) => {
+  const typeStyle = getTypeStyle(timelineItem.type);
+  const isLeft = index % 2 === 0;
+  const randomSeed = index * 137;
+  const offsetY = index === 0 ? 0 : randomSeed % 10;
+  const offsetX = (randomSeed % 30) - 15;
+  const revealDelay = (index % 3) * 90;
+  const isRevealed = true;
+
+  const renderPreview = () => {
+    if (timelineItem.type === "blog") {
+      return <BlogPreview blog={timelineItem.item as BlogType} />;
+    }
+
+    if (timelineItem.type === "log") {
+      return <LogPreview log={timelineItem.item as LogType} />;
+    }
+
+    return (
+      <SnackPreview
+        snack={timelineItem.item as SnackType}
+        image={
+          <div className="absolute inset-0 overflow-hidden opacity-[0.06]">
+            <Pattern
+              seed={(timelineItem.item as SnackType).data.title}
+              colorClass={dynamicColor(index)}
+              opacity="0.12"
+              gridSize={6 + (index % 3) * 1.5}
+              spacing={20 + (index % 4) * 5}
+              lineVariance={2 + (index % 2) * 1.5}
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-amber-50/20 to-transparent dark:via-amber-950/5" />
+          </div>
+        }
+      />
+    );
+  };
+
+  return (
+    <div
+      className="relative pb-8 lg:pb-12"
+      style={{
+        marginTop: index === 0 ? 0 : `${offsetY}px`,
+        scrollSnapAlign: "start",
+        scrollMarginTop: "20vh",
+      }}
+    >
+      <div className="relative flex w-full items-center">
+        <div
+          className={`ml-8 w-[calc(100%-2rem)] ${isLeft ? "md:ml-0 md:mr-auto md:w-[calc(50%-3rem)]" : "md:hidden"}`}
+          style={{
+            opacity: isRevealed ? 1 : 0,
+            transform: prefersReducedMotion
+              ? "translateX(0) scale(1)"
+              : isRevealed
+                ? `translateX(${offsetX}px) scale(1)`
+                : "translateX(-100px) scale(0.95)",
+            transition: prefersReducedMotion
+              ? "none"
+              : `opacity 0.8s ease-out ${revealDelay}ms, transform 0.8s ease-out ${revealDelay}ms`,
+          }}
+        >
+          {renderPreview()}
+        </div>
+
+        <div className="absolute left-4 z-10 flex items-center md:left-1/2 md:-translate-x-1/2">
+          <div
+            className={`transition-duration-[600ms] absolute left-full h-0.5 bg-gradient-to-r from-indigo-500/30 to-transparent transition-all ${isRevealed ? "w-8 md:w-24" : "w-0"} ${isLeft ? "md:left-full md:from-indigo-500/30 md:to-transparent" : "md:left-auto md:right-full md:from-transparent md:to-indigo-500/30"}`}
+            style={{
+              opacity: isRevealed ? 1 : 0,
+              transitionDelay: prefersReducedMotion
+                ? "0ms"
+                : `${revealDelay + 200}ms`,
+            }}
+          />
+
+          <div
+            className={`relative ${typeStyle.dot} h-3 w-3 rounded-full border-2 border-white shadow-lg md:h-4 md:w-4 dark:border-gray-950`}
+            style={{
+              opacity: isRevealed ? 1 : 0,
+              transform:
+                prefersReducedMotion || isRevealed ? "scale(1)" : "scale(0)",
+              transition: prefersReducedMotion
+                ? "none"
+                : `opacity 0.5s ease-out ${revealDelay + 120}ms, transform 0.5s ease-out ${revealDelay + 120}ms`,
+            }}
+          />
+        </div>
+
+        {!isLeft && (
+          <div
+            className="hidden md:ml-auto md:mr-0 md:block md:w-[calc(50%-3rem)]"
+            style={{
+              opacity: isRevealed ? 1 : 0,
+              transform: prefersReducedMotion
+                ? "translateX(0) scale(1)"
+                : isRevealed
+                  ? `translateX(${-offsetX}px) scale(1)`
+                  : "translateX(100px) scale(0.95)",
+              transition: prefersReducedMotion
+                ? "none"
+                : `opacity 0.8s ease-out ${revealDelay}ms, transform 0.8s ease-out ${revealDelay}ms`,
+            }}
+          >
+            {renderPreview()}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default function Timeline({
+  blogs,
+  logs,
+  snacks,
+  expanded,
+  onExpand,
+}: TimelineProps) {
+  const allItems = useMemo<TimelineItem[]>(
+    () =>
+      [
+        ...blogs.map((blog) => ({
+          type: "blog" as const,
+          item: blog,
+          date: blog.data.releaseDate,
+        })),
+        ...logs.map((log) => ({
+          type: "log" as const,
+          item: log,
+          date: log.data.releaseDate,
+        })),
+        ...snacks.map((snack) => ({
+          type: "snack" as const,
+          item: snack,
+          date: snack.data.releaseDate,
+        })),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [blogs, logs, snacks],
+  );
+  const [isVisible, setIsVisible] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const visibleItems = expanded ? allItems : allItems.slice(0, 6);
+  const expandTimeline = () => {
+    onExpand();
+    requestAnimationFrame(() => timelineRef.current?.focus());
+  };
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -80,29 +262,6 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
     media.addEventListener("change", updatePreference);
     return () => media.removeEventListener("change", updatePreference);
   }, []);
-
-  useEffect(() => {
-    // Combine all items and sort by date
-    const items: TimelineItem[] = [
-      ...blogs.map((blog) => ({
-        type: "blog" as const,
-        item: blog,
-        date: blog.data.releaseDate,
-      })),
-      ...logs.map((log) => ({
-        type: "log" as const,
-        item: log,
-        date: log.data.releaseDate,
-      })),
-      ...snacks.map((snack) => ({
-        type: "snack" as const,
-        item: snack,
-        date: snack.data.releaseDate,
-      })),
-    ].sort((a, b) => b.date.getTime() - a.date.getTime());
-
-    setAllItems(items);
-  }, [blogs, logs, snacks]);
 
   useEffect(() => {
     if (prefersReducedMotion) {
@@ -164,8 +323,10 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
 
   return (
     <section
+      id="home-timeline"
       ref={timelineRef}
-      className="relative min-h-[100vh] bg-gradient-to-b from-transparent via-indigo-50/20 to-indigo-100/30 py-32 dark:via-indigo-950/20 dark:to-indigo-950/30"
+      tabIndex={-1}
+      className="relative min-h-[100vh] overflow-x-clip bg-gradient-to-b from-transparent via-indigo-50/20 to-indigo-100/30 py-32 outline-none dark:via-indigo-950/20 dark:to-indigo-950/30"
     >
       {/* Decorative background elements */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -223,149 +384,58 @@ export default function Timeline({ blogs, logs, snacks }: TimelineProps) {
 
           {/* Timeline Items */}
           <div className="space-y-32 lg:space-y-40">
-            {allItems.map((timelineItem, index) => {
-              const animationDelay =
-                isVisible && !prefersReducedMotion ? index * 150 : 0;
-              const typeStyle = getTypeStyle(timelineItem.type);
-              const isLeft = index % 2 === 0;
+            {allItems.length === 0 &&
+              Array.from({ length: 4 }, (_, index) => {
+                const isLeft = index % 2 === 0;
 
-              // Semi-random offsets for hand-placed look (only on desktop, positive only)
-              const randomSeed = index * 137; // Arbitrary seed
-              const offsetY = index === 0 ? 0 : randomSeed % 10; // 0 to 10px (only positive)
-              const offsetX = (randomSeed % 30) - 15; // -15 to 15px
-
-              return (
-                <div
-                  key={`${timelineItem.type}-${timelineItem.item.id}`}
-                  className="relative pb-8 lg:pb-12"
-                  style={{
-                    marginTop: index === 0 ? 0 : `${offsetY}px`,
-                    scrollSnapAlign: "start",
-                    scrollMarginTop: "20vh",
-                  }}
-                >
-                  <div className="relative flex w-full items-center">
-                    {/* Left side card - always shown on mobile, only when isLeft on desktop */}
-                    <div
-                      className={`ml-8 w-[calc(100%-2rem)] ${isLeft ? "md:ml-0 md:mr-auto md:w-[calc(50%-3rem)]" : "md:hidden"}`}
-                      style={{
-                        opacity: isVisible ? 1 : 0,
-                        transform: prefersReducedMotion
-                          ? "translateX(0) scale(1)"
-                          : isVisible
-                            ? `translateX(${offsetX}px) scale(1)`
-                            : "translateX(-100px) scale(0.95)",
-                        transition: prefersReducedMotion
-                          ? "none"
-                          : `opacity 0.8s ease-out ${animationDelay}ms, transform 0.8s ease-out ${animationDelay}ms`,
-                      }}
-                    >
-                      {timelineItem.type === "blog" && (
-                        <BlogPreview blog={timelineItem.item as BlogType} />
-                      )}
-                      {timelineItem.type === "log" && (
-                        <LogPreview log={timelineItem.item as LogType} />
-                      )}
-                      {timelineItem.type === "snack" && (
-                        <SnackPreview
-                          snack={timelineItem.item as SnackType}
-                          image={
-                            <div className="absolute inset-0 overflow-hidden opacity-[0.06]">
-                              <Pattern
-                                seed={
-                                  (timelineItem.item as SnackType).data.title
-                                }
-                                colorClass={dynamicColor(index)}
-                                opacity="0.12"
-                                gridSize={6 + (index % 3) * 1.5}
-                                spacing={20 + (index % 4) * 5}
-                                lineVariance={2 + (index % 2) * 1.5}
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-amber-50/20 to-transparent dark:via-amber-950/5" />
-                            </div>
-                          }
-                        />
-                      )}
-                    </div>
-
-                    {/* Center: Connection dot and horizontal line */}
-                    <div className="absolute left-4 z-10 flex items-center md:left-1/2 md:-translate-x-1/2">
-                      {/* Horizontal connector line - shorter on mobile, only right side on mobile */}
+                return (
+                  <div
+                    key={`timeline-skeleton-${index}`}
+                    className="relative pb-8 lg:pb-12"
+                  >
+                    <div className="relative flex w-full items-center">
                       <div
-                        className={`transition-duration-[600ms] absolute left-full h-0.5 bg-gradient-to-r from-indigo-500/30 to-transparent transition-all ${isVisible ? "w-8 md:w-24" : "w-0"} ${isLeft ? "md:left-full md:from-indigo-500/30 md:to-transparent" : "md:left-auto md:right-full md:from-transparent md:to-indigo-500/30"}`}
-                        style={{
-                          opacity: isVisible ? 1 : 0,
-                          transitionDelay: prefersReducedMotion
-                            ? "0ms"
-                            : `${animationDelay + 300}ms`,
-                        }}
-                      />
-
-                      {/* Timeline node - simple dot */}
-                      <div
-                        className={`relative ${typeStyle.dot} h-3 w-3 rounded-full border-2 border-white shadow-lg md:h-4 md:w-4 dark:border-gray-950`}
-                        style={{
-                          opacity: isVisible ? 1 : 0,
-                          transform:
-                            prefersReducedMotion || isVisible
-                              ? "scale(1)"
-                              : "scale(0)",
-                          transition: prefersReducedMotion
-                            ? "none"
-                            : `opacity 0.5s ease-out ${animationDelay + 200}ms, transform 0.5s ease-out ${animationDelay + 200}ms`,
-                        }}
-                      />
-                    </div>
-
-                    {/* Right side card - only shown on desktop when !isLeft */}
-                    {!isLeft && (
-                      <div
-                        className="hidden md:ml-auto md:mr-0 md:block md:w-[calc(50%-3rem)]"
-                        style={{
-                          opacity: isVisible ? 1 : 0,
-                          transform: prefersReducedMotion
-                            ? "translateX(0) scale(1)"
-                            : isVisible
-                              ? `translateX(${-offsetX}px) scale(1)`
-                              : "translateX(100px) scale(0.95)",
-                          transition: prefersReducedMotion
-                            ? "none"
-                            : `opacity 0.8s ease-out ${animationDelay}ms, transform 0.8s ease-out ${animationDelay}ms`,
-                        }}
+                        className={`ml-8 w-[calc(100%-2rem)] ${isLeft ? "md:ml-0 md:mr-auto md:w-[calc(50%-3rem)]" : "md:hidden"}`}
                       >
-                        {timelineItem.type === "blog" && (
-                          <BlogPreview blog={timelineItem.item as BlogType} />
-                        )}
-                        {timelineItem.type === "log" && (
-                          <LogPreview log={timelineItem.item as LogType} />
-                        )}
-                        {timelineItem.type === "snack" && (
-                          <SnackPreview
-                            snack={timelineItem.item as SnackType}
-                            image={
-                              <div className="absolute inset-0 overflow-hidden opacity-[0.06]">
-                                <Pattern
-                                  seed={
-                                    (timelineItem.item as SnackType).data.title
-                                  }
-                                  colorClass={dynamicColor(index)}
-                                  opacity="0.12"
-                                  gridSize={6 + (index % 3) * 1.5}
-                                  spacing={20 + (index % 4) * 5}
-                                  lineVariance={2 + (index % 2) * 1.5}
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-amber-50/20 to-transparent dark:via-amber-950/5" />
-                              </div>
-                            }
-                          />
-                        )}
+                        <TimelineCardSkeleton />
                       </div>
-                    )}
+
+                      <div className="absolute left-4 z-10 flex items-center md:left-1/2 md:-translate-x-1/2">
+                        <div className="absolute left-full h-0.5 w-8 bg-gradient-to-r from-indigo-500/20 to-transparent md:w-24" />
+                        <div className="relative h-3 w-3 rounded-full border-2 border-white bg-indigo-300 shadow-lg md:h-4 md:w-4 dark:border-gray-950 dark:bg-indigo-700" />
+                      </div>
+
+                      {!isLeft && (
+                        <div className="hidden md:ml-auto md:mr-0 md:block md:w-[calc(50%-3rem)]">
+                          <TimelineCardSkeleton />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            {visibleItems.map((timelineItem, index) => (
+              <TimelineEntry
+                key={`${timelineItem.type}-${timelineItem.item.id}`}
+                timelineItem={timelineItem}
+                index={index}
+                prefersReducedMotion={prefersReducedMotion}
+              />
+            ))}
           </div>
+
+          {!expanded && allItems.length > visibleItems.length && (
+            <div className="mt-12 flex justify-center">
+              <button
+                type="button"
+                onClick={expandTimeline}
+                aria-controls="home-timeline"
+                className="inline-flex min-h-11 items-center rounded-md border border-indigo-500/40 bg-background/80 px-5 py-2 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-300"
+              >
+                Show all {allItems.length} entries
+              </button>
+            </div>
+          )}
         </div>
 
         {/* End marker */}

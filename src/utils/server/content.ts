@@ -1,10 +1,38 @@
 import { getCollection, type CollectionEntry } from "astro:content";
 import {
   getActiveToolCatalog,
-  getToolMetadata,
-} from "@/components/tools/toolCatalog.mjs";
+  requireToolMetadata,
+} from "@/components/tools/toolCatalog";
+import type { OgCollection } from "@/utils/server/og";
 
-type ArticleCollection = "blog" | "log" | "snacks";
+export const ARTICLE_COLLECTIONS = [
+  {
+    collection: "blog",
+    kind: "blog",
+    pathPrefix: "/blog/",
+    ogCollection: "blog",
+  },
+  {
+    collection: "log",
+    kind: "dev-log",
+    pathPrefix: "/dev-log/",
+    ogCollection: "dev-log",
+  },
+  {
+    collection: "snacks",
+    kind: "snacks",
+    pathPrefix: "/snacks/",
+    ogCollection: "snacks",
+  },
+] as const satisfies readonly {
+  collection: "blog" | "log" | "snacks";
+  kind: "blog" | "dev-log" | "snacks";
+  pathPrefix: string;
+  ogCollection: OgCollection;
+}[];
+
+export type ArticleCollection =
+  (typeof ARTICLE_COLLECTIONS)[number]["collection"];
 export type ArticleKind = "blog" | "dev-log" | "snacks";
 type ArticleEntry =
   | CollectionEntry<"blog">
@@ -41,16 +69,12 @@ const filterFunction = (
   import.meta.env.DEV ||
   (post.data.published && post.data.releaseDate < new Date());
 
-const collectionToKind: Record<ArticleCollection, ArticleKind> = {
-  blog: "blog",
-  log: "dev-log",
-  snacks: "snacks",
-};
-
-const kindToPath: Record<ArticleKind, string> = {
-  blog: "/blog/",
-  "dev-log": "/dev-log/",
-  snacks: "/snacks/",
+const articleDescriptorFor = (collection: ArticleCollection) => {
+  const descriptor = ARTICLE_COLLECTIONS.find(
+    (candidate) => candidate.collection === collection,
+  );
+  if (!descriptor) throw new Error(`Unknown article collection "${collection}".`);
+  return descriptor;
 };
 
 export const getArticleOgImagePath = (pathname: string) => {
@@ -66,12 +90,12 @@ export const getArticleOgImageUrl = (
     .href;
 
 const getEntryKind = (entry: ArticleEntry): ArticleKind => {
-  return collectionToKind[entry.collection as ArticleCollection];
+  return articleDescriptorFor(entry.collection as ArticleCollection).kind;
 };
 
 const getEntryUrl = (entry: ArticleEntry) => {
-  const kind = getEntryKind(entry);
-  return `${kindToPath[kind]}${entry.id}/`;
+  const descriptor = articleDescriptorFor(entry.collection as ArticleCollection);
+  return `${descriptor.pathPrefix}${entry.id}/`;
 };
 
 const toAdjacentContentItem = (entry: ArticleEntry): AdjacentContentItem => ({
@@ -81,17 +105,30 @@ const toAdjacentContentItem = (entry: ArticleEntry): AdjacentContentItem => ({
   releaseDate: entry.data.releaseDate,
 });
 
-const getAllArticles = async (): Promise<ArticleEntry[]> => {
-  const [blogs, logs, snacks] = await Promise.all([
-    getBlogs(),
-    getLogs(),
-    getSnacks(),
-  ]);
-  return [...blogs, ...logs, ...snacks].sort(
+export const getArticlesByCollection = async (
+  collection: ArticleCollection,
+): Promise<ArticleEntry[]> => {
+  const entries = await getCollection(collection);
+  return (entries as ArticleEntry[]).filter(filterFunction).sort(
     (a, b) =>
       new Date(b.data.releaseDate).getTime() -
       new Date(a.data.releaseDate).getTime(),
   );
+};
+
+const getAllArticles = async (): Promise<ArticleEntry[]> => {
+  const articleGroups = await Promise.all(
+    ARTICLE_COLLECTIONS.map(({ collection }) =>
+      getArticlesByCollection(collection),
+    ),
+  );
+  return articleGroups
+    .flat()
+    .sort(
+      (a, b) =>
+        new Date(b.data.releaseDate).getTime() -
+        new Date(a.data.releaseDate).getTime(),
+    );
 };
 
 const scoreRelatedArticle = (
@@ -124,40 +161,21 @@ const scoreRelatedTool = (current: ArticleEntry, tags: string[] = []) => {
 };
 
 export const getBlogs = async () => {
-  const blog = await getCollection("blog");
-  const filteredBlog = blog.filter(filterFunction).sort((a, b) => {
-    return (
-      new Date(b.data.releaseDate).getTime() -
-      new Date(a.data.releaseDate).getTime()
-    );
-  });
-  return filteredBlog;
+  return getArticlesByCollection("blog") as Promise<CollectionEntry<"blog">[]>;
 };
 
 export type BlogType = CollectionEntry<"blog">;
 
 export const getLogs = async (): Promise<CollectionEntry<"log">[]> => {
-  const log = await getCollection("log");
-  const filteredLog = log.filter(filterFunction).sort((a, b) => {
-    return (
-      new Date(b.data.releaseDate).getTime() -
-      new Date(a.data.releaseDate).getTime()
-    );
-  });
-  return filteredLog;
+  return getArticlesByCollection("log") as Promise<CollectionEntry<"log">[]>;
 };
 
 export type LogType = CollectionEntry<"log">;
 
 export const getSnacks = async (): Promise<CollectionEntry<"snacks">[]> => {
-  const snacks = await getCollection("snacks");
-  const filteredSnacks = snacks.filter(filterFunction).sort((a, b) => {
-    return (
-      new Date(b.data.releaseDate).getTime() -
-      new Date(a.data.releaseDate).getTime()
-    );
-  });
-  return filteredSnacks;
+  return getArticlesByCollection("snacks") as Promise<
+    CollectionEntry<"snacks">[]
+  >;
 };
 
 export type SnackType = CollectionEntry<"snacks">;
@@ -224,7 +242,7 @@ export const getArticleTrail = async (
         .split("-")
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" "),
-      description: `${getToolMetadata(tool.slug).category} tool`,
+      description: `${requireToolMetadata(tool.slug).category} tool`,
       url: `/tools/${tool.slug}/`,
       tags: tool.tags,
     }));

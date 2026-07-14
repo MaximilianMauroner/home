@@ -1,11 +1,11 @@
 export const getParticipantColors = (participantList: string[]) => {
   const colors = [
-    { bg: "rgba(255, 99, 132, 0.5)", border: "rgba(255, 99, 132, 1)" },
-    { bg: "rgba(54, 162, 235, 0.5)", border: "rgba(54, 162, 235, 1)" },
-    { bg: "rgba(255, 206, 86, 0.5)", border: "rgba(255, 206, 86, 1)" },
-    { bg: "rgba(75, 192, 192, 0.5)", border: "rgba(75, 192, 192, 1)" },
-    { bg: "rgba(153, 102, 255, 0.5)", border: "rgba(153, 102, 255, 1)" },
-    { bg: "rgba(255, 159, 64, 0.5)", border: "rgba(255, 159, 64, 1)" },
+    { bg: "rgba(20, 184, 166, 0.52)", border: "rgba(13, 148, 136, 1)" },
+    { bg: "rgba(59, 130, 246, 0.5)", border: "rgba(37, 99, 235, 1)" },
+    { bg: "rgba(139, 92, 246, 0.5)", border: "rgba(124, 58, 237, 1)" },
+    { bg: "rgba(245, 158, 11, 0.52)", border: "rgba(217, 119, 6, 1)" },
+    { bg: "rgba(100, 116, 139, 0.52)", border: "rgba(71, 85, 105, 1)" },
+    { bg: "rgba(34, 197, 94, 0.5)", border: "rgba(22, 163, 74, 1)" },
   ];
 
   return participantList.reduce(

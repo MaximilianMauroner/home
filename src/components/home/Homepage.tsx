@@ -42,6 +42,7 @@ interface HomepageProps {
   blogs: BlogType[];
   logs: LogType[];
   snacks: SnackType[];
+  initialAge: string;
 }
 
 const LetterCard = ({
@@ -206,7 +207,7 @@ const LetterCard = ({
   );
 };
 
-const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
+const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
   const [firstname, setFirstname] = useState(ogFirst);
   const [lastname, setLastname] = useState(ogLast);
   const [activeCard, setActiveCard] = useState<{
@@ -215,6 +216,7 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
   } | null>(null);
   const [showHint, setShowHint] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -393,6 +395,7 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
   );
 
   const scrollToTimeline = useCallback(() => {
+    setTimelineExpanded(true);
     if (timelineRef.current) {
       timelineRef.current.scrollIntoView({
         behavior: prefersReducedMotion ? "auto" : "smooth",
@@ -488,13 +491,13 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
                 <span className="animate-terminal-blink absolute -left-3">
                   ▌
                 </span>
-                hi, i'm a <AgeCalculator /> year-old developer. currently
-                studying software engineering at the&nbsp;
+                hi, i'm a {initialAge}-year-old developer. currently studying
+                software engineering at the&nbsp;
                 <TechStackItem href="https://tuwien.at/" name="TU Wien" />.
               </p>
               <p className="typing-animation-delayed">
                 i'm usually working on multiple&nbsp;
-                <TechStackItem href="/tools" name="Tools" />. for more info
+                <TechStackItem href="/tools/" name="Tools" />. for more info
                 check them out on&nbsp;
                 <TechStackItem
                   href="https://github.com/MaximilianMauroner"
@@ -513,10 +516,15 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
         {/* Scroll to Timeline Button */}
         <div className="mb-20 flex justify-center">
           <button
+            type="button"
             onClick={scrollToTimeline}
+            aria-expanded={timelineExpanded}
+            aria-controls="home-timeline"
             className="group flex flex-col items-center gap-2 rounded-xl border border-indigo-500/30 bg-white/50 px-6 py-4 text-indigo-700 transition-all duration-300 hover:border-indigo-500/60 hover:bg-white/80 hover:shadow-lg dark:border-indigo-500/40 dark:bg-black/50 dark:text-indigo-300 dark:hover:border-indigo-500/70 dark:hover:bg-black/70"
           >
-            <span className="text-sm font-medium">View Timeline</span>
+            <span className="text-sm font-medium">
+              {timelineExpanded ? "Go to timeline" : "View full timeline"}
+            </span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -537,53 +545,16 @@ const Homepage = ({ blogs, logs, snacks }: HomepageProps) => {
 
       {/* Timeline Section */}
       <div ref={timelineRef}>
-        <Timeline blogs={blogs} logs={logs} snacks={snacks} />
+        <Timeline
+          blogs={blogs}
+          logs={logs}
+          snacks={snacks}
+          expanded={timelineExpanded}
+          onExpand={() => setTimelineExpanded(true)}
+        />
       </div>
     </div>
   );
-};
-
-const AgeCalculator = () => {
-  const birthday = new Date("2000-03-13 04:00:00");
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  const getDiff = (precision = 9) => {
-    const now = dayjs();
-    const birth = dayjs(birthday);
-    const currentAge = now.diff(birth, "year", true).toFixed(precision);
-    return currentAge;
-  };
-  const [age, setAge] = useState(getDiff(2) + "0000000");
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const updatePreference = () => setPrefersReducedMotion(media.matches);
-    updatePreference();
-    media.addEventListener("change", updatePreference);
-    return () => media.removeEventListener("change", updatePreference);
-  }, []);
-
-  useEffect(() => {
-    if (prefersReducedMotion) {
-      setAge(getDiff(2));
-      return;
-    }
-
-    // Small delay for smoother transition
-    let interval: ReturnType<typeof setInterval> | undefined;
-    const timer = setTimeout(() => {
-      interval = setInterval(() => {
-        setAge(getDiff());
-      }, 50);
-    }, 100);
-
-    return () => {
-      clearTimeout(timer);
-      if (interval) clearInterval(interval);
-    };
-  }, [prefersReducedMotion]);
-
-  return <>{age}</>;
 };
 
 const TechStackItem = ({ name, href }: { name: string; href: string }) => {
@@ -591,7 +562,7 @@ const TechStackItem = ({ name, href }: { name: string; href: string }) => {
     <a
       href={href}
       target="_blank"
-      rel="nofollow"
+      rel="nofollow noreferrer"
       className="inline-block"
       title={name}
     >

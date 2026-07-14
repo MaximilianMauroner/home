@@ -7,6 +7,9 @@ import {
   dateKeyFromMessage,
   enumerateDateKeys,
 } from "../datetime";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
+import { getParticipantColors } from "./utils";
 
 export const ActivityByDay = ({ messages, persons }: GraphProps) => {
   // UI state
@@ -27,7 +30,7 @@ export const ActivityByDay = ({ messages, persons }: GraphProps) => {
       (messagesByDay[dateKey][msg.personId] || 0) + 1;
   });
 
-  // Generate all days of the year
+  // Generate every calendar day in the selected data range.
   const allDates = enumerateDateKeys(startOfYear, endOfYear);
 
   // Prepare total messages per day and per participant for tooltip
@@ -64,13 +67,26 @@ export const ActivityByDay = ({ messages, persons }: GraphProps) => {
     return count > 0 ? sum / count : 0;
   });
 
-  // Per-day color blending between two participants (persons[0] -> red, persons[1] -> blue)
+  // Per-day color blending between two participants.
   // Assumption: if exactly two participants, blend by share; otherwise fallback to a default color.
   const hasTwo = persons.length === 2;
   const p1Id = persons[0]?.id;
   const p2Id = persons[1]?.id;
-  const red = [239, 68, 68]; // tailwind red-500
-  const blue = [59, 130, 246]; // tailwind blue-500
+  const participantColors = getParticipantColors(persons.map((person) => person.name));
+  const colorToRgb = (color: string, fallback: number[]) => {
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    return match
+      ? [Number(match[1]), Number(match[2]), Number(match[3])]
+      : fallback;
+  };
+  const firstColor = colorToRgb(
+    participantColors[persons[0]?.name]?.border ?? "",
+    [13, 148, 136],
+  );
+  const secondColor = colorToRgb(
+    participantColors[persons[1]?.name]?.border ?? "",
+    [37, 99, 235],
+  );
 
   const blend = (a: number[], b: number[], t: number) => {
     const r = Math.round(a[0] * (1 - t) + b[0] * t);
@@ -86,7 +102,7 @@ export const ActivityByDay = ({ messages, persons }: GraphProps) => {
     const c1 = dayData[p1Id] || 0;
     const c2 = dayData[p2Id] || 0;
     const s = c2 + c1 === 0 ? 0.5 : c2 / (c1 + c2);
-    return blend(red, blue, s);
+    return blend(firstColor, secondColor, s);
   });
 
   // Build datasets (optionally include moving average)
@@ -153,15 +169,16 @@ export const ActivityByDay = ({ messages, persons }: GraphProps) => {
     },
     maintainAspectRatio: true,
     scales: {
-      y: { beginAtZero: false },
+      y: { beginAtZero: true },
     },
   };
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Messages Per Day (Total)
-      </h3>
+      <ChartHeader
+        title="Messages per Day"
+        assumption={CHART_ASSUMPTIONS.activityByDay}
+      />
       <p className="mb-4 text-sm text-muted-foreground">
         Most Active Day:{" "}
         {(() => {

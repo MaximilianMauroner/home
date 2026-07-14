@@ -207,7 +207,7 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
 
         {/* Title - handwritten style */}
         <h1
-          class={`mb-6 text-4xl font-serif italic font-bold leading-tight text-gray-900 dark:text-gray-50 sm:text-5xl lg:text-6xl animate-fade-in`}
+          class={`mb-6 [overflow-wrap:anywhere] text-4xl font-serif italic font-bold leading-tight text-gray-900 dark:text-gray-50 sm:text-5xl lg:text-6xl animate-fade-in`}
           style={{
             textShadow:
               "3px 3px 6px rgba(0,0,0,0.15), 0 0 3px rgba(255,255,255,0.9)",
@@ -247,7 +247,7 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
 
       {/* Content with snack-themed prose styling */}
       <div
-        class="prose prose-lg prose-slate mx-auto max-w-none dark:prose-invert prose-headings:font-bold prose-headings:tracking-tight prose-headings:font-serif prose-headings:italic prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-p:leading-relaxed prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-a:text-primary prose-a:no-underline hover:prose-a:underline dark:prose-a:text-blue-400 dark:hover:prose-a:text-blue-300 prose-code:rounded-md prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-medium prose-code:text-foreground dark:prose-code:text-gray-200 prose-pre:bg-slate-900 dark:prose-pre:bg-slate-950 prose-pre:rounded-xl prose-li:text-gray-700 dark:prose-li:text-gray-300"
+        class="prose prose-lg prose-slate mx-auto max-w-none [overflow-wrap:anywhere] dark:prose-invert prose-headings:font-bold prose-headings:tracking-tight prose-headings:font-serif prose-headings:italic prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-p:leading-relaxed prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-a:text-primary prose-a:no-underline hover:prose-a:underline dark:prose-a:text-blue-400 dark:hover:prose-a:text-blue-300 prose-code:rounded-md prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-medium prose-code:text-foreground dark:prose-code:text-gray-200 prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:bg-slate-900 dark:prose-pre:bg-slate-950 prose-pre:rounded-xl prose-table:block prose-table:max-w-full prose-table:overflow-x-auto prose-img:max-w-full prose-video:max-w-full prose-iframe:max-w-full prose-li:text-gray-700 dark:prose-li:text-gray-300"
       >
         <slot />
       </div>

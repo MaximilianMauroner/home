@@ -2,17 +2,19 @@ import { useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors } from "./utils";
+import { gapHoursBetweenMessages } from "../datetime";
 import {
-  compareMessagesByTimestamp,
-  gapHoursBetweenMessages,
-  isDifferentCalendarDay,
-} from "../datetime";
+  getConversationRestartGap,
+  sortMessagesByTimestamp,
+} from "../conversationMetrics";
+import { ChartHeader } from "./ChartHeader";
+import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const ResponseTimeAnalysis = ({ messages, persons }: GraphProps) => {
   const responseTimeData = useMemo(() => {
     if (messages.length < 2) return null;
 
-    const sortedMessages = [...messages].sort(compareMessagesByTimestamp);
+    const sortedMessages = sortMessagesByTimestamp(messages);
 
     // Calculate response times
     const responseTimes: { responder: number; timeMinutes: number }[] = [];
@@ -29,8 +31,7 @@ export const ResponseTimeAnalysis = ({ messages, persons }: GraphProps) => {
       if (gapHours === null) continue;
 
       const startsNewConversation =
-        gapHours > 4 ||
-        (isDifferentCalendarDay(prevMsg, currMsg) && gapHours > 1);
+        getConversationRestartGap(prevMsg, currMsg) !== null;
       const diffMinutes = gapHours * 60;
 
       // Only consider replies inside the same conversation.
@@ -84,9 +85,10 @@ export const ResponseTimeAnalysis = ({ messages, persons }: GraphProps) => {
   if (!responseTimeData || responseTimeData.stats.length === 0) {
     return (
       <div>
-        <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-          Response Time Analysis
-        </h3>
+        <ChartHeader
+          title="Response Time Analysis"
+          assumption={CHART_ASSUMPTIONS.responseTime}
+        />
         <p className="text-sm text-muted-foreground">
           Not enough conversation data to analyze response times.
         </p>
@@ -171,12 +173,13 @@ export const ResponseTimeAnalysis = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <h3 className="mb-2 text-sm font-semibold sm:mb-4 sm:text-base">
-        Response Time Analysis
-      </h3>
+      <ChartHeader
+        title="Response Time Analysis"
+        assumption={CHART_ASSUMPTIONS.responseTime}
+      />
       <div className="mb-4 text-sm text-muted-foreground">
         <p>
-          Analysis of how quickly people respond to each other (within 24 hours)
+          Analysis of how quickly people respond before a conversation restart
         </p>
         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {responseTimeData.stats.map((stat) => {
