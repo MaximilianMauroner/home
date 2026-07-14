@@ -1,9 +1,15 @@
 import type { APIRoute } from "astro";
 import { getCollection, type CollectionEntry } from "astro:content";
+import { blockProductionAdminApi } from "@/utils/server/adminAccess";
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async (context) => {
+  const blockedResponse = blockProductionAdminApi();
+  if (blockedResponse) return blockedResponse;
+
+  const { url } = context;
+
   try {
     const contentType = url.searchParams.get("type") || "all";
 

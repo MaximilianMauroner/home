@@ -9,9 +9,13 @@ import {
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 dayjs.extend(weekOfYear);
-import type { BlogType, LogType, SnackType } from "@/utils/server/content";
+import type { PreviewEntry } from "@/components/content/previewTypes";
 import { Queue } from "@/utils/queue";
 import Timeline from "./Timeline";
+import {
+  clampLetterCardPosition,
+  getLetterCardWidth,
+} from "./letterCardPosition";
 
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*";
 const ogFirst = "maximilian";
@@ -26,8 +30,7 @@ interface ContentItem {
     description: string;
     tags: string[];
     image?: string;
-    published: boolean;
-    releaseDate: Date;
+    releaseDate: Date | string;
   };
 }
 
@@ -39,9 +42,9 @@ interface LetterCardProps {
 }
 
 interface HomepageProps {
-  blogs: BlogType[];
-  logs: LogType[];
-  snacks: SnackType[];
+  blogs: PreviewEntry[];
+  logs: PreviewEntry[];
+  snacks: PreviewEntry[];
   initialAge: string;
 }
 
@@ -53,6 +56,46 @@ const LetterCard = ({
 }: LetterCardProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    cardRef.current?.focus({ preventScroll: true });
+  }, [content?.slug]);
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  useEffect(() => {
+    const keepCardVisible = () => {
+      const bounds = cardRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+
+      const nextPosition = clampLetterCardPosition({
+        cardHeight: bounds.height,
+        cardWidth: bounds.width,
+        left: position.x,
+        top: position.y,
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+      });
+
+      if (nextPosition.x !== position.x || nextPosition.y !== position.y) {
+        onPositionChange(nextPosition);
+      }
+    };
+
+    keepCardVisible();
+    window.addEventListener("resize", keepCardVisible);
+    return () => window.removeEventListener("resize", keepCardVisible);
+  }, [onPositionChange, position.x, position.y]);
 
   const handleDragStart = (event: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
@@ -78,25 +121,17 @@ const LetterCard = ({
         let newX = clientX - dragOffset.x;
         let newY = clientY - dragOffset.y;
 
-        // Get viewport dimensions
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-
-        // Get card dimensions (assuming width is 384px from w-96)
-        const cardWidth = 384;
-        const cardHeight = 300; // Approximate height, adjust as needed
-
-        // Calculate boundaries to keep at least 50% of card visible
-        const minX = -(cardWidth / 2);
-        const maxX = viewportWidth - cardWidth / 2;
-        const minY = 0; // Keep top of card always visible
-        const maxY = viewportHeight - cardHeight / 2;
-
-        // Clamp position within boundaries
-        newX = Math.max(minX, Math.min(maxX, newX));
-        newY = Math.max(minY, Math.min(maxY, newY));
-
-        onPositionChange({ x: newX, y: newY });
+        const bounds = cardRef.current?.getBoundingClientRect();
+        onPositionChange(
+          clampLetterCardPosition({
+            cardHeight: bounds?.height,
+            cardWidth: bounds?.width,
+            left: newX,
+            top: newY,
+            viewportHeight: window.innerHeight,
+            viewportWidth: window.innerWidth,
+          }),
+        );
       }
     },
     [isDragging, dragOffset, onPositionChange],
@@ -124,17 +159,23 @@ const LetterCard = ({
   if (!content) {
     return (
       <div
-        className="fixed z-50 w-96 select-none rounded-2xl border border-indigo-500/30 bg-black/95 p-4 text-center shadow-lg backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/95 dark:text-indigo-300"
+        ref={cardRef}
+        role="dialog"
+        aria-label="Post preview"
+        tabIndex={-1}
+        className="fixed z-50 max-h-[calc(100dvh-2rem)] w-[min(24rem,calc(100vw-2rem))] select-none overflow-y-auto rounded-2xl border border-indigo-500/30 bg-black/95 p-4 text-center shadow-lg backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 dark:border-indigo-500/30 dark:bg-black/95 dark:text-indigo-300"
         style={{
           top: `${position.y}px`,
-          left: `${position.x + 40}px`,
+          left: `${position.x}px`,
         }}
         onMouseDown={handleDragStart}
         onTouchStart={handleDragStart}
       >
         <p>No content found</p>
         <button
+          type="button"
           onClick={onClose}
+          aria-label="Close post preview"
           className="mt-2 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200"
         >
           ✕
@@ -149,10 +190,16 @@ const LetterCard = ({
 
   return (
     <div
-      className="fixed z-50 w-96 select-none rounded-2xl border border-indigo-500/20 bg-white/95 p-4 text-indigo-700 shadow-lg backdrop-blur-sm dark:border-indigo-500/30 dark:bg-black/95 dark:text-indigo-300"
+      ref={cardRef}
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="letter-card-title"
+      aria-describedby="letter-card-description"
+      tabIndex={-1}
+      className="fixed z-50 max-h-[calc(100dvh-2rem)] w-[min(24rem,calc(100vw-2rem))] select-none overflow-y-auto rounded-2xl border border-indigo-500/20 bg-white/95 p-4 text-indigo-700 shadow-lg backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 dark:border-indigo-500/30 dark:bg-black/95 dark:text-indigo-300"
       style={{
         top: `${position.y}px`,
-        left: `${position.x + 40}px`,
+        left: `${position.x}px`,
         cursor: isDragging ? "grabbing" : "grab",
         touchAction: "none",
       }}
@@ -185,17 +232,27 @@ const LetterCard = ({
           </span>
         </div>
         <button
+          type="button"
           onClick={onClose}
-          className="text-indigo-400 hover:text-indigo-200 dark:text-indigo-600 dark:hover:text-indigo-800"
+          aria-label="Close post preview"
+          className="min-h-11 min-w-11 rounded-md text-indigo-600 hover:text-indigo-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 dark:text-indigo-300 dark:hover:text-indigo-100"
         >
           ✕
         </button>
       </div>
       <div className="p-4">
-        <h3 className="mb-2 text-lg font-bold text-indigo-200">
+        <h3
+          id="letter-card-title"
+          className="mb-2 text-lg font-bold text-indigo-700 dark:text-indigo-200"
+        >
           {content.data.title}
         </h3>
-        <p className="text-sm text-indigo-400">{content.data.description}</p>
+        <p
+          id="letter-card-description"
+          className="text-sm text-indigo-600 dark:text-indigo-300"
+        >
+          {content.data.description}
+        </p>
         <a
           href={`/${content.slug}`}
           className="mt-4 block rounded-md border border-indigo-500/30 px-4 py-2 text-center text-sm text-indigo-300 transition-colors hover:bg-indigo-500/10"
@@ -213,11 +270,13 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
   const [activeCard, setActiveCard] = useState<{
     content: ContentItem | null;
     position: { x: number; y: number };
+    triggerIndex: number;
   } | null>(null);
   const [showHint, setShowHint] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const letterButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -268,18 +327,10 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
   const items = queue.toArray();
 
   const handleLetterClick = useCallback(
-    (index: number, event: React.MouseEvent) => {
+    (index: number, event: React.MouseEvent<HTMLButtonElement>) => {
       const rect = event.currentTarget.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
-      const cardWidth = 384;
-
-      // Calculate initial X position
-      let initialX = rect.left;
-
-      // Adjust if card would be more than 50% off-screen
-      if (initialX + cardWidth > viewportWidth - cardWidth / 2) {
-        initialX = viewportWidth - cardWidth - 40; // 40px buffer from right edge
-      }
+      const cardWidth = getLetterCardWidth(viewportWidth);
       let activeCard = items[0];
 
       if (index < items.length) {
@@ -289,29 +340,45 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
         activeCard = randomItem;
       }
 
-      setActiveCard((current) =>
-        current?.content?.id === activeCard.slug
-          ? null
-          : {
-              content: activeCard,
-              position: {
-                x: initialX,
-                y: rect.top,
-              },
-            },
-      );
+      setActiveCard((current) => {
+        if (current?.triggerIndex === index) {
+          requestAnimationFrame(() => event.currentTarget.focus());
+          return null;
+        }
+
+        return {
+          content: activeCard,
+          position: clampLetterCardPosition({
+            cardWidth,
+            left: rect.left,
+            top: rect.top,
+            viewportHeight: window.innerHeight,
+            viewportWidth,
+          }),
+          triggerIndex: index,
+        };
+      });
     },
-    [],
+    [items],
   );
 
-  const loadByName = (
-    setName: Dispatch<SetStateAction<string>>,
-    ogValue: string,
-  ) => {
-    if (prefersReducedMotion) {
-      setName(ogValue);
-      return;
+  const closeActiveCard = useCallback(() => {
+    const triggerIndex = activeCard?.triggerIndex;
+    setActiveCard(null);
+    setShowHint(false);
+    if (triggerIndex !== undefined) {
+      requestAnimationFrame(() =>
+        letterButtonRefs.current[triggerIndex]?.focus(),
+      );
     }
+  }, [activeCard?.triggerIndex]);
+
+  const loadByName = useCallback(
+    (setName: Dispatch<SetStateAction<string>>, ogValue: string) => {
+      if (prefersReducedMotion) {
+        setName(ogValue);
+        return;
+      }
 
     let iteration = 0;
 
@@ -339,8 +406,10 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
         iteration += 1 / 3;
       }, 45);
     };
-    setTimeout(unmask, 50);
-  };
+      setTimeout(unmask, 50);
+    },
+    [prefersReducedMotion],
+  );
 
   useEffect(() => {
     loadByName(setFirstname, ogFirst);
@@ -349,7 +418,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
     // Hide the hint after first interaction or after 10 seconds
     const timer = setTimeout(() => setShowHint(false), 10000);
     return () => clearTimeout(timer);
-  }, [prefersReducedMotion]);
+  }, [loadByName]);
 
   const downArrow = (
     <svg
@@ -359,6 +428,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
       strokeWidth="1.5"
       stroke="currentColor"
       className="size-4 md:size-6"
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -376,6 +446,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
       strokeWidth="1.5"
       stroke="currentColor"
       className="size-4 md:size-6"
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -410,10 +481,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
         <LetterCard
           content={activeCard.content}
           position={activeCard.position}
-          onClose={() => {
-            setActiveCard(null);
-            setShowHint(false);
-          }}
+          onClose={closeActiveCard}
           onPositionChange={handlePositionChange}
         />
       )}
@@ -425,26 +493,38 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
                 key={index}
                 className="relative text-center transition-all hover:text-indigo-200"
               >
-                <span
+                <button
+                  ref={(element) => {
+                    letterButtonRefs.current[index] = element;
+                  }}
+                  type="button"
                   data-letter={letter}
+                  aria-label={`Show post preview for ${items[index]?.data.title ?? "a random post"}`}
+                  aria-expanded={activeCard?.triggerIndex === index}
                   onClick={(e) => {
                     handleLetterClick(index, e);
                     setShowHint(false);
                   }}
-                  className={`cursor-pointer transition-all hover:scale-110 hover:text-violet-300 ${
+                  className={`relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-all hover:scale-110 hover:text-violet-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400 ${
                     index === 0 && showHint && !prefersReducedMotion
                       ? "relative before:absolute before:-inset-6 before:animate-wave-pulse-delayed before:rounded-full before:border before:border-violet-400/10 after:absolute after:-inset-3 after:animate-wave-pulse after:rounded-full after:border after:border-violet-400/20"
                       : ""
                   }`}
                 >
                   {letter}
-                </span>
+                </button>
                 {index % 2 === 0 ? (
-                  <div className="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] text-indigo-600 md:-bottom-4">
+                  <div
+                    aria-hidden="true"
+                    className="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] text-indigo-600 md:-bottom-4"
+                  >
                     {downArrow}
                   </div>
                 ) : index !== firstname.length - 1 ? (
-                  <div className="absolute right-0 top-0 text-indigo-600">
+                  <div
+                    aria-hidden="true"
+                    className="absolute right-0 top-0 text-indigo-600"
+                  >
                     {rightUpArrow}
                   </div>
                 ) : null}
@@ -457,21 +537,36 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
                 key={index}
                 className="relative text-center transition-all hover:text-indigo-200"
               >
-                <span
+                <button
+                  ref={(element) => {
+                    letterButtonRefs.current[firstname.length + index] =
+                      element;
+                  }}
+                  type="button"
                   data-letter={letter}
+                  aria-label={`Show post preview for ${items[firstname.length + index]?.data.title ?? "a random post"}`}
+                  aria-expanded={
+                    activeCard?.triggerIndex === firstname.length + index
+                  }
                   onClick={(e) =>
                     handleLetterClick(firstname.length + index, e)
                   }
-                  className="cursor-pointer transition-all hover:scale-110 hover:text-violet-300"
+                  className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-all hover:scale-110 hover:text-violet-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400"
                 >
                   {letter}
-                </span>
+                </button>
                 {index % 2 === 0 ? (
-                  <div className="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] text-indigo-600 md:-bottom-4">
+                  <div
+                    aria-hidden="true"
+                    className="absolute -bottom-2 left-[50%] -translate-x-[50%] translate-y-[50%] text-indigo-600 md:-bottom-4"
+                  >
                     {downArrow}
                   </div>
                 ) : index !== lastname.length - 1 ? (
-                  <div className="absolute right-0 top-0 text-indigo-600">
+                  <div
+                    aria-hidden="true"
+                    className="absolute right-0 top-0 text-indigo-600"
+                  >
                     {rightUpArrow}
                   </div>
                 ) : null}

@@ -1,15 +1,16 @@
-import type { CollectionEntry } from "astro:content";
 import TagsList from "./TagsList";
 import type { ReactNode } from "react";
 import RelativeDate from "./RelativeDate";
+import type { PreviewEntry } from "./previewTypes";
 
 export default function SnackPreview({
   snack,
   image,
 }: {
-  snack: CollectionEntry<"snacks">;
+  snack: PreviewEntry;
   image?: ReactNode;
 }) {
+  const releaseDate = new Date(snack.data.releaseDate);
   const rotation = Math.sin(snack.id.charCodeAt(0));
   const titleTransitionId = `snack-title-${snack.id.replaceAll("/", "-")}`;
 
@@ -122,7 +123,7 @@ export default function SnackPreview({
             </p>
 
             <div className="mb-3 text-[10px] font-medium italic text-amber-800/70 sm:text-xs dark:text-amber-300/80">
-              <RelativeDate date={snack.data.releaseDate} />
+              <RelativeDate date={releaseDate} />
             </div>
 
             <div className="mt-auto">

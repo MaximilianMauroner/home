@@ -60,6 +60,13 @@ This is where I document my journey, share technical insights, and build useful 
 - Dev logs go in `src/content/log/`
 - New tools can be added to `src/pages/tools/`
 
+Before publishing content:
+
+- Trim the title and write a specific, standalone description.
+- Check spelling, sentence capitalization, and product names.
+- Test every link and replace local development URLs with production-relative URLs.
+- Confirm the publish flag, release date, tags, and image are intentional.
+
 ## 📫 Contact
 
 Feel free to reach out or follow my work:

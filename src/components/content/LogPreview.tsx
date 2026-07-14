@@ -1,11 +1,11 @@
-import type { CollectionEntry } from "astro:content";
 import type { ReactNode } from "react";
+import type { PreviewEntry } from "./previewTypes";
 import RelativeDate from "./RelativeDate";
 import TagsList from "./TagsList";
 import "./LogPreview.css";
 
 interface LogPreviewProps {
-  log: CollectionEntry<"log"> & { _imageUrl?: string };
+  log: PreviewEntry;
   image?: ReactNode;
 }
 
@@ -62,7 +62,7 @@ export default function LogPreview({ log, image }: LogPreviewProps) {
 
             <footer>
               <span className="log-patchbay__relative-date">
-                <RelativeDate date={log.data.releaseDate} />
+                <RelativeDate date={releaseDate} />
               </span>
               <a className="log-patchbay__open" href={href}>
                 Open entry <span aria-hidden="true">↗</span>

@@ -2,23 +2,16 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import BlogPreview from "./BlogPreview";
 import LogPreview from "./LogPreview";
 import SnackPreview from "./SnackPreview";
-import type { CollectionEntry } from "astro:content";
+import type { TaggedPreviewEntry } from "./previewTypes";
 
 type TagViewProps = {
-  blogs: CollectionEntry<"blog">[];
-  logs: CollectionEntry<"log">[];
-  snacks: CollectionEntry<"snacks">[];
-  tags: Map<string, number>;
+  posts: TaggedPreviewEntry[];
+  tags: Array<[string, number]>;
   preSelectedTag?: string;
   initialSearchQuery?: string;
 };
 
-type SearchablePost =
-  | CollectionEntry<"blog">
-  | CollectionEntry<"log">
-  | CollectionEntry<"snacks">;
-
-const searchQueryInPost = (search: string, post: SearchablePost) => {
+const searchQueryInPost = (search: string, post: TaggedPreviewEntry) => {
   if (!search.trim()) return true;
 
   const searchLower = search.toLowerCase();
@@ -26,14 +19,12 @@ const searchQueryInPost = (search: string, post: SearchablePost) => {
     post.data.title.toLowerCase().includes(searchLower) ||
     post.data.description.toLowerCase().includes(searchLower) ||
     post.data.tags.some((tag) => tag.toLowerCase().includes(searchLower)) ||
-    Boolean(post.body?.toLowerCase().includes(searchLower))
+    post.id.toLowerCase().includes(searchLower)
   );
 };
 
 export default function TagView({
-  blogs,
-  logs,
-  snacks,
+  posts,
   tags,
   preSelectedTag,
   initialSearchQuery = "",
@@ -59,35 +50,19 @@ export default function TagView({
   }, []);
 
   // Use useMemo to calculate filtered results - this will update when search or selectedTag changes
-  const { selectedBlogs, selectedLogs, selectedSnacks } = useMemo(() => {
+  const selectedPosts = useMemo(() => {
     // Ensure we're using the current search value
     const currentSearch = search.trim();
 
-    const selBlogs = blogs
-      .filter((blog) =>
-        selectedTag ? blog.data.tags.includes(selectedTag) : true,
+    return posts
+      .filter((post) =>
+        selectedTag ? post.data.tags.includes(selectedTag) : true,
       )
-      .filter((blog) => searchQueryInPost(currentSearch, blog));
-    const selLogs = logs
-      .filter((log) =>
-        selectedTag ? log.data.tags.includes(selectedTag) : true,
-      )
-      .filter((log) => searchQueryInPost(currentSearch, log));
-    const selSnacks = snacks
-      .filter((snack) =>
-        selectedTag ? snack.data.tags.includes(selectedTag) : true,
-      )
-      .filter((snack) => searchQueryInPost(currentSearch, snack));
-    return {
-      selectedBlogs: selBlogs,
-      selectedLogs: selLogs,
-      selectedSnacks: selSnacks,
-    };
-  }, [blogs, logs, snacks, selectedTag, search]);
+      .filter((post) => searchQueryInPost(currentSearch, post));
+  }, [posts, selectedTag, search]);
 
-  const activePostCount =
-    selectedBlogs.length + selectedLogs.length + selectedSnacks.length;
-  const totalPostCount = blogs.length + logs.length + snacks.length;
+  const activePostCount = selectedPosts.length;
+  const totalPostCount = posts.length;
   const clearSearch = () => {
     setSearch("");
     requestAnimationFrame(() => document.getElementById("tag-search")?.focus());
@@ -125,9 +100,7 @@ export default function TagView({
         </div>
         <div className="col-span-6 md:col-span-4">
           <PostList
-            blogs={selectedBlogs}
-            logs={selectedLogs}
-            snacks={selectedSnacks}
+            posts={selectedPosts}
             activePostCount={activePostCount}
             totalPostCount={totalPostCount}
             search={search}
@@ -145,7 +118,7 @@ const TagList = ({
   selectedTag,
   setSelectedTag,
 }: {
-  tags: Map<string, number>;
+  tags: Array<[string, number]>;
   selectedTag: string | null;
   setSelectedTag: (tag: string | null) => void;
 }) => {
@@ -157,7 +130,7 @@ const TagList = ({
         <div className="flex items-center gap-2">
           <h2 className="text-2xl font-bold">Tags:</h2>
           <span className="font-mono text-2xl text-muted-foreground">
-            ({tags.size})
+            ({tags.length})
           </span>
         </div>
         <button
@@ -191,7 +164,7 @@ const TagList = ({
         className="flex flex-wrap gap-2 sm:gap-6 md:gap-3 lg:gap-4"
         aria-label="All tags with blog post counts"
       >
-        {Array.from(tags)
+        {tags
           .sort((a, b) => {
             return a[0].localeCompare(b[0]);
           })
@@ -254,48 +227,25 @@ const TagList = ({
 };
 
 const PostList = ({
-  blogs,
-  logs,
-  snacks,
+  posts,
   activePostCount,
   totalPostCount,
   search,
   selectedTag,
   onClearSearch,
 }: {
-  blogs: CollectionEntry<"blog">[];
-  logs: CollectionEntry<"log">[];
-  snacks: CollectionEntry<"snacks">[];
+  posts: TaggedPreviewEntry[];
   activePostCount: number;
   totalPostCount: number;
   search: string;
   selectedTag: string | null;
   onClearSearch: () => void;
 }) => {
-  const items = [
-    ...blogs.map((blog) => ({
-      type: "blog",
-      releaseDate: blog.data.releaseDate,
-      url: blog.id,
-      content: blog,
-    })),
-    ...logs.map((log) => ({
-      type: "log",
-      releaseDate: log.data.releaseDate,
-      url: log.id,
-      content: log,
-    })),
-    ...snacks.map((snack) => ({
-      type: "snacks",
-      releaseDate: snack.data.releaseDate,
-      url: snack.id,
-      content: snack,
-    })),
-  ];
+  const items = [...posts];
   items.sort((a, b) => {
     return (
-      new Date(b.content.data.releaseDate).getTime() -
-      new Date(a.content.data.releaseDate).getTime()
+      new Date(b.data.releaseDate).getTime() -
+      new Date(a.data.releaseDate).getTime()
     );
   });
   return (
@@ -334,26 +284,26 @@ const PostList = ({
           </div>
         )}
         {items.map((item) => {
-          if (item.type === "blog") {
+          if (item.collection === "blog") {
             return (
               <BlogPreview
-                key={item.url + "-post-list"}
-                blog={item.content as CollectionEntry<"blog">}
+                key={item.id + "-post-list"}
+                blog={item}
               />
             );
           }
-          if (item.type === "log") {
+          if (item.collection === "log") {
             return (
               <LogPreview
-                key={item.url + "-post-list"}
-                log={item.content as CollectionEntry<"log">}
+                key={item.id + "-post-list"}
+                log={item}
               />
             );
           }
           return (
             <SnackPreview
-              key={item.url + "-post-list"}
-              snack={item.content as CollectionEntry<"snacks">}
+              key={item.id + "-post-list"}
+              snack={item}
             />
           );
         })}
@@ -381,7 +331,7 @@ const Search = ({
           value={search}
           onChange={(event) => setSearch(event.currentTarget.value)}
           className="flex min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 pl-11 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder="Search titles, descriptions, tags, and content"
+          placeholder="Search titles, descriptions, tags, and URLs"
         />
         <span
           className="pointer-events-none absolute inset-y-0 left-3 flex items-center"

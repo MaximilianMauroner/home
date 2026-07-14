@@ -11,7 +11,13 @@ const fontRegular = fs.readFileSync(
 );
 const fontBold = fs.readFileSync(path.join(fontDir, "JetBrainsMono-Bold.ttf"));
 
-export type OgCollection = "blog" | "dev-log" | "snacks";
+export type OgCollection =
+  | "blog"
+  | "dev-log"
+  | "home"
+  | "snacks"
+  | "tags"
+  | "tools";
 
 // Per-collection gradient schemes, mirroring the site's accent palette.
 const SCHEMES: Record<
@@ -35,6 +41,24 @@ const SCHEMES: Record<
     to: "#831843",
     accent: "#f0abfc",
     label: "snacks",
+  },
+  home: {
+    from: "#172554",
+    to: "#0f766e",
+    accent: "#99f6e4",
+    label: "home",
+  },
+  tags: {
+    from: "#3f3f46",
+    to: "#0f766e",
+    accent: "#99f6e4",
+    label: "tags",
+  },
+  tools: {
+    from: "#1e293b",
+    to: "#0369a1",
+    accent: "#7dd3fc",
+    label: "tools",
   },
 };
 

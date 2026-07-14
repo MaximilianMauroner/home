@@ -3,6 +3,7 @@
 ---
 
 <script is:inline>
+  if (localStorage.getItem("analytics-consent") === "granted") {
   !(function (t, e) {
     var o, n, p, r;
     e.__SV ||
@@ -56,5 +57,10 @@
     api_host: "/ingest",
     ui_host: "https://eu.posthog.com",
     persistence: "memory",
+    autocapture: false,
+    capture_pageleave: false,
+    disable_session_recording: true,
+    person_profiles: "identified_only",
   });
+  }
 </script>

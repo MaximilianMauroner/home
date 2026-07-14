@@ -1,5 +1,5 @@
-import type { CollectionEntry } from "astro:content";
 import type { ReactNode } from "react";
+import type { PreviewEntry } from "./previewTypes";
 import "./BlogPreview.css";
 
 const localImageUrls = import.meta.glob<string>(
@@ -7,13 +7,11 @@ const localImageUrls = import.meta.glob<string>(
   { eager: true, import: "default", query: "?url" },
 );
 
-type BlogPreviewEntry = CollectionEntry<"blog"> & { _imageUrl?: string | null };
-
 export default function BlogPreview({
   blog,
   image,
 }: {
-  blog: BlogPreviewEntry;
+  blog: PreviewEntry;
   image?: ReactNode;
 }) {
   const href = `/blog/${blog.id}/`;

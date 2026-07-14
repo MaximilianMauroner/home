@@ -1,4 +1,6 @@
 import type { HeadingType } from "@/utils/types";
+import { useModalDialog } from "@/utils/useModalDialog";
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function TableOfContents({
@@ -63,29 +65,12 @@ export default function TableOfContents({
     };
   }, [handleScroll]);
 
-  useEffect(() => {
-    if (!isMobileOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const activeLink = mobileSheetRef.current?.querySelector<HTMLAnchorElement>(
-      '[aria-current="location"]',
-    );
-    activeLink?.focus({ preventScroll: true });
-    activeLink?.scrollIntoView({ block: "center" });
-
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsMobileOpen(false);
-    };
-    document.addEventListener("keydown", closeOnEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", closeOnEscape);
-      mobileTriggerRef.current?.focus({ preventScroll: true });
-    };
-  }, [isMobileOpen]);
+  useModalDialog({
+    dialogRef: mobileSheetRef,
+    initialFocusSelector: '[aria-current="location"]',
+    isOpen: isMobileOpen,
+    onClose: () => setIsMobileOpen(false),
+  });
 
   if (headingsArr.length === 0) return null;
 
@@ -103,7 +88,7 @@ export default function TableOfContents({
           aria-expanded={isMobileOpen}
           aria-controls="mobile-table-of-contents"
           onClick={() => setIsMobileOpen(true)}
-          className="fixed bottom-3 left-1/2 z-40 flex h-10 max-w-[80vw] -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/95 px-4 text-sm font-medium text-foreground shadow-lg backdrop-blur transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="fixed bottom-3 left-1/2 z-40 flex min-h-11 max-w-[80vw] -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/95 px-4 text-sm font-medium text-foreground shadow-lg backdrop-blur transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <svg
             viewBox="0 0 24 24"
@@ -119,69 +104,79 @@ export default function TableOfContents({
           <span className="truncate">{currentHeadingText}</span>
         </button>
 
-        {isMobileOpen && (
-          <>
-            <button
-              type="button"
-              aria-label="Close table of contents"
-              className="fixed inset-0 z-50 bg-black/40"
-              onClick={() => setIsMobileOpen(false)}
-            />
-            <nav
-              ref={mobileSheetRef}
-              id="mobile-table-of-contents"
-              aria-label="Table of contents"
-              className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[65vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl"
-              style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-            >
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                <span className="font-semibold text-foreground">
-                  On this page
-                </span>
-                <button
-                  type="button"
-                  aria-label="Close table of contents"
-                  onClick={() => setIsMobileOpen(false)}
-                  className="grid h-10 w-10 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    className="h-5 w-5"
-                    aria-hidden="true"
+        {isMobileOpen &&
+          createPortal(
+            <div data-modal-root="mobile-table-of-contents">
+              <div
+                aria-hidden="true"
+                className="fixed inset-0 z-50 bg-black/40"
+                onClick={() => setIsMobileOpen(false)}
+              />
+              <section
+                ref={mobileSheetRef}
+                id="mobile-table-of-contents"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="mobile-table-of-contents-title"
+                tabIndex={-1}
+                className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[65vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl focus:outline-none"
+                style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+              >
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <h2
+                    id="mobile-table-of-contents-title"
+                    className="font-semibold text-foreground"
                   >
-                    <path strokeLinecap="round" d="m6 6 12 12M18 6 6 18" />
-                  </svg>
-                </button>
-              </div>
-              <div className="overflow-y-auto p-2">
-                {headingsArr.map((heading) => {
-                  const isCurrent = currentHeading === heading.slug;
-                  return (
-                    <a
-                      key={heading.slug}
-                      href={`#${heading.slug}`}
-                      aria-current={isCurrent ? "location" : undefined}
-                      onClick={() => setIsMobileOpen(false)}
-                      style={{
-                        paddingLeft: `${1 + Math.max(heading.depth - 2, 0)}rem`,
-                      }}
-                      className={`flex min-h-11 items-center rounded-lg border-l-2 py-2.5 pr-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                        isCurrent
-                          ? "border-primary bg-primary/10 font-semibold text-primary"
-                          : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
+                    On this page
+                  </h2>
+                  <button
+                    type="button"
+                    aria-label="Close table of contents"
+                    onClick={() => setIsMobileOpen(false)}
+                    className="grid min-h-11 min-w-11 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-5 w-5"
+                      aria-hidden="true"
                     >
-                      {heading.text}
-                    </a>
-                  );
-                })}
-              </div>
-            </nav>
-          </>
-        )}
+                      <path strokeLinecap="round" d="m6 6 12 12M18 6 6 18" />
+                    </svg>
+                  </button>
+                </div>
+                <nav
+                  aria-label="Table of contents"
+                  className="overflow-y-auto p-2"
+                >
+                  {headingsArr.map((heading) => {
+                    const isCurrent = currentHeading === heading.slug;
+                    return (
+                      <a
+                        key={heading.slug}
+                        href={`#${heading.slug}`}
+                        aria-current={isCurrent ? "location" : undefined}
+                        onClick={() => setIsMobileOpen(false)}
+                        style={{
+                          paddingLeft: `${1 + Math.max(heading.depth - 2, 0)}rem`,
+                        }}
+                        className={`flex min-h-11 items-center rounded-lg border-l-2 py-2.5 pr-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                          isCurrent
+                            ? "border-primary bg-primary/10 font-semibold text-primary"
+                            : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        {heading.text}
+                      </a>
+                    );
+                  })}
+                </nav>
+              </section>
+            </div>,
+            document.body,
+          )}
       </div>
 
       <div

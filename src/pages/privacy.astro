@@ -1,0 +1,98 @@
+---
+import StarLayout from "@/layouts/StarLayout.astro";
+---
+
+<StarLayout
+  title="Privacy"
+  description="How mauroner.net handles analytics, browser-local tools, provider connections, and contact requests."
+>
+  <article class="prose prose-slate mx-auto max-w-3xl px-4 py-12 dark:prose-invert sm:px-6">
+    <h1>Privacy</h1>
+    <p><strong>Effective date:</strong> 14 July 2026</p>
+
+    <h2>Who operates this site</h2>
+    <p>
+      Maximilian Mauroner operates mauroner.net. Privacy questions and deletion
+      requests can be sent to <a href="mailto:home@relay.mauroner.net">home@relay.mauroner.net</a>.
+    </p>
+
+    <h2>Public-page analytics</h2>
+    <p>
+      Analytics is off unless you explicitly enable it below. When enabled, public
+      pages send page-view events to an EU-hosted PostHog project. Automatic click
+      capture and session recording are disabled, and the browser identity is held
+      in memory instead of a persistent analytics cookie or local-storage ID.
+      PostHog and its infrastructure can still process request metadata such as the
+      page URL, referrer, IP address, browser, and device information. Event
+      retention is controlled by the PostHog project; contact the address above to
+      ask for access or deletion.
+    </p>
+    <p>
+      Analytics is never loaded on admin pages or the Leaveify, Readwise Tags
+      Mapper, Spotify History, and WhatsApp Stats tools, regardless of this choice.
+    </p>
+
+    <div class="not-prose my-6 rounded-lg border border-border bg-muted/50 p-4">
+      <p id="analytics-status" class="mb-3 text-sm" role="status" aria-live="polite">
+        Checking your analytics preference…
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <button type="button" class="site-action" data-analytics-choice="granted">
+          Enable public-page analytics
+        </button>
+        <button type="button" class="site-action" data-analytics-choice="denied">
+          Disable analytics
+        </button>
+      </div>
+    </div>
+
+    <h2>Tools and uploaded files</h2>
+    <p>
+      WhatsApp Stats and Spotify History parse selected exports in your browser;
+      the site does not upload those archives for analysis. Readwise Tags Mapper
+      sends requests needed to communicate with Readwise. Leaveify sends the
+      selected library data to the music providers involved in the transfer. Those
+      providers apply their own privacy terms. Browser-local storage may retain
+      tool state until you clear it.
+    </p>
+
+    <h2>Hosting and ordinary server logs</h2>
+    <p>
+      The hosting and network providers necessarily process requests to deliver the
+      site and may keep operational or security logs. Do not send secrets through
+      the public contact or content pages.
+    </p>
+  </article>
+
+  <script>
+    const status = document.getElementById("analytics-status");
+    const updateStatus = () => {
+      if (!status) return;
+      const choice = localStorage.getItem("analytics-consent");
+      status.textContent =
+        choice === "granted"
+          ? "Public-page analytics is enabled."
+          : "Public-page analytics is disabled.";
+    };
+
+    document.addEventListener("click", (event) => {
+      if (!(event.target instanceof Element)) return;
+      const button = event.target.closest("[data-analytics-choice]");
+      if (!(button instanceof HTMLButtonElement)) return;
+      const choice = button.dataset.analyticsChoice;
+      if (choice !== "granted" && choice !== "denied") return;
+      localStorage.setItem("analytics-consent", choice);
+      updateStatus();
+      if (choice === "granted") window.location.reload();
+      else {
+        const analyticsWindow = window as Window & {
+          posthog?: { opt_out_capturing?: () => void };
+        };
+        analyticsWindow.posthog?.opt_out_capturing?.();
+      }
+    });
+
+    updateStatus();
+    document.addEventListener("astro:after-swap", updateStatus);
+  </script>
+</StarLayout>

@@ -1,30 +1,41 @@
 import type { APIRoute } from "astro";
 import { unlink } from "fs/promises";
 import { join } from "path";
+import { blockProductionAdminApi } from "@/utils/server/adminAccess";
 
 export const prerender = false;
 
-export const DELETE: APIRoute = async ({ request }) => {
+export const DELETE: APIRoute = async (context) => {
+  const blockedResponse = blockProductionAdminApi();
+  if (blockedResponse) return blockedResponse;
+
+  const { request } = context;
+
   try {
     const { type, id } = await request.json();
 
     if (!type || !id) {
-      return new Response(
-        JSON.stringify({ error: "Missing type or id" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing type or id" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const validTypes = ["blog", "log", "snack"];
     if (!validTypes.includes(type)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid content type" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid content type" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const baseDir = process.cwd();
-    const contentDir = join(baseDir, "src", "content", type === "snack" ? "snacks" : type);
+    const contentDir = join(
+      baseDir,
+      "src",
+      "content",
+      type === "snack" ? "snacks" : type,
+    );
 
     // Construct the full file path
     let filePath = "";
@@ -44,11 +55,11 @@ export const DELETE: APIRoute = async ({ request }) => {
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   } catch (error) {
     console.error("Error deleting content:", error);
-    
+
     // If file doesn't exist, that's okay - it's already deleted
     if (error instanceof Error && (error as any).code === "ENOENT") {
       return new Response(
@@ -56,7 +67,7 @@ export const DELETE: APIRoute = async ({ request }) => {
         {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -67,8 +78,7 @@ export const DELETE: APIRoute = async ({ request }) => {
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 };
-

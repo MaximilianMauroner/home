@@ -10,6 +10,7 @@ import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 
 import expressiveCode from "astro-expressive-code";
+import { unified } from "@astrojs/markdown-remark";
 import { remarkReadingTime } from "./plugins/remark-reading-time.mjs";
 import { remarkModifiedTime } from "./plugins/remark-modified-time.mjs";
 import { isInactiveToolUrl } from "./src/components/tools/toolCatalog.ts";
@@ -28,9 +29,7 @@ export default defineConfig({
     tailwind({ applyBaseStyles: false }),
     react(),
     expressiveCode(),
-    mdx({
-      remarkRehype: { footnoteLabel: "Footnotes" },
-    }),
+    mdx(),
     sitemap({
       filter: (page) => !page.includes("/admin") && !isInactiveToolUrl(page),
       serialize: (item) => {
@@ -65,7 +64,10 @@ export default defineConfig({
   ],
 
   markdown: {
-    remarkPlugins: [remarkReadingTime, remarkModifiedTime],
+    processor: unified({
+      remarkPlugins: [remarkReadingTime, remarkModifiedTime],
+      remarkRehype: { footnoteLabel: "Footnotes" },
+    }),
   },
   adapter: vercel(),
 });

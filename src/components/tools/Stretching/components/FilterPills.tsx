@@ -1,4 +1,7 @@
-import type { RoutineCategory, DifficultyLevel } from "@/components/tools/Stretching/types";
+import type {
+  RoutineCategory,
+  DifficultyLevel,
+} from "@/components/tools/Stretching/types";
 
 interface FilterPillsProps {
   selectedCategory: RoutineCategory | "all";
@@ -33,15 +36,21 @@ export function FilterPills({
   return (
     <div className="space-y-3">
       {/* Category Pills */}
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-label="Routine category"
+      >
         {categories.map((cat) => (
           <button
+            type="button"
             key={cat.value}
             onClick={() => onCategoryChange(cat.value)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            aria-pressed={selectedCategory === cat.value}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
               selectedCategory === cat.value
                 ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-muted text-foreground hover:bg-primary/10 border border-border"
+                : "border border-border bg-muted text-foreground hover:bg-primary/10"
             }`}
           >
             {cat.label}
@@ -50,15 +59,21 @@ export function FilterPills({
       </div>
 
       {/* Difficulty Pills */}
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-label="Difficulty level"
+      >
         {difficulties.map((diff) => (
           <button
+            type="button"
             key={diff.value}
             onClick={() => onDifficultyChange(diff.value)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            aria-pressed={selectedDifficulty === diff.value}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
               selectedDifficulty === diff.value
-                ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-sm"
-                : "bg-muted text-foreground hover:bg-emerald-500/10 border border-border"
+                ? "bg-emerald-600 text-white shadow-sm dark:bg-emerald-500"
+                : "border border-border bg-muted text-foreground hover:bg-emerald-500/10"
             }`}
           >
             {diff.label}

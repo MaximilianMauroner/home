@@ -1,5 +1,5 @@
 ---
-import DarkModeToggle from "./DarkModeToggle";
+import ThemeToggle from "./ThemeToggle.astro";
 import NavItem from "./NavItem.astro";
 import ImgAstronaut from "/public/astronaut.avif";
 import { Image } from "astro:assets";
@@ -83,7 +83,7 @@ const currentNavigation = navigation.filter((item) => item.current);
           </a>
         ))
       }
-      <DarkModeToggle client:idle />
+      <ThemeToggle />
     </div>
 
     <div class="mobile-actions">
@@ -151,7 +151,7 @@ const currentNavigation = navigation.filter((item) => item.current);
           </a>
         ))
       }
-      <DarkModeToggle client:idle />
+      <ThemeToggle />
     </div>
   </div>
 
@@ -224,6 +224,21 @@ const currentNavigation = navigation.filter((item) => item.current);
     document.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+
+      const themeToggle = target.closest("[data-theme-toggle]");
+      if (themeToggle instanceof HTMLButtonElement) {
+        const themeWindow = window as Window & {
+          setColorTheme?: (darkMode: boolean) => void;
+        };
+        const darkMode = !document.documentElement.classList.contains("dark");
+        if (themeWindow.setColorTheme) {
+          themeWindow.setColorTheme(darkMode);
+        } else {
+          document.documentElement.classList.toggle("dark", darkMode);
+          localStorage.setItem("theme", darkMode ? "dark" : "light");
+        }
+        return;
+      }
 
       const menuToggle = target.closest("#menu-toggle");
       if (!(menuToggle instanceof HTMLButtonElement)) return;
@@ -553,24 +568,34 @@ const currentNavigation = navigation.filter((item) => item.current);
       padding-block: 0.62rem;
     }
 
-    .brand-copy {
-      display: flex;
-    }
-
     .desktop-nav {
       display: flex;
     }
 
     .mobile-actions,
-    .mobile-utility-actions,
     .mobile-menu {
       display: none;
+    }
+
+    .mobile-utility-actions {
+      display: flex;
+      margin-inline: 0;
+    }
+  }
+
+  @media (min-width: 660px) {
+    .brand-copy {
+      display: flex;
     }
   }
 
   @media (min-width: 768px) {
     .header-actions {
       display: flex;
+    }
+
+    .mobile-utility-actions {
+      display: none;
     }
   }
 

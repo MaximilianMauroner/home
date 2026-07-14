@@ -1,5 +1,6 @@
 ---
 import FontmatterTagsList from "@/components/content/FontmatterTagsList.astro";
+import ArticleJsonLd from "@/components/content/ArticleJsonLd.astro";
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
 import ReadingProgress from "@/components/content/ReadingProgress";
 import RelatedPosts from "@/components/content/RelatedPosts.astro";
@@ -96,6 +97,17 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
   articleModifiedTime={articleModifiedTime}
   articleAuthor="Maximilian Mauroner"
 >
+  <Fragment slot="head">
+    <ArticleJsonLd
+      title={frontmatter.title}
+      description={frontmatter.description}
+      tags={frontmatter.tags ?? []}
+      publishedAt={new Date(frontmatter.releaseDate).toISOString()}
+      modifiedAt={articleModifiedTime}
+      sectionName="Snacks"
+      sectionPath="/snacks/"
+    />
+  </Fragment>
   <ReadingProgress client:load />
   <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
     {/* Snack-style Header - like a note card */}

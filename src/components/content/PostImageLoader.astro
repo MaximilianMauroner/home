@@ -6,9 +6,10 @@ interface Props {
   imagePath: string;
   altText: string;
   className?: string;
+  loading?: "eager" | "lazy";
 }
 
-const { imagePath, altText, className } = Astro.props;
+const { imagePath, altText, className, loading = "eager" } = Astro.props;
 const images = import.meta.glob<{ default: ImageMetadata }>(
   "/src/assets/**/*.{jpeg,jpg,png,gif,webp,avif}"
 );
@@ -22,5 +23,5 @@ if (!images[imagePath])
   src={images[imagePath]()}
   alt={altText}
   class={className ?? ""}
-  loading={"eager"}
+  loading={loading}
 />

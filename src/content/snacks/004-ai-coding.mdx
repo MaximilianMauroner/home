@@ -13,31 +13,31 @@ published: true
 releaseDate: 2026-01-17
 ---
 
-**“move fast and break things”** - is basically the new normal for developers at least - but the funny part is that **fixing most of this is not complicated**. it's literally just **doing a code review** - which a lot of companies (especially smaller ones) are still **not doing consistently** anyway.
+**“Move fast and break things”** is basically the new normal for developers, but the funny part is that **fixing most of this is not complicated**. It's literally just **doing a code review**, which a lot of companies (especially smaller ones) are still **not doing consistently** anyway.
 
-and this is not some “in theory” thing either - we literally watched a **bad update** take out a massive chunk of windows machines worldwide (CrowdStrike, July 2024). not even a “someone hacked them” story - just **shipping something with too much blast radius** and not enough guardrails.
+And this is not some “in theory” thing either: we literally watched a **bad update** take out a massive chunk of Windows machines worldwide (CrowdStrike, July 2024). Not even a “someone hacked them” story, just **shipping something with too much blast radius** and not enough guardrails.
 
-i think **AI-coding (like it or not) is going to be the future**, but **reviewing the code** will be what really makes developers valuable again. that - and, surprisingly enough, **managing the agents that will be writing the code**.
+I think **AI coding (like it or not) is going to be the future**, but **reviewing the code** will be what really makes developers valuable again. That, and surprisingly enough, **managing the agents that will be writing the code**.
 
-because if you can **manage the agents well**, you can get a lot done with very little effort - (if you ignore the part where you then need to **review the code they write**) - but if you **can't manage them well**, you will get very little done without shooting yourself in the foot.
+Because if you can **manage the agents well**, you can get a lot done with very little effort (if you ignore the part where you then need to **review the code they write**). But if you **can't manage them well**, you will get very little done without shooting yourself in the foot.
 
-also companies which **don't do code reviews** will have a hard time adapting to this new way of coding, because they already have a hard time doing what's right when there is not a lot of code being written - what makes you think they will have any idea how to manage the agents properly?
+Also, companies that **don't do code reviews** will have a hard time adapting to this new way of coding. They already have a hard time doing what's right when there is not a lot of code being written, so what makes you think they will have any idea how to manage the agents properly?
 They will just create bugs and won't have the instincts to catch the _weird_ failures.
 
-and the scary part is that a lot of the worst incidents were not even “we had a bug in our app” - they were “we trusted the thing that builds/runs/updates our app”.
+And the scary part is that a lot of the worst incidents were not even “we had a bug in our app”; they were “we trusted the thing that builds, runs, or updates our app”.
 
-like:
+For example:
 
 - **SolarWinds (2020)** - attackers pushed a malicious update through a trusted vendor channel.
-- **XZ utils (2024)** - a backdoor attempt landed in a critical dependency path (and thankfully got caught).
+- **XZ Utils (2024)** - a backdoor attempt landed in a critical dependency path (and thankfully got caught).
 - **Log4Shell (2021)** - one dependency bug turned into a global incident response marathon.
 - **MOVEit (2023)** - one widely used product got exploited at scale and suddenly everyone is doing the same fire drill.
 - **NotPetya (2017)** - spread via a compromised update mechanism and caused massive collateral damage.
 - **WannaCry (2017)** - patching discipline decided who had a normal week and who got wrecked.
 - **Equifax (2017)** - the “basic hygiene miss” that keeps showing up in every security talk.
 
-so yeah - my bet is that the future of coding is going to be **a lot more about managing agents and reviewing code**, than actually typing out every line yourself.
+So yeah, my bet is that the future of coding is going to be **a lot more about managing agents and reviewing code** than actually typing out every line yourself.
 
 ---
 
-Also i just published an extensions to help you keep up if claude code is done with the work and needs your attentions: [Claude Code Notifier](https://chromewebstore.google.com/detail/miilhdemgekhbjjdfjdkfoooifgpmgde?utm_source=item-share-cb)
+I also published an extension that lets you know when Claude Code has finished its work and needs your attention: [Claude Code Notifier](https://chromewebstore.google.com/detail/miilhdemgekhbjjdfjdkfoooifgpmgde?utm_source=item-share-cb).

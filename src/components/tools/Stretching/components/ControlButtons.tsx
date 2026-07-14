@@ -41,7 +41,9 @@ export function ControlButtons({
       <div className="grid grid-cols-5 gap-2 sm:gap-3">
         {/* Previous button */}
         <button
+          type="button"
           onClick={onPrevious}
+          aria-label="Previous stretch"
           disabled={currentIndex === 0 && currentRepetition === 1}
           className="col-span-1 flex items-center justify-center py-3 sm:py-4 min-h-[56px] bg-muted text-foreground rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10  transition-colors font-medium touch-manipulation"
         >
@@ -53,6 +55,7 @@ export function ControlButtons({
         {/* Main action button */}
         {!isRunning ? (
           <button
+            type="button"
             onClick={onStart}
             className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
           >
@@ -64,6 +67,7 @@ export function ControlButtons({
           </button>
         ) : isPaused ? (
           <button
+            type="button"
             onClick={onResume}
             className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
           >
@@ -75,6 +79,7 @@ export function ControlButtons({
           </button>
         ) : (
           <button
+            type="button"
             onClick={onPause}
             className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-600  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
           >
@@ -87,7 +92,15 @@ export function ControlButtons({
 
         {/* Next button */}
         <button
+          type="button"
           onClick={onNext}
+          aria-label={
+            isResting
+              ? "Skip rest"
+              : isLastStretch && isLastRep
+                ? "Finish routine"
+                : "Next stretch"
+          }
           className="col-span-1 flex items-center justify-center py-3 sm:py-4 min-h-[56px] bg-muted text-foreground rounded-xl hover:bg-primary/10  transition-colors font-medium touch-manipulation"
         >
           {isResting ? (
@@ -106,6 +119,7 @@ export function ControlButtons({
 
       {/* Reset button */}
       <button
+        type="button"
         onClick={onReset}
         className="w-full py-2.5 min-h-[44px] text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted active:bg-primary/10 transition-colors font-medium text-sm touch-manipulation"
       >

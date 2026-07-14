@@ -2,10 +2,16 @@ import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
 import { readFile } from "fs/promises";
 import { join } from "path";
+import { blockProductionAdminApi } from "@/utils/server/adminAccess";
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async (context) => {
+  const blockedResponse = blockProductionAdminApi();
+  if (blockedResponse) return blockedResponse;
+
+  const { url } = context;
+
   try {
     const type = url.searchParams.get("type");
     const id = url.searchParams.get("id");
@@ -13,16 +19,16 @@ export const GET: APIRoute = async ({ url }) => {
     if (!type || !id) {
       return new Response(
         JSON.stringify({ error: "Missing type or id parameter" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
     const validTypes = ["blog", "log", "snack"];
     if (!validTypes.includes(type)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid content type" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid content type" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // Get the entry from Astro's content collection
@@ -37,16 +43,16 @@ export const GET: APIRoute = async ({ url }) => {
     const entry = collection.find((e) => e.id === id);
 
     if (!entry) {
-      return new Response(
-        JSON.stringify({ error: "Post not found" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Post not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // Read the raw file to get the content
     const baseDir = process.cwd();
     let filePath = "";
-    
+
     if (type === "log") {
       // Log files: src/content/log/YYYY/MM.mdx
       filePath = join(baseDir, "src", "content", "log", `${id}.mdx`);
@@ -59,7 +65,7 @@ export const GET: APIRoute = async ({ url }) => {
     }
 
     const fileContent = await readFile(filePath, "utf-8");
-    
+
     // Simple frontmatter parser (looks for --- delimiters)
     const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
     const match = fileContent.match(frontmatterRegex);
@@ -104,7 +110,7 @@ export const GET: APIRoute = async ({ url }) => {
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   } catch (error) {
     console.error("Error getting content:", error);
@@ -115,8 +121,7 @@ export const GET: APIRoute = async ({ url }) => {
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 };
-

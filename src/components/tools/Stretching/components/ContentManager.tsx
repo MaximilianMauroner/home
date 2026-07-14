@@ -1,5 +1,8 @@
 import { useState } from "react";
-import type { Stretch, StretchRoutine } from "@/components/tools/Stretching/types";
+import type {
+  Stretch,
+  StretchRoutine,
+} from "@/components/tools/Stretching/types";
 import { formatTime } from "@/components/tools/Stretching/utils";
 import { StretchForm } from "./StretchForm";
 import { RoutineForm } from "./RoutineForm";
@@ -9,13 +12,13 @@ interface ContentManagerProps {
   customRoutines: StretchRoutine[];
   selectedRoutineId: string;
   currentStretches: Stretch[];
-  
+
   // Stretch operations
   onAddStretch: (stretch: Omit<Stretch, "id">) => void;
   onUpdateStretch: (id: string, stretch: Omit<Stretch, "id">) => void;
   onDeleteStretch: (id: string) => void;
   onMoveStretch: (fromIndex: number, toIndex: number) => void;
-  
+
   // Routine operations
   onSelectRoutine: (id: string) => void;
   onLoadRoutineStretches: (routine: StretchRoutine) => void;
@@ -23,7 +26,7 @@ interface ContentManagerProps {
   onUpdateRoutine: (id: string, routine: Omit<StretchRoutine, "id">) => void;
   onDeleteRoutine: (id: string) => void;
   onResetToDefault: (routineId: string) => void;
-  
+
   onClose: () => void;
 }
 
@@ -52,7 +55,9 @@ export function ContentManager({
   const [stretchMode, setStretchMode] = useState<StretchMode>("list");
   const [routineMode, setRoutineMode] = useState<RoutineMode>("list");
   const [editingStretchId, setEditingStretchId] = useState<string | null>(null);
-  const [editingRoutine, setEditingRoutine] = useState<StretchRoutine | null>(null);
+  const [editingRoutine, setEditingRoutine] = useState<StretchRoutine | null>(
+    null,
+  );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   // Stretch handlers
@@ -167,19 +172,26 @@ export function ContentManager({
     onClose();
   };
 
-  const editingStretch = editingStretchId ? (currentStretches.find((s) => s.id === editingStretchId) ?? null) : null;
+  const editingStretch = editingStretchId
+    ? (currentStretches.find((s) => s.id === editingStretchId) ?? null)
+    : null;
 
   // Stretch form view
-  if (activeTab === "stretches" && (stretchMode === "create" || stretchMode === "edit")) {
+  if (
+    activeTab === "stretches" &&
+    (stretchMode === "create" || stretchMode === "edit")
+  ) {
     return (
-      <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg sm:text-xl font-bold">
+      <div className="rounded-lg border border-border/50 bg-card p-4 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-bold sm:text-xl">
             {editingStretch ? "Edit Stretch" : "Create New Stretch"}
           </h3>
           <button
             onClick={handleStretchCancel}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            type="button"
+            aria-label="Close stretch form"
+            className="text-muted-foreground transition-colors hover:text-foreground"
           >
             ✕
           </button>
@@ -194,9 +206,12 @@ export function ContentManager({
   }
 
   // Routine form view
-  if (activeTab === "routines" && (routineMode === "create" || routineMode === "edit")) {
+  if (
+    activeTab === "routines" &&
+    (routineMode === "create" || routineMode === "edit")
+  ) {
     return (
-      <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
+      <div className="rounded-lg border border-border/50 bg-card p-4 shadow-sm sm:p-6">
         <RoutineForm
           routine={editingRoutine}
           stretches={currentStretches}
@@ -209,12 +224,14 @@ export function ContentManager({
 
   // Main view
   return (
-    <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg sm:text-xl font-bold">Content Manager</h3>
+    <div className="rounded-lg border border-border/50 bg-card p-4 shadow-sm sm:p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg font-bold sm:text-xl">Content Manager</h3>
         <button
           onClick={handleClose}
-          className="text-muted-foreground hover:text-foreground transition-colors"
+          type="button"
+          aria-label="Close content manager"
+          className="text-muted-foreground transition-colors hover:text-foreground"
           title="Close"
         >
           ✕
@@ -222,10 +239,17 @@ export function ContentManager({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-border/50">
+      <div
+        className="mb-6 flex gap-2 border-b border-border/50"
+        role="tablist"
+        aria-label="Content type"
+      >
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "stretches"}
           onClick={() => setActiveTab("stretches")}
-          className={`px-4 py-2 font-medium text-sm transition-colors ${
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "stretches"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
@@ -234,8 +258,11 @@ export function ContentManager({
           Stretches ({currentStretches.length})
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "routines"}
           onClick={() => setActiveTab("routines")}
-          className={`px-4 py-2 font-medium text-sm transition-colors ${
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "routines"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
@@ -254,19 +281,19 @@ export function ContentManager({
             </p>
             <button
               onClick={handleCreateStretch}
-              className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors font-medium text-sm"
+              className="rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
             >
               + Add Stretch
             </button>
           </div>
 
           {currentStretches.length === 0 ? (
-            <div className="text-center text-muted-foreground py-12 bg-muted/30 rounded-xl">
-              <div className="text-4xl mb-2">🧘</div>
-              <p className="text-sm mb-3">No stretches yet.</p>
+            <div className="rounded-xl bg-muted/30 py-12 text-center text-muted-foreground">
+              <div className="mb-2 text-4xl">🧘</div>
+              <p className="mb-3 text-sm">No stretches yet.</p>
               <button
                 onClick={handleCreateStretch}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Add Your First Stretch
               </button>
@@ -281,42 +308,48 @@ export function ContentManager({
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, index)}
                   onDragEnd={handleDragEnd}
-                  className={`bg-card rounded-xl p-4 border border-border/50 shadow-sm hover:shadow-sm transition-colors cursor-move ${
+                  className={`cursor-move rounded-xl border border-border/50 bg-card p-4 shadow-sm transition-colors hover:shadow-sm ${
                     draggedIndex === index ? "opacity-50" : ""
                   }`}
                 >
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1.5 flex items-center gap-2">
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                           #{index + 1}
                         </span>
-                        <div className="font-semibold text-base sm:text-lg">{stretch.name}</div>
+                        <div className="text-base font-semibold sm:text-lg">
+                          {stretch.name}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                      <div className="mt-1 text-sm leading-relaxed text-muted-foreground">
                         {stretch.description}
                       </div>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-md bg-muted/50 px-2 py-1 text-xs font-medium text-muted-foreground">
                           ⏱️ {formatTime(stretch.duration)}
                         </span>
                         {(stretch.repetitions || 1) > 1 && (
-                          <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-                            🔁 {stretch.repetitions || 1}x ({formatTime(stretch.duration * (stretch.repetitions || 1))} total)
+                          <span className="rounded-md bg-muted/50 px-2 py-1 text-xs font-medium text-muted-foreground">
+                            🔁 {stretch.repetitions || 1}x (
+                            {formatTime(
+                              stretch.duration * (stretch.repetitions || 1),
+                            )}{" "}
+                            total)
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
+                    <div className="flex w-full gap-2 sm:w-auto">
                       <button
                         onClick={() => handleEditStretch(stretch.id)}
-                        className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] bg-secondary/80 text-secondary-foreground rounded-xl text-sm hover:bg-secondary active:bg-secondary/70 transition-colors touch-manipulation font-medium"
+                        className="min-h-[44px] flex-1 touch-manipulation rounded-xl bg-secondary/80 px-4 py-2.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary active:bg-secondary/70 sm:flex-none"
                       >
                         ✏️ Edit
                       </button>
                       <button
                         onClick={() => handleDeleteStretch(stretch.id)}
-                        className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] bg-destructive/10 text-destructive rounded-xl text-sm hover:bg-destructive/20 active:bg-destructive/30 transition-colors touch-manipulation font-medium border border-destructive/20"
+                        className="min-h-[44px] flex-1 touch-manipulation rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20 active:bg-destructive/30 sm:flex-none"
                       >
                         🗑️ Delete
                       </button>
@@ -330,11 +363,15 @@ export function ContentManager({
           <div className="border-t border-border/50 pt-4">
             <button
               onClick={() => {
-                if (confirm("Reset to default stretches? This will replace all current stretches.")) {
+                if (
+                  confirm(
+                    "Reset to default stretches? This will replace all current stretches.",
+                  )
+                ) {
                   onResetToDefault(selectedRoutineId);
                 }
               }}
-              className="w-full px-4 py-2.5 bg-secondary/80 text-secondary-foreground rounded-xl hover:bg-secondary active:bg-secondary/70 transition-colors font-medium text-sm"
+              className="w-full rounded-xl bg-secondary/80 px-4 py-2.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary active:bg-secondary/70"
             >
               ↻ Reset to Default Stretches
             </button>
@@ -347,11 +384,12 @@ export function ContentManager({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Manage your routines. Create new ones from current stretches or edit existing custom routines.
+              Manage your routines. Create new ones from current stretches or
+              edit existing custom routines.
             </p>
             <button
               onClick={handleCreateRoutine}
-              className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors font-medium text-sm"
+              className="rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
             >
               + Create Routine
             </button>
@@ -359,92 +397,108 @@ export function ContentManager({
 
           <div className="space-y-4">
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Default Routines
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
                 {defaultRoutines.map((routine) => (
-                  <div
+                  <button
+                    type="button"
                     key={routine.id}
-                    className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors cursor-pointer ${
+                    aria-pressed={selectedRoutineId === routine.id}
+                    className={`cursor-pointer rounded-xl border-2 p-3 text-left transition-colors sm:p-4 ${
                       selectedRoutineId === routine.id
                         ? "border-primary bg-primary/10 shadow-md"
                         : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"
                     }`}
                     onClick={() => onSelectRoutine(routine.id)}
                   >
-                    <div className="font-semibold text-sm sm:text-base mb-1">{routine.name}</div>
-                    <div className="text-xs text-muted-foreground mb-2">{routine.goal}</div>
+                    <div className="mb-1 text-sm font-semibold sm:text-base">
+                      {routine.name}
+                    </div>
+                    <div className="mb-2 text-xs text-muted-foreground">
+                      {routine.goal}
+                    </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>⏱️ {formatTime(routine.totalDuration)}</span>
                       <span>•</span>
                       <span>{routine.stretches.length} stretches</span>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Custom Routines
               </h4>
               {customRoutines.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8 bg-muted/30 rounded-xl">
-                  <div className="text-3xl mb-2">📝</div>
-                  <p className="text-sm mb-3">No custom routines yet.</p>
+                <div className="rounded-xl bg-muted/30 py-8 text-center text-muted-foreground">
+                  <div className="mb-2 text-3xl">📝</div>
+                  <p className="mb-3 text-sm">No custom routines yet.</p>
                   <button
                     onClick={handleCreateRoutine}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     Create Your First Routine
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
                   {customRoutines.map((routine) => (
                     <div
                       key={routine.id}
-                      className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors relative group ${
+                      className={`group relative rounded-xl border-2 p-3 text-left transition-colors sm:p-4 ${
                         selectedRoutineId === routine.id
                           ? "border-primary bg-primary/10 shadow-md"
                           : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"
                       }`}
                     >
-                      <div
+                      <button
+                        type="button"
                         onClick={() => onSelectRoutine(routine.id)}
-                        className="cursor-pointer"
+                        aria-pressed={selectedRoutineId === routine.id}
+                        className="w-full cursor-pointer text-left"
                       >
-                        <div className="flex items-start justify-between mb-1">
-                          <div className="font-semibold text-sm sm:text-base pr-8">{routine.name}</div>
-                          <span className="text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                        <div className="mb-1 flex items-start justify-between">
+                          <div className="pr-8 text-sm font-semibold sm:text-base">
+                            {routine.name}
+                          </div>
+                          <span className="rounded bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
                             Custom
                           </span>
                         </div>
-                        <div className="text-xs text-muted-foreground mb-2">{routine.goal}</div>
+                        <div className="mb-2 text-xs text-muted-foreground">
+                          {routine.goal}
+                        </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>⏱️ {formatTime(routine.totalDuration)}</span>
                           <span>•</span>
                           <span>{routine.stretches.length} stretches</span>
                         </div>
-                      </div>
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      </button>
+                      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
                         <button
+                          type="button"
+                          aria-label={`Edit ${routine.name}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEditRoutine(routine);
                           }}
-                          className="p-1.5 bg-secondary/80 text-secondary-foreground rounded-lg hover:bg-secondary transition-colors"
+                          className="rounded-lg bg-secondary/80 p-1.5 text-secondary-foreground transition-colors hover:bg-secondary"
                           title="Edit routine"
                         >
                           ✏️
                         </button>
                         <button
+                          type="button"
+                          aria-label={`Delete ${routine.name}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteRoutine(routine.id);
                           }}
-                          className="p-1.5 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
+                          className="rounded-lg bg-destructive/10 p-1.5 text-destructive transition-colors hover:bg-destructive/20"
                           title="Delete routine"
                         >
                           🗑️
@@ -461,4 +515,3 @@ export function ContentManager({
     </div>
   );
 }
-

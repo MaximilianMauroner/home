@@ -1,5 +1,8 @@
 import { useState } from "react";
-import type { Stretch, StretchRoutine } from "@/components/tools/Stretching/types";
+import type {
+  Stretch,
+  StretchRoutine,
+} from "@/components/tools/Stretching/types";
 import { formatTime } from "@/components/tools/Stretching/utils";
 import { RoutineForm } from "./RoutineForm";
 
@@ -29,7 +32,9 @@ export function RoutineManager({
   onClose,
 }: RoutineManagerProps) {
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
-  const [editingRoutine, setEditingRoutine] = useState<StretchRoutine | null>(null);
+  const [editingRoutine, setEditingRoutine] = useState<StretchRoutine | null>(
+    null,
+  );
 
   const handleCreate = () => {
     setMode("create");
@@ -87,7 +92,7 @@ export function RoutineManager({
 
   if (mode === "create" || mode === "edit") {
     return (
-      <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
+      <div className="rounded-lg border border-border/50 bg-card p-4 shadow-sm sm:p-6">
         <RoutineForm
           routine={editingRoutine}
           stretches={currentStretches}
@@ -99,19 +104,22 @@ export function RoutineManager({
   }
 
   return (
-    <div className="bg-card rounded-lg p-4 sm:p-6 shadow-sm border border-border/50">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg sm:text-xl font-bold">Manage Routines</h3>
+    <div className="rounded-lg border border-border/50 bg-card p-4 shadow-sm sm:p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg font-bold sm:text-xl">Manage Routines</h3>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={handleCreate}
-            className="text-xs sm:text-sm px-3 py-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors font-medium"
+            className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20 sm:text-sm"
           >
             + Create New
           </button>
           <button
+            type="button"
             onClick={handleClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1"
+            aria-label="Close routine manager"
+            className="p-1 text-muted-foreground transition-colors hover:text-foreground"
             title="Close"
           >
             ✕
@@ -121,86 +129,104 @@ export function RoutineManager({
 
       <div className="space-y-3">
         <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Default Routines
           </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
             {defaultRoutines.map((routine) => (
-              <div
+              <button
+                type="button"
                 key={routine.id}
-                className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors ${
+                aria-pressed={selectedRoutineId === routine.id}
+                className={`rounded-xl border-2 p-3 text-left transition-colors sm:p-4 ${
                   selectedRoutineId === routine.id
                     ? "border-primary bg-primary/10 shadow-md"
-                    : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card cursor-pointer"
+                    : "cursor-pointer border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"
                 }`}
                 onClick={() => onSelectRoutine(routine.id)}
               >
-                <div className="font-semibold text-sm sm:text-base mb-1">{routine.name}</div>
-                <div className="text-xs text-muted-foreground mb-2">{routine.goal}</div>
+                <div className="mb-1 text-sm font-semibold sm:text-base">
+                  {routine.name}
+                </div>
+                <div className="mb-2 text-xs text-muted-foreground">
+                  {routine.goal}
+                </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>⏱️ {formatTime(routine.totalDuration)}</span>
                   <span>•</span>
                   <span>{routine.stretches.length} stretches</span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
 
         <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Custom Routines
           </h4>
           {customRoutines.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8 bg-muted/30 rounded-xl">
-              <div className="text-3xl mb-2">📝</div>
-              <p className="text-sm">No custom routines yet. Create one to get started!</p>
+            <div className="rounded-xl bg-muted/30 py-8 text-center text-muted-foreground">
+              <div className="mb-2 text-3xl">📝</div>
+              <p className="text-sm">
+                No custom routines yet. Create one to get started!
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
               {customRoutines.map((routine) => (
                 <div
                   key={routine.id}
-                  className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors relative group ${
+                  className={`group relative rounded-xl border-2 p-3 text-left transition-colors sm:p-4 ${
                     selectedRoutineId === routine.id
                       ? "border-primary bg-primary/10 shadow-md"
                       : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"
                   }`}
                 >
-                  <div
+                  <button
+                    type="button"
                     onClick={() => onSelectRoutine(routine.id)}
-                    className="cursor-pointer"
+                    aria-pressed={selectedRoutineId === routine.id}
+                    className="w-full cursor-pointer text-left"
                   >
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="font-semibold text-sm sm:text-base pr-8">{routine.name}</div>
-                      <span className="text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                    <div className="mb-1 flex items-start justify-between">
+                      <div className="pr-8 text-sm font-semibold sm:text-base">
+                        {routine.name}
+                      </div>
+                      <span className="rounded bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
                         Custom
                       </span>
                     </div>
-                    <div className="text-xs text-muted-foreground mb-2">{routine.goal}</div>
+                    <div className="mb-2 text-xs text-muted-foreground">
+                      {routine.goal}
+                    </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>⏱️ {formatTime(routine.totalDuration)}</span>
                       <span>•</span>
                       <span>{routine.stretches.length} stretches</span>
                     </div>
-                  </div>
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                  </button>
+                  <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
                     <button
+                      type="button"
+                      aria-label={`Edit ${routine.name}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleEdit(routine);
                       }}
-                      className="p-1.5 bg-secondary/80 text-secondary-foreground rounded-lg hover:bg-secondary transition-colors"
+                      className="rounded-lg bg-secondary/80 p-1.5 text-secondary-foreground transition-colors hover:bg-secondary"
                       title="Edit routine"
                     >
                       ✏️
                     </button>
                     <button
+                      type="button"
+                      aria-label={`Delete ${routine.name}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(routine.id);
                       }}
-                      className="p-1.5 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
+                      className="rounded-lg bg-destructive/10 p-1.5 text-destructive transition-colors hover:bg-destructive/20"
                       title="Delete routine"
                     >
                       🗑️
@@ -215,4 +241,3 @@ export function RoutineManager({
     </div>
   );
 }
-

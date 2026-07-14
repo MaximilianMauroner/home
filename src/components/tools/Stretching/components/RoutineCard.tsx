@@ -10,28 +10,39 @@ interface RoutineCardProps {
   onDelete: () => void;
 }
 
-export function RoutineCard({ routine, isSelected, isCustom, onSelect, onEdit, onDelete }: RoutineCardProps) {
+export function RoutineCard({
+  routine,
+  isSelected,
+  isCustom,
+  onSelect,
+  onEdit,
+  onDelete,
+}: RoutineCardProps) {
   return (
     <div
-      className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-colors relative group ${
+      className={`group relative rounded-xl border-2 p-3 text-left transition-colors sm:p-4 ${
         isSelected
           ? "border-primary bg-primary/10 shadow-md"
           : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"
       }`}
     >
       <button
+        type="button"
         onClick={onSelect}
+        aria-pressed={isSelected}
         className="w-full text-left"
       >
-        <div className="flex items-start justify-between mb-1">
-          <div className="font-semibold text-sm sm:text-base pr-8">{routine.name}</div>
+        <div className="mb-1 flex items-start justify-between">
+          <div className="pr-8 text-sm font-semibold sm:text-base">
+            {routine.name}
+          </div>
           {isCustom && (
-            <span className="text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+            <span className="rounded bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
               Custom
             </span>
           )}
         </div>
-        <div className="text-xs text-muted-foreground mb-2">{routine.goal}</div>
+        <div className="mb-2 text-xs text-muted-foreground">{routine.goal}</div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>⏱️ {formatTime(routine.totalDuration)}</span>
           <span>•</span>
@@ -39,23 +50,27 @@ export function RoutineCard({ routine, isSelected, isCustom, onSelect, onEdit, o
         </div>
       </button>
       {isCustom && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
           <button
+            type="button"
+            aria-label={`Edit ${routine.name}`}
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
             }}
-            className="p-1.5 bg-secondary/80 text-secondary-foreground rounded-lg hover:bg-secondary transition-colors"
+            className="rounded-lg bg-secondary/80 p-1.5 text-secondary-foreground transition-colors hover:bg-secondary"
             title="Edit routine"
           >
             ✏️
           </button>
           <button
+            type="button"
+            aria-label={`Delete ${routine.name}`}
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
             }}
-            className="p-1.5 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
+            className="rounded-lg bg-destructive/10 p-1.5 text-destructive transition-colors hover:bg-destructive/20"
             title="Delete routine"
           >
             🗑️
@@ -65,4 +80,3 @@ export function RoutineCard({ routine, isSelected, isCustom, onSelect, onEdit, o
     </div>
   );
 }
-

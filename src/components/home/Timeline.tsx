@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BlogType, LogType, SnackType } from "@/utils/server/content";
+import type { PreviewEntry } from "@/components/content/previewTypes";
 import BlogPreview from "@/components/content/BlogPreview";
 import LogPreview from "@/components/content/LogPreview";
 import SnackPreview from "@/components/content/SnackPreview";
 import { Pattern } from "@/components/layout/Pattern";
 
 interface TimelineProps {
-  blogs: BlogType[];
-  logs: LogType[];
-  snacks: SnackType[];
+  blogs: PreviewEntry[];
+  logs: PreviewEntry[];
+  snacks: PreviewEntry[];
   expanded: boolean;
   onExpand: () => void;
 }
 
 type TimelineItem = {
   type: "blog" | "log" | "snack";
-  item: BlogType | LogType | SnackType;
+  item: PreviewEntry;
   date: Date;
 };
 
@@ -114,20 +114,20 @@ const TimelineEntry = ({
 
   const renderPreview = () => {
     if (timelineItem.type === "blog") {
-      return <BlogPreview blog={timelineItem.item as BlogType} />;
+      return <BlogPreview blog={timelineItem.item} />;
     }
 
     if (timelineItem.type === "log") {
-      return <LogPreview log={timelineItem.item as LogType} />;
+      return <LogPreview log={timelineItem.item} />;
     }
 
     return (
       <SnackPreview
-        snack={timelineItem.item as SnackType}
+        snack={timelineItem.item}
         image={
           <div className="absolute inset-0 overflow-hidden opacity-[0.06]">
             <Pattern
-              seed={(timelineItem.item as SnackType).data.title}
+              seed={timelineItem.item.data.title}
               colorClass={dynamicColor(index)}
               opacity="0.12"
               gridSize={6 + (index % 3) * 1.5}
@@ -228,17 +228,17 @@ export default function Timeline({
         ...blogs.map((blog) => ({
           type: "blog" as const,
           item: blog,
-          date: blog.data.releaseDate,
+          date: new Date(blog.data.releaseDate),
         })),
         ...logs.map((log) => ({
           type: "log" as const,
           item: log,
-          date: log.data.releaseDate,
+          date: new Date(log.data.releaseDate),
         })),
         ...snacks.map((snack) => ({
           type: "snack" as const,
           item: snack,
-          date: snack.data.releaseDate,
+          date: new Date(snack.data.releaseDate),
         })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [blogs, logs, snacks],

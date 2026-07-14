@@ -1,6 +1,7 @@
 ---
 import "@/components/tools/toolStyles.css";
 import StarLayout from "@/layouts/StarLayout.astro";
+import { serializeJsonLd } from "@/utils/server/seo";
 import {
   requireToolMetadata,
   isToolActive,
@@ -79,9 +80,10 @@ const categories = Array.from(new Set(toolPages.map((tool) => tool.category)));
   description="A collection of useful tools and utilities I've built"
 >
   <script
+    slot="head"
     is:inline
     type="application/ld+json"
-    set:html={JSON.stringify(breadcrumbSchema)}
+    set:html={serializeJsonLd(breadcrumbSchema)}
   />
   <section class="tools-shell">
     <div class="tool-page-header">

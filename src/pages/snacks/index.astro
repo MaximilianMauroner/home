@@ -2,6 +2,7 @@
 import SnackPreview from "@/components/content/SnackPreview";
 import { Pattern } from "@/components/layout/Pattern";
 import StarLayout from "@/layouts/StarLayout.astro";
+import { serializeJsonLd } from "@/utils/server/seo";
 import { getSnacks } from "@/utils/server/content";
 
 const snacks = await getSnacks();
@@ -48,9 +49,10 @@ const dynamicColor = (index: number) => {
   description="Quick bits of info and interesting things I found"
 >
   <script
+    slot="head"
     is:inline
     type="application/ld+json"
-    set:html={JSON.stringify(breadcrumbSchema)}
+    set:html={serializeJsonLd(breadcrumbSchema)}
   />
   <section class="relative">
     <div class="mx-auto max-w-screen-xl px-4 py-8 lg:px-6 lg:py-16">
@@ -83,7 +85,7 @@ const dynamicColor = (index: number) => {
                     animation: floatIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}ms both;
                   `}
               >
-                <SnackPreview snack={snack} client:idle>
+                <SnackPreview snack={snack}>
                   <div
                     slot="image"
                     class="absolute inset-0 overflow-hidden opacity-[0.06]"

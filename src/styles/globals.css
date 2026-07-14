@@ -105,7 +105,7 @@
   }
 
   .site-page-description {
-    @apply font-light text-gray-500 sm:text-xl;
+    @apply font-light text-gray-600 sm:text-xl dark:text-gray-300;
   }
 
   .site-chip {

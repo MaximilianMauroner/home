@@ -1,20 +1,26 @@
 import type { APIRoute } from "astro";
 import { writeFile, mkdir, readdir } from "fs/promises";
 import { join } from "path";
+import { blockProductionAdminApi } from "@/utils/server/adminAccess";
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async (context) => {
+  const blockedResponse = blockProductionAdminApi();
+  if (blockedResponse) return blockedResponse;
+
+  const { request } = context;
+
   try {
     const formData = await request.formData();
     const files = formData.getAll("files") as File[];
     const contentType = formData.get("contentType") as string;
 
     if (!files || files.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No files provided" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "No files provided" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const baseDir = process.cwd();
@@ -35,9 +41,10 @@ export const POST: APIRoute = async ({ request }) => {
         // Directory doesn't exist yet, will be created
       }
       // Find next number (simple approach - in production you might want something more sophisticated)
-      const nextNum = blogDirs.length > 0 
-        ? Math.max(...blogDirs.map((d) => parseInt(d) || 0)) + 1
-        : 0;
+      const nextNum =
+        blogDirs.length > 0
+          ? Math.max(...blogDirs.map((d) => parseInt(d) || 0)) + 1
+          : 0;
       assetsDir = join(blogBaseDir, nextNum.toString().padStart(3, "0"));
     } else {
       // For snacks, use a simple structure
@@ -85,17 +92,14 @@ export const POST: APIRoute = async ({ request }) => {
     if (uploadedUrls.length === 0) {
       return new Response(
         JSON.stringify({ error: "No valid image files uploaded" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    return new Response(
-      JSON.stringify({ success: true, urls: uploadedUrls }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ success: true, urls: uploadedUrls }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Error uploading files:", error);
     return new Response(
@@ -105,8 +109,7 @@ export const POST: APIRoute = async ({ request }) => {
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 };
-

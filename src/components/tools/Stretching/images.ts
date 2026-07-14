@@ -1,10 +1,42 @@
 /**
  * Centralized image mapping for stretch images
- * Images are located in /public/stretches/[stretch-name].png
+ * Original images are kept in /public/stretches/[stretch-name].png.
+ * Responsive AVIF/WebP derivatives live in /public/stretches/generated/.
  */
 
 export const PLACEHOLDER_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect fill='%23FAF7F2' width='400' height='300'/%3E%3Ctext fill='%23D4A574' font-family='system-ui' font-size='48' x='50%25' y='45%25' text-anchor='middle'%3E%F0%9F%A7%98%3C/text%3E%3Ctext fill='%239CAF88' font-family='system-ui' font-size='14' x='50%25' y='60%25' text-anchor='middle'%3EStretch Image%3C/text%3E%3C/svg%3E";
+
+const RESPONSIVE_STRETCH_WIDTHS = [320, 640, 960] as const;
+const LOCAL_STRETCH_IMAGE_PATTERN = /^\/stretches\/([a-z0-9-]+)\.png$/;
+
+export type ResponsiveStretchImageSources = {
+  avifSrcSet: string;
+  height: number;
+  webpSrcSet: string;
+  width: number;
+};
+
+export function getResponsiveStretchImageSources(
+  imagePath: string,
+): ResponsiveStretchImageSources | null {
+  const match = LOCAL_STRETCH_IMAGE_PATTERN.exec(imagePath);
+  const imageName = match?.[1];
+  if (!imageName) return null;
+
+  const buildSrcSet = (extension: "avif" | "webp") =>
+    RESPONSIVE_STRETCH_WIDTHS.map(
+      (width) =>
+        `/stretches/generated/${imageName}-${width}w.${extension} ${width}w`,
+    ).join(", ");
+
+  return {
+    avifSrcSet: buildSrcSet("avif"),
+    height: 1536,
+    webpSrcSet: buildSrcSet("webp"),
+    width: 1349,
+  };
+}
 
 export const CATEGORY_PLACEHOLDERS: Record<string, string> = {
   "posture-correction":
@@ -34,15 +66,18 @@ export function getStretchImage(
 
 /**
  * Image paths organized by routine
- * All images are local: /stretches/[stretch-name].png
+ * PNG paths remain the canonical fallback. StretchImage derives responsive
+ * AVIF/WebP sources from them at render time.
  */
 export const STRETCH_IMAGES = {
   // Routine 1: Posture Reset Routine (Desk Worker)
   "posture-reset": {
     "standing-chest-opener": "/stretches/standing-chest-opener.png",
     "seated-thoracic-extension": "/stretches/seated-thoracic-extension.png",
-    "half-kneeling-hip-flexor-arms-overhead": "/stretches/half-kneeling-hip-flexor-arms-overhead.png",
-    "standing-forward-fold-arm-cross": "/stretches/standing-forward-fold-arm-cross.png",
+    "half-kneeling-hip-flexor-arms-overhead":
+      "/stretches/half-kneeling-hip-flexor-arms-overhead.png",
+    "standing-forward-fold-arm-cross":
+      "/stretches/standing-forward-fold-arm-cross.png",
     "childs-pose-side-reach": "/stretches/childs-pose-side-reach.png",
   },
 
@@ -51,16 +86,20 @@ export const STRETCH_IMAGES = {
     "90-90-hip-rotation-stretch": "/stretches/90-90-hip-rotation-stretch.png",
     "worlds-greatest-stretch": "/stretches/worlds-greatest-stretch.png",
     "deep-squat-hold": "/stretches/deep-squat-hold.png",
-    "half-kneeling-ankle-dorsiflexion": "/stretches/half-kneeling-ankle-dorsiflexion.png",
+    "half-kneeling-ankle-dorsiflexion":
+      "/stretches/half-kneeling-ankle-dorsiflexion.png",
     "standing-hamstring-sweep": "/stretches/standing-hamstring-sweep.png",
   },
 
   // Routine 3: Full Split Progression
   "split-progression": {
-    "half-split-hamstring-stretch": "/stretches/half-split-hamstring-stretch.png",
+    "half-split-hamstring-stretch":
+      "/stretches/half-split-hamstring-stretch.png",
     "wall-assisted-couch-stretch": "/stretches/wall-assisted-couch-stretch.png",
-    "elevated-assisted-front-split": "/stretches/elevated-assisted-front-split.png",
-    "seated-straddle-forward-fold": "/stretches/seated-straddle-forward-fold.png",
+    "elevated-assisted-front-split":
+      "/stretches/elevated-assisted-front-split.png",
+    "seated-straddle-forward-fold":
+      "/stretches/seated-straddle-forward-fold.png",
     "frog-stretch": "/stretches/frog-stretch.png",
   },
 
@@ -80,19 +119,23 @@ export const STRETCH_IMAGES = {
     "cat-cow": "/stretches/cat-pose.png",
     "childs-pose": "/stretches/childs-pose-classic.png",
     "worlds-greatest-stretch": "/stretches/worlds-greatest-stretch.png",
-    "half-kneeling-hip-flexor": "/stretches/half-kneeling-hip-flexor-arms-overhead.png",
-    "standing-hamstring-forward-fold": "/stretches/standing-hamstring-forward-fold.png",
+    "half-kneeling-hip-flexor":
+      "/stretches/half-kneeling-hip-flexor-arms-overhead.png",
+    "standing-hamstring-forward-fold":
+      "/stretches/standing-hamstring-forward-fold.png",
     "shoulder-opener-wall": "/stretches/shoulder-opener-wall.png",
     "lying-spinal-twist": "/stretches/lying-spinal-twist.png",
   },
 
   // Routine 6: Anterior Pelvic Tilt Correction
   "apt-correction": {
-    "kneeling-hip-flexor-apt": "/stretches/half-kneeling-hip-flexor-arms-overhead.png",
+    "kneeling-hip-flexor-apt":
+      "/stretches/half-kneeling-hip-flexor-arms-overhead.png",
     "couch-stretch-apt": "/stretches/wall-assisted-couch-stretch.png",
     "glute-bridge-posterior-tilt": "/stretches/glute-bridge-hold.png",
     "dead-bug": "/stretches/dead-bug.png",
-    "standing-posterior-pelvic-tilt": "/stretches/standing-posterior-pelvic-tilt.png",
+    "standing-posterior-pelvic-tilt":
+      "/stretches/standing-posterior-pelvic-tilt.png",
     "standing-hamstring-apt": "/stretches/standing-hamstring-stretch-apt.png",
   },
 

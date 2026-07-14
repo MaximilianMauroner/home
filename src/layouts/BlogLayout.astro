@@ -1,5 +1,6 @@
 ---
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
+import ArticleJsonLd from "@/components/content/ArticleJsonLd.astro";
 import ReadingProgress from "@/components/content/ReadingProgress";
 import RelatedPosts from "@/components/content/RelatedPosts.astro";
 import TableOfContents from "@/components/content/TableOfContents";
@@ -63,6 +64,17 @@ const tags = frontmatter.tags ?? [];
   articleModifiedTime={articleModifiedTime}
   articleAuthor="Maximilian Mauroner"
 >
+  <Fragment slot="head">
+    <ArticleJsonLd
+      title={frontmatter.title}
+      description={frontmatter.description}
+      tags={tags}
+      publishedAt={releaseDate.toISOString()}
+      modifiedAt={articleModifiedTime}
+      sectionName="Blog"
+      sectionPath="/blog/"
+    />
+  </Fragment>
   <ReadingProgress client:load />
 
   <div class="blog-detail-page animate-fade-in mx-auto w-[min(72rem,calc(100%_-_2rem))] py-[clamp(2rem,6vw,4.5rem)] motion-reduce:animate-none max-[720px]:w-[min(72rem,calc(100%_-_1.25rem))] max-[720px]:pb-12 max-[720px]:pt-4">
@@ -119,12 +131,12 @@ const tags = frontmatter.tags ?? [];
               aria-label="Topics"
             >
               {tags.map((tag, index) => (
-                <li class="flex gap-[0.28rem] max-[720px]:min-w-0 max-[720px]:text-[0.64rem]">
+                <li class="flex items-center gap-[0.28rem] max-[720px]:min-w-0 max-[720px]:text-[0.64rem]">
                   <span class="text-[var(--marker)]">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <a
-                    class="text-inherit no-underline hover:underline hover:underline-offset-[0.2em] focus-visible:underline focus-visible:underline-offset-[0.2em] max-[720px]:truncate"
+                    class="text-inherit no-underline hover:underline hover:underline-offset-[0.2em] focus-visible:underline focus-visible:underline-offset-[0.2em] max-[720px]:inline-flex max-[720px]:min-h-11 max-[720px]:items-center max-[720px]:whitespace-normal max-[720px]:[overflow-wrap:anywhere]"
                     href={`/tags/${tag}/`}
                   >
                     {tag}

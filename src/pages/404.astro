@@ -2,9 +2,15 @@
 import ImgAstronaut from "/public/astronaut.avif";
 import { Picture } from "astro:assets";
 import StarLayout from "@/layouts/StarLayout.astro";
+
+Astro.response.status = 404;
 ---
 
-<StarLayout title="404 - Page Not Found" description="The page you're looking for doesn't exist">
+<StarLayout
+  title="404 - Page Not Found"
+  description="The page you're looking for doesn't exist"
+  noindex
+>
   <div
     class="my-auto flex flex-col items-center justify-center bg-background px-4 py-8 sm:px-6 sm:py-12 lg:px-8"
   >
