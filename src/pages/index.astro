@@ -26,7 +26,7 @@ const blogPreviews = blogs.map(toPreviewEntry);
 const logPreviews = logs.map(toPreviewEntry);
 const snackPreviews = snacks.map(toPreviewEntry);
 const initialAge =
-  dayjs().diff(dayjs("2000-03-13T04:00:00Z"), "year").toString();
+  dayjs().diff(dayjs("2000-03-13T04:00:00Z"), "year", true).toFixed(9);
 ---
 
 <StarLayout

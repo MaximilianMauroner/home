@@ -388,8 +388,15 @@ export default function Timeline({
     [visibleItems],
   );
   const expandTimeline = () => {
+    const scrollPosition = window.scrollY;
     onExpand();
-    requestAnimationFrame(() => timelineRef.current?.focus());
+    requestAnimationFrame(() => {
+      window.scrollTo({ behavior: "instant", top: scrollPosition });
+      timelineRef.current?.focus({ preventScroll: true });
+      requestAnimationFrame(() =>
+        window.scrollTo({ behavior: "instant", top: scrollPosition }),
+      );
+    });
   };
 
   useEffect(() => {
@@ -442,6 +449,9 @@ export default function Timeline({
       const destination = container.querySelector<HTMLElement>(
         "[data-flight-destination]",
       );
+      const launchButton = document.querySelector<HTMLElement>(
+        "[data-timeline-launch-button]",
+      );
 
       if (entries.length === 0) {
         setFlightPath(null);
@@ -460,7 +470,18 @@ export default function Timeline({
         .sort((a, b) => a.top - b.top || a.x - b.x);
 
       const firstPoint = points[0];
+      const launchBounds = launchButton?.getBoundingClientRect();
+      const routeStart = launchBounds
+        ? {
+            x:
+              launchBounds.left -
+              containerBounds.left +
+              launchBounds.width / 2,
+            y: launchBounds.bottom - containerBounds.top,
+          }
+        : { x: 12, y: firstPoint.top + 20 };
       const routePoints = [
+        ...(launchBounds ? [routeStart] : []),
         { x: 12, y: firstPoint.top + 20 },
         ...points.map(({ x, y }) => ({ x, y })),
         ...(destination
@@ -539,6 +560,10 @@ export default function Timeline({
       "[data-flight-destination]",
     );
     if (destination) observer.observe(destination);
+    const launchButton = document.querySelector<HTMLElement>(
+      "[data-timeline-launch-button]",
+    );
+    if (launchButton) observer.observe(launchButton);
     window.addEventListener("resize", scheduleUpdate);
     scheduleUpdate();
 
@@ -805,7 +830,10 @@ export default function Timeline({
         </div>
 
         {/* Month chapters preserve newest-first DOM order in a dense editorial grid. */}
-        <div ref={chaptersRef} className="relative pl-8 sm:pl-10">
+        <div
+          ref={chaptersRef}
+          className="relative pl-8 [overflow-anchor:none] sm:pl-10"
+        >
           {flightPath && (
             <svg
               aria-hidden="true"
@@ -845,7 +873,7 @@ export default function Timeline({
               <g
                 ref={spaceshipRef}
                 data-timeline-route-ship
-                className="text-indigo-600 drop-shadow-sm transition-opacity duration-150 dark:text-indigo-300"
+                className="text-indigo-600 drop-shadow-sm dark:text-indigo-300"
                 style={{
                   opacity: spaceshipLaunching || spaceshipDocked ? 0 : 1,
                 }}

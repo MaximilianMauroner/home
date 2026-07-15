@@ -2,8 +2,6 @@ import {
   useCallback,
   useEffect,
   useState,
-  type Dispatch,
-  type SetStateAction,
   useRef,
 } from "react";
 import dayjs from "dayjs";
@@ -20,6 +18,9 @@ import {
 const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*";
 const ogFirst = "maximilian";
 const ogLast = "mauroner";
+const initialCrypticFirst = "M@X1M1L14N";
+const initialCrypticLast = "M4UR0N3R";
+const birthday = dayjs("2000-03-13T04:00:00Z");
 
 interface ContentItem {
   id: string;
@@ -50,6 +51,7 @@ interface HomepageProps {
 
 interface TimelineLaunchOrigin {
   height: number;
+  initialTransform?: string;
   left: number;
   top: number;
   width: number;
@@ -293,8 +295,8 @@ const LetterCard = ({
 };
 
 const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
-  const [firstname, setFirstname] = useState(ogFirst);
-  const [lastname, setLastname] = useState(ogLast);
+  const [firstname, setFirstname] = useState(initialCrypticFirst);
+  const [lastname, setLastname] = useState(initialCrypticLast);
   const [activeCard, setActiveCard] = useState<{
     content: ContentItem | null;
     position: { x: number; y: number };
@@ -311,7 +313,23 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const timelineButtonSpaceshipRef = useRef<SVGSVGElement>(null);
   const timelineLaunchSpaceshipRef = useRef<SVGSVGElement>(null);
+  const timelineSpaceshipDockedRef = useRef(true);
+  const timelineSpaceshipLaunchingRef = useRef(false);
+  const timelineScrollHandoffRef = useRef(0);
   const letterButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const updateTimelineSpaceshipDocked = useCallback((docked: boolean) => {
+    timelineSpaceshipDockedRef.current = docked;
+    setTimelineSpaceshipDocked(docked);
+  }, []);
+
+  const updateTimelineSpaceshipLaunching = useCallback(
+    (launching: boolean) => {
+      timelineSpaceshipLaunchingRef.current = launching;
+      setTimelineSpaceshipLaunching(launching);
+    },
+    [],
+  );
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -409,10 +427,10 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
   }, [activeCard?.triggerIndex]);
 
   const loadByName = useCallback(
-    (setName: Dispatch<SetStateAction<string>>, ogValue: string) => {
+    (setName: (value: string) => void, ogValue: string) => {
       if (prefersReducedMotion) {
         setName(ogValue);
-        return;
+        return () => undefined;
       }
 
       let iteration = 0;
@@ -429,30 +447,33 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
           .join("");
       };
 
-      const unmask = () => {
-        const interval = setInterval(() => {
-          setName((prev) => stringRemap(prev, Math.floor(iteration)));
+      const interval = window.setInterval(() => {
+        setName(stringRemap(ogValue, Math.floor(iteration)));
 
-          if (iteration >= ogValue.length) {
-            clearInterval(interval);
-            setName(ogValue); // Ensure final value is correct
-          }
+        if (iteration >= ogValue.length) {
+          window.clearInterval(interval);
+          setName(ogValue);
+        }
 
-          iteration += 1 / 3;
-        }, 45);
-      };
-      setTimeout(unmask, 50);
+        iteration += 1 / 3;
+      }, 45);
+
+      return () => window.clearInterval(interval);
     },
     [prefersReducedMotion],
   );
 
   useEffect(() => {
-    loadByName(setFirstname, ogFirst);
-    loadByName(setLastname, ogLast);
+    const stopFirstname = loadByName(setFirstname, ogFirst);
+    const stopLastname = loadByName(setLastname, ogLast);
 
     // Hide the hint after first interaction or after 10 seconds
     const timer = setTimeout(() => setShowHint(false), 10000);
-    return () => clearTimeout(timer);
+    return () => {
+      stopFirstname();
+      stopLastname();
+      clearTimeout(timer);
+    };
   }, [loadByName]);
 
   const downArrow = (
@@ -500,9 +521,150 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
     [],
   );
 
+  const animateTimelineScrollHandoff = useCallback(
+    async (dockAtButton: boolean) => {
+      if (prefersReducedMotion) {
+        updateTimelineSpaceshipDocked(dockAtButton);
+        return;
+      }
+      if (timelineSpaceshipLaunchingRef.current) return;
+
+      const routeSpaceship = document.querySelector<SVGGElement>(
+        "[data-timeline-route-ship]",
+      );
+      const buttonDock = document.querySelector<HTMLElement>(
+        "[data-timeline-button-dock]",
+      );
+      const source = dockAtButton
+        ? routeSpaceship
+        : timelineButtonSpaceshipRef.current;
+      const target = dockAtButton ? buttonDock : routeSpaceship;
+      if (!source || !target) {
+        updateTimelineSpaceshipDocked(dockAtButton);
+        return;
+      }
+
+      const sourceBounds = source.getBoundingClientRect();
+      const size = 28;
+      const sourceCenter = {
+        x: sourceBounds.left + sourceBounds.width / 2,
+        y: sourceBounds.top + sourceBounds.height / 2,
+      };
+      const routeAngle = Number.parseFloat(
+        routeSpaceship
+          ?.getAttribute("transform")
+          ?.match(/rotate\(([-\d.]+)/)?.[1] ?? "90",
+      );
+      const initialRotation = dockAtButton ? routeAngle - 90 : 0;
+      const initialScale = dockAtButton ? 1.2 : 1;
+      const handoff = timelineScrollHandoffRef.current + 1;
+      timelineScrollHandoffRef.current = handoff;
+
+      setTimelineLaunchOrigin({
+        height: size,
+        initialTransform: `rotate(${initialRotation}deg) scale(${initialScale})`,
+        left: sourceCenter.x - size / 2,
+        top: sourceCenter.y - size / 2,
+        width: size,
+      });
+      updateTimelineSpaceshipLaunching(true);
+
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+      const launchSpaceship = timelineLaunchSpaceshipRef.current;
+      if (!launchSpaceship || timelineScrollHandoffRef.current !== handoff) {
+        updateTimelineSpaceshipLaunching(false);
+        setTimelineLaunchOrigin(null);
+        return;
+      }
+
+      await new Promise<void>((resolve) => {
+        const startedAt = performance.now();
+        const duration = 560;
+
+        const animate = (timestamp: number) => {
+          if (timelineScrollHandoffRef.current !== handoff) {
+            resolve();
+            return;
+          }
+
+          const liveTarget = dockAtButton
+            ? document.querySelector<HTMLElement>(
+                "[data-timeline-button-dock]",
+              )
+            : document.querySelector<SVGGElement>(
+                "[data-timeline-route-ship]",
+              );
+          if (!liveTarget) {
+            resolve();
+            return;
+          }
+
+          const targetBounds = liveTarget.getBoundingClientRect();
+          const targetCenter = {
+            x: targetBounds.left + targetBounds.width / 2,
+            y: targetBounds.top + targetBounds.height / 2,
+          };
+          const progress = Math.min(1, (timestamp - startedAt) / duration);
+          const eased = 1 - (1 - progress) ** 3;
+          const wobble = Math.sin(progress * Math.PI * 2.5) * (1 - progress);
+          const targetRotation = dockAtButton
+            ? 0
+            : Number.parseFloat(
+                document
+                  .querySelector<SVGGElement>("[data-timeline-route-ship]")
+                  ?.getAttribute("transform")
+                  ?.match(/rotate\(([-\d.]+)/)?.[1] ?? "90",
+              ) - 90;
+          const targetScale = dockAtButton ? 1 : 1.2;
+          const translateX =
+            (targetCenter.x - sourceCenter.x) * eased + wobble * 18;
+          const translateY =
+            (targetCenter.y - sourceCenter.y) * eased -
+            Math.sin(progress * Math.PI) * 24;
+          const rotation =
+            initialRotation +
+            (targetRotation - initialRotation) * eased +
+            wobble * 7;
+          const scale =
+            initialScale + (targetScale - initialScale) * eased;
+
+          launchSpaceship.style.transform = `translate(${translateX}px, ${translateY}px) rotate(${rotation}deg) scale(${scale})`;
+
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+          } else {
+            resolve();
+          }
+        };
+
+        requestAnimationFrame(animate);
+      });
+
+      if (timelineScrollHandoffRef.current !== handoff) return;
+      updateTimelineSpaceshipDocked(dockAtButton);
+      updateTimelineSpaceshipLaunching(false);
+      setTimelineLaunchOrigin(null);
+    },
+    [
+      prefersReducedMotion,
+      updateTimelineSpaceshipDocked,
+      updateTimelineSpaceshipLaunching,
+    ],
+  );
+
   const handleTimelineSpaceshipDockedChange = useCallback(
-    (docked: boolean) => setTimelineSpaceshipDocked(docked),
-    [],
+    (docked: boolean) => {
+      if (
+        docked === timelineSpaceshipDockedRef.current ||
+        timelineSpaceshipLaunchingRef.current
+      ) {
+        return;
+      }
+      void animateTimelineScrollHandoff(docked);
+    },
+    [animateTimelineScrollHandoff],
   );
 
   const scrollToTimeline = useCallback(async () => {
@@ -518,7 +680,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
 
     if (prefersReducedMotion) {
       setTimelineExpanded(true);
-      setTimelineSpaceshipDocked(false);
+      updateTimelineSpaceshipDocked(false);
       requestAnimationFrame(() =>
         timelineRef.current?.scrollIntoView({
           behavior: "auto",
@@ -537,14 +699,14 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
       top: origin.top,
       width: origin.width,
     });
-    setTimelineSpaceshipLaunching(true);
+    updateTimelineSpaceshipLaunching(true);
 
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     );
     const launchSpaceship = timelineLaunchSpaceshipRef.current;
     if (!launchSpaceship) {
-      setTimelineSpaceshipLaunching(false);
+      updateTimelineSpaceshipLaunching(false);
       setTimelineLaunchOrigin(null);
       return;
     }
@@ -640,14 +802,16 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
         .finished.catch(() => undefined);
     }
 
-    setTimelineSpaceshipLaunching(false);
-    setTimelineSpaceshipDocked(false);
+    updateTimelineSpaceshipLaunching(false);
+    updateTimelineSpaceshipDocked(false);
     setTimelineLaunchOrigin(null);
   }, [
     prefersReducedMotion,
     timelineExpanded,
     timelineSpaceshipDocked,
     timelineSpaceshipLaunching,
+    updateTimelineSpaceshipDocked,
+    updateTimelineSpaceshipLaunching,
   ]);
 
   return (
@@ -663,6 +827,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
             height: timelineLaunchOrigin.height,
             left: timelineLaunchOrigin.left,
             top: timelineLaunchOrigin.top,
+            transform: timelineLaunchOrigin.initialTransform,
             transformOrigin: "center",
             width: timelineLaunchOrigin.width,
           }}
@@ -781,8 +946,8 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
                 <span className="animate-terminal-blink absolute -left-3">
                   ▌
                 </span>
-                hi, i'm a {initialAge}-year-old developer. currently studying
-                software engineering at the&nbsp;
+                hi, i'm a <AgeCalculator initialAge={initialAge} />-year-old
+                developer. currently studying software engineering at the&nbsp;
                 <TechStackItem href="https://tuwien.at/" name="TU Wien" />.
               </p>
               <p className="typing-animation-delayed">
@@ -807,6 +972,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
         <div className="mb-20 flex justify-center">
           <button
             type="button"
+            data-timeline-launch-button
             onClick={scrollToTimeline}
             disabled={timelineSpaceshipLaunching}
             aria-busy={timelineSpaceshipLaunching}
@@ -817,19 +983,24 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
             <span className="text-sm font-medium">
               {timelineExpanded ? "Go to timeline" : "View full timeline"}
             </span>
-            {timelineSpaceshipDocked && (
-              <svg
-                ref={timelineButtonSpaceshipRef}
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="-16 -13 32 26"
-                className={`h-7 w-7 overflow-visible drop-shadow-sm transition-opacity ${timelineSpaceshipLaunching ? "opacity-0" : "opacity-100"} ${prefersReducedMotion ? "" : "animate-bounce"}`}
-                aria-hidden="true"
-              >
-                <g transform="rotate(90)">
-                  <TimelineSpaceshipGlyph />
-                </g>
-              </svg>
-            )}
+            <span
+              data-timeline-button-dock
+              className="relative block h-7 w-7"
+            >
+              {timelineSpaceshipDocked && !timelineSpaceshipLaunching && (
+                <svg
+                  ref={timelineButtonSpaceshipRef}
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="-16 -13 32 26"
+                  className={`absolute inset-0 h-7 w-7 overflow-visible drop-shadow-sm ${prefersReducedMotion ? "" : "animate-bounce"}`}
+                  aria-hidden="true"
+                >
+                  <g transform="rotate(90)">
+                    <TimelineSpaceshipGlyph />
+                  </g>
+                </svg>
+              )}
+            </span>
           </button>
         </div>
       </div>
@@ -849,6 +1020,21 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
       </div>
     </div>
   );
+};
+
+const AgeCalculator = ({ initialAge }: { initialAge: string }) => {
+  const [age, setAge] = useState(initialAge);
+
+  useEffect(() => {
+    const updateAge = () =>
+      setAge(dayjs().diff(birthday, "year", true).toFixed(9));
+
+    updateAge();
+    const interval = window.setInterval(updateAge, 50);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return <>{age}</>;
 };
 
 const TechStackItem = ({ name, href }: { name: string; href: string }) => {
