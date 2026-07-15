@@ -73,7 +73,8 @@ const articleDescriptorFor = (collection: ArticleCollection) => {
   const descriptor = ARTICLE_COLLECTIONS.find(
     (candidate) => candidate.collection === collection,
   );
-  if (!descriptor) throw new Error(`Unknown article collection "${collection}".`);
+  if (!descriptor)
+    throw new Error(`Unknown article collection "${collection}".`);
   return descriptor;
 };
 
@@ -93,14 +94,16 @@ const getEntryKind = (entry: ArticleEntry): ArticleKind => {
   return articleDescriptorFor(entry.collection as ArticleCollection).kind;
 };
 
-const getEntryUrl = (entry: ArticleEntry) => {
-  const descriptor = articleDescriptorFor(entry.collection as ArticleCollection);
+export const getArticleUrl = (entry: ArticleEntry) => {
+  const descriptor = articleDescriptorFor(
+    entry.collection as ArticleCollection,
+  );
   return `${descriptor.pathPrefix}${entry.id}/`;
 };
 
 const toAdjacentContentItem = (entry: ArticleEntry): AdjacentContentItem => ({
   title: entry.data.title,
-  url: getEntryUrl(entry),
+  url: getArticleUrl(entry),
   kind: getEntryKind(entry),
   releaseDate: entry.data.releaseDate,
 });
@@ -109,14 +112,16 @@ export const getArticlesByCollection = async (
   collection: ArticleCollection,
 ): Promise<ArticleEntry[]> => {
   const entries = await getCollection(collection);
-  return (entries as ArticleEntry[]).filter(filterFunction).sort(
-    (a, b) =>
-      new Date(b.data.releaseDate).getTime() -
-      new Date(a.data.releaseDate).getTime(),
-  );
+  return (entries as ArticleEntry[])
+    .filter(filterFunction)
+    .sort(
+      (a, b) =>
+        new Date(b.data.releaseDate).getTime() -
+        new Date(a.data.releaseDate).getTime(),
+    );
 };
 
-const getAllArticles = async (): Promise<ArticleEntry[]> => {
+export const getAllArticles = async (): Promise<ArticleEntry[]> => {
   const articleGroups = await Promise.all(
     ARTICLE_COLLECTIONS.map(({ collection }) =>
       getArticlesByCollection(collection),
@@ -221,7 +226,7 @@ export const getArticleTrail = async (
       kind: getEntryKind(entry),
       title: entry.data.title,
       description: entry.data.description,
-      url: getEntryUrl(entry),
+      url: getArticleUrl(entry),
       tags: entry.data.tags,
     }));
 

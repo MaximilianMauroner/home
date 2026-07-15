@@ -1,8 +1,18 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { ReactNode } from "react";
 import BlogPreview from "./BlogPreview";
 import LogPreview from "./LogPreview";
 import SnackPreview from "./SnackPreview";
 import type { TaggedPreviewEntry } from "./previewTypes";
+import type { PostSearch } from "./postSearchClient";
+import type { PostSearchMatch } from "@/utils/postSearch";
 
 type TagViewProps = {
   posts: TaggedPreviewEntry[];
@@ -23,6 +33,11 @@ const searchQueryInPost = (search: string, post: TaggedPreviewEntry) => {
   );
 };
 
+const postKeyFor = (post: TaggedPreviewEntry) =>
+  `${post.collection}:${post.id}`;
+
+type SearchIndexStatus = "idle" | "loading" | "ready" | "fallback";
+
 export default function TagView({
   posts,
   tags,
@@ -35,6 +50,15 @@ export default function TagView({
 
   // Read search from URL on client side to ensure it's correct after hydration
   const [search, setSearch] = useState(initialSearchQuery);
+  const deferredSearch = useDeferredValue(search.trim());
+  const [searchIndexStatus, setSearchIndexStatus] =
+    useState<SearchIndexStatus>("idle");
+  const [fullTextResults, setFullTextResults] = useState<{
+    matches: PostSearchMatch[];
+    query: string;
+  }>({ matches: [], query: "" });
+  const postSearchRef = useRef<PostSearch | null>(null);
+  const searchRequestRef = useRef(0);
   const isInitialMount = useRef(true);
 
   // Ensure search is synced with URL on mount (in case of hydration mismatch)
@@ -49,17 +73,77 @@ export default function TagView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Use useMemo to calculate filtered results - this will update when search or selectedTag changes
-  const selectedPosts = useMemo(() => {
-    // Ensure we're using the current search value
-    const currentSearch = search.trim();
+  const loadSearchIndex = useCallback(async () => {
+    if (postSearchRef.current) return postSearchRef.current;
 
-    return posts
-      .filter((post) =>
-        selectedTag ? post.data.tags.includes(selectedTag) : true,
-      )
-      .filter((post) => searchQueryInPost(currentSearch, post));
-  }, [posts, selectedTag, search]);
+    setSearchIndexStatus("loading");
+    try {
+      const { getPostSearch } = await import("./postSearchClient");
+      const postSearch = await getPostSearch();
+      postSearchRef.current = postSearch;
+      setSearchIndexStatus("ready");
+      return postSearch;
+    } catch {
+      setSearchIndexStatus("fallback");
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!deferredSearch) {
+      setFullTextResults({ matches: [], query: "" });
+      return;
+    }
+
+    const request = ++searchRequestRef.current;
+    void loadSearchIndex().then((postSearch) => {
+      if (!postSearch || request !== searchRequestRef.current) return;
+      setFullTextResults({
+        matches: postSearch(deferredSearch),
+        query: deferredSearch,
+      });
+    });
+  }, [deferredSearch, loadSearchIndex]);
+
+  const hasCurrentFullTextResults =
+    fullTextResults.query === deferredSearch && searchIndexStatus === "ready";
+  const matchByPostKey = useMemo(
+    () =>
+      new Map(
+        hasCurrentFullTextResults
+          ? fullTextResults.matches.map((match) => [match.postKey, match])
+          : [],
+      ),
+    [fullTextResults.matches, hasCurrentFullTextResults],
+  );
+
+  const selectedPosts = useMemo(() => {
+    const tagFilteredPosts = posts.filter((post) =>
+      selectedTag ? post.data.tags.includes(selectedTag) : true,
+    );
+
+    if (!deferredSearch) return tagFilteredPosts;
+
+    if (hasCurrentFullTextResults) {
+      const postsByKey = new Map(
+        tagFilteredPosts.map((post) => [postKeyFor(post), post]),
+      );
+      return fullTextResults.matches.flatMap((match) => {
+        const post = postsByKey.get(match.postKey);
+        return post ? [post] : [];
+      });
+    }
+
+    return tagFilteredPosts.filter((post) =>
+      searchQueryInPost(deferredSearch, post),
+    );
+  }, [
+    deferredSearch,
+    fullTextResults.matches,
+    hasCurrentFullTextResults,
+    posts,
+    selectedTag,
+  ]);
 
   const activePostCount = selectedPosts.length;
   const totalPostCount = posts.length;
@@ -88,7 +172,12 @@ export default function TagView({
   return (
     <>
       <div className="sticky top-[4.5rem] z-30 bg-background/95 p-4 backdrop-blur lg:static lg:bg-transparent lg:backdrop-blur-none">
-        <Search search={search} setSearch={setSearch} />
+        <Search
+          search={search}
+          searchIndexStatus={searchIndexStatus}
+          setSearch={setSearch}
+          onSearchIntent={() => void loadSearchIndex()}
+        />
       </div>
       <div className="grid grid-cols-6 gap-4 px-4 pb-4">
         <div className="col-span-6 md:col-span-2">
@@ -106,6 +195,8 @@ export default function TagView({
             search={search}
             selectedTag={selectedTag}
             onClearSearch={clearSearch}
+            matchByPostKey={matchByPostKey}
+            preserveOrder={hasCurrentFullTextResults && Boolean(deferredSearch)}
           />
         </div>
       </div>
@@ -233,6 +324,8 @@ const PostList = ({
   search,
   selectedTag,
   onClearSearch,
+  matchByPostKey,
+  preserveOrder,
 }: {
   posts: TaggedPreviewEntry[];
   activePostCount: number;
@@ -240,14 +333,18 @@ const PostList = ({
   search: string;
   selectedTag: string | null;
   onClearSearch: () => void;
+  matchByPostKey: Map<string, PostSearchMatch>;
+  preserveOrder: boolean;
 }) => {
   const items = [...posts];
-  items.sort((a, b) => {
-    return (
-      new Date(b.data.releaseDate).getTime() -
-      new Date(a.data.releaseDate).getTime()
-    );
-  });
+  if (!preserveOrder) {
+    items.sort((a, b) => {
+      return (
+        new Date(b.data.releaseDate).getTime() -
+        new Date(a.data.releaseDate).getTime()
+      );
+    });
+  }
   return (
     <>
       <div className="mb-4 flex justify-between gap-2">
@@ -284,27 +381,33 @@ const PostList = ({
           </div>
         )}
         {items.map((item) => {
+          const postKey = postKeyFor(item);
+          const match = matchByPostKey.get(postKey);
+          let preview: ReactNode;
           if (item.collection === "blog") {
-            return (
-              <BlogPreview
-                key={item.id + "-post-list"}
-                blog={item}
-              />
-            );
+            preview = <BlogPreview blog={item} />;
+          } else if (item.collection === "log") {
+            preview = <LogPreview log={item} />;
+          } else {
+            preview = <SnackPreview snack={item} />;
           }
-          if (item.collection === "log") {
-            return (
-              <LogPreview
-                key={item.id + "-post-list"}
-                log={item}
-              />
-            );
-          }
+
           return (
-            <SnackPreview
-              key={item.id + "-post-list"}
-              snack={item}
-            />
+            <div key={`${postKey}-post-list`} className="space-y-2">
+              {match && (
+                <div className="rounded-lg border border-border/70 bg-muted/35 px-4 py-3 text-sm">
+                  <p className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {match.heading
+                      ? `Found in ${match.heading}`
+                      : "Found in post text"}
+                  </p>
+                  <p className="mt-1 leading-6 text-foreground/80">
+                    {match.excerpt}
+                  </p>
+                </div>
+              )}
+              {preview}
+            </div>
           );
         })}
       </div>
@@ -315,10 +418,22 @@ const PostList = ({
 const Search = ({
   search,
   setSearch,
+  searchIndexStatus,
+  onSearchIntent,
 }: {
   search: string;
   setSearch: (search: string) => void;
+  searchIndexStatus: SearchIndexStatus;
+  onSearchIntent: () => void;
 }) => {
+  const isSearching = Boolean(search.trim());
+  const statusMessage =
+    searchIndexStatus === "loading"
+      ? "Loading the full post index…"
+      : searchIndexStatus === "fallback"
+        ? "Full-text search is unavailable. Searching titles, descriptions, tags, and URLs instead."
+        : "Searching titles, descriptions, tags, headings, URLs, and full post text.";
+
   return (
     <div className="mx-auto w-full max-w-screen-xl">
       <label htmlFor="tag-search" className="mb-2 block text-sm font-medium">
@@ -330,8 +445,12 @@ const Search = ({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.currentTarget.value)}
+          onFocus={onSearchIntent}
+          onPointerDown={onSearchIntent}
+          aria-busy={searchIndexStatus === "loading"}
+          aria-describedby={isSearching ? "tag-search-status" : undefined}
           className="flex min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 pl-11 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder="Search titles, descriptions, tags, and URLs"
+          placeholder="Search titles, tags, headings, and full post text"
         />
         <span
           className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
@@ -354,6 +473,16 @@ const Search = ({
           </svg>
         </span>
       </div>
+      {isSearching && (
+        <p
+          id="tag-search-status"
+          role="status"
+          aria-live="polite"
+          className="mt-2 text-xs text-muted-foreground"
+        >
+          {statusMessage}
+        </p>
+      )}
     </div>
   );
 };
