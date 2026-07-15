@@ -19,6 +19,28 @@ type TimelineItem = {
   date: Date;
 };
 
+type TimelineChapter = {
+  key: string;
+  month: string;
+  year: number;
+  items: Array<TimelineItem & { index: number }>;
+};
+
+const months = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 const colors = [
   "text-amber-400",
   "text-orange-300",
@@ -30,15 +52,36 @@ const colors = [
   "text-indigo-300",
 ];
 
-const dynamicColor = (index: number) => {
-  return colors[index % colors.length];
-};
+const monthAccents = [
+  {
+    node: "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+    panel:
+      "border-emerald-200/70 bg-emerald-50/80 dark:border-emerald-900 dark:bg-emerald-950/45",
+    text: "text-emerald-700 dark:text-emerald-300",
+  },
+  {
+    node: "border-orange-300 bg-orange-100 text-orange-700 dark:border-orange-700 dark:bg-orange-950 dark:text-orange-300",
+    panel:
+      "border-orange-200/70 bg-orange-50/80 dark:border-orange-900 dark:bg-orange-950/45",
+    text: "text-orange-700 dark:text-orange-300",
+  },
+  {
+    node: "border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-300",
+    panel:
+      "border-violet-200/70 bg-violet-50/80 dark:border-violet-900 dark:bg-violet-950/45",
+    text: "text-violet-700 dark:text-violet-300",
+  },
+  {
+    node: "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-300",
+    panel:
+      "border-sky-200/70 bg-sky-50/80 dark:border-sky-900 dark:bg-sky-950/45",
+    text: "text-sky-700 dark:text-sky-300",
+  },
+];
 
-const typeDotStyle: Record<TimelineItem["type"], string> = {
-  blog: "bg-gradient-to-br from-red-500 to-orange-600",
-  log: "bg-gradient-to-br from-emerald-500 to-teal-600",
-  snack: "bg-gradient-to-br from-amber-500 to-orange-600",
-};
+const monthIcons = ["✦", "●", "✷", "◆"];
+
+const dynamicColor = (index: number) => colors[index % colors.length];
 
 const TimelineCardSkeleton = () => (
   <article
@@ -76,6 +119,10 @@ const TimelineEntry = ({
   timelineItem: TimelineItem;
   index: number;
 }) => {
+  const hasImage = Boolean(
+    timelineItem.item._imageUrl || timelineItem.item.data.image,
+  );
+
   const renderPreview = () => {
     if (timelineItem.type === "blog") {
       return <BlogPreview blog={timelineItem.item} />;
@@ -106,15 +153,73 @@ const TimelineEntry = ({
   };
 
   return (
-    <div className="relative pl-12 md:pl-0 md:[&_.content-preview]:min-h-[24rem]">
-      <div className="absolute left-4 top-6 z-10 flex -translate-x-1/2 items-center md:hidden">
-        <div className="absolute left-1/2 h-0.5 w-8 bg-gradient-to-r from-indigo-500/30 to-transparent" />
-        <div
-          className={`relative ${typeDotStyle[timelineItem.type]} h-3 w-3 rounded-full border-2 border-white shadow-lg dark:border-gray-950`}
-        />
-      </div>
+    <div
+      className={`timeline-entry timeline-entry--${timelineItem.type} ${hasImage ? "timeline-entry--image" : "timeline-entry--text"}`}
+    >
       {renderPreview()}
     </div>
+  );
+};
+
+const TimelineMasonry = ({ items }: { items: TimelineChapter["items"] }) => {
+  const gridRef = useRef<HTMLOListElement>(null);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    const updateSpans = () => {
+      const styles = getComputedStyle(grid);
+      const rowHeight = Number.parseFloat(styles.gridAutoRows);
+      const rowGap = Number.parseFloat(styles.rowGap);
+
+      Array.from(grid.children).forEach((child) => {
+        const listItem = child as HTMLLIElement;
+        const card = listItem.firstElementChild as HTMLElement | null;
+
+        if (!card || !Number.isFinite(rowHeight)) {
+          listItem.style.gridRowEnd = "auto";
+          return;
+        }
+
+        const span = Math.ceil(
+          (card.getBoundingClientRect().height + rowGap) / (rowHeight + rowGap),
+        );
+        listItem.style.gridRowEnd = `span ${span}`;
+      });
+    };
+
+    const observer = new ResizeObserver(updateSpans);
+    observer.observe(grid);
+    Array.from(grid.children).forEach((child) => {
+      const card = child.firstElementChild;
+      if (card) observer.observe(card);
+    });
+
+    const frame = requestAnimationFrame(updateSpans);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [items]);
+
+  return (
+    <ol
+      ref={gridRef}
+      className="grid list-none grid-cols-1 gap-5 p-0 md:grid-cols-2 md:[grid-auto-flow:dense] md:[grid-auto-rows:4px] xl:grid-cols-3"
+    >
+      {items.map((timelineItem) => (
+        <li
+          key={`${timelineItem.type}-${timelineItem.item.id}`}
+          className="min-w-0"
+        >
+          <TimelineEntry
+            timelineItem={timelineItem}
+            index={timelineItem.index}
+          />
+        </li>
+      ))}
+    </ol>
   );
 };
 
@@ -150,6 +255,28 @@ export default function Timeline({
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
   const visibleItems = expanded ? allItems : allItems.slice(0, 6);
+  const chapters = visibleItems.reduce<TimelineChapter[]>(
+    (groups, item, index) => {
+      const year = item.date.getUTCFullYear();
+      const monthIndex = item.date.getUTCMonth();
+      const key = `${year}-${monthIndex}`;
+      const current = groups.at(-1);
+
+      if (current?.key === key) {
+        current.items.push({ ...item, index });
+      } else {
+        groups.push({
+          key,
+          month: months[monthIndex],
+          year,
+          items: [{ ...item, index }],
+        });
+      }
+
+      return groups;
+    },
+    [],
+  );
   const expandTimeline = () => {
     onExpand();
     requestAnimationFrame(() => timelineRef.current?.focus());
@@ -205,7 +332,7 @@ export default function Timeline({
         <div className="absolute bottom-40 right-20 h-80 w-80 rounded-full bg-violet-200/10 blur-3xl dark:bg-violet-800/10" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-4 lg:px-6">
+      <div className="relative mx-auto max-w-[90rem] px-4 lg:px-6">
         {/* Section Header */}
         <div className="mb-12 text-center lg:mb-14">
           <h2
@@ -240,42 +367,69 @@ export default function Timeline({
           </p>
         </div>
 
-        {/* Chronological feed: mobile timeline, desktop editorial grid */}
-        <div className="px-2 sm:px-6 lg:px-0">
-          <div className="relative">
-            {/* Mobile timeline rail */}
-            <div
-              className="absolute bottom-0 left-4 top-0 w-1 bg-gradient-to-b from-indigo-500/50 via-purple-500/50 to-pink-500/50 md:hidden dark:from-indigo-400/30 dark:via-purple-400/30 dark:to-pink-400/30"
-              style={{
-                animation:
-                  isVisible && !prefersReducedMotion
-                    ? "drawLine 2s ease-out forwards"
-                    : "none",
-              }}
-            />
+        {/* Month chapters preserve newest-first DOM order in a dense editorial grid. */}
+        <div className="relative pl-8 sm:pl-10">
+          <div
+            aria-hidden="true"
+            className="absolute bottom-0 left-0 top-0 w-px bg-gray-300 dark:bg-gray-700"
+            style={{
+              animation:
+                isVisible && !prefersReducedMotion
+                  ? "drawLine 1.4s ease-out forwards"
+                  : "none",
+            }}
+          />
 
-            <div className="grid grid-cols-1 gap-y-10 md:grid-cols-2 md:gap-x-8 md:gap-y-8">
-              {allItems.length === 0 &&
-                Array.from({ length: 4 }, (_, index) => (
-                  <div
-                    key={`timeline-skeleton-${index}`}
-                    className="relative pl-12 md:pl-0"
-                  >
-                    <div className="absolute left-4 top-6 z-10 flex -translate-x-1/2 items-center md:hidden">
-                      <div className="absolute left-1/2 h-0.5 w-8 bg-gradient-to-r from-indigo-500/20 to-transparent" />
-                      <div className="relative h-3 w-3 rounded-full border-2 border-white bg-indigo-300 shadow-lg dark:border-gray-950 dark:bg-indigo-700" />
-                    </div>
-                    <TimelineCardSkeleton />
-                  </div>
-                ))}
-              {visibleItems.map((timelineItem, index) => (
-                <TimelineEntry
-                  key={`${timelineItem.type}-${timelineItem.item.id}`}
-                  timelineItem={timelineItem}
-                  index={index}
-                />
+          {allItems.length === 0 && (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }, (_, index) => (
+                <TimelineCardSkeleton key={`timeline-skeleton-${index}`} />
               ))}
             </div>
+          )}
+
+          <div className="space-y-16 lg:space-y-20">
+            {chapters.map((chapter, chapterIndex) => {
+              const accent = monthAccents[chapterIndex % monthAccents.length];
+              const icon = monthIcons[chapterIndex % monthIcons.length];
+              const headingId = `timeline-${chapter.key}`;
+
+              return (
+                <section
+                  key={chapter.key}
+                  aria-labelledby={headingId}
+                  className="relative grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6"
+                >
+                  <div
+                    aria-hidden="true"
+                    className={`absolute -left-8 top-5 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border ${accent.node} shadow-sm sm:-left-10`}
+                  >
+                    <span className="text-sm leading-none">{icon}</span>
+                  </div>
+                  <div
+                    className={`flex flex-col rounded-2xl border p-5 lg:p-6 ${accent.panel}`}
+                  >
+                    <p
+                      className={`mb-3 font-mono text-xs font-bold uppercase tracking-[0.18em] ${accent.text}`}
+                    >
+                      {chapter.items.length}{" "}
+                      {chapter.items.length === 1 ? "post" : "posts"}
+                    </p>
+                    <h3
+                      id={headingId}
+                      className="text-4xl font-extrabold leading-none tracking-[-0.05em] text-gray-900 dark:text-gray-100"
+                    >
+                      {chapter.month}
+                      <span className="mt-1 block text-2xl font-medium tracking-[-0.03em] text-gray-500 dark:text-gray-400">
+                        {chapter.year}
+                      </span>
+                    </h3>
+                  </div>
+
+                  <TimelineMasonry items={chapter.items} />
+                </section>
+              );
+            })}
           </div>
 
           {!expanded && allItems.length > visibleItems.length && (
@@ -315,6 +469,49 @@ export default function Timeline({
       </div>
 
       <style>{`
+        #home-timeline .timeline-entry .content-preview {
+          height: auto;
+        }
+
+        #home-timeline .timeline-entry--image .content-preview {
+          min-height: 30rem;
+        }
+
+        #home-timeline .timeline-entry--image .content-preview__visual {
+          height: 12rem;
+        }
+
+        #home-timeline .timeline-entry--text .content-preview {
+          min-height: 0;
+        }
+
+        #home-timeline .timeline-entry--text .content-preview__visual {
+          display: none;
+        }
+
+        #home-timeline .timeline-entry--text .content-preview__body {
+          flex: none;
+          padding: 0.9rem 1rem 0.85rem;
+        }
+
+        #home-timeline .timeline-entry--text .content-preview__body time {
+          margin-bottom: 0.55rem;
+        }
+
+        #home-timeline .timeline-entry--text .content-preview__body h2 {
+          font-size: clamp(1.35rem, 5cqw, 2rem);
+          line-height: 1.02;
+        }
+
+        #home-timeline .timeline-entry--text .content-preview__body p {
+          margin-top: 0.65rem;
+        }
+
+        #home-timeline .timeline-entry--text .content-preview__footer {
+          min-height: 3.25rem;
+          padding: 0.55rem 0.8rem;
+        }
+
         @keyframes drawLine {
           from {
             height: 0;

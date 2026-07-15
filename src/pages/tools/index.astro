@@ -124,9 +124,11 @@ const categories = Array.from(new Set(toolPages.map((tool) => tool.category)));
                     {tool.title}
                   </h2>
                 </div>
-                <span class="shrink-0 rounded-full bg-muted px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground">
-                  {tool.status}
-                </span>
+                {tool.status !== "stable" && (
+                  <span class="shrink-0 rounded-full bg-muted px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+                    {tool.status}
+                  </span>
+                )}
               </div>
               <div class="flex flex-wrap gap-2">
                 {tool.chips.map((label: string) => (
