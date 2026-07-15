@@ -1,6 +1,5 @@
 ---
 import FontmatterTagsList from "@/components/content/FontmatterTagsList.astro";
-import ArticleJsonLd from "@/components/content/ArticleJsonLd.astro";
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
 import ReadingProgress from "@/components/content/ReadingProgress";
 import RelatedPosts from "@/components/content/RelatedPosts.astro";
@@ -63,18 +62,7 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
   articleModifiedTime={articleModifiedTime}
   articleAuthor="Maximilian Mauroner"
 >
-  <Fragment slot="head">
-    <ArticleJsonLd
-      title={frontmatter.title}
-      description={frontmatter.description}
-      tags={frontmatter.tags ?? []}
-      publishedAt={releaseDate.toISOString()}
-      modifiedAt={articleModifiedTime}
-      sectionName="Dev Log"
-      sectionPath="/dev-log/"
-    />
-  </Fragment>
-  <ReadingProgress client:load />
+  <ReadingProgress family="log" client:load />
 
   <div class="detail-patchbay-shell animate-fade-in">
     <header class="detail-patchbay">
@@ -175,12 +163,13 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
 
     {
       headings.length > 0 && (
-        <TableOfContents headingsArr={headings} client:idle />
+        <TableOfContents headingsArr={headings} family="log" client:idle />
       )
     }
   </div>
 
   <RelatedPosts
+    family="log"
     previous={articleTrail.previous}
     next={articleTrail.next}
     items={articleTrail.related}

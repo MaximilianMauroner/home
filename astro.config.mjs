@@ -31,7 +31,15 @@ export default defineConfig({
     expressiveCode(),
     mdx(),
     sitemap({
-      filter: (page) => !page.includes("/admin") && !isInactiveToolUrl(page),
+      filter: (page) => {
+        const pathname = new URL(page).pathname;
+        const isTagDetail = /^\/tags\/[^/]+\/?$/.test(pathname);
+        return (
+          !page.includes("/admin") &&
+          !isInactiveToolUrl(page) &&
+          !isTagDetail
+        );
+      },
       serialize: (item) => {
         if (item.url.includes("/tags/")) {
           return { ...item, priority: 0.3 };

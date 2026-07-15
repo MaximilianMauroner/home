@@ -1,12 +1,37 @@
 import type { HeadingType } from "@/utils/types";
-import { useModalDialog } from "@/utils/useModalDialog";
-import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ContentFamily } from "./ContentPreview";
+
+const familyStyles: Record<
+  ContentFamily,
+  { active: string; ring: string; dot: string }
+> = {
+  blog: {
+    active:
+      "border-orange-700 bg-orange-700/10 text-orange-900 dark:border-orange-400 dark:text-orange-200",
+    ring: "focus-visible:ring-orange-600 dark:focus-visible:ring-orange-400",
+    dot: "bg-orange-700 dark:bg-orange-400",
+  },
+  log: {
+    active:
+      "border-emerald-700 bg-emerald-700/10 text-emerald-900 dark:border-lime-300 dark:text-lime-200",
+    ring: "focus-visible:ring-emerald-600 dark:focus-visible:ring-lime-300",
+    dot: "bg-emerald-700 dark:bg-lime-300",
+  },
+  snack: {
+    active:
+      "border-amber-700 bg-amber-700/10 text-amber-950 dark:border-amber-300 dark:text-amber-100",
+    ring: "focus-visible:ring-amber-600 dark:focus-visible:ring-amber-300",
+    dot: "bg-amber-700 dark:bg-amber-300",
+  },
+};
 
 export default function TableOfContents({
   headingsArr,
+  family,
 }: {
   headingsArr: HeadingType[];
+  family: ContentFamily;
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
@@ -65,18 +90,36 @@ export default function TableOfContents({
     };
   }, [handleScroll]);
 
-  useModalDialog({
-    dialogRef: mobileSheetRef,
-    initialFocusSelector: '[aria-current="location"]',
-    isOpen: isMobileOpen,
-    onClose: () => setIsMobileOpen(false),
-  });
+  useEffect(() => {
+    if (!isMobileOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const activeLink = mobileSheetRef.current?.querySelector<HTMLAnchorElement>(
+      '[aria-current="location"]',
+    );
+    activeLink?.focus({ preventScroll: true });
+    activeLink?.scrollIntoView({ block: "center" });
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+      mobileTriggerRef.current?.focus({ preventScroll: true });
+    };
+  }, [isMobileOpen]);
 
   if (headingsArr.length === 0) return null;
 
   const currentHeadingText =
     headingsArr.find((heading) => heading.slug === currentHeading)?.text ??
     "On this page";
+  const theme = familyStyles[family];
 
   return (
     <div ref={wrapperRef}>
@@ -88,7 +131,7 @@ export default function TableOfContents({
           aria-expanded={isMobileOpen}
           aria-controls="mobile-table-of-contents"
           onClick={() => setIsMobileOpen(true)}
-          className="fixed bottom-3 left-1/2 z-40 flex min-h-11 max-w-[80vw] -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/95 px-4 text-sm font-medium text-foreground shadow-lg backdrop-blur transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className={`fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex h-10 max-w-[80vw] -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/95 px-4 text-sm font-medium text-foreground shadow-lg backdrop-blur transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 ${theme.ring}`}
         >
           <svg
             viewBox="0 0 24 24"
@@ -104,79 +147,69 @@ export default function TableOfContents({
           <span className="truncate">{currentHeadingText}</span>
         </button>
 
-        {isMobileOpen &&
-          createPortal(
-            <div data-modal-root="mobile-table-of-contents">
-              <div
-                aria-hidden="true"
-                className="fixed inset-0 z-50 bg-black/40"
-                onClick={() => setIsMobileOpen(false)}
-              />
-              <section
-                ref={mobileSheetRef}
-                id="mobile-table-of-contents"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="mobile-table-of-contents-title"
-                tabIndex={-1}
-                className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[65vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl focus:outline-none"
-                style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-              >
-                <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                  <h2
-                    id="mobile-table-of-contents-title"
-                    className="font-semibold text-foreground"
-                  >
-                    On this page
-                  </h2>
-                  <button
-                    type="button"
-                    aria-label="Close table of contents"
-                    onClick={() => setIsMobileOpen(false)}
-                    className="grid min-h-11 min-w-11 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      className="h-5 w-5"
-                      aria-hidden="true"
-                    >
-                      <path strokeLinecap="round" d="m6 6 12 12M18 6 6 18" />
-                    </svg>
-                  </button>
-                </div>
-                <nav
-                  aria-label="Table of contents"
-                  className="overflow-y-auto p-2"
+        {isMobileOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Close table of contents"
+              className="fixed inset-0 z-50 bg-black/40"
+              onClick={() => setIsMobileOpen(false)}
+            />
+            <nav
+              ref={mobileSheetRef}
+              id="mobile-table-of-contents"
+              aria-label="Table of contents"
+              className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[65vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl"
+              style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+            >
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <span className="font-semibold text-foreground">
+                  On this page
+                </span>
+                <button
+                  type="button"
+                  aria-label="Close table of contents"
+                  onClick={() => setIsMobileOpen(false)}
+                  className={`grid h-10 w-10 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 ${theme.ring}`}
                 >
-                  {headingsArr.map((heading) => {
-                    const isCurrent = currentHeading === heading.slug;
-                    return (
-                      <a
-                        key={heading.slug}
-                        href={`#${heading.slug}`}
-                        aria-current={isCurrent ? "location" : undefined}
-                        onClick={() => setIsMobileOpen(false)}
-                        style={{
-                          paddingLeft: `${1 + Math.max(heading.depth - 2, 0)}rem`,
-                        }}
-                        className={`flex min-h-11 items-center rounded-lg border-l-2 py-2.5 pr-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                          isCurrent
-                            ? "border-primary bg-primary/10 font-semibold text-primary"
-                            : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        {heading.text}
-                      </a>
-                    );
-                  })}
-                </nav>
-              </section>
-            </div>,
-            document.body,
-          )}
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-5 w-5"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" d="m6 6 12 12M18 6 6 18" />
+                  </svg>
+                </button>
+              </div>
+              <div className="overflow-y-auto p-2">
+                {headingsArr.map((heading) => {
+                  const isCurrent = currentHeading === heading.slug;
+                  return (
+                    <a
+                      key={heading.slug}
+                      href={`#${heading.slug}`}
+                      aria-current={isCurrent ? "location" : undefined}
+                      onClick={() => setIsMobileOpen(false)}
+                      style={{
+                        paddingLeft: `${1 + Math.max(heading.depth - 2, 0)}rem`,
+                      }}
+                      className={`flex min-h-11 items-center rounded-lg border-l-2 py-2.5 pr-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 ${theme.ring} ${
+                        isCurrent
+                          ? `${theme.active} font-semibold`
+                          : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      {heading.text}
+                    </a>
+                  );
+                })}
+              </div>
+            </nav>
+          </>
+        )}
       </div>
 
       <div
@@ -195,7 +228,7 @@ export default function TableOfContents({
           aria-label="Open table of contents"
           aria-expanded={isDesktopOpen}
           onClick={() => setIsDesktopOpen(true)}
-          className={`flex flex-col gap-2 rounded-full border border-border bg-card/90 px-2 py-3 shadow-sm backdrop-blur transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          className={`flex flex-col gap-2 rounded-full border border-border bg-card/90 px-2 py-3 shadow-sm backdrop-blur transition-opacity focus-visible:outline-none focus-visible:ring-2 ${theme.ring} ${
             isDesktopOpen ? "pointer-events-none opacity-0" : "opacity-100"
           }`}
         >
@@ -204,7 +237,7 @@ export default function TableOfContents({
               key={heading.slug}
               aria-hidden="true"
               className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                currentHeading === heading.slug ? "bg-primary" : "bg-border"
+                currentHeading === heading.slug ? theme.dot : "bg-border"
               }`}
             />
           ))}
@@ -231,9 +264,9 @@ export default function TableOfContents({
                   style={{
                     paddingLeft: `${0.75 + Math.max(heading.depth - 2, 0) * 0.75}rem`,
                   }}
-                  className={`-ml-px block border-l py-1.5 pr-2 text-sm leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  className={`-ml-px block border-l py-1.5 pr-2 text-sm leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 ${theme.ring} ${
                     isCurrent
-                      ? "border-primary font-medium text-foreground"
+                      ? `${theme.active} font-medium`
                       : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
                 >

@@ -3,14 +3,16 @@ import type {
   AdjacentContentItem,
   RelatedItem,
 } from "@/utils/server/content";
+import type { ContentFamily } from "./ContentPreview";
 
 interface Props {
+  family: ContentFamily;
   items: RelatedItem[];
   previous?: AdjacentContentItem;
   next?: AdjacentContentItem;
 }
 
-const { items, previous, next } = Astro.props;
+const { family, items, previous, next } = Astro.props;
 
 const kindLabel: Record<RelatedItem["kind"], string> = {
   blog: "blog",
@@ -25,7 +27,10 @@ const hasRelated = items.length > 0;
 {
   (items.length > 0 || previous || next) && (
     <aside
-      class="mx-auto mt-16 max-w-5xl px-4 sm:px-6 lg:px-8"
+      class:list={[
+        "content-related mx-auto mt-16 max-w-5xl px-4 sm:px-6 lg:px-8",
+        `content-related--${family}`,
+      ]}
       aria-label="Article trails"
     >
       {!hasRelated && (previous || next) && (
@@ -33,12 +38,12 @@ const hasRelated = items.length > 0;
           {previous && (
             <a
               href={previous.url}
-              class="group rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur-sm transition-all hover:border-indigo-500/50 hover:bg-card/90"
+              class="content-related__card group p-5"
             >
               <span class="font-mono text-xs uppercase tracking-wider text-muted-foreground">
                 Previous
               </span>
-              <span class="mt-2 block font-semibold text-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+              <span class="content-related__title mt-2 block font-semibold transition-colors">
                 {previous.title}
               </span>
             </a>
@@ -46,12 +51,12 @@ const hasRelated = items.length > 0;
           {next && (
             <a
               href={next.url}
-              class="group rounded-2xl border border-border/60 bg-card/60 p-5 text-right backdrop-blur-sm transition-all hover:border-indigo-500/50 hover:bg-card/90 sm:col-start-2"
+              class="content-related__card group p-5 text-right sm:col-start-2"
             >
               <span class="font-mono text-xs uppercase tracking-wider text-muted-foreground">
                 Next
               </span>
-              <span class="mt-2 block font-semibold text-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+              <span class="content-related__title mt-2 block font-semibold transition-colors">
                 {next.title}
               </span>
             </a>
@@ -61,14 +66,14 @@ const hasRelated = items.length > 0;
 
       {hasRelated && (
         <>
-          <h2 class="mb-6 font-mono text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 class="content-related__heading mb-6 font-mono text-sm font-semibold uppercase tracking-wider">
             Related
           </h2>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {items.map((item) => (
               <a
                 href={item.url}
-                class="group relative flex flex-col gap-2 rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur-sm transition-all hover:border-indigo-500/50 hover:bg-card/90"
+                class="content-related__card group relative flex flex-col gap-2 p-5"
               >
                 <span
                   class:list={[
@@ -80,7 +85,7 @@ const hasRelated = items.length > 0;
                 >
                   {kindLabel[item.kind]}
                 </span>
-                <span class="font-semibold text-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                <span class="content-related__title font-semibold transition-colors">
                   {item.title}
                 </span>
                 {item.description && (
@@ -96,3 +101,99 @@ const hasRelated = items.length > 0;
     </aside>
   )
 }
+
+<style>
+  .content-related {
+    --trail-accent: #4f46e5;
+    --trail-surface: rgb(255 255 255 / 0.72);
+    --trail-ink: #24231e;
+    --trail-muted: #696761;
+    --trail-line: rgb(36 35 30 / 0.2);
+  }
+
+  .content-related--blog {
+    --trail-accent: #a9361c;
+    --trail-surface: rgb(232 226 201 / 0.78);
+    --trail-ink: #183f3a;
+    --trail-muted: #45615a;
+    --trail-line: rgb(24 63 58 / 0.32);
+  }
+
+  .content-related--log {
+    --trail-accent: #247e6d;
+    --trail-surface: rgb(246 239 217 / 0.88);
+    --trail-ink: #24231e;
+    --trail-muted: #696355;
+    --trail-line: #817b6d;
+  }
+
+  .content-related--snack {
+    --trail-accent: #b06b08;
+    --trail-surface: rgb(255 249 220 / 0.88);
+    --trail-ink: #2e2920;
+    --trail-muted: #665d4d;
+    --trail-line: rgb(135 93 31 / 0.28);
+  }
+
+  .content-related__card {
+    display: block;
+    border: 1px solid var(--trail-line);
+    border-radius: var(--radius-lg);
+    background: var(--trail-surface);
+    color: var(--trail-ink);
+    text-decoration: none;
+    backdrop-filter: blur(8px);
+    transition: border-color 160ms ease, box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+
+  .content-related__card:hover,
+  .content-related__card:focus-visible {
+    border-color: var(--trail-accent);
+    box-shadow: 0.3rem 0.35rem 0 color-mix(in srgb, var(--trail-accent), transparent 86%);
+    transform: translateY(-2px);
+  }
+
+  .content-related__card:focus-visible {
+    outline: 3px solid var(--trail-accent);
+    outline-offset: 3px;
+  }
+
+  .content-related__heading,
+  .content-related__card > :global(.text-muted-foreground) {
+    color: var(--trail-muted);
+  }
+
+  .content-related__title { color: var(--trail-ink); }
+  .content-related__card:hover .content-related__title { color: var(--trail-accent); }
+
+  :global(.dark) .content-related--blog {
+    --trail-surface: rgb(23 39 37 / 0.88);
+    --trail-ink: #dbe8da;
+    --trail-muted: #9cb7aa;
+    --trail-line: rgb(219 232 218 / 0.25);
+    --trail-accent: #ff855e;
+  }
+
+  :global(.dark) .content-related--log {
+    --trail-surface: rgb(26 26 24 / 0.92);
+    --trail-ink: #f3e9cc;
+    --trail-muted: #bbb19a;
+    --trail-line: #66645b;
+    --trail-accent: #ff806d;
+  }
+
+  :global(.dark) .content-related--snack {
+    --trail-surface: rgb(43 36 23 / 0.9);
+    --trail-ink: #fff7df;
+    --trail-muted: #d4c5a5;
+    --trail-line: rgb(245 184 73 / 0.28);
+    --trail-accent: #f5b849;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .content-related__card { transition: none; }
+    .content-related__card:hover,
+    .content-related__card:focus-visible { transform: none; }
+  }
+</style>

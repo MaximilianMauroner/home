@@ -3,7 +3,6 @@ import Header from "@/components/layout/Header.astro";
 import Footer from "@/components/layout/Footer.astro";
 import type { ImageMetadata } from "astro";
 import { getImage } from "astro:assets";
-import { serializeJsonLd } from "@/utils/server/seo";
 interface Props {
   title: string;
   description: string;
@@ -30,9 +29,6 @@ const {
   ogImageType = "image/png",
   noindex = false,
 } = Astro.props;
-const documentTitle = title.includes("Maximilian Mauroner")
-  ? title
-  : `${title} | Maximilian Mauroner`;
 import "@/styles/globals.css";
 import Posthog from "@/components/layout/Posthog.astro";
 
@@ -42,58 +38,34 @@ if (normalizedPathname !== "/" && !normalizedPathname.endsWith("/")) {
   normalizedPathname = normalizedPathname + "/";
 }
 const canonicalURL = new URL(normalizedPathname, Astro.site);
-const isTagSearchVariant =
-  normalizedPathname === "/tags/" && Astro.url.searchParams.has("q");
+// Preserve query parameters for search pages (tags page with q parameter)
+if (Astro.url.pathname === "/tags/" && Astro.url.searchParams.has("q")) {
+  canonicalURL.search = Astro.url.search;
+}
 
 const shouldNoindex =
   noindex ||
   Astro.url.pathname.startsWith("/admin") ||
-  Astro.url.pathname === "/404" ||
-  isTagSearchVariant;
-const robotsContent = shouldNoindex ? "noindex, follow" : "index, follow";
-const analyticsExcludedPrefixes = [
-  "/admin",
-  "/tools/leaveify/",
-  "/tools/readwise-tags-mapper/",
-  "/tools/spotify-stats/",
-  "/tools/whatsapp-stats/",
-];
-const shouldLoadAnalytics =
-  import.meta.env.PROD &&
-  !analyticsExcludedPrefixes.some((prefix) =>
-    normalizedPathname.startsWith(prefix),
-  );
+  Astro.url.pathname === "/404";
 
 const images = import.meta.glob<{ default: ImageMetadata }>(
   "/src/assets/**/*.{jpeg,jpg,png,gif,webp,avif}"
 );
-let contentMetaImageUrl: string | undefined;
+let img;
 if (image && images[image]) {
-  const img = await getImage({
+  img = await getImage({
     src: images[image](),
     width: 1024,
     height: 1024,
   });
-  contentMetaImageUrl = new URL(img.src, Astro.site ?? Astro.url).href;
-} else if (image) {
-  const img = await getImage({
+} else {
+  img = await getImage({
     src: "/astronaut.avif",
     width: 1024,
     height: 1024,
   });
-  contentMetaImageUrl = new URL(img.src, Astro.site ?? Astro.url).href;
 }
-const firstPathSegment = Astro.url.pathname.split("/").filter(Boolean)[0];
-const sectionOgSlug = ["blog", "dev-log", "snacks", "tags", "tools"].includes(
-  firstPathSegment ?? "",
-)
-  ? firstPathSegment
-  : "home";
-const fallbackMetaImageUrl = new URL(
-  `/og/section/${sectionOgSlug}.png`,
-  Astro.site ?? Astro.url,
-).href;
-const metaImageUrl = ogImageUrl ?? contentMetaImageUrl ?? fallbackMetaImageUrl;
+const metaImageUrl = ogImageUrl ?? new URL(img.src, Astro.site ?? Astro.url).href;
 const ogType = articlePublishedTime ? "article" : "website";
 const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
   /^www\./,
@@ -102,21 +74,21 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
 ---
 
 <html lang="en">
-  <head>
+  <>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="canonical" href={canonicalURL} />
     <link rel="sitemap" href="/sitemap-index.xml" />
 
     <!-- Primary Meta Tags -->
-    <title>{documentTitle}</title>
-    <meta name="title" content={documentTitle} />
+    <title>{title}</title>
+    <meta name="title" content={title} />
     <meta name="description" content={description} />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonicalURL} />
-    <meta property="og:title" content={documentTitle} />
+    <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={metaImageUrl} />
     {
@@ -132,7 +104,7 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content={canonicalURL} />
-    <meta property="twitter:title" content={documentTitle} />
+    <meta property="twitter:title" content={title} />
     <meta property="twitter:description" content={description} />
     <meta property="twitter:image" content={metaImageUrl} />
 
@@ -179,9 +151,14 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
     <link rel="alternate" type="application/rss+xml" href="/rss.xml" />
     <meta name="generator" content={Astro.generator} />
     <!-- Robots meta tag -->
-    <meta name="robots" content={robotsContent} />
-    {shouldLoadAnalytics && <Posthog />}
-    <slot name="head" />
+    {
+      shouldNoindex ? (
+        <meta name="robots" content="noindex, nofollow" />
+      ) : (
+        <meta name="robots" content="index, follow" />
+      )
+    }
+    {import.meta.env.PROD && <Posthog />}
 
     <!-- Website Schema for Sitelinks Optimization -->
     {
@@ -189,17 +166,25 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
         <script
           is:inline
           type="application/ld+json"
-          set:html={serializeJsonLd({
+          set:html={JSON.stringify({
             "@context": "https://schema.org",
             "@type": "WebSite",
             name: "Maximilian Mauroner",
             url: Astro.site,
             description:
-              "Just a dev sharing cool stuff: code snippets that work, dev stories that might help, and random tech tools I think are neat.",
+              "Software developer studying at TU Wien, sharing open-source tools, engineering notes, experiments, and practical articles.",
             publisher: {
               "@type": "Person",
               name: "Maximilian Mauroner",
               url: Astro.site,
+            },
+            potentialAction: {
+              "@type": "SearchAction",
+              target: {
+                "@type": "EntryPoint",
+                urlTemplate: `${new URL("/tags/", Astro.site).href}?q={search_term_string}`,
+              },
+              "query-input": "required name=search_term_string",
             },
             mainEntity: {
               "@type": "ItemList",
@@ -277,16 +262,11 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
         }
       });
     </script>
-  </head>
+  </>
   <body lang="en" class="flex min-h-dvh flex-col">
-    <a
-      href="#main-content"
-      class="sr-only z-[100] rounded-md bg-background px-4 py-3 text-foreground shadow-lg focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-    >
-      Skip to main content
-    </a>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <Header />
-    <main id="main-content" tabindex="-1" class="min-w-0 flex-1">
+    <main id="main-content" class="min-w-0 flex-1" tabindex="-1">
       <slot />
     </main>
     <Footer />
@@ -333,3 +313,26 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
     </script>
   </body>
 </html>
+
+<style>
+  .skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 100;
+    padding: 0.65rem 0.9rem;
+    border-radius: var(--radius-md);
+    background: var(--foreground);
+    color: var(--background);
+    font-weight: 700;
+    text-decoration: none;
+    transform: translateY(calc(-100% - 1rem));
+    transition: transform 150ms ease;
+  }
+
+  .skip-link:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+    transform: translateY(0);
+  }
+</style>

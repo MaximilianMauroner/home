@@ -486,7 +486,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
         />
       )}
       <div className="relative z-10 mx-auto max-w-7xl px-4">
-        <div className="py-1">
+        <div className="py-1" aria-hidden="true">
           <div className="my-10 grid w-full grid-flow-col grid-cols-5 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-4xl font-extrabold [text-shadow:_0_0_10px_#818cf8] sm:text-6xl md:text-8xl">
             {firstname.split("").map((letter, index) => (
               <span

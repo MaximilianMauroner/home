@@ -34,36 +34,10 @@ const dynamicColor = (index: number) => {
   return colors[index % colors.length];
 };
 
-// Type-specific styling
-const getTypeStyle = (type: "blog" | "log" | "snack") => {
-  const style = {
-    dot: "",
-    label: "",
-    gradient: "",
-    border: "",
-  };
-
-  if (type === "blog") {
-    style.dot = "bg-gradient-to-br from-indigo-500 to-purple-600";
-    style.label =
-      "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300";
-    style.gradient = "from-indigo-500/20 to-purple-500/20";
-    style.border = "border-indigo-300 dark:border-indigo-700";
-  } else if (type === "log") {
-    style.dot = "bg-gradient-to-br from-green-500 to-emerald-600";
-    style.label =
-      "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300";
-    style.gradient = "from-green-500/20 to-emerald-500/20";
-    style.border = "border-green-300 dark:border-green-700";
-  } else {
-    style.dot = "bg-gradient-to-br from-amber-500 to-orange-600";
-    style.label =
-      "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300";
-    style.gradient = "from-amber-500/20 to-orange-500/20";
-    style.border = "border-amber-300 dark:border-amber-700";
-  }
-
-  return style;
+const typeDotStyle: Record<TimelineItem["type"], string> = {
+  blog: "bg-gradient-to-br from-red-500 to-orange-600",
+  log: "bg-gradient-to-br from-emerald-500 to-teal-600",
+  snack: "bg-gradient-to-br from-amber-500 to-orange-600",
 };
 
 const TimelineCardSkeleton = () => (
@@ -104,7 +78,6 @@ const TimelineEntry = ({
   index: number;
   prefersReducedMotion: boolean;
 }) => {
-  const typeStyle = getTypeStyle(timelineItem.type);
   const isLeft = index % 2 === 0;
   const randomSeed = index * 137;
   const offsetY = index === 0 ? 0 : randomSeed % 10;
@@ -180,7 +153,7 @@ const TimelineEntry = ({
           />
 
           <div
-            className={`relative ${typeStyle.dot} h-3 w-3 rounded-full border-2 border-white shadow-lg md:h-4 md:w-4 dark:border-gray-950`}
+            className={`relative ${typeDotStyle[timelineItem.type]} h-3 w-3 rounded-full border-2 border-white shadow-lg md:h-4 md:w-4 dark:border-gray-950`}
             style={{
               opacity: isRevealed ? 1 : 0,
               transform:
@@ -370,58 +343,60 @@ export default function Timeline({
         </div>
 
         {/* Vertical Timeline */}
-        <div className="relative px-4 sm:px-8">
-          {/* Central Timeline Line - left on mobile, center on desktop */}
-          <div
-            className="absolute bottom-0 left-4 top-0 w-1 bg-gradient-to-b from-indigo-500/50 via-purple-500/50 to-pink-500/50 md:left-1/2 md:-translate-x-1/2 dark:from-indigo-400/30 dark:via-purple-400/30 dark:to-pink-400/30"
-            style={{
-              animation:
-                isVisible && !prefersReducedMotion
-                  ? "drawLine 2s ease-out forwards"
-                  : "none",
-            }}
-          />
+        <div className="px-4 sm:px-8">
+          <div className="relative">
+            {/* Central Timeline Line - left on mobile, center on desktop */}
+            <div
+              className="absolute bottom-0 left-4 top-0 w-1 bg-gradient-to-b from-indigo-500/50 via-purple-500/50 to-pink-500/50 md:left-1/2 md:-translate-x-1/2 dark:from-indigo-400/30 dark:via-purple-400/30 dark:to-pink-400/30"
+              style={{
+                animation:
+                  isVisible && !prefersReducedMotion
+                    ? "drawLine 2s ease-out forwards"
+                    : "none",
+              }}
+            />
 
-          {/* Timeline Items */}
-          <div className="space-y-32 lg:space-y-40">
-            {allItems.length === 0 &&
-              Array.from({ length: 4 }, (_, index) => {
-                const isLeft = index % 2 === 0;
+            {/* Timeline Items */}
+            <div className="space-y-32 lg:space-y-40">
+              {allItems.length === 0 &&
+                Array.from({ length: 4 }, (_, index) => {
+                  const isLeft = index % 2 === 0;
 
-                return (
-                  <div
-                    key={`timeline-skeleton-${index}`}
-                    className="relative pb-8 lg:pb-12"
-                  >
-                    <div className="relative flex w-full items-center">
-                      <div
-                        className={`ml-8 w-[calc(100%-2rem)] ${isLeft ? "md:ml-0 md:mr-auto md:w-[calc(50%-3rem)]" : "md:hidden"}`}
-                      >
-                        <TimelineCardSkeleton />
-                      </div>
-
-                      <div className="absolute left-4 z-10 flex items-center md:left-1/2 md:-translate-x-1/2">
-                        <div className="absolute left-full h-0.5 w-8 bg-gradient-to-r from-indigo-500/20 to-transparent md:w-24" />
-                        <div className="relative h-3 w-3 rounded-full border-2 border-white bg-indigo-300 shadow-lg md:h-4 md:w-4 dark:border-gray-950 dark:bg-indigo-700" />
-                      </div>
-
-                      {!isLeft && (
-                        <div className="hidden md:ml-auto md:mr-0 md:block md:w-[calc(50%-3rem)]">
+                  return (
+                    <div
+                      key={`timeline-skeleton-${index}`}
+                      className="relative pb-8 lg:pb-12"
+                    >
+                      <div className="relative flex w-full items-center">
+                        <div
+                          className={`ml-8 w-[calc(100%-2rem)] ${isLeft ? "md:ml-0 md:mr-auto md:w-[calc(50%-3rem)]" : "md:hidden"}`}
+                        >
                           <TimelineCardSkeleton />
                         </div>
-                      )}
+
+                        <div className="absolute left-4 z-10 flex items-center md:left-1/2 md:-translate-x-1/2">
+                          <div className="absolute left-full h-0.5 w-8 bg-gradient-to-r from-indigo-500/20 to-transparent md:w-24" />
+                          <div className="relative h-3 w-3 rounded-full border-2 border-white bg-indigo-300 shadow-lg md:h-4 md:w-4 dark:border-gray-950 dark:bg-indigo-700" />
+                        </div>
+
+                        {!isLeft && (
+                          <div className="hidden md:ml-auto md:mr-0 md:block md:w-[calc(50%-3rem)]">
+                            <TimelineCardSkeleton />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            {visibleItems.map((timelineItem, index) => (
-              <TimelineEntry
-                key={`${timelineItem.type}-${timelineItem.item.id}`}
-                timelineItem={timelineItem}
-                index={index}
-                prefersReducedMotion={prefersReducedMotion}
-              />
-            ))}
+                  );
+                })}
+              {visibleItems.map((timelineItem, index) => (
+                <TimelineEntry
+                  key={`${timelineItem.type}-${timelineItem.item.id}`}
+                  timelineItem={timelineItem}
+                  index={index}
+                  prefersReducedMotion={prefersReducedMotion}
+                />
+              ))}
+            </div>
           </div>
 
           {!expanded && allItems.length > visibleItems.length && (
@@ -439,7 +414,7 @@ export default function Timeline({
         </div>
 
         {/* End marker */}
-        {allItems.length > 0 && (
+        {expanded && allItems.length > 0 && (
           <div
             className="relative mt-16 flex justify-center"
             style={{

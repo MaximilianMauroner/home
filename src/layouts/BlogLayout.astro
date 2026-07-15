@@ -1,6 +1,5 @@
 ---
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
-import ArticleJsonLd from "@/components/content/ArticleJsonLd.astro";
 import ReadingProgress from "@/components/content/ReadingProgress";
 import RelatedPosts from "@/components/content/RelatedPosts.astro";
 import TableOfContents from "@/components/content/TableOfContents";
@@ -64,21 +63,10 @@ const tags = frontmatter.tags ?? [];
   articleModifiedTime={articleModifiedTime}
   articleAuthor="Maximilian Mauroner"
 >
-  <Fragment slot="head">
-    <ArticleJsonLd
-      title={frontmatter.title}
-      description={frontmatter.description}
-      tags={tags}
-      publishedAt={releaseDate.toISOString()}
-      modifiedAt={articleModifiedTime}
-      sectionName="Blog"
-      sectionPath="/blog/"
-    />
-  </Fragment>
-  <ReadingProgress client:load />
+  <ReadingProgress family="blog" client:load />
 
   <div class="blog-detail-page animate-fade-in mx-auto w-[min(72rem,calc(100%_-_2rem))] py-[clamp(2rem,6vw,4.5rem)] motion-reduce:animate-none max-[720px]:w-[min(72rem,calc(100%_-_1.25rem))] max-[720px]:pb-12 max-[720px]:pt-4">
-    <header class="blog-detail-map relative isolate flex min-h-[31rem] flex-col overflow-hidden rounded-[var(--radius-md)] border bg-[var(--map)] p-[clamp(1.35rem,4vw,3rem)] text-[var(--ink)] max-[720px]:min-h-0 max-[720px]:p-[1.1rem]">
+    <header class="blog-detail-map relative isolate flex min-h-[31rem] flex-col overflow-hidden rounded-[var(--radius-lg)] border bg-[var(--map)] p-[clamp(1.35rem,4vw,3rem)] text-[var(--ink)] max-[720px]:min-h-0 max-[720px]:p-[1.1rem]">
       {
         frontmatter.image && (
           <figure
@@ -131,12 +119,12 @@ const tags = frontmatter.tags ?? [];
               aria-label="Topics"
             >
               {tags.map((tag, index) => (
-                <li class="flex items-center gap-[0.28rem] max-[720px]:min-w-0 max-[720px]:text-[0.64rem]">
+                <li class="flex gap-[0.28rem] max-[720px]:min-w-0 max-[720px]:text-[0.64rem]">
                   <span class="text-[var(--marker)]">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <a
-                    class="text-inherit no-underline hover:underline hover:underline-offset-[0.2em] focus-visible:underline focus-visible:underline-offset-[0.2em] max-[720px]:inline-flex max-[720px]:min-h-11 max-[720px]:items-center max-[720px]:whitespace-normal max-[720px]:[overflow-wrap:anywhere]"
+                    class="text-inherit no-underline hover:underline hover:underline-offset-[0.2em] focus-visible:underline focus-visible:underline-offset-[0.2em] max-[720px]:truncate"
                     href={`/tags/${tag}/`}
                   >
                     {tag}
@@ -156,7 +144,7 @@ const tags = frontmatter.tags ?? [];
       </footer>
     </header>
 
-    <div class="blog-detail-body mx-auto mt-[clamp(2.5rem,7vw,5.5rem)] w-[min(54rem,calc(100%_-_clamp(0rem,4vw,4rem)))] overflow-hidden rounded-[var(--radius-md)] border max-[720px]:mt-9 max-[720px]:w-full">
+    <div class="blog-detail-body mx-auto mt-[clamp(2.5rem,7vw,5.5rem)] w-[min(54rem,calc(100%_-_clamp(0rem,4vw,4rem)))] overflow-hidden rounded-[var(--radius-lg)] border max-[720px]:mt-9 max-[720px]:w-full">
       <div
         class="blog-detail-body-label flex items-center justify-between gap-4 border-b px-[clamp(1.25rem,4vw,2.5rem)] py-[0.85rem] font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.08em] text-[var(--marker)] max-[720px]:px-[1.1rem] max-[720px]:py-3 max-[720px]:text-[0.6rem]"
         aria-hidden="true"
@@ -171,13 +159,14 @@ const tags = frontmatter.tags ?? [];
 
     {
       headings.length > 0 && (
-        <TableOfContents headingsArr={headings} client:idle />
+        <TableOfContents headingsArr={headings} family="blog" client:idle />
       )
     }
   </div>
 
   <div class="blog-detail-related">
     <RelatedPosts
+      family="blog"
       previous={articleTrail.previous}
       next={articleTrail.next}
       items={articleTrail.related}

@@ -1,6 +1,12 @@
 import { kebabCase } from "@/utils/helpers";
 
-export default function TagsList({ tags }: { tags: string[] }) {
+export default function TagsList({
+  tags,
+  wrap = false,
+}: {
+  tags: string[];
+  wrap?: boolean;
+}) {
   const kebabCasedTags = tags.map((e) => kebabCase(e));
   return (
     <>
@@ -31,8 +37,18 @@ export default function TagsList({ tags }: { tags: string[] }) {
           background: rgba(156, 163, 175, 0.3);
           border-radius: var(--radius-sm);
         }
+        .tags-scroll--wrap {
+          flex-wrap: wrap;
+          overflow-x: visible;
+        }
       `}</style>
-      <div className="tags-scroll flex w-full min-w-0 max-w-full flex-nowrap gap-2 overflow-x-auto">
+      <div
+        className={`tags-scroll flex w-full min-w-0 max-w-full gap-2 ${
+          wrap
+            ? "tags-scroll--wrap"
+            : "flex-nowrap overflow-x-auto"
+        }`}
+      >
         {kebabCasedTags.map((tag) => (
           <a
             key={tag}

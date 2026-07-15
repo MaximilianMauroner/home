@@ -65,25 +65,15 @@ const dynamicColor = (index: number) => {
         </p>
       </div>
 
-      <div class="flex flex-wrap gap-6 justify-center items-start">
+      <div class="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
         {
           snacks.map((snack, index) => {
-            // More organic, scattered positioning
-            const baseOffsetY = (index % 4) * 8;
-            const baseOffsetX = (index % 3) * 15;
-            const randomY = Math.sin(snack.id.charCodeAt(0)) * 20;
-            const randomX = Math.cos(snack.id.charCodeAt(1)) * 25;
-            const offsetY = baseOffsetY + randomY;
-            const offsetX = baseOffsetX + randomX;
             const delay = index * 80;
 
             return (
               <div
-                class="w-full sm:w-[calc(45%-0.75rem)] lg:w-[calc(30%-1rem)] xl:w-[calc(23%-1rem)]"
-                style={`
-                    transform: translate(${offsetX}px, ${offsetY}px);
-                    animation: floatIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}ms both;
-                  `}
+                class="min-w-0 animate-fade-in"
+                style={`animation-delay: ${delay}ms;`}
               >
                 <SnackPreview snack={snack}>
                   <div
@@ -109,32 +99,3 @@ const dynamicColor = (index: number) => {
     </div>
   </section>
 </StarLayout>
-
-<style>
-  @keyframes floatIn {
-    from {
-      opacity: 0;
-      transform: translateY(30px) rotate(-5deg) scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) rotate(0deg) scale(1);
-    }
-  }
-
-  /* Subtle floating animation for the whole page */
-  @keyframes gentleFloat {
-    0%,
-    100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-3px);
-    }
-  }
-
-  /* Apply to header */
-  h1 {
-    animation: gentleFloat 6s ease-in-out infinite;
-  }
-</style>
