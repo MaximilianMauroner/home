@@ -1,5 +1,6 @@
 ---
 import TagView from "@/components/content/TagView";
+import type { TaggedPreviewEntry } from "@/components/content/previewTypes";
 import StarLayout from "@/layouts/StarLayout.astro";
 import { getBlogs, getLogs, getSnacks, getTags } from "@/utils/server/content";
 
@@ -15,6 +16,44 @@ const snacks = await getSnacks();
 
 const tags = getTags(blogs, logs, snacks);
 const tagCount = tag ? (tags.get(tag) ?? 0) : 0;
+const posts: TaggedPreviewEntry[] = [
+  ...blogs.map((entry) => ({
+    collection: "blog" as const,
+    id: entry.id,
+    data: {
+      title: entry.data.title,
+      description: entry.data.description,
+      tags: entry.data.tags,
+      type: entry.data.type,
+      image: entry.data.image,
+      releaseDate: entry.data.releaseDate.toISOString(),
+    },
+  })),
+  ...logs.map((entry) => ({
+    collection: "log" as const,
+    id: entry.id,
+    data: {
+      title: entry.data.title,
+      description: entry.data.description,
+      tags: entry.data.tags,
+      type: entry.data.type,
+      image: entry.data.image,
+      releaseDate: entry.data.releaseDate.toISOString(),
+    },
+  })),
+  ...snacks.map((entry) => ({
+    collection: "snacks" as const,
+    id: entry.id,
+    data: {
+      title: entry.data.title,
+      description: entry.data.description,
+      tags: entry.data.tags,
+      type: entry.data.type,
+      image: entry.data.image,
+      releaseDate: entry.data.releaseDate.toISOString(),
+    },
+  })),
+];
 
 export async function getStaticPaths() {
   const blogs = await getBlogs();
@@ -40,10 +79,8 @@ export async function getStaticPaths() {
     </header>
   </div>
   <TagView
-    tags={tags}
-    blogs={blogs}
-    logs={logs}
-    snacks={snacks}
+    tags={[...tags.entries()]}
+    posts={posts}
     preSelectedTag={tag}
     client:load
   />

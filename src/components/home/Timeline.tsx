@@ -72,19 +72,10 @@ const TimelineCardSkeleton = () => (
 const TimelineEntry = ({
   timelineItem,
   index,
-  prefersReducedMotion,
 }: {
   timelineItem: TimelineItem;
   index: number;
-  prefersReducedMotion: boolean;
 }) => {
-  const isLeft = index % 2 === 0;
-  const randomSeed = index * 137;
-  const offsetY = index === 0 ? 0 : randomSeed % 10;
-  const offsetX = (randomSeed % 30) - 15;
-  const revealDelay = (index % 3) * 90;
-  const isRevealed = true;
-
   const renderPreview = () => {
     if (timelineItem.type === "blog") {
       return <BlogPreview blog={timelineItem.item} />;
@@ -115,75 +106,14 @@ const TimelineEntry = ({
   };
 
   return (
-    <div
-      className="relative pb-8 lg:pb-12"
-      style={{
-        marginTop: index === 0 ? 0 : `${offsetY}px`,
-        scrollSnapAlign: "start",
-        scrollMarginTop: "20vh",
-      }}
-    >
-      <div className="relative flex w-full items-center">
+    <div className="relative pl-12 md:pl-0 md:[&_.content-preview]:min-h-[24rem]">
+      <div className="absolute left-4 top-6 z-10 flex -translate-x-1/2 items-center md:hidden">
+        <div className="absolute left-1/2 h-0.5 w-8 bg-gradient-to-r from-indigo-500/30 to-transparent" />
         <div
-          className={`ml-8 w-[calc(100%-2rem)] ${isLeft ? "md:ml-0 md:mr-auto md:w-[calc(50%-3rem)]" : "md:hidden"}`}
-          style={{
-            opacity: isRevealed ? 1 : 0,
-            transform: prefersReducedMotion
-              ? "translateX(0) scale(1)"
-              : isRevealed
-                ? `translateX(${offsetX}px) scale(1)`
-                : "translateX(-100px) scale(0.95)",
-            transition: prefersReducedMotion
-              ? "none"
-              : `opacity 0.8s ease-out ${revealDelay}ms, transform 0.8s ease-out ${revealDelay}ms`,
-          }}
-        >
-          {renderPreview()}
-        </div>
-
-        <div className="absolute left-4 z-10 flex items-center md:left-1/2 md:-translate-x-1/2">
-          <div
-            className={`transition-duration-[600ms] absolute left-full h-0.5 bg-gradient-to-r from-indigo-500/30 to-transparent transition-all ${isRevealed ? "w-8 md:w-24" : "w-0"} ${isLeft ? "md:left-full md:from-indigo-500/30 md:to-transparent" : "md:left-auto md:right-full md:from-transparent md:to-indigo-500/30"}`}
-            style={{
-              opacity: isRevealed ? 1 : 0,
-              transitionDelay: prefersReducedMotion
-                ? "0ms"
-                : `${revealDelay + 200}ms`,
-            }}
-          />
-
-          <div
-            className={`relative ${typeDotStyle[timelineItem.type]} h-3 w-3 rounded-full border-2 border-white shadow-lg md:h-4 md:w-4 dark:border-gray-950`}
-            style={{
-              opacity: isRevealed ? 1 : 0,
-              transform:
-                prefersReducedMotion || isRevealed ? "scale(1)" : "scale(0)",
-              transition: prefersReducedMotion
-                ? "none"
-                : `opacity 0.5s ease-out ${revealDelay + 120}ms, transform 0.5s ease-out ${revealDelay + 120}ms`,
-            }}
-          />
-        </div>
-
-        {!isLeft && (
-          <div
-            className="hidden md:ml-auto md:mr-0 md:block md:w-[calc(50%-3rem)]"
-            style={{
-              opacity: isRevealed ? 1 : 0,
-              transform: prefersReducedMotion
-                ? "translateX(0) scale(1)"
-                : isRevealed
-                  ? `translateX(${-offsetX}px) scale(1)`
-                  : "translateX(100px) scale(0.95)",
-              transition: prefersReducedMotion
-                ? "none"
-                : `opacity 0.8s ease-out ${revealDelay}ms, transform 0.8s ease-out ${revealDelay}ms`,
-            }}
-          >
-            {renderPreview()}
-          </div>
-        )}
+          className={`relative ${typeDotStyle[timelineItem.type]} h-3 w-3 rounded-full border-2 border-white shadow-lg dark:border-gray-950`}
+        />
       </div>
+      {renderPreview()}
     </div>
   );
 };
@@ -262,44 +192,12 @@ export default function Timeline({
     };
   }, [prefersReducedMotion]);
 
-  useEffect(() => {
-    if (prefersReducedMotion) return;
-
-    // Enable scroll snap on html for smooth snap scrolling when timeline is visible
-    const html = document.documentElement;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          html.style.scrollSnapType = "y proximity";
-          html.style.scrollBehavior = "smooth";
-          html.style.scrollPaddingTop = "20vh";
-        } else {
-          html.style.scrollSnapType = "";
-          html.style.scrollBehavior = "";
-          html.style.scrollPaddingTop = "";
-        }
-      },
-      { threshold: 0.1 },
-    );
-
-    if (timelineRef.current) {
-      observer.observe(timelineRef.current);
-    }
-
-    return () => {
-      observer.disconnect();
-      html.style.scrollSnapType = "";
-      html.style.scrollBehavior = "";
-      html.style.scrollPaddingTop = "";
-    };
-  }, [prefersReducedMotion]);
-
   return (
     <section
       id="home-timeline"
       ref={timelineRef}
       tabIndex={-1}
-      className="relative min-h-[100vh] overflow-x-clip bg-gradient-to-b from-transparent via-indigo-50/20 to-indigo-100/30 py-32 outline-none dark:via-indigo-950/20 dark:to-indigo-950/30"
+      className="relative min-h-[100vh] overflow-x-clip bg-gradient-to-b from-transparent via-indigo-50/20 to-indigo-100/30 py-24 outline-none lg:py-28 dark:via-indigo-950/20 dark:to-indigo-950/30"
     >
       {/* Decorative background elements */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -307,9 +205,9 @@ export default function Timeline({
         <div className="absolute bottom-40 right-20 h-80 w-80 rounded-full bg-violet-200/10 blur-3xl dark:bg-violet-800/10" />
       </div>
 
-      <div className="relative mx-auto max-w-5xl px-4 lg:px-6">
+      <div className="relative mx-auto max-w-6xl px-4 lg:px-6">
         {/* Section Header */}
-        <div className="mb-16 text-center">
+        <div className="mb-12 text-center lg:mb-14">
           <h2
             className="mb-4 text-4xl font-extrabold tracking-tight text-gray-900 lg:text-5xl dark:text-gray-100"
             style={{
@@ -342,12 +240,12 @@ export default function Timeline({
           </p>
         </div>
 
-        {/* Vertical Timeline */}
-        <div className="px-4 sm:px-8">
+        {/* Chronological feed: mobile timeline, desktop editorial grid */}
+        <div className="px-2 sm:px-6 lg:px-0">
           <div className="relative">
-            {/* Central Timeline Line - left on mobile, center on desktop */}
+            {/* Mobile timeline rail */}
             <div
-              className="absolute bottom-0 left-4 top-0 w-1 bg-gradient-to-b from-indigo-500/50 via-purple-500/50 to-pink-500/50 md:left-1/2 md:-translate-x-1/2 dark:from-indigo-400/30 dark:via-purple-400/30 dark:to-pink-400/30"
+              className="absolute bottom-0 left-4 top-0 w-1 bg-gradient-to-b from-indigo-500/50 via-purple-500/50 to-pink-500/50 md:hidden dark:from-indigo-400/30 dark:via-purple-400/30 dark:to-pink-400/30"
               style={{
                 animation:
                   isVisible && !prefersReducedMotion
@@ -356,44 +254,25 @@ export default function Timeline({
               }}
             />
 
-            {/* Timeline Items */}
-            <div className="space-y-32 lg:space-y-40">
+            <div className="grid grid-cols-1 gap-y-10 md:grid-cols-2 md:gap-x-8 md:gap-y-8">
               {allItems.length === 0 &&
-                Array.from({ length: 4 }, (_, index) => {
-                  const isLeft = index % 2 === 0;
-
-                  return (
-                    <div
-                      key={`timeline-skeleton-${index}`}
-                      className="relative pb-8 lg:pb-12"
-                    >
-                      <div className="relative flex w-full items-center">
-                        <div
-                          className={`ml-8 w-[calc(100%-2rem)] ${isLeft ? "md:ml-0 md:mr-auto md:w-[calc(50%-3rem)]" : "md:hidden"}`}
-                        >
-                          <TimelineCardSkeleton />
-                        </div>
-
-                        <div className="absolute left-4 z-10 flex items-center md:left-1/2 md:-translate-x-1/2">
-                          <div className="absolute left-full h-0.5 w-8 bg-gradient-to-r from-indigo-500/20 to-transparent md:w-24" />
-                          <div className="relative h-3 w-3 rounded-full border-2 border-white bg-indigo-300 shadow-lg md:h-4 md:w-4 dark:border-gray-950 dark:bg-indigo-700" />
-                        </div>
-
-                        {!isLeft && (
-                          <div className="hidden md:ml-auto md:mr-0 md:block md:w-[calc(50%-3rem)]">
-                            <TimelineCardSkeleton />
-                          </div>
-                        )}
-                      </div>
+                Array.from({ length: 4 }, (_, index) => (
+                  <div
+                    key={`timeline-skeleton-${index}`}
+                    className="relative pl-12 md:pl-0"
+                  >
+                    <div className="absolute left-4 top-6 z-10 flex -translate-x-1/2 items-center md:hidden">
+                      <div className="absolute left-1/2 h-0.5 w-8 bg-gradient-to-r from-indigo-500/20 to-transparent" />
+                      <div className="relative h-3 w-3 rounded-full border-2 border-white bg-indigo-300 shadow-lg dark:border-gray-950 dark:bg-indigo-700" />
                     </div>
-                  );
-                })}
+                    <TimelineCardSkeleton />
+                  </div>
+                ))}
               {visibleItems.map((timelineItem, index) => (
                 <TimelineEntry
                   key={`${timelineItem.type}-${timelineItem.item.id}`}
                   timelineItem={timelineItem}
                   index={index}
-                  prefersReducedMotion={prefersReducedMotion}
                 />
               ))}
             </div>

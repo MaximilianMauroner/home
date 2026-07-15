@@ -1,12 +1,12 @@
-import type { CollectionEntry } from "astro:content";
 import type { ReactNode } from "react";
 import ContentPreview from "./ContentPreview";
+import type { PreviewEntry } from "./previewTypes";
 
 export default function SnackPreview({
   snack,
   image,
 }: {
-  snack: CollectionEntry<"snacks">;
+  snack: PreviewEntry;
   image?: ReactNode;
 }) {
   return (

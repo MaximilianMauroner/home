@@ -1,6 +1,6 @@
-import type { CollectionEntry } from "astro:content";
 import type { ReactNode } from "react";
 import ContentPreview from "./ContentPreview";
+import type { PreviewEntry } from "./previewTypes";
 
 const localImageUrls = import.meta.glob<string>(
   "/src/assets/**/*.{jpeg,jpg,png,gif,webp,avif}",
@@ -8,7 +8,7 @@ const localImageUrls = import.meta.glob<string>(
 );
 
 interface LogPreviewProps {
-  log: CollectionEntry<"log"> & { _imageUrl?: string };
+  log: PreviewEntry;
   image?: ReactNode;
 }
 
