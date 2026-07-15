@@ -11,6 +11,9 @@ interface TimelineProps {
   snacks: PreviewEntry[];
   expanded: boolean;
   onExpand: () => void;
+  onSpaceshipDockedChange: (docked: boolean) => void;
+  spaceshipDocked: boolean;
+  spaceshipLaunching: boolean;
 }
 
 type TimelineItem = {
@@ -24,6 +27,17 @@ type TimelineChapter = {
   month: string;
   year: number;
   items: Array<TimelineItem & { index: number }>;
+};
+
+type TimelineFlightPath = {
+  height: number;
+  path: string;
+  ship: {
+    angle: number;
+    x: number;
+    y: number;
+  };
+  width: number;
 };
 
 const months = [
@@ -83,6 +97,34 @@ const monthIcons = ["✦", "●", "✷", "◆"];
 
 const dynamicColor = (index: number) => colors[index % colors.length];
 
+export const TimelineSpaceshipGlyph = () => (
+  <>
+    <circle cx="-12" cy="0" r="2" fill="currentColor" opacity="0.25" />
+    <circle cx="-7" cy="0" r="1.5" fill="currentColor" opacity="0.5" />
+    <path
+      d="M -3 -7 C 4 -7 10 -3 13 0 C 10 3 4 7 -3 7 L 0 0 Z"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeLinejoin="round"
+      strokeWidth="1.5"
+    />
+    <path
+      d="M -1 -6 L -7 -10 L -5 -3 M -1 6 L -7 10 L -5 3"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+    />
+    <circle
+      cx="5"
+      cy="0"
+      r="2.5"
+      className="fill-indigo-100 dark:fill-indigo-950"
+    />
+  </>
+);
+
 const TimelineCardSkeleton = () => (
   <article
     className="h-72 rounded-2xl border border-border/50 bg-card/80 p-6 shadow-sm backdrop-blur-xl sm:p-8 dark:bg-card/80"
@@ -110,6 +152,46 @@ const TimelineCardSkeleton = () => (
       </div>
     </div>
   </article>
+);
+
+const TimelineStation = () => (
+  <div
+    data-flight-destination
+    role="img"
+    aria-label="Timeline docking station"
+    className="relative z-30 h-32 w-40 text-indigo-300"
+  >
+    <div
+      aria-hidden="true"
+      className="absolute left-1/2 top-0 h-5 w-px -translate-x-1/2 bg-indigo-400"
+    >
+      <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full border border-indigo-300 bg-indigo-500 shadow-[0_0_12px_rgba(129,140,248,0.9)]" />
+    </div>
+    <div
+      aria-hidden="true"
+      className="absolute left-0 top-1/2 h-14 w-10 -translate-x-7 -translate-y-1/2 rounded-md border border-indigo-400/70 bg-indigo-950 shadow-lg [background-image:linear-gradient(rgba(129,140,248,0.3)_1px,transparent_1px),linear-gradient(90deg,rgba(129,140,248,0.3)_1px,transparent_1px)] [background-size:100%_0.7rem,0.7rem_100%]"
+    />
+    <div
+      aria-hidden="true"
+      className="absolute right-0 top-1/2 h-14 w-10 -translate-y-1/2 translate-x-7 rounded-md border border-fuchsia-400/70 bg-fuchsia-950 shadow-lg [background-image:linear-gradient(rgba(232,121,249,0.3)_1px,transparent_1px),linear-gradient(90deg,rgba(232,121,249,0.3)_1px,transparent_1px)] [background-size:100%_0.7rem,0.7rem_100%]"
+    />
+    <div
+      aria-hidden="true"
+      className="absolute inset-3 flex items-center justify-center rounded-[2rem] border-2 border-indigo-300/80 bg-slate-950 shadow-[0_0_0_6px_rgba(49,46,129,0.45),0_0_28px_rgba(129,140,248,0.5)]"
+    >
+      <span className="absolute left-4 top-3 font-mono text-[0.5rem] uppercase tracking-[0.2em] text-indigo-300/70">
+        orbital dock
+      </span>
+      <span className="absolute right-4 top-3 h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.9)]" />
+      <span className="relative flex h-16 w-16 items-center justify-center rounded-full border-4 border-violet-400 bg-slate-950 shadow-[inset_0_0_18px_rgba(139,92,246,0.65),0_0_16px_rgba(139,92,246,0.5)]">
+        <span className="absolute inset-1 rounded-full border border-dashed border-fuchsia-300/70" />
+        <span className="h-7 w-7 rounded-lg border-2 border-indigo-200 bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-[0_0_14px_rgba(217,70,239,0.7)]" />
+      </span>
+      <span className="absolute bottom-2 font-mono text-[0.45rem] uppercase tracking-[0.25em] text-fuchsia-200/70">
+        bay ∞
+      </span>
+    </div>
+  </div>
 );
 
 const TimelineEntry = ({
@@ -170,23 +252,32 @@ const TimelineMasonry = ({ items }: { items: TimelineChapter["items"] }) => {
 
     const updateSpans = () => {
       const styles = getComputedStyle(grid);
-      const rowHeight = Number.parseFloat(styles.gridAutoRows);
-      const rowGap = Number.parseFloat(styles.rowGap);
+      const columnCount = styles.gridTemplateColumns.split(" ").length;
+      const rowHeight = 4;
+      const parsedRowGap = Number.parseFloat(styles.rowGap);
+      const rowGap = Number.isFinite(parsedRowGap) ? parsedRowGap : 0;
+      const listItems = Array.from(grid.children) as HTMLLIElement[];
 
-      Array.from(grid.children).forEach((child) => {
-        const listItem = child as HTMLLIElement;
-        const card = listItem.firstElementChild as HTMLElement | null;
-
-        if (!card || !Number.isFinite(rowHeight)) {
+      if (columnCount === 1) {
+        grid.classList.remove("timeline-masonry--ready");
+        listItems.forEach((listItem) => {
           listItem.style.gridRowEnd = "auto";
-          return;
-        }
+        });
+        return;
+      }
 
-        const span = Math.ceil(
+      const spans = listItems.map((listItem) => {
+        const card = listItem.firstElementChild as HTMLElement | null;
+        if (!card) return 1;
+        return Math.ceil(
           (card.getBoundingClientRect().height + rowGap) / (rowHeight + rowGap),
         );
-        listItem.style.gridRowEnd = `span ${span}`;
       });
+
+      listItems.forEach((listItem, index) => {
+        listItem.style.gridRowEnd = `span ${spans[index]}`;
+      });
+      grid.classList.add("timeline-masonry--ready");
     };
 
     const observer = new ResizeObserver(updateSpans);
@@ -200,18 +291,23 @@ const TimelineMasonry = ({ items }: { items: TimelineChapter["items"] }) => {
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      grid.classList.remove("timeline-masonry--ready");
+      Array.from(grid.children).forEach((child) => {
+        (child as HTMLLIElement).style.gridRowEnd = "auto";
+      });
     };
   }, [items]);
 
   return (
     <ol
       ref={gridRef}
-      className="grid list-none grid-cols-1 gap-5 p-0 md:grid-cols-2 md:[grid-auto-flow:dense] md:[grid-auto-rows:4px] xl:grid-cols-3"
+      className="timeline-masonry grid list-none grid-cols-1 gap-5 p-0 md:grid-cols-2 xl:grid-cols-3"
     >
       {items.map((timelineItem) => (
         <li
           key={`${timelineItem.type}-${timelineItem.item.id}`}
-          className="min-w-0"
+          className="relative z-10 min-w-0"
+          data-timeline-entry
         >
           <TimelineEntry
             timelineItem={timelineItem}
@@ -229,6 +325,9 @@ export default function Timeline({
   snacks,
   expanded,
   onExpand,
+  onSpaceshipDockedChange,
+  spaceshipDocked,
+  spaceshipLaunching,
 }: TimelineProps) {
   const allItems = useMemo<TimelineItem[]>(
     () =>
@@ -253,29 +352,40 @@ export default function Timeline({
   );
   const [isVisible, setIsVisible] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [flightPath, setFlightPath] = useState<TimelineFlightPath | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
-  const visibleItems = expanded ? allItems : allItems.slice(0, 6);
-  const chapters = visibleItems.reduce<TimelineChapter[]>(
-    (groups, item, index) => {
-      const year = item.date.getUTCFullYear();
-      const monthIndex = item.date.getUTCMonth();
-      const key = `${year}-${monthIndex}`;
-      const current = groups.at(-1);
+  const chaptersRef = useRef<HTMLDivElement>(null);
+  const flightPathRef = useRef<SVGPathElement>(null);
+  const spaceshipRef = useRef<SVGGElement>(null);
+  const visibleItems = useMemo(
+    () => (expanded ? allItems : allItems.slice(0, 6)),
+    [allItems, expanded],
+  );
+  const visibleItemKey = visibleItems
+    .map(({ item, type }) => `${type}-${item.id}`)
+    .join("|");
+  const chapters = useMemo(
+    () =>
+      visibleItems.reduce<TimelineChapter[]>((groups, item, index) => {
+        const year = item.date.getUTCFullYear();
+        const monthIndex = item.date.getUTCMonth();
+        const key = `${year}-${monthIndex}`;
+        const current = groups.at(-1);
 
-      if (current?.key === key) {
-        current.items.push({ ...item, index });
-      } else {
-        groups.push({
-          key,
-          month: months[monthIndex],
-          year,
-          items: [{ ...item, index }],
-        });
-      }
+        if (current?.key === key) {
+          current.items.push({ ...item, index });
+        } else {
+          groups.push({
+            key,
+            month: months[monthIndex],
+            year,
+            items: [{ ...item, index }],
+          });
+        }
 
-      return groups;
-    },
-    [],
+        return groups;
+      }, []),
+    [visibleItems],
   );
   const expandTimeline = () => {
     onExpand();
@@ -318,6 +428,333 @@ export default function Timeline({
       }
     };
   }, [prefersReducedMotion]);
+
+  useEffect(() => {
+    const container = chaptersRef.current;
+    if (!container) return;
+
+    let frame = 0;
+    const updateFlightPath = () => {
+      const containerBounds = container.getBoundingClientRect();
+      const entries = Array.from(
+        container.querySelectorAll<HTMLElement>("[data-timeline-entry]"),
+      );
+      const destination = container.querySelector<HTMLElement>(
+        "[data-flight-destination]",
+      );
+
+      if (entries.length === 0) {
+        setFlightPath(null);
+        return;
+      }
+
+      const points = entries
+        .map((entry) => {
+          const bounds = entry.getBoundingClientRect();
+          return {
+            top: bounds.top - containerBounds.top,
+            x: bounds.left - containerBounds.left + bounds.width / 2,
+            y: bounds.top - containerBounds.top + bounds.height / 2,
+          };
+        })
+        .sort((a, b) => a.top - b.top || a.x - b.x);
+
+      const firstPoint = points[0];
+      const routePoints = [
+        { x: 12, y: firstPoint.top + 20 },
+        ...points.map(({ x, y }) => ({ x, y })),
+        ...(destination
+          ? [
+              {
+                x:
+                  destination.getBoundingClientRect().left -
+                  containerBounds.left +
+                  destination.getBoundingClientRect().width / 2,
+                y:
+                  destination.getBoundingClientRect().top -
+                  containerBounds.top +
+                  destination.getBoundingClientRect().height / 2,
+              },
+            ]
+          : []),
+      ];
+      let path = `M ${routePoints[0].x} ${routePoints[0].y}`;
+
+      for (let index = 1; index < routePoints.length; index += 1) {
+        const previous = routePoints[index - 1];
+        const current = routePoints[index];
+        const deltaX = current.x - previous.x;
+        const deltaY = current.y - previous.y;
+
+        if (Math.abs(deltaY) < 32) {
+          const bend = index % 2 === 0 ? 18 : -18;
+          path += ` C ${previous.x + deltaX * 0.34} ${previous.y + bend}, ${current.x - deltaX * 0.34} ${current.y + bend}, ${current.x} ${current.y}`;
+        } else {
+          const middleY = previous.y + deltaY / 2;
+          const direction = index === 1 || index % 2 === 0 ? 1 : -1;
+          const curve = Math.min(72, Math.max(24, Math.abs(deltaY) * 0.12));
+          path += ` C ${previous.x + curve * direction} ${middleY}, ${current.x - curve * direction} ${middleY}, ${current.x} ${current.y}`;
+        }
+      }
+
+      const shipTarget = routePoints[1];
+      const nextFlightPath: TimelineFlightPath = {
+        height: containerBounds.height,
+        path,
+        ship: {
+          angle:
+            (Math.atan2(
+              shipTarget.y - routePoints[0].y,
+              shipTarget.x - routePoints[0].x,
+            ) *
+              180) /
+            Math.PI,
+          x: routePoints[0].x,
+          y: routePoints[0].y,
+        },
+        width: containerBounds.width,
+      };
+      setFlightPath((current) =>
+        current?.height === nextFlightPath.height &&
+        current.path === nextFlightPath.path &&
+        current.ship.angle === nextFlightPath.ship.angle &&
+        current.ship.x === nextFlightPath.ship.x &&
+        current.ship.y === nextFlightPath.ship.y &&
+        current.width === nextFlightPath.width
+          ? current
+          : nextFlightPath,
+      );
+    };
+
+    const scheduleUpdate = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(updateFlightPath);
+    };
+    const observer = new ResizeObserver(scheduleUpdate);
+    observer.observe(container);
+    container
+      .querySelectorAll<HTMLElement>("[data-timeline-entry]")
+      .forEach((entry) => observer.observe(entry));
+    const destination = container.querySelector<HTMLElement>(
+      "[data-flight-destination]",
+    );
+    if (destination) observer.observe(destination);
+    window.addEventListener("resize", scheduleUpdate);
+    scheduleUpdate();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("resize", scheduleUpdate);
+    };
+  }, [visibleItemKey]);
+
+  useEffect(() => {
+    const container = chaptersRef.current;
+    const path = flightPathRef.current;
+    const spaceship = spaceshipRef.current;
+    if (!container || !path || !spaceship || !flightPath) return;
+
+    const pathLength = path.getTotalLength();
+    if (pathLength === 0) return;
+    const pathSamples: Array<{ distance: number; y: number }> = [];
+    for (let index = 0; index <= 400; index += 1) {
+      const distance = (pathLength * index) / 400;
+      const point = path.getPointAtLength(distance);
+      const previous = pathSamples.at(-1);
+      if (!previous || point.y > previous.y) {
+        pathSamples.push({ distance, y: point.y });
+      }
+    }
+
+    const getDistanceForY = (targetY: number) => {
+      let lowerIndex = 0;
+      let upperIndex = pathSamples.length - 1;
+      while (lowerIndex < upperIndex) {
+        const middleIndex = Math.floor((lowerIndex + upperIndex) / 2);
+        if (pathSamples[middleIndex].y < targetY) {
+          lowerIndex = middleIndex + 1;
+        } else {
+          upperIndex = middleIndex;
+        }
+      }
+
+      const upper = pathSamples[lowerIndex];
+      const lower = pathSamples[Math.max(0, lowerIndex - 1)];
+      const segmentHeight = upper.y - lower.y;
+      const interpolation =
+        segmentHeight === 0
+          ? 0
+          : Math.max(0, Math.min(1, (targetY - lower.y) / segmentHeight));
+      return lower.distance + (upper.distance - lower.distance) * interpolation;
+    };
+
+    let frame = 0;
+    let currentDistance: number | null = null;
+    let targetDistance = 0;
+    let minimumDistance = 0;
+    let maximumDistance = pathLength;
+    let velocity = 0;
+    let previousTimestamp = 0;
+    let reportedDocked: boolean | null = null;
+
+    const reportDocked = (docked: boolean) => {
+      if (reportedDocked === docked) return;
+      reportedDocked = docked;
+      onSpaceshipDockedChange(docked);
+    };
+
+    const renderSpaceship = (distance: number) => {
+      const progress = Math.max(0, Math.min(1, distance / pathLength));
+      const point = path.getPointAtLength(distance);
+      const nextPoint = path.getPointAtLength(
+        Math.min(pathLength, distance + 2),
+      );
+      const angle =
+        (Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x) * 180) /
+        Math.PI;
+
+      spaceship.setAttribute(
+        "transform",
+        `translate(${point.x} ${point.y}) rotate(${angle}) scale(1.2)`,
+      );
+      spaceship.dataset.flightProgress = progress.toFixed(4);
+      if (
+        targetDistance <= pathLength * 0.001 &&
+        distance <= pathLength * 0.0015
+      ) {
+        reportDocked(true);
+      }
+    };
+
+    const updateTarget = () => {
+      const containerBounds = container.getBoundingClientRect();
+      const viewportGuide = window.innerHeight * 0.45;
+      const travelRange = Math.max(
+        1,
+        containerBounds.height - window.innerHeight + viewportGuide,
+      );
+      const scrollProgress = Math.max(
+        0,
+        Math.min(1, (viewportGuide - containerBounds.top) / travelRange),
+      );
+      const pacedDistance = pathLength * scrollProgress;
+      minimumDistance = getDistanceForY(
+        window.innerHeight * 0.18 - containerBounds.top,
+      );
+      maximumDistance = getDistanceForY(
+        window.innerHeight * 0.72 - containerBounds.top,
+      );
+      targetDistance = Math.max(
+        minimumDistance,
+        Math.min(maximumDistance, pacedDistance),
+      );
+      if (targetDistance > pathLength * 0.001) reportDocked(false);
+      spaceship.dataset.flightTargetProgress = Math.max(
+        0,
+        Math.min(1, targetDistance / pathLength),
+      ).toFixed(4);
+
+      if (currentDistance === null) {
+        currentDistance = targetDistance;
+        renderSpaceship(currentDistance);
+        return;
+      }
+
+      const constrainedDistance = Math.max(
+        minimumDistance,
+        Math.min(maximumDistance, currentDistance),
+      );
+      if (constrainedDistance !== currentDistance) {
+        currentDistance = constrainedDistance;
+        velocity *= 0.25;
+      }
+
+      if (frame === 0) {
+        previousTimestamp = performance.now();
+        frame = requestAnimationFrame(animateSpaceship);
+      }
+    };
+
+    const animateSpaceship = (timestamp: number) => {
+      frame = 0;
+      if (currentDistance === null) return;
+
+      const deltaTime = Math.min(0.032, (timestamp - previousTimestamp) / 1000);
+      previousTimestamp = timestamp;
+      const displacement = targetDistance - currentDistance;
+      const acceleration = displacement * 90 - velocity * 13;
+      velocity = Math.max(
+        -1000,
+        Math.min(1000, velocity + acceleration * deltaTime),
+      );
+      currentDistance += velocity * deltaTime;
+
+      if (
+        currentDistance < minimumDistance ||
+        currentDistance > maximumDistance
+      ) {
+        currentDistance = Math.max(
+          minimumDistance,
+          Math.min(maximumDistance, currentDistance),
+        );
+        velocity *= -0.12;
+      }
+
+      const remainingDistance = targetDistance - currentDistance;
+      if (Math.abs(remainingDistance) < 0.35 && Math.abs(velocity) < 2) {
+        currentDistance = targetDistance;
+        velocity = 0;
+        renderSpaceship(currentDistance);
+        return;
+      }
+
+      renderSpaceship(currentDistance);
+      frame = requestAnimationFrame(animateSpaceship);
+    };
+    const scheduleUpdate = () => {
+      updateTarget();
+    };
+
+    if (prefersReducedMotion) {
+      spaceship.setAttribute(
+        "transform",
+        `translate(${flightPath.ship.x} ${flightPath.ship.y}) rotate(${flightPath.ship.angle}) scale(1.2)`,
+      );
+      spaceship.dataset.flightProgress = "0.0000";
+      const updateReducedMotionDock = () => {
+        reportDocked(
+          container.getBoundingClientRect().top >= window.innerHeight * 0.45,
+        );
+      };
+      window.addEventListener("scroll", updateReducedMotionDock, {
+        passive: true,
+      });
+      window.addEventListener("resize", updateReducedMotionDock);
+      updateReducedMotionDock();
+      return () => {
+        window.removeEventListener("scroll", updateReducedMotionDock);
+        window.removeEventListener("resize", updateReducedMotionDock);
+      };
+    }
+
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    const handleResize = () => {
+      currentDistance = null;
+      velocity = 0;
+      cancelAnimationFrame(frame);
+      frame = 0;
+      scheduleUpdate();
+    };
+    window.addEventListener("resize", handleResize);
+    scheduleUpdate();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [flightPath, onSpaceshipDockedChange, prefersReducedMotion]);
 
   return (
     <section
@@ -368,17 +805,55 @@ export default function Timeline({
         </div>
 
         {/* Month chapters preserve newest-first DOM order in a dense editorial grid. */}
-        <div className="relative pl-8 sm:pl-10">
-          <div
-            aria-hidden="true"
-            className="absolute bottom-0 left-0 top-0 w-px bg-gray-300 dark:bg-gray-700"
-            style={{
-              animation:
-                isVisible && !prefersReducedMotion
-                  ? "drawLine 1.4s ease-out forwards"
-                  : "none",
-            }}
-          />
+        <div ref={chaptersRef} className="relative pl-8 sm:pl-10">
+          {flightPath && (
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 top-0 z-0 overflow-visible"
+              focusable="false"
+              height={flightPath.height}
+              viewBox={`0 0 ${flightPath.width} ${flightPath.height}`}
+              width={flightPath.width}
+            >
+              <path
+                ref={flightPathRef}
+                className="timeline-flight-path fill-none stroke-indigo-300/70 dark:stroke-indigo-700/70"
+                d={flightPath.path}
+                pathLength="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="3"
+                vectorEffect="non-scaling-stroke"
+                style={{
+                  animation:
+                    isVisible && !prefersReducedMotion
+                      ? "drawFlightPath 1.4s ease-out both"
+                      : "none",
+                }}
+              />
+            </svg>
+          )}
+          {flightPath && (
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 top-0 z-20 overflow-visible"
+              focusable="false"
+              height={flightPath.height}
+              viewBox={`0 0 ${flightPath.width} ${flightPath.height}`}
+              width={flightPath.width}
+            >
+              <g
+                ref={spaceshipRef}
+                data-timeline-route-ship
+                className="text-indigo-600 drop-shadow-sm transition-opacity duration-150 dark:text-indigo-300"
+                style={{
+                  opacity: spaceshipLaunching || spaceshipDocked ? 0 : 1,
+                }}
+              >
+                <TimelineSpaceshipGlyph />
+              </g>
+            </svg>
+          )}
 
           {allItems.length === 0 && (
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -398,7 +873,7 @@ export default function Timeline({
                 <section
                   key={chapter.key}
                   aria-labelledby={headingId}
-                  className="relative grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6"
+                  className="relative z-10 grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6"
                 >
                   <div
                     aria-hidden="true"
@@ -444,31 +919,35 @@ export default function Timeline({
               </button>
             </div>
           )}
-        </div>
 
-        {/* End marker */}
-        {expanded && allItems.length > 0 && (
-          <div
-            className="relative mt-16 flex justify-center"
-            style={{
-              opacity: isVisible ? 1 : 0,
-              transform:
-                prefersReducedMotion || isVisible
-                  ? "translateY(0)"
-                  : "translateY(20px)",
-              transition: prefersReducedMotion
-                ? "none"
-                : "opacity 0.8s ease-out, transform 0.8s ease-out",
-            }}
-          >
-            <div className="relative z-10 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-xl dark:border-gray-950">
-              <span className="text-2xl font-bold text-white">∞</span>
+          {expanded && allItems.length > 0 && (
+            <div
+              className="relative mt-20 flex justify-center pb-4"
+              style={{
+                opacity: isVisible ? 1 : 0,
+                transform:
+                  prefersReducedMotion || isVisible
+                    ? "translateY(0)"
+                    : "translateY(20px)",
+                transition: prefersReducedMotion
+                  ? "none"
+                  : "opacity 0.8s ease-out, transform 0.8s ease-out",
+              }}
+            >
+              <TimelineStation />
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <style>{`
+        @media (min-width: 768px) {
+          #home-timeline .timeline-masonry--ready {
+            grid-auto-flow: dense;
+            grid-auto-rows: 4px;
+          }
+        }
+
         #home-timeline .timeline-entry .content-preview {
           height: auto;
         }
@@ -512,12 +991,23 @@ export default function Timeline({
           padding: 0.55rem 0.8rem;
         }
 
-        @keyframes drawLine {
+        .timeline-flight-path {
+          stroke-dasharray: 1;
+          stroke-dashoffset: 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .timeline-flight-path {
+            animation: none !important;
+          }
+        }
+
+        @keyframes drawFlightPath {
           from {
-            height: 0;
+            stroke-dashoffset: 1;
           }
           to {
-            height: 100%;
+            stroke-dashoffset: 0;
           }
         }
       `}</style>

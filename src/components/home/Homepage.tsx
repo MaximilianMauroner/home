@@ -11,7 +11,7 @@ import weekOfYear from "dayjs/plugin/weekOfYear";
 dayjs.extend(weekOfYear);
 import type { PreviewEntry } from "@/components/content/previewTypes";
 import { Queue } from "@/utils/queue";
-import Timeline from "./Timeline";
+import Timeline, { TimelineSpaceshipGlyph } from "./Timeline";
 import {
   clampLetterCardPosition,
   getLetterCardWidth,
@@ -47,6 +47,34 @@ interface HomepageProps {
   snacks: PreviewEntry[];
   initialAge: string;
 }
+
+interface TimelineLaunchOrigin {
+  height: number;
+  left: number;
+  top: number;
+  width: number;
+}
+
+const waitForScrollToSettle = () =>
+  new Promise<void>((resolve) => {
+    let settleTimer = 0;
+    let maximumTimer = 0;
+
+    const finish = () => {
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(maximumTimer);
+      window.removeEventListener("scroll", handleScroll);
+      resolve();
+    };
+    const handleScroll = () => {
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(finish, 140);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    settleTimer = window.setTimeout(finish, 140);
+    maximumTimer = window.setTimeout(finish, 1400);
+  });
 
 const LetterCard = ({
   position,
@@ -275,7 +303,14 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
   const [showHint, setShowHint] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [timelineLaunchOrigin, setTimelineLaunchOrigin] =
+    useState<TimelineLaunchOrigin | null>(null);
+  const [timelineSpaceshipLaunching, setTimelineSpaceshipLaunching] =
+    useState(false);
+  const [timelineSpaceshipDocked, setTimelineSpaceshipDocked] = useState(true);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const timelineButtonSpaceshipRef = useRef<SVGSVGElement>(null);
+  const timelineLaunchSpaceshipRef = useRef<SVGSVGElement>(null);
   const letterButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
@@ -380,32 +415,32 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
         return;
       }
 
-    let iteration = 0;
+      let iteration = 0;
 
-    const stringRemap = (str: string, iteration: number) => {
-      return str
-        .split("")
-        .map((_, index) => {
-          if (index < iteration) {
-            return ogValue[index];
+      const stringRemap = (str: string, iteration: number) => {
+        return str
+          .split("")
+          .map((_, index) => {
+            if (index < iteration) {
+              return ogValue[index];
+            }
+            return letters[Math.floor(Math.random() * letters.length)];
+          })
+          .join("");
+      };
+
+      const unmask = () => {
+        const interval = setInterval(() => {
+          setName((prev) => stringRemap(prev, Math.floor(iteration)));
+
+          if (iteration >= ogValue.length) {
+            clearInterval(interval);
+            setName(ogValue); // Ensure final value is correct
           }
-          return letters[Math.floor(Math.random() * letters.length)];
-        })
-        .join("");
-    };
 
-    const unmask = () => {
-      const interval = setInterval(() => {
-        setName((prev) => stringRemap(prev, Math.floor(iteration)));
-
-        if (iteration >= ogValue.length) {
-          clearInterval(interval);
-          setName(ogValue); // Ensure final value is correct
-        }
-
-        iteration += 1 / 3;
-      }, 45);
-    };
+          iteration += 1 / 3;
+        }, 45);
+      };
       setTimeout(unmask, 50);
     },
     [prefersReducedMotion],
@@ -465,18 +500,178 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
     [],
   );
 
-  const scrollToTimeline = useCallback(() => {
-    setTimelineExpanded(true);
-    if (timelineRef.current) {
-      timelineRef.current.scrollIntoView({
+  const handleTimelineSpaceshipDockedChange = useCallback(
+    (docked: boolean) => setTimelineSpaceshipDocked(docked),
+    [],
+  );
+
+  const scrollToTimeline = useCallback(async () => {
+    if (timelineSpaceshipLaunching) return;
+
+    if (timelineExpanded && !timelineSpaceshipDocked) {
+      timelineRef.current?.scrollIntoView({
         behavior: prefersReducedMotion ? "auto" : "smooth",
         block: "start",
       });
+      return;
     }
-  }, [prefersReducedMotion]);
+
+    if (prefersReducedMotion) {
+      setTimelineExpanded(true);
+      setTimelineSpaceshipDocked(false);
+      requestAnimationFrame(() =>
+        timelineRef.current?.scrollIntoView({
+          behavior: "auto",
+          block: "start",
+        }),
+      );
+      return;
+    }
+
+    const buttonSpaceship = timelineButtonSpaceshipRef.current;
+    if (!buttonSpaceship) return;
+    const origin = buttonSpaceship.getBoundingClientRect();
+    setTimelineLaunchOrigin({
+      height: origin.height,
+      left: origin.left,
+      top: origin.top,
+      width: origin.width,
+    });
+    setTimelineSpaceshipLaunching(true);
+
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+    const launchSpaceship = timelineLaunchSpaceshipRef.current;
+    if (!launchSpaceship) {
+      setTimelineSpaceshipLaunching(false);
+      setTimelineLaunchOrigin(null);
+      return;
+    }
+
+    await launchSpaceship
+      .animate(
+        [
+          { offset: 0, transform: "translate(0, 0) rotate(0deg) scale(1)" },
+          {
+            offset: 0.22,
+            transform: "translate(0, -40px) rotate(-3deg) scale(1.35)",
+          },
+          {
+            offset: 0.4,
+            transform: "translate(-11px, -70px) rotate(-17deg) scale(1.38)",
+          },
+          {
+            offset: 0.57,
+            transform: "translate(9px, -64px) rotate(14deg) scale(1.34)",
+          },
+          {
+            offset: 0.73,
+            transform: "translate(-6px, -68px) rotate(-9deg) scale(1.37)",
+          },
+          {
+            offset: 0.86,
+            transform: "translate(4px, -62px) rotate(6deg) scale(1.34)",
+          },
+          {
+            offset: 1,
+            transform: "translate(0, -64px) rotate(-2deg) scale(1.35)",
+          },
+        ],
+        {
+          duration: 820,
+          easing: "cubic-bezier(0.22, 0.8, 0.3, 1)",
+          fill: "forwards",
+        },
+      )
+      .finished.catch(() => undefined);
+
+    setTimelineExpanded(true);
+    const scrollFinished = waitForScrollToSettle();
+    requestAnimationFrame(() =>
+      timelineRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      }),
+    );
+    await scrollFinished;
+
+    const routeSpaceship = document.querySelector<SVGGElement>(
+      "[data-timeline-route-ship]",
+    );
+    if (routeSpaceship) {
+      const target = routeSpaceship.getBoundingClientRect();
+      const deltaX =
+        target.left + target.width / 2 - (origin.left + origin.width / 2);
+      const deltaY =
+        target.top + target.height / 2 - (origin.top + origin.height / 2);
+      const routeRotation = Number.parseFloat(
+        routeSpaceship
+          .getAttribute("transform")
+          ?.match(/rotate\(([-\d.]+)/)?.[1] ?? "90",
+      );
+
+      await launchSpaceship
+        .animate(
+          [
+            {
+              offset: 0,
+              transform: "translate(0, -64px) rotate(-2deg) scale(1.35)",
+            },
+            {
+              offset: 0.48,
+              transform: `translate(${deltaX * 0.42 - 28}px, ${deltaY * 0.42}px) rotate(18deg) scale(1.3)`,
+            },
+            {
+              offset: 0.78,
+              transform: `translate(${deltaX * 0.8 + 12}px, ${deltaY * 0.8 - 18}px) rotate(-8deg) scale(1.24)`,
+            },
+            {
+              offset: 1,
+              transform: `translate(${deltaX}px, ${deltaY}px) rotate(${routeRotation - 90}deg) scale(1.2)`,
+            },
+          ],
+          {
+            duration: 720,
+            easing: "cubic-bezier(0.2, 0.75, 0.25, 1)",
+            fill: "forwards",
+          },
+        )
+        .finished.catch(() => undefined);
+    }
+
+    setTimelineSpaceshipLaunching(false);
+    setTimelineSpaceshipDocked(false);
+    setTimelineLaunchOrigin(null);
+  }, [
+    prefersReducedMotion,
+    timelineExpanded,
+    timelineSpaceshipDocked,
+    timelineSpaceshipLaunching,
+  ]);
 
   return (
     <div className="relative min-h-screen bg-transparent text-indigo-700 dark:text-indigo-300">
+      {timelineLaunchOrigin && (
+        <svg
+          ref={timelineLaunchSpaceshipRef}
+          data-timeline-launch-spaceship
+          aria-hidden="true"
+          viewBox="-16 -13 32 26"
+          className="pointer-events-none fixed z-[100] overflow-visible text-indigo-600 drop-shadow-lg dark:text-indigo-300"
+          style={{
+            height: timelineLaunchOrigin.height,
+            left: timelineLaunchOrigin.left,
+            top: timelineLaunchOrigin.top,
+            transformOrigin: "center",
+            width: timelineLaunchOrigin.width,
+          }}
+        >
+          <g transform="rotate(90)">
+            <TimelineSpaceshipGlyph />
+          </g>
+        </svg>
+      )}
       {activeCard && (
         <LetterCard
           content={activeCard.content}
@@ -613,6 +808,8 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
           <button
             type="button"
             onClick={scrollToTimeline}
+            disabled={timelineSpaceshipLaunching}
+            aria-busy={timelineSpaceshipLaunching}
             aria-expanded={timelineExpanded}
             aria-controls="home-timeline"
             className="group flex flex-col items-center gap-2 rounded-xl border border-indigo-500/30 bg-white/50 px-6 py-4 text-indigo-700 transition-all duration-300 hover:border-indigo-500/60 hover:bg-white/80 hover:shadow-lg dark:border-indigo-500/40 dark:bg-black/50 dark:text-indigo-300 dark:hover:border-indigo-500/70 dark:hover:bg-black/70"
@@ -620,20 +817,19 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
             <span className="text-sm font-medium">
               {timelineExpanded ? "Go to timeline" : "View full timeline"}
             </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="2"
-              stroke="currentColor"
-              className="h-5 w-5 animate-bounce"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"
-              />
-            </svg>
+            {timelineSpaceshipDocked && (
+              <svg
+                ref={timelineButtonSpaceshipRef}
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="-16 -13 32 26"
+                className={`h-7 w-7 overflow-visible drop-shadow-sm transition-opacity ${timelineSpaceshipLaunching ? "opacity-0" : "opacity-100"} ${prefersReducedMotion ? "" : "animate-bounce"}`}
+                aria-hidden="true"
+              >
+                <g transform="rotate(90)">
+                  <TimelineSpaceshipGlyph />
+                </g>
+              </svg>
+            )}
           </button>
         </div>
       </div>
@@ -646,6 +842,9 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
           snacks={snacks}
           expanded={timelineExpanded}
           onExpand={() => setTimelineExpanded(true)}
+          onSpaceshipDockedChange={handleTimelineSpaceshipDockedChange}
+          spaceshipDocked={timelineSpaceshipDocked}
+          spaceshipLaunching={timelineSpaceshipLaunching}
         />
       </div>
     </div>
