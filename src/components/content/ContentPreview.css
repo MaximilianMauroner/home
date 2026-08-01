@@ -640,9 +640,37 @@
 }
 .dark .content-preview--blog {
   --preview-surface: #172725;
-  --preview-ink: #dbe8da;
-  --preview-muted: #9cb7aa;
+  --preview-ink: #edf5e9;
+  --preview-muted: #afc5b8;
   --preview-line: rgb(219 232 218 / 0.28);
+}
+.dark .content-preview--blog .content-preview__header,
+.dark .content-preview--blog .content-preview__body,
+.dark .content-preview--blog .content-preview__footer {
+  background: rgb(23 39 37 / 0.9);
+}
+.dark .content-preview--blog .content-preview__visual {
+  background-color: #0e1b19;
+  background-image: linear-gradient(
+      rgb(219 232 218 / 0.08) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgb(219 232 218 / 0.08) 1px, transparent 1px);
+}
+.dark .content-preview--blog .content-preview__image {
+  opacity: 0.72;
+  filter: saturate(0.78) sepia(0.08) contrast(1.08);
+}
+.dark .content-preview--blog .content-preview__visual::after {
+  background: linear-gradient(90deg, var(--preview-surface), transparent 52%),
+    linear-gradient(
+      0deg,
+      var(--preview-surface),
+      transparent 32%,
+      transparent 78%,
+      rgb(23 39 37 / 0.62)
+    );
+  opacity: 0.72;
 }
 .dark .content-preview--log {
   --preview-accent: #ff806d;
