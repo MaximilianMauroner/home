@@ -11,11 +11,7 @@
     hsl(var(--card)) 96%,
     var(--tool-accent) 4%
   );
-  --stretching-image-background: color-mix(
-    in oklch,
-    hsl(var(--muted)) 92%,
-    var(--tool-accent) 8%
-  );
+  --stretching-image-background: #f8f5ed;
   min-width: 0;
   width: 100%;
   overflow-x: clip;
