@@ -1,92 +1,148 @@
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useModalDialog } from "@/utils/useModalDialog";
+
 interface TimeBetweenSettingsProps {
   timeBetween: number;
-  onTimeBetweenChange: (value: number) => void;
-  onClose: () => void;
+  onApply: (value: number) => void;
+  onCancel: () => void;
 }
 
 export function TimeBetweenSettings({
   timeBetween,
-  onTimeBetweenChange,
-  onClose,
+  onApply,
+  onCancel,
 }: TimeBetweenSettingsProps) {
   const presets = [0, 5, 10, 15, 20, 30];
+  const [draft, setDraft] = useState(timeBetween);
+  const dialogRef = useRef<HTMLElement>(null);
 
-  return (
-    <div className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">
-          Rest Between Stretches
-        </h3>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close rest settings"
-          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+  useModalDialog({
+    dialogRef,
+    initialFocusSelector: "[data-dialog-initial-focus]",
+    isOpen: true,
+    onClose: onCancel,
+  });
+
+  return createPortal(
+    <div data-modal-root="rest-settings">
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-40 bg-black/30 sm:bg-black/20"
+        onClick={onCancel}
+      />
+      <div className="pointer-events-none fixed inset-0 z-50 flex items-end sm:items-start sm:justify-end sm:p-6">
+        <section
+          ref={dialogRef}
+          aria-describedby="rest-settings-description"
+          aria-labelledby="rest-settings-title"
+          aria-modal="true"
+          className="stretching-sheet pointer-events-auto relative w-full rounded-b-none p-5 focus:outline-none sm:w-[24rem] sm:rounded-xl sm:p-6"
+          role="dialog"
+          tabIndex={-1}
         >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        {/* Preset buttons */}
-        <div className="flex flex-wrap gap-2">
-          {presets.map((preset) => (
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">
+              <span id="rest-settings-title">Rest between steps</span>
+            </h3>
             <button
               type="button"
-              key={preset}
-              onClick={() => onTimeBetweenChange(preset)}
-              aria-pressed={timeBetween === preset}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-                timeBetween === preset
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-muted text-foreground hover:bg-primary/10"
-              }`}
+              onClick={onCancel}
+              aria-label="Close rest settings"
+              data-dialog-initial-focus
+              className="min-h-11 min-w-11 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              {preset === 0 ? "None" : `${preset}s`}
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
             </button>
-          ))}
-        </div>
+          </div>
 
-        {/* Custom input */}
-        <div>
-          <label
-            htmlFor="rest-duration"
-            className="mb-2 block text-sm font-medium text-muted-foreground"
-          >
-            Custom Duration (seconds)
-          </label>
-          <input
-            id="rest-duration"
-            type="number"
-            aria-describedby="rest-duration-help"
-            value={timeBetween}
-            onChange={(e) =>
-              onTimeBetweenChange(Math.max(0, parseInt(e.target.value) || 0))
-            }
-            min="0"
-            className="w-full rounded-xl border border-border bg-muted px-4 py-3 text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
           <p
-            id="rest-duration-help"
-            className="mt-2 text-xs text-muted-foreground"
+            id="rest-settings-description"
+            className="mb-4 text-sm text-muted-foreground"
           >
-            Rest time to prepare between stretches and repetitions. Set to 0 for
-            no breaks.
+            This duration applies after each repetition and stretch. Changes
+            take effect only when you apply them.
           </p>
-        </div>
+
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {presets.map((preset) => (
+                <button
+                  type="button"
+                  key={preset}
+                  onClick={() => setDraft(preset)}
+                  aria-pressed={draft === preset}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+                    draft === preset
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted text-foreground hover:bg-primary/10"
+                  }`}
+                >
+                  {preset === 0 ? "None" : `${preset}s`}
+                </button>
+              ))}
+            </div>
+
+            <div>
+              <label
+                htmlFor="rest-duration"
+                className="mb-2 block text-sm font-medium text-muted-foreground"
+              >
+                Custom Duration (seconds)
+              </label>
+              <input
+                id="rest-duration"
+                type="number"
+                aria-describedby="rest-duration-help"
+                value={draft}
+                onChange={(e) =>
+                  setDraft(
+                    Math.max(0, Number.parseInt(e.target.value, 10) || 0),
+                  )
+                }
+                min="0"
+                className="w-full rounded-xl border border-border bg-muted px-4 py-3 text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              <p
+                id="rest-duration-help"
+                className="mt-2 text-xs text-muted-foreground"
+              >
+                Rest time to prepare between stretches and repetitions. Set to 0
+                for no breaks.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="rounded-xl bg-muted px-4 py-3 font-medium text-foreground transition-colors hover:bg-muted/70"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => onApply(draft)}
+                className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -2,6 +2,11 @@ import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useModalDialog } from "@/utils/useModalDialog";
 import { STRETCH_IMAGES, PLACEHOLDER_IMAGE } from "../images";
+import {
+  buildImageCatalog,
+  filterImageCatalog,
+  getDraftSelection,
+} from "../imageCatalog";
 import { StretchImage } from "./StretchImage";
 
 interface ImagePickerProps {
@@ -10,36 +15,14 @@ interface ImagePickerProps {
   onClose: () => void;
 }
 
-// Extract all unique images from STRETCH_IMAGES with their names
-function getAllImages(): Array<{ url: string; name: string; routine: string }> {
-  const images: Array<{ url: string; name: string; routine: string }> = [];
-  const seenUrls = new Set<string>();
-
-  for (const [routineKey, stretches] of Object.entries(STRETCH_IMAGES)) {
-    for (const [stretchKey, url] of Object.entries(stretches)) {
-      if (!seenUrls.has(url)) {
-        seenUrls.add(url);
-        // Convert kebab-case to readable name
-        const name = stretchKey
-          .split("-")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
-        const routine = routineKey
-          .split("-")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
-        images.push({ url, name, routine });
-      }
-    }
-  }
-
-  return images;
-}
-
 export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [customUrl, setCustomUrl] = useState("");
+  const [routineFilter, setRoutineFilter] = useState("");
+  const [customUrl, setCustomUrl] = useState(
+    value.startsWith("http") ? value : "",
+  );
   const [activeTab, setActiveTab] = useState<"library" | "custom">("library");
+  const [draftSelection, setDraftSelection] = useState<string | null>(null);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -51,36 +34,20 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
     onClose,
   });
 
-  const allImages = useMemo(() => getAllImages(), []);
+  const catalog = useMemo(() => buildImageCatalog(STRETCH_IMAGES), []);
+  const routines = useMemo(
+    () => [...new Set(catalog.flatMap((image) => image.routines))].sort(),
+    [catalog],
+  );
+  const filteredImages = useMemo(
+    () => filterImageCatalog(catalog, searchQuery, routineFilter),
+    [catalog, searchQuery, routineFilter],
+  );
+  const selected = getDraftSelection(value, draftSelection);
 
-  const filteredImages = useMemo(() => {
-    if (!searchQuery.trim()) return allImages;
-    const query = searchQuery.toLowerCase();
-    return allImages.filter(
-      (img) =>
-        img.name.toLowerCase().includes(query) ||
-        img.routine.toLowerCase().includes(query),
-    );
-  }, [allImages, searchQuery]);
-
-  const handleSelectImage = (url: string) => {
-    onChange(url);
+  const confirmSelection = () => {
+    onChange(selected);
     onClose();
-  };
-
-  const handleCustomUrlSubmit = () => {
-    if (customUrl.trim()) {
-      onChange(customUrl.trim());
-      onClose();
-    }
-  };
-
-  const handleImageLoad = (url: string) => {
-    setLoadedImages((prev) => new Set(prev).add(url));
-  };
-
-  const handleImageError = (url: string) => {
-    setFailedImages((prev) => new Set(prev).add(url));
   };
 
   return createPortal(
@@ -90,7 +57,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
         className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="pointer-events-none fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4">
         <div
           ref={dialogRef}
           role="dialog"
@@ -98,51 +65,35 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
           aria-labelledby="stretch-image-picker-title"
           aria-describedby="stretch-image-picker-description"
           tabIndex={-1}
-          className="pointer-events-auto flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-border/50 bg-card shadow-sm focus:outline-none"
+          className="pointer-events-auto flex h-[100dvh] w-full min-w-0 flex-col overflow-hidden bg-card pb-[env(safe-area-inset-bottom)] shadow-xl focus:outline-none sm:h-auto sm:max-h-[85vh] sm:max-w-4xl sm:rounded-2xl sm:border sm:border-border/60 sm:pb-0"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border/50 p-4 sm:p-5">
-            <div>
+          <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border/60 p-4 sm:p-5">
+            <div className="min-w-0">
               <h2
                 id="stretch-image-picker-title"
-                className="text-lg font-bold text-foreground sm:text-xl"
+                className="text-lg font-semibold sm:text-xl"
               >
-                Select Image
+                Choose an image
               </h2>
               <p
                 id="stretch-image-picker-description"
-                className="mt-0.5 text-sm text-muted-foreground"
+                className="truncate text-sm text-muted-foreground"
               >
-                Choose from library or add custom URL
+                Review your choice, then confirm.
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close image picker"
-              data-dialog-initial-focus
-              className="min-h-11 min-w-11 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="min-h-11 min-w-11 shrink-0 rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              ✕
             </button>
-          </div>
+          </header>
 
-          {/* Tabs */}
           <div
-            className="flex border-b border-border/50"
+            className="flex shrink-0 border-b border-border/60"
             role="tablist"
             aria-label="Image source"
           >
@@ -153,28 +104,9 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
               aria-selected={activeTab === "library"}
               aria-controls="image-library-panel"
               onClick={() => setActiveTab("library")}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === "library"
-                  ? "border-b-2 border-primary bg-primary/5 text-primary"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
+              className={`min-h-11 flex-1 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${activeTab === "library" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
             >
-              <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-                Image Library ({allImages.length})
-              </span>
+              Library ({catalog.length})
             </button>
             <button
               type="button"
@@ -183,193 +115,99 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
               aria-selected={activeTab === "custom"}
               aria-controls="custom-image-panel"
               onClick={() => setActiveTab("custom")}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === "custom"
-                  ? "border-b-2 border-primary bg-primary/5 text-primary"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
+              className={`min-h-11 flex-1 px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${activeTab === "custom" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
             >
-              <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                  />
-                </svg>
-                Custom URL
-              </span>
+              Custom URL
             </button>
           </div>
 
-          {/* Content */}
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {activeTab === "library" && (
               <div
                 id="image-library-panel"
                 role="tabpanel"
                 aria-labelledby="image-library-tab"
-                className="flex min-h-0 flex-1 flex-col"
+                className="min-h-full"
               >
-                {/* Search */}
-                <div className="border-b border-border/50 p-4">
-                  <div className="relative">
-                    <svg
-                      className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
+                <div className="sticky top-0 z-10 grid gap-2 border-b border-border/60 bg-card/95 p-3 backdrop-blur sm:grid-cols-[minmax(0,1fr)_13rem] sm:p-4">
+                  <label className="relative min-w-0">
+                    <span className="sr-only">Search image library</span>
                     <input
-                      id="stretch-image-search"
-                      type="text"
-                      aria-label="Search image library"
-                      placeholder="Search images by name or routine..."
+                      data-dialog-initial-focus
+                      type="search"
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background py-2.5 pl-10 pr-4 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search images"
+                      className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     />
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        aria-label="Clear image search"
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
+                  </label>
+                  <label className="min-w-0">
+                    <span className="sr-only">Filter by routine</span>
+                    <select
+                      value={routineFilter}
+                      onChange={(event) => setRoutineFilter(event.target.value)}
+                      className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      <option value="">All routines</option>
+                      {routines.map((routine) => (
+                        <option key={routine} value={routine}>
+                          {routine}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
 
-                {/* Image Grid */}
-                <div className="flex-1 overflow-y-auto p-4">
+                <div className="p-3 sm:p-4">
                   {filteredImages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                      <svg
-                        className="mb-3 h-12 w-12"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                      <p className="text-sm">No images found</p>
-                      <p className="mt-1 text-xs">
-                        Try a different search term
-                      </p>
-                    </div>
+                    <p className="py-12 text-center text-sm text-muted-foreground">
+                      No images match those filters.
+                    </p>
                   ) : (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                      {filteredImages.map((img) => (
+                      {filteredImages.map((image) => (
                         <button
                           type="button"
-                          key={img.url}
-                          aria-label={`Select image: ${img.name}`}
-                          aria-pressed={value === img.url}
-                          onClick={() => handleSelectImage(img.url)}
-                          className={`group relative aspect-square overflow-hidden rounded-xl border-2 transition-colors hover:shadow-sm ${
-                            value === img.url
-                              ? "border-primary ring-2 ring-primary/30"
-                              : "border-border/50 hover:border-primary/50"
-                          }`}
+                          key={image.url}
+                          aria-label={`Select ${image.name}`}
+                          aria-pressed={selected === image.url}
+                          onClick={() => setDraftSelection(image.url)}
+                          className={`group relative aspect-[4/3] min-h-11 overflow-hidden rounded-xl border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected === image.url ? "border-primary ring-2 ring-primary/30" : "border-border/60 hover:border-primary/60"}`}
                         >
-                          {/* Loading skeleton */}
-                          {!loadedImages.has(img.url) &&
-                            !failedImages.has(img.url) && (
-                              <div className="absolute inset-0 flex animate-pulse items-center justify-center bg-muted">
-                                <svg
-                                  className="h-8 w-8 text-muted-foreground/50"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={1.5}
-                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                  />
-                                </svg>
-                              </div>
+                          {!loadedImages.has(image.url) &&
+                            !failedImages.has(image.url) && (
+                              <div className="absolute inset-0 animate-pulse bg-muted" />
                             )}
-
-                          {/* Image */}
                           <StretchImage
                             src={
-                              failedImages.has(img.url)
+                              failedImages.has(image.url)
                                 ? PLACEHOLDER_IMAGE
-                                : img.url
+                                : image.url
                             }
-                            alt={img.name}
-                            className={`h-full w-full object-cover transition-opacity ${
-                              loadedImages.has(img.url) ||
-                              failedImages.has(img.url)
-                                ? "opacity-100"
-                                : "opacity-0"
-                            }`}
-                            onLoad={() => handleImageLoad(img.url)}
-                            onError={() => handleImageError(img.url)}
-                            sizes="(min-width: 768px) 160px, (min-width: 640px) 30vw, 50vw"
+                            alt=""
+                            className={`h-full w-full object-contain object-center ${loadedImages.has(image.url) || failedImages.has(image.url) ? "opacity-100" : "opacity-0"}`}
+                            onLoad={() =>
+                              setLoadedImages((current) =>
+                                new Set(current).add(image.url),
+                              )
+                            }
+                            onError={() =>
+                              setFailedImages((current) =>
+                                new Set(current).add(image.url),
+                              )
+                            }
+                            sizes="(min-width: 768px) 160px, 50vw"
                           />
-
-                          {/* Overlay with name */}
-                          <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                            <span className="line-clamp-2 text-xs font-medium text-white">
-                              {img.name}
+                          <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6 text-left text-xs font-medium text-white">
+                            {image.name}
+                          </span>
+                          {selected === image.url && (
+                            <span
+                              aria-hidden="true"
+                              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                            >
+                              ✓
                             </span>
-                            <span className="text-[10px] text-white/70">
-                              {img.routine}
-                            </span>
-                          </div>
-
-                          {/* Selected checkmark */}
-                          {value === img.url && (
-                            <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary shadow-md">
-                              <svg
-                                className="h-4 w-4 text-primary-foreground"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            </div>
                           )}
                         </button>
                       ))}
@@ -384,134 +222,85 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
                 id="custom-image-panel"
                 role="tabpanel"
                 aria-labelledby="custom-image-tab"
-                className="space-y-6 p-4 sm:p-6"
+                className="space-y-5 p-4 sm:p-6"
               >
-                {/* Custom URL Input */}
-                <div className="space-y-3">
+                <div>
                   <label
                     htmlFor="custom-image-url"
-                    className="block text-sm font-semibold text-foreground"
+                    className="mb-2 block text-sm font-medium"
                   >
                     Image URL
                   </label>
                   <input
                     id="custom-image-url"
+                    data-dialog-initial-focus
                     type="url"
-                    aria-describedby="custom-image-url-help"
                     value={customUrl}
-                    onChange={(e) => setCustomUrl(e.target.value)}
+                    onChange={(event) => {
+                      setCustomUrl(event.target.value);
+                      setDraftSelection(event.target.value.trim());
+                    }}
                     placeholder="https://example.com/image.jpg"
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   />
-                  <p
-                    id="custom-image-url-help"
-                    className="text-xs text-muted-foreground"
-                  >
-                    Enter a direct link to an image file (JPG, PNG, GIF, WebP)
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    The image stays browser-local as part of your routine data.
                   </p>
                 </div>
-
-                {/* Preview */}
-                {customUrl && (
-                  <div className="space-y-3">
-                    <p className="block text-sm font-semibold text-foreground">
-                      Preview
-                    </p>
-                    <div className="relative aspect-video max-w-sm overflow-hidden rounded-xl border border-border bg-muted">
-                      <StretchImage
-                        src={customUrl}
-                        alt="Preview"
-                        className="h-full w-full object-cover"
-                        sizes="384px"
-                      />
-                    </div>
+                {customUrl.trim() && (
+                  <div className="aspect-video max-w-lg overflow-hidden rounded-xl border border-border bg-muted">
+                    <StretchImage
+                      src={customUrl.trim()}
+                      alt="Custom image preview"
+                      className="h-full w-full object-contain object-center"
+                      sizes="512px"
+                    />
                   </div>
                 )}
-
-                {/* Submit Button */}
-                <button
-                  type="button"
-                  onClick={handleCustomUrlSubmit}
-                  disabled={!customUrl.trim()}
-                  className="w-full rounded-xl bg-primary py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Use This Image
-                </button>
-
-                {/* Helpful tips */}
-                <div className="space-y-2 rounded-xl bg-muted/50 p-4">
-                  <h4 className="text-sm font-semibold text-foreground">
-                    Tips for finding images
-                  </h4>
-                  <ul className="space-y-1 text-xs text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      <span>
-                        Use{" "}
-                        <a
-                          href="https://commons.wikimedia.org"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          Wikimedia Commons
-                        </a>{" "}
-                        for free, properly licensed images
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      <span>
-                        Right-click an image and select "Copy image address" to
-                        get the URL
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      <span>
-                        Make sure the URL ends with an image extension like
-                        .jpg, .png, or .gif
-                      </span>
-                    </li>
-                  </ul>
-                </div>
               </div>
             )}
           </div>
 
-          {/* Footer with current selection */}
-          {value && (
-            <div className="border-t border-border/50 bg-muted/30 p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+          <footer className="shrink-0 border-t border-border/60 bg-card p-3 sm:p-4">
+            {selected && (
+              <div className="mb-3 flex min-w-0 items-center gap-3">
+                <div className="aspect-[4/3] w-11 shrink-0 overflow-hidden rounded-lg bg-muted">
                   <StretchImage
-                    src={value}
-                    alt="Selected"
-                    className="h-full w-full object-cover"
-                    sizes="48px"
+                    src={selected}
+                    alt="Draft selection"
+                    className="h-full w-full object-contain object-center"
+                    sizes="44px"
                   />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">
-                    Current selection
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {value}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange("");
-                    onClose();
-                  }}
-                  className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20"
-                >
-                  Remove
-                </button>
+                <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                  {selected}
+                </p>
               </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDraftSelection("")}
+                className="min-h-11 rounded-xl px-4 text-sm font-medium text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-11 flex-1 rounded-xl bg-secondary px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmSelection}
+                className="min-h-11 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none"
+              >
+                Confirm image
+              </button>
             </div>
-          )}
+          </footer>
         </div>
       </div>
     </div>,

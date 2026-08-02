@@ -13,7 +13,6 @@ interface ControlButtonsProps {
   onResume: () => void;
   onNext: () => void;
   onPrevious: () => void;
-  onReset: () => void;
 }
 
 export function ControlButtons({
@@ -29,26 +28,34 @@ export function ControlButtons({
   onResume,
   onNext,
   onPrevious,
-  onReset,
 }: ControlButtonsProps) {
   const isLastStretch = currentIndex === stretchesLength - 1;
   const currentReps = currentStretch?.repetitions || 1;
   const isLastRep = currentRepetition === currentReps;
 
   return (
-    <div className="space-y-3">
-      {/* Main controls row */}
-      <div className="grid grid-cols-5 gap-2 sm:gap-3">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
+      <div className="mx-auto grid max-w-md grid-cols-5 gap-2 sm:max-w-none sm:gap-3">
         {/* Previous button */}
         <button
           type="button"
           onClick={onPrevious}
           aria-label="Previous stretch"
           disabled={currentIndex === 0 && currentRepetition === 1}
-          className="col-span-1 flex items-center justify-center py-3 sm:py-4 min-h-[56px] bg-muted text-foreground rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10  transition-colors font-medium touch-manipulation"
+          className="col-span-1 flex min-h-[52px] items-center justify-center rounded-xl bg-muted py-3 font-medium text-foreground transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-[56px] sm:py-4"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </button>
 
@@ -57,11 +64,26 @@ export function ControlButtons({
           <button
             type="button"
             onClick={onStart}
-            className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
+            className="col-span-3 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary py-3 text-lg font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:min-h-[56px] sm:py-4"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             Start
           </button>
@@ -69,11 +91,26 @@ export function ControlButtons({
           <button
             type="button"
             onClick={onResume}
-            className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
+            className="col-span-3 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary py-3 text-lg font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:min-h-[56px] sm:py-4"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             Resume
           </button>
@@ -81,10 +118,20 @@ export function ControlButtons({
           <button
             type="button"
             onClick={onPause}
-            className="col-span-3 flex items-center justify-center gap-2 py-3 sm:py-4 min-h-[56px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-600  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
+            className="col-span-3 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 sm:min-h-[56px] sm:py-4 dark:bg-emerald-500 dark:hover:bg-emerald-600"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             Pause
           </button>
@@ -101,30 +148,41 @@ export function ControlButtons({
                 ? "Finish routine"
                 : "Next stretch"
           }
-          className="col-span-1 flex items-center justify-center py-3 sm:py-4 min-h-[56px] bg-muted text-foreground rounded-xl hover:bg-primary/10  transition-colors font-medium touch-manipulation"
+          className="col-span-1 flex min-h-[52px] items-center justify-center rounded-xl bg-muted py-3 font-medium text-foreground transition-colors hover:bg-primary/10 sm:min-h-[56px] sm:py-4"
         >
           {isResting ? (
             <span className="text-xs font-medium">Skip</span>
           ) : isLastStretch && isLastRep ? (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           ) : (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
             </svg>
           )}
         </button>
       </div>
-
-      {/* Reset button */}
-      <button
-        type="button"
-        onClick={onReset}
-        className="w-full py-2.5 min-h-[44px] text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted active:bg-primary/10 transition-colors font-medium text-sm touch-manipulation"
-      >
-        Reset Routine
-      </button>
     </div>
   );
 }

@@ -13,6 +13,7 @@ type StretchImageProps = Omit<
 export function StretchImage({
   alt,
   decoding = "async",
+  fetchPriority,
   loading = "lazy",
   onError,
   sizes = "100vw",
@@ -22,6 +23,9 @@ export function StretchImage({
   const responsiveSources = getResponsiveStretchImageSources(src);
   const width = responsiveSources?.width ?? 400;
   const height = responsiveSources?.height ?? 300;
+  const priorityAttribute = fetchPriority
+    ? { fetchpriority: fetchPriority }
+    : {};
 
   const handleError = (event: SyntheticEvent<HTMLImageElement>) => {
     event.currentTarget
@@ -35,6 +39,7 @@ export function StretchImage({
   const image = (
     <img
       {...imageProps}
+      {...priorityAttribute}
       alt={alt}
       decoding={decoding}
       height={height}

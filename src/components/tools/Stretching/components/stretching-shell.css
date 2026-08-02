@@ -1,0 +1,123 @@
+.stretching-app {
+  --stretching-action-size: 2.75rem;
+  --stretching-dock-clearance: 2rem;
+  --stretching-focus-ring: color-mix(
+    in oklch,
+    var(--tool-accent) 76%,
+    hsl(var(--foreground)) 24%
+  );
+  --stretching-sheet-background: color-mix(
+    in oklch,
+    hsl(var(--card)) 96%,
+    var(--tool-accent) 4%
+  );
+  --stretching-image-background: #f8f5ed;
+  min-width: 0;
+  width: 100%;
+  overflow-x: clip;
+}
+
+.stretching-shell {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+  padding-block-start: clamp(1rem, 2vw, 2rem);
+  padding-block-end: calc(
+    var(--stretching-dock-clearance) + env(safe-area-inset-bottom)
+  );
+  padding-inline-start: max(1rem, env(safe-area-inset-left));
+  padding-inline-end: max(1rem, env(safe-area-inset-right));
+}
+
+.stretching-shell--discovery {
+  max-width: 72rem;
+}
+
+.stretching-shell--wide {
+  max-width: 96rem;
+}
+
+.stretching-shell--focus {
+  --stretching-dock-clearance: 6.5rem;
+  max-width: 80rem;
+  min-height: 100dvh;
+}
+
+.stretching-app :where(button, [role="button"]) {
+  min-width: var(--stretching-action-size);
+  min-height: var(--stretching-action-size);
+  touch-action: manipulation;
+}
+
+.stretching-app
+  :where(input:not([type="checkbox"]):not([type="radio"]), select) {
+  min-height: var(--stretching-action-size);
+}
+
+.stretching-app :where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--stretching-focus-ring);
+  outline-offset: 3px;
+}
+
+.stretching-action {
+  display: inline-flex;
+  min-width: var(--stretching-action-size);
+  min-height: var(--stretching-action-size);
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.stretching-sheet,
+.stretching-popover {
+  border: 1px solid hsl(var(--border));
+  background: var(--stretching-sheet-background);
+  color: hsl(var(--foreground));
+  box-shadow: 0 1rem 3rem hsl(var(--foreground) / 0.12);
+}
+
+.stretching-sheet {
+  border-radius: var(--radius-xl);
+}
+
+.stretching-popover {
+  border-radius: var(--radius-lg);
+}
+
+.stretching-image-surface {
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--stretching-image-background);
+}
+
+body[data-stretching-focus="true"] > .site-header,
+body[data-stretching-focus="true"] > footer {
+  display: none;
+}
+
+body[data-stretching-focus="true"] > #main-content {
+  min-height: 100dvh;
+}
+
+body[data-stretching-focus="true"]
+  > #main-content
+  > .tool-theme-stretching
+  > :is(.tools-shell, .tools-shell-wide) {
+  max-width: none;
+  padding: 0;
+}
+
+body[data-stretching-focus="true"] .tool-theme-stretching .tool-page-header {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stretching-app,
+  .stretching-app *,
+  .stretching-app *::before,
+  .stretching-app *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}

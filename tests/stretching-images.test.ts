@@ -13,10 +13,10 @@ describe("responsive stretch image sources", () => {
       {
         avifSrcSet:
           "/stretches/generated/cat-pose-320w.avif 320w, /stretches/generated/cat-pose-640w.avif 640w, /stretches/generated/cat-pose-960w.avif 960w",
-        height: 1536,
+        height: 1086,
         webpSrcSet:
           "/stretches/generated/cat-pose-320w.webp 320w, /stretches/generated/cat-pose-640w.webp 640w, /stretches/generated/cat-pose-960w.webp 960w",
-        width: 1349,
+        width: 1448,
       },
     );
   });
