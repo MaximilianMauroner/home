@@ -1,0 +1,142 @@
+import type {
+  Stretch,
+  StretchRoutine,
+} from "@/components/tools/Stretching/types";
+
+export type MoveDirection = "up" | "down";
+
+export interface RoutineSummary {
+  stretchCount: number;
+  totalDuration: number;
+  totalSteps: number;
+}
+
+export function getMoveTarget(
+  index: number,
+  direction: MoveDirection,
+  length: number,
+): number | null {
+  const target = direction === "up" ? index - 1 : index + 1;
+  return target >= 0 && target < length ? target : null;
+}
+
+export function reorderItems<T>(
+  items: readonly T[],
+  fromIndex: number,
+  toIndex: number,
+): T[] {
+  if (
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= items.length ||
+    toIndex >= items.length ||
+    fromIndex === toIndex
+  ) {
+    return [...items];
+  }
+
+  const reordered = [...items];
+  const [moved] = reordered.splice(fromIndex, 1);
+  if (moved === undefined) return reordered;
+  reordered.splice(toIndex, 0, moved);
+  return reordered;
+}
+
+export function getCurrentIndexAfterMove(
+  currentIndex: number,
+  fromIndex: number,
+  toIndex: number,
+): number {
+  if (currentIndex === fromIndex) return toIndex;
+  if (
+    fromIndex < toIndex &&
+    currentIndex > fromIndex &&
+    currentIndex <= toIndex
+  ) {
+    return currentIndex - 1;
+  }
+  if (
+    fromIndex > toIndex &&
+    currentIndex >= toIndex &&
+    currentIndex < fromIndex
+  ) {
+    return currentIndex + 1;
+  }
+  return currentIndex;
+}
+
+export function summarizeRoutine(
+  stretches: readonly Stretch[],
+): RoutineSummary {
+  return stretches.reduce<RoutineSummary>(
+    (summary, stretch) => {
+      const repetitions = Math.max(1, stretch.repetitions || 1);
+      summary.totalDuration += stretch.duration * repetitions;
+      summary.totalSteps += repetitions;
+      summary.stretchCount += 1;
+      return summary;
+    },
+    { stretchCount: 0, totalDuration: 0, totalSteps: 0 },
+  );
+}
+
+export function normalizeStretchId(id: string, routineId?: string): string {
+  const prefix = routineId ? `${routineId}_` : "";
+  return prefix && id.startsWith(prefix) ? id.slice(prefix.length) || id : id;
+}
+
+export function buildRoutineDraft(
+  routine: StretchRoutine | null,
+  values: Pick<StretchRoutine, "name" | "goal">,
+  stretches: readonly Stretch[],
+): Omit<StretchRoutine, "id"> {
+  const summary = summarizeRoutine(stretches);
+  const metadata = routine
+    ? {
+        ...(routine.category ? { category: routine.category } : {}),
+        ...(routine.difficulty ? { difficulty: routine.difficulty } : {}),
+        ...(routine.tags ? { tags: [...routine.tags] } : {}),
+      }
+    : {};
+
+  return {
+    ...metadata,
+    name: values.name.trim(),
+    goal: values.goal.trim(),
+    totalDuration: summary.totalDuration,
+    stretches: stretches.map((stretch) => ({
+      ...stretch,
+      id: normalizeStretchId(stretch.id, routine?.id),
+      ...(stretch.targetAreas ? { targetAreas: [...stretch.targetAreas] } : {}),
+    })),
+  };
+}
+
+export function createRoutine(
+  routines: readonly StretchRoutine[],
+  routine: StretchRoutine,
+): StretchRoutine[] {
+  return [...routines.filter((item) => item.id !== routine.id), routine];
+}
+
+export function updateRoutineCollection(
+  routines: readonly StretchRoutine[],
+  id: string,
+  routine: Omit<StretchRoutine, "id">,
+): StretchRoutine[] {
+  return routines.map((item) =>
+    item.id === id ? { ...item, ...routine, id } : item,
+  );
+}
+
+export function deleteRoutineWithFallback(
+  routines: readonly StretchRoutine[],
+  id: string,
+  selectedId: string,
+  fallbackId: string,
+): { routines: StretchRoutine[]; selectedId: string } {
+  return {
+    routines: routines.filter((routine) => routine.id !== id),
+    selectedId: selectedId === id ? fallbackId : selectedId,
+  };
+}

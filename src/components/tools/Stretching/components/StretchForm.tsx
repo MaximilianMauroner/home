@@ -10,285 +10,301 @@ interface StretchFormProps {
   onCancel: () => void;
 }
 
+interface StretchFields {
+  description: string;
+  duration: number;
+  how: string;
+  image: string;
+  lookFor: string;
+  name: string;
+  repetitions: number;
+}
+
+function initialFields(stretch: Stretch | null): StretchFields {
+  return {
+    name: stretch?.name ?? "",
+    description: stretch?.description ?? "",
+    duration: stretch?.duration ?? 60,
+    repetitions: stretch?.repetitions ?? 1,
+    image: stretch?.image ?? "",
+    how: stretch?.how ?? "",
+    lookFor: stretch?.lookFor ?? "",
+  };
+}
+
 export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
-  const [name, setName] = useState(stretch?.name || "");
-  const [description, setDescription] = useState(stretch?.description || "");
-  const [duration, setDuration] = useState(stretch?.duration || 60);
-  const [repetitions, setRepetitions] = useState(stretch?.repetitions || 1);
-  const [image, setImage] = useState(stretch?.image || "");
-  const [how, setHow] = useState(stretch?.how || "");
-  const [lookFor, setLookFor] = useState(stretch?.lookFor || "");
+  const initial = initialFields(stretch);
+  const [fields, setFields] = useState<StretchFields>(initial);
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
+  const isDirty = JSON.stringify(fields) !== JSON.stringify(initial);
+  const setField = <K extends keyof StretchFields>(
+    key: K,
+    value: StretchFields[K],
+  ) => setFields((current) => ({ ...current, [key]: value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const requestCancel = () => {
+    if (isDirty && !window.confirm("Discard your unsaved stretch changes?"))
+      return;
+    onCancel();
+  };
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     onSubmit({
-      name,
-      description,
-      duration,
-      repetitions,
-      image: image || undefined,
-      how,
-      lookFor,
+      ...fields,
+      name: fields.name.trim(),
+      description: fields.description.trim(),
+      how: fields.how.trim(),
+      lookFor: fields.lookFor.trim(),
+      image: fields.image.trim() || undefined,
+      ...(stretch?.targetAreas
+        ? { targetAreas: [...stretch.targetAreas] }
+        : {}),
     });
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-      <div>
-        <label
-          htmlFor="stretch-name"
-          className="mb-2 block text-sm font-semibold text-foreground"
-        >
-          Name *
-        </label>
-        <input
-          id="stretch-name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="w-full rounded-xl border border-border bg-background px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
-      </div>
-      <div>
-        <label
-          htmlFor="stretch-description"
-          className="mb-2 block text-sm font-semibold text-foreground"
-        >
-          Description *
-        </label>
-        <textarea
-          id="stretch-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          required
-          rows={2}
-          className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label
-            htmlFor="stretch-duration"
-            className="mb-2 block text-sm font-semibold text-foreground"
-          >
-            Duration (seconds) *
-          </label>
-          <input
-            id="stretch-duration"
-            type="number"
-            value={duration}
-            onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
-            required
-            min="1"
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="stretch-repetitions"
-            className="mb-2 block text-sm font-semibold text-foreground"
-          >
-            Repetitions *
-          </label>
-          <input
-            id="stretch-repetitions"
-            type="number"
-            value={repetitions}
-            onChange={(e) =>
-              setRepetitions(Math.max(1, parseInt(e.target.value) || 1))
-            }
-            required
-            min="1"
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            e.g., 2 for left/right leg
-          </p>
-        </div>
-      </div>
-      <div>
-        <label
-          htmlFor="stretch-image-url"
-          className="mb-2 block text-sm font-semibold text-foreground"
-        >
-          Image (optional)
-        </label>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          {/* Image Preview */}
-          <div className="group relative">
-            <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl border-2 border-border/50 bg-muted sm:h-28 sm:w-28">
-              {image ? (
-                <StretchImage
-                  src={imageLoadError ? PLACEHOLDER_IMAGE : image}
-                  alt="Stretch preview"
-                  className="h-full w-full object-cover"
-                  onError={() => setImageLoadError(true)}
-                  sizes="112px"
-                />
-              ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center text-muted-foreground">
-                  <svg
-                    className="mb-1 h-8 w-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <span className="text-xs">No image</span>
-                </div>
-              )}
-            </div>
-            {image && (
-              <button
-                type="button"
-                onClick={() => {
-                  setImage("");
-                  setImageLoadError(false);
-                }}
-                aria-label="Remove stretch image"
-                className="absolute -right-2 -top-2 flex min-h-11 min-w-11 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 shadow-md transition-opacity hover:bg-destructive/90 group-focus-within:opacity-100 group-hover:opacity-100"
-              >
-                <svg
-                  className="h-3.5 w-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
+  const inputClass =
+    "min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
-          {/* Image Actions */}
-          <div className="flex flex-1 flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => setShowImagePicker(true)}
-              aria-haspopup="dialog"
-              aria-expanded={showImagePicker}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20 active:bg-primary/30"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-              {image ? "Change Image" : "Browse Library"}
-            </button>
-            <div className="relative">
-              <input
-                id="stretch-image-url"
-                type="url"
-                value={image}
-                onChange={(e) => {
-                  setImage(e.target.value);
-                  setImageLoadError(false);
-                }}
-                placeholder="Or paste image URL..."
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-            {imageLoadError && image && (
-              <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                <svg
-                  className="h-3.5 w-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-                Image failed to load - will use placeholder
-              </p>
-            )}
-          </div>
+  return (
+    <form onSubmit={handleSubmit} className="min-w-0 pb-24 sm:pb-0">
+      <header className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            Routine Studio
+          </p>
+          <h3 className="text-xl font-semibold">
+            {stretch ? "Edit stretch" : "Add stretch"}
+          </h3>
         </div>
-      </div>
-      <div>
-        <label
-          htmlFor="stretch-how"
-          className="mb-2 block text-sm font-semibold text-foreground"
-        >
-          What to Do *
-        </label>
-        <textarea
-          id="stretch-how"
-          value={how}
-          onChange={(e) => setHow(e.target.value)}
-          required
-          rows={4}
-          className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-          placeholder="Include instructions and tempo/cues..."
-        />
-      </div>
-      <div>
-        <label
-          htmlFor="stretch-look-for"
-          className="mb-2 block text-sm font-semibold text-foreground"
-        >
-          What to Feel *
-        </label>
-        <textarea
-          id="stretch-look-for"
-          value={lookFor}
-          onChange={(e) => setLookFor(e.target.value)}
-          required
-          rows={3}
-          className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-          placeholder="What sensations and feedback to look for..."
-        />
-      </div>
-      <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:gap-3">
-        <button
-          type="submit"
-          className="min-h-[48px] flex-1 touch-manipulation rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-        >
-          {stretch ? "✓ Update Stretch" : "+ Add Stretch"}
-        </button>
         <button
           type="button"
-          onClick={onCancel}
-          className="min-h-[48px] flex-1 touch-manipulation rounded-xl bg-secondary/80 px-5 py-3 text-sm font-medium text-secondary-foreground shadow-sm transition-colors hover:bg-secondary active:bg-secondary/70 sm:flex-none"
+          onClick={requestCancel}
+          aria-label="Close stretch form"
+          className="min-h-11 min-w-11 rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          ✕
+        </button>
+      </header>
+
+      <div className="grid min-w-0 gap-5 lg:grid-cols-2">
+        <div className="min-w-0 space-y-5">
+          <fieldset className="space-y-4 rounded-2xl border border-border/60 p-4 sm:p-5">
+            <legend className="px-2 text-sm font-semibold">Basics</legend>
+            <div>
+              <label
+                htmlFor="stretch-name"
+                className="mb-2 block text-sm font-medium"
+              >
+                Name
+              </label>
+              <input
+                id="stretch-name"
+                required
+                autoFocus
+                value={fields.name}
+                onChange={(event) => setField("name", event.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="stretch-description"
+                className="mb-2 block text-sm font-medium"
+              >
+                Description
+              </label>
+              <textarea
+                id="stretch-description"
+                required
+                rows={3}
+                value={fields.description}
+                onChange={(event) =>
+                  setField("description", event.target.value)
+                }
+                className={`${inputClass} resize-y`}
+              />
+            </div>
+          </fieldset>
+
+          <fieldset className="grid gap-4 rounded-2xl border border-border/60 p-4 sm:grid-cols-2 sm:p-5">
+            <legend className="px-2 text-sm font-semibold">Timing</legend>
+            <div>
+              <label
+                htmlFor="stretch-duration"
+                className="mb-2 block text-sm font-medium"
+              >
+                Seconds
+              </label>
+              <input
+                id="stretch-duration"
+                type="number"
+                min="1"
+                required
+                value={fields.duration}
+                onChange={(event) =>
+                  setField(
+                    "duration",
+                    Math.max(1, Number.parseInt(event.target.value, 10) || 1),
+                  )
+                }
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="stretch-repetitions"
+                className="mb-2 block text-sm font-medium"
+              >
+                Repetitions
+              </label>
+              <input
+                id="stretch-repetitions"
+                type="number"
+                min="1"
+                required
+                value={fields.repetitions}
+                onChange={(event) =>
+                  setField(
+                    "repetitions",
+                    Math.max(1, Number.parseInt(event.target.value, 10) || 1),
+                  )
+                }
+                className={inputClass}
+              />
+            </div>
+          </fieldset>
+
+          <fieldset className="rounded-2xl border border-border/60 p-4 sm:p-5">
+            <legend className="px-2 text-sm font-semibold">Visual</legend>
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row">
+              <div className="h-28 w-full shrink-0 overflow-hidden rounded-xl border border-border bg-muted sm:w-32">
+                {fields.image ? (
+                  <StretchImage
+                    src={imageLoadError ? PLACEHOLDER_IMAGE : fields.image}
+                    alt="Stretch preview"
+                    className="h-full w-full object-cover"
+                    onError={() => setImageLoadError(true)}
+                    sizes="128px"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    No image
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setShowImagePicker(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={showImagePicker}
+                  className="min-h-11 w-full rounded-xl bg-primary/10 px-4 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  Browse image library
+                </button>
+                <label htmlFor="stretch-image-url" className="sr-only">
+                  Custom image URL
+                </label>
+                <input
+                  id="stretch-image-url"
+                  type="url"
+                  value={fields.image}
+                  onChange={(event) => {
+                    setField("image", event.target.value);
+                    setImageLoadError(false);
+                  }}
+                  placeholder="Or paste an image URL"
+                  className={inputClass}
+                />
+                {fields.image && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setField("image", "");
+                      setImageLoadError(false);
+                    }}
+                    className="min-h-11 text-sm font-medium text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    Remove image
+                  </button>
+                )}
+                {imageLoadError && fields.image && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    This image could not load. A placeholder will be used.
+                  </p>
+                )}
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        <fieldset className="min-w-0 space-y-5 rounded-2xl border border-border/60 p-4 sm:p-5">
+          <legend className="px-2 text-sm font-semibold">Coaching cues</legend>
+          <div>
+            <label
+              htmlFor="stretch-how"
+              className="mb-2 block text-sm font-medium"
+            >
+              What to do
+            </label>
+            <textarea
+              id="stretch-how"
+              required
+              rows={7}
+              value={fields.how}
+              onChange={(event) => setField("how", event.target.value)}
+              placeholder="Use calm, concise movement cues."
+              className={`${inputClass} resize-y`}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="stretch-look-for"
+              className="mb-2 block text-sm font-medium"
+            >
+              What to feel
+            </label>
+            <textarea
+              id="stretch-look-for"
+              required
+              rows={6}
+              value={fields.lookFor}
+              onChange={(event) => setField("lookFor", event.target.value)}
+              placeholder="Describe useful sensations and warning signs."
+              className={`${inputClass} resize-y`}
+            />
+          </div>
+          {stretch?.targetAreas?.length && (
+            <p className="text-xs text-muted-foreground">
+              Target areas are retained: {stretch.targetAreas.join(", ")}.
+            </p>
+          )}
+        </fieldset>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-20 flex gap-3 border-t border-border bg-card/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mt-6 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0">
+        <button
+          type="button"
+          onClick={requestCancel}
+          className="min-h-11 flex-1 rounded-xl bg-secondary px-5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none"
         >
           Cancel
         </button>
+        <button
+          type="submit"
+          className="min-h-11 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none"
+        >
+          {stretch ? "Save changes" : "Add stretch"}
+        </button>
       </div>
 
-      {/* Image Picker Modal */}
       {showImagePicker && (
         <ImagePicker
-          value={image}
+          value={fields.image}
           onChange={(url) => {
-            setImage(url);
+            setField("image", url);
             setImageLoadError(false);
           }}
           onClose={() => setShowImagePicker(false)}

@@ -4,29 +4,30 @@ import type {
   StretchRoutine,
 } from "@/components/tools/Stretching/types";
 import { formatTime } from "@/components/tools/Stretching/utils";
+import { getMoveTarget } from "@/components/tools/Stretching/studioHelpers";
+import { PLACEHOLDER_IMAGE } from "../images";
 import { StretchForm } from "./StretchForm";
 import { RoutineForm } from "./RoutineForm";
+import { StretchImage } from "./StretchImage";
 
-interface ContentManagerProps {
+export interface ContentManagerProps {
   defaultRoutines: StretchRoutine[];
   customRoutines: StretchRoutine[];
   selectedRoutineId: string;
   currentStretches: Stretch[];
-
-  // Stretch operations
   onAddStretch: (stretch: Omit<Stretch, "id">) => void;
   onUpdateStretch: (id: string, stretch: Omit<Stretch, "id">) => void;
   onDeleteStretch: (id: string) => void;
   onMoveStretch: (fromIndex: number, toIndex: number) => void;
-
-  // Routine operations
-  onSelectRoutine: (id: string) => void;
+  /** @deprecated Use onManageRoutine and onStartRoutine as separate actions. */
+  onSelectRoutine?: (id: string) => void;
+  onManageRoutine?: (id: string) => void;
+  onStartRoutine?: (id: string) => void;
   onLoadRoutineStretches: (routine: StretchRoutine) => void;
   onSaveRoutine: (routine: StretchRoutine) => void;
   onUpdateRoutine: (id: string, routine: Omit<StretchRoutine, "id">) => void;
   onDeleteRoutine: (id: string) => void;
   onResetToDefault: (routineId: string) => void;
-
   onClose: () => void;
 }
 
@@ -43,7 +44,8 @@ export function ContentManager({
   onUpdateStretch,
   onDeleteStretch,
   onMoveStretch,
-  onSelectRoutine,
+  onManageRoutine,
+  onStartRoutine,
   onLoadRoutineStretches,
   onSaveRoutine,
   onUpdateRoutine,
@@ -58,460 +60,412 @@ export function ContentManager({
   const [editingRoutine, setEditingRoutine] = useState<StretchRoutine | null>(
     null,
   );
+  const [managedRoutineId, setManagedRoutineId] = useState(selectedRoutineId);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  // Stretch handlers
-  const handleCreateStretch = () => {
-    setActiveTab("stretches");
-    setStretchMode("create");
-    setEditingStretchId(null);
+  const routines = [...defaultRoutines, ...customRoutines];
+  const managedRoutine =
+    routines.find((routine) => routine.id === managedRoutineId) ??
+    routines[0] ??
+    null;
+  const editingStretch = editingStretchId
+    ? (currentStretches.find((stretch) => stretch.id === editingStretchId) ??
+      null)
+    : null;
+
+  const chooseRoutine = (routine: StretchRoutine) => {
+    setManagedRoutineId(routine.id);
+    onManageRoutine?.(routine.id);
   };
 
-  const handleEditStretch = (id: string) => {
-    setActiveTab("stretches");
-    setStretchMode("edit");
-    setEditingStretchId(id);
-  };
-
-  const handleDeleteStretch = (id: string) => {
-    if (confirm("Are you sure you want to delete this stretch?")) {
-      onDeleteStretch(id);
-    }
-  };
-
-  const handleStretchSubmit = (stretch: Omit<Stretch, "id">) => {
-    if (editingStretchId) {
-      onUpdateStretch(editingStretchId, stretch);
-    } else {
-      onAddStretch(stretch);
-    }
-    setStretchMode("list");
-    setEditingStretchId(null);
-  };
-
-  const handleStretchCancel = () => {
-    setStretchMode("list");
-    setEditingStretchId(null);
-  };
-
-  // Routine handlers
-  const handleCreateRoutine = () => {
-    setActiveTab("routines");
-    setRoutineMode("create");
-    setEditingRoutine(null);
-  };
-
-  const handleEditRoutine = (routine: StretchRoutine) => {
-    if (!customRoutines.some((r) => r.id === routine.id)) {
-      return;
-    }
-    setActiveTab("routines");
-    setRoutineMode("edit");
-    setEditingRoutine(routine);
+  const beginRoutineEdit = (routine: StretchRoutine) => {
+    if (!customRoutines.some((item) => item.id === routine.id)) return;
+    chooseRoutine(routine);
     onLoadRoutineStretches(routine);
+    setEditingRoutine(routine);
+    setRoutineMode("edit");
   };
 
-  const handleDeleteRoutine = (id: string) => {
-    if (confirm("Are you sure you want to delete this routine?")) {
-      onDeleteRoutine(id);
-      if (selectedRoutineId === id) {
-        onSelectRoutine(defaultRoutines[0]?.id || "routine_0");
-      }
+  const deleteRoutine = (routine: StretchRoutine) => {
+    if (!window.confirm(`Delete “${routine.name}”? This cannot be undone.`))
+      return;
+    onDeleteRoutine(routine.id);
+    if (managedRoutineId === routine.id) {
+      const fallback = defaultRoutines[0] ?? null;
+      setManagedRoutineId(fallback?.id ?? "");
+      if (fallback) onManageRoutine?.(fallback.id);
     }
   };
 
-  const handleRoutineSubmit = (routine: Omit<StretchRoutine, "id">) => {
+  const submitRoutine = (routine: Omit<StretchRoutine, "id">) => {
     if (editingRoutine) {
       onUpdateRoutine(editingRoutine.id, routine);
     } else {
-      const newRoutine: StretchRoutine = {
-        ...routine,
-        id: `custom_${Date.now()}`,
-      };
-      onSaveRoutine(newRoutine);
+      onSaveRoutine({ ...routine, id: `custom_${Date.now()}` });
     }
-    setRoutineMode("list");
     setEditingRoutine(null);
-  };
-
-  const handleRoutineCancel = () => {
     setRoutineMode("list");
-    setEditingRoutine(null);
   };
 
-  // Drag and drop handlers
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
+  const moveStretch = (index: number, direction: "up" | "down") => {
+    const target = getMoveTarget(index, direction, currentStretches.length);
+    if (target !== null) onMoveStretch(index, target);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
-      return;
-    }
-    onMoveStretch(draggedIndex, dropIndex);
-    setDraggedIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-  };
-
-  const handleClose = () => {
-    if (stretchMode !== "list" || routineMode !== "list") {
-      setStretchMode("list");
-      setRoutineMode("list");
-      setEditingStretchId(null);
-      setEditingRoutine(null);
-    }
-    onClose();
-  };
-
-  const editingStretch = editingStretchId
-    ? (currentStretches.find((s) => s.id === editingStretchId) ?? null)
-    : null;
-
-  // Stretch form view
-  if (
-    activeTab === "stretches" &&
-    (stretchMode === "create" || stretchMode === "edit")
-  ) {
+  if (activeTab === "stretches" && stretchMode !== "list") {
     return (
-      <div className="rounded-lg border border-border/50 bg-card p-4 shadow-sm sm:p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold sm:text-xl">
-            {editingStretch ? "Edit Stretch" : "Create New Stretch"}
-          </h3>
-          <button
-            onClick={handleStretchCancel}
-            type="button"
-            aria-label="Close stretch form"
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            ✕
-          </button>
-        </div>
+      <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-6">
         <StretchForm
           stretch={editingStretch}
-          onSubmit={handleStretchSubmit}
-          onCancel={handleStretchCancel}
+          onSubmit={(stretch) => {
+            if (editingStretchId) onUpdateStretch(editingStretchId, stretch);
+            else onAddStretch(stretch);
+            setStretchMode("list");
+            setEditingStretchId(null);
+          }}
+          onCancel={() => {
+            setStretchMode("list");
+            setEditingStretchId(null);
+          }}
         />
       </div>
     );
   }
 
-  // Routine form view
-  if (
-    activeTab === "routines" &&
-    (routineMode === "create" || routineMode === "edit")
-  ) {
-    return (
-      <div className="rounded-lg border border-border/50 bg-card p-4 shadow-sm sm:p-6">
-        <RoutineForm
-          routine={editingRoutine}
-          stretches={currentStretches}
-          onSubmit={handleRoutineSubmit}
-          onCancel={handleRoutineCancel}
-        />
-      </div>
-    );
-  }
-
-  // Main view
   return (
-    <div className="rounded-lg border border-border/50 bg-card p-4 shadow-sm sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-bold sm:text-xl">Content Manager</h3>
+    <section
+      className="min-w-0 overflow-x-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-6"
+      aria-labelledby="routine-studio-title"
+    >
+      <header className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            Manage your practice
+          </p>
+          <h2
+            id="routine-studio-title"
+            className="text-xl font-semibold sm:text-2xl"
+          >
+            Routine Studio
+          </h2>
+        </div>
         <button
-          onClick={handleClose}
           type="button"
-          aria-label="Close content manager"
-          className="text-muted-foreground transition-colors hover:text-foreground"
-          title="Close"
+          onClick={onClose}
+          aria-label="Close Routine Studio"
+          className="min-h-11 min-w-11 rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           ✕
         </button>
-      </div>
+      </header>
 
-      {/* Tabs */}
       <div
-        className="mb-6 flex gap-2 border-b border-border/50"
+        className="mb-6 flex border-b border-border/60"
         role="tablist"
-        aria-label="Content type"
+        aria-label="Routine Studio sections"
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "stretches"}
-          onClick={() => setActiveTab("stretches")}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === "stretches"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Stretches ({currentStretches.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "routines"}
-          onClick={() => setActiveTab("routines")}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === "routines"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Routines ({defaultRoutines.length + customRoutines.length})
-        </button>
+        {(["stretches", "routines"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
+            onClick={() => setActiveTab(tab)}
+            className={`min-h-11 flex-1 px-3 text-sm font-medium capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:flex-none sm:px-5 ${activeTab === tab ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
+          >
+            {tab} (
+            {tab === "stretches" ? currentStretches.length : routines.length})
+          </button>
+        ))}
       </div>
 
-      {/* Stretches Tab */}
       {activeTab === "stretches" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="space-y-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              Manage the stretches in your current routine
+              Arrange the current routine. Reordering never depends on drag
+              alone.
             </p>
             <button
-              onClick={handleCreateStretch}
-              className="rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+              type="button"
+              onClick={() => {
+                setEditingStretchId(null);
+                setStretchMode("create");
+              }}
+              className="min-h-11 rounded-xl bg-primary/10 px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              + Add Stretch
+              Add stretch
             </button>
           </div>
-
           {currentStretches.length === 0 ? (
-            <div className="rounded-xl bg-muted/30 py-12 text-center text-muted-foreground">
-              <div className="mb-2 text-4xl">🧘</div>
-              <p className="mb-3 text-sm">No stretches yet.</p>
-              <button
-                onClick={handleCreateStretch}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Add Your First Stretch
-              </button>
+            <div className="rounded-2xl bg-muted/40 p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                This routine has no stretches yet.
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <ol className="space-y-3">
               {currentStretches.map((stretch, index) => (
-                <div
+                <li
                   key={stretch.id}
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onDragEnd={handleDragEnd}
-                  className={`cursor-move rounded-xl border border-border/50 bg-card p-4 shadow-sm transition-colors hover:shadow-sm ${
-                    draggedIndex === index ? "opacity-50" : ""
-                  }`}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (draggedIndex !== null && draggedIndex !== index)
+                      onMoveStretch(draggedIndex, index);
+                    setDraggedIndex(null);
+                  }}
+                  className={`min-w-0 rounded-2xl border border-border/60 p-3 transition-opacity sm:p-4 ${draggedIndex === index ? "opacity-50" : ""}`}
                 >
-                  <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <button
+                      type="button"
+                      draggable
+                      onDragStart={() => setDraggedIndex(index)}
+                      onDragEnd={() => setDraggedIndex(null)}
+                      aria-label={`Drag ${stretch.name} to reorder`}
+                      title="Drag to reorder"
+                      className="min-h-11 min-w-11 cursor-grab touch-none rounded-xl text-lg text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:cursor-grabbing"
+                    >
+                      ⠿
+                    </button>
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted sm:h-20 sm:w-20">
+                      <StretchImage
+                        src={stretch.image || PLACEHOLDER_IMAGE}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        sizes="80px"
+                      />
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 flex items-center gap-2">
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                          #{index + 1}
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="shrink-0 text-xs font-semibold text-primary">
+                          {index + 1}
                         </span>
-                        <div className="text-base font-semibold sm:text-lg">
+                        <h3 className="truncate text-sm font-semibold sm:text-base">
                           {stretch.name}
-                        </div>
+                        </h3>
                       </div>
-                      <div className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
                         {stretch.description}
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className="rounded-md bg-muted/50 px-2 py-1 text-xs font-medium text-muted-foreground">
-                          ⏱️ {formatTime(stretch.duration)}
-                        </span>
-                        {(stretch.repetitions || 1) > 1 && (
-                          <span className="rounded-md bg-muted/50 px-2 py-1 text-xs font-medium text-muted-foreground">
-                            🔁 {stretch.repetitions || 1}x (
-                            {formatTime(
-                              stretch.duration * (stretch.repetitions || 1),
-                            )}{" "}
-                            total)
-                          </span>
-                        )}
-                      </div>
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {formatTime(stretch.duration)}
+                        {stretch.repetitions > 1
+                          ? ` · ${stretch.repetitions} rounds`
+                          : ""}
+                      </p>
                     </div>
-                    <div className="flex w-full gap-2 sm:w-auto">
-                      <button
-                        onClick={() => handleEditStretch(stretch.id)}
-                        className="min-h-[44px] flex-1 touch-manipulation rounded-xl bg-secondary/80 px-4 py-2.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary active:bg-secondary/70 sm:flex-none"
+                    <details className="relative shrink-0">
+                      <summary
+                        aria-label={`Actions for ${stretch.name}`}
+                        className="flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-xl text-xl text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
-                        ✏️ Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteStretch(stretch.id)}
-                        className="min-h-[44px] flex-1 touch-manipulation rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20 active:bg-destructive/30 sm:flex-none"
-                      >
-                        🗑️ Delete
-                      </button>
-                    </div>
+                        •••
+                      </summary>
+                      <div className="absolute right-0 top-12 z-10 w-36 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingStretchId(stretch.id);
+                            setStretchMode("edit");
+                          }}
+                          className="min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`Delete “${stretch.name}”?`))
+                              onDeleteStretch(stretch.id);
+                          }}
+                          className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </details>
                   </div>
-                </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 pl-0 sm:ml-14 sm:flex">
+                    <button
+                      type="button"
+                      disabled={index === 0}
+                      onClick={() => moveStretch(index, "up")}
+                      aria-label={`Move ${stretch.name} up`}
+                      className="min-h-11 rounded-xl bg-secondary px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40"
+                    >
+                      ↑ Move up
+                    </button>
+                    <button
+                      type="button"
+                      disabled={index === currentStretches.length - 1}
+                      onClick={() => moveStretch(index, "down")}
+                      aria-label={`Move ${stretch.name} down`}
+                      className="min-h-11 rounded-xl bg-secondary px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40"
+                    >
+                      ↓ Move down
+                    </button>
+                  </div>
+                </li>
               ))}
-            </div>
+            </ol>
           )}
-
-          <div className="border-t border-border/50 pt-4">
+          <div className="border-t border-border/60 pt-5">
             <button
+              type="button"
               onClick={() => {
                 if (
-                  confirm(
-                    "Reset to default stretches? This will replace all current stretches.",
+                  window.confirm(
+                    "Reset to default stretches? This replaces all current stretches.",
                   )
-                ) {
+                )
                   onResetToDefault(selectedRoutineId);
-                }
               }}
-              className="w-full rounded-xl bg-secondary/80 px-4 py-2.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary active:bg-secondary/70"
+              className="min-h-11 w-full rounded-xl bg-secondary px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              ↻ Reset to Default Stretches
+              Reset to default stretches
             </button>
           </div>
         </div>
       )}
 
-      {/* Routines Tab */}
       {activeTab === "routines" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Manage your routines. Create new ones from current stretches or
-              edit existing custom routines.
-            </p>
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(15rem,0.8fr)_minmax(0,1.2fr)]">
+          <div className="min-w-0 space-y-4">
             <button
-              onClick={handleCreateRoutine}
-              className="rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+              type="button"
+              onClick={() => {
+                setEditingRoutine(null);
+                setRoutineMode("create");
+              }}
+              className="min-h-11 w-full rounded-xl bg-primary/10 px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              + Create Routine
+              Create routine from current stretches
             </button>
+            <div className="space-y-2" role="list" aria-label="Routines">
+              {routines.map((routine) => {
+                const isCustom = customRoutines.some(
+                  (item) => item.id === routine.id,
+                );
+                return (
+                  <button
+                    key={routine.id}
+                    type="button"
+                    role="listitem"
+                    aria-current={
+                      managedRoutineId === routine.id ? "true" : undefined
+                    }
+                    onClick={() => {
+                      chooseRoutine(routine);
+                      setRoutineMode("list");
+                    }}
+                    className={`min-h-11 w-full min-w-0 rounded-xl border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${managedRoutineId === routine.id ? "border-primary bg-primary/10" : "border-border/60 hover:bg-muted/50"}`}
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-semibold">
+                        {routine.name}
+                      </span>
+                      {isCustom && (
+                        <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          Custom
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {formatTime(routine.totalDuration)} ·{" "}
+                      {routine.stretches.length} stretches
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Default Routines
-              </h4>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
-                {defaultRoutines.map((routine) => (
-                  <button
-                    type="button"
-                    key={routine.id}
-                    aria-pressed={selectedRoutineId === routine.id}
-                    className={`cursor-pointer rounded-xl border-2 p-3 text-left transition-colors sm:p-4 ${
-                      selectedRoutineId === routine.id
-                        ? "border-primary bg-primary/10 shadow-md"
-                        : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"
-                    }`}
-                    onClick={() => onSelectRoutine(routine.id)}
-                  >
-                    <div className="mb-1 text-sm font-semibold sm:text-base">
-                      {routine.name}
-                    </div>
-                    <div className="mb-2 text-xs text-muted-foreground">
-                      {routine.goal}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>⏱️ {formatTime(routine.totalDuration)}</span>
-                      <span>•</span>
-                      <span>{routine.stretches.length} stretches</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Custom Routines
-              </h4>
-              {customRoutines.length === 0 ? (
-                <div className="rounded-xl bg-muted/30 py-8 text-center text-muted-foreground">
-                  <div className="mb-2 text-3xl">📝</div>
-                  <p className="mb-3 text-sm">No custom routines yet.</p>
-                  <button
-                    onClick={handleCreateRoutine}
-                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    Create Your First Routine
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
-                  {customRoutines.map((routine) => (
-                    <div
-                      key={routine.id}
-                      className={`group relative rounded-xl border-2 p-3 text-left transition-colors sm:p-4 ${
-                        selectedRoutineId === routine.id
-                          ? "border-primary bg-primary/10 shadow-md"
-                          : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"
-                      }`}
-                    >
+          <div
+            className={`${routineMode !== "list" ? "fixed inset-0 z-40 overflow-y-auto bg-card p-4 sm:p-6 lg:static lg:z-auto lg:overflow-visible lg:bg-transparent lg:p-0" : ""} min-w-0`}
+          >
+            {routineMode !== "list" ? (
+              <RoutineForm
+                routine={editingRoutine}
+                stretches={currentStretches}
+                onSubmit={submitRoutine}
+                onCancel={() => {
+                  setRoutineMode("list");
+                  setEditingRoutine(null);
+                }}
+              />
+            ) : managedRoutine ? (
+              <article className="rounded-2xl border border-border/60 p-5 sm:p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                  Selected for management
+                </p>
+                <h3 className="mt-2 text-xl font-semibold">
+                  {managedRoutine.name}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {managedRoutine.goal}
+                </p>
+                <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-xl bg-muted/40 p-3">
+                    <dt className="text-xs text-muted-foreground">Duration</dt>
+                    <dd className="mt-1 font-semibold">
+                      {formatTime(managedRoutine.totalDuration)}
+                    </dd>
+                  </div>
+                  <div className="rounded-xl bg-muted/40 p-3">
+                    <dt className="text-xs text-muted-foreground">Stretches</dt>
+                    <dd className="mt-1 font-semibold">
+                      {managedRoutine.stretches.length}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  {customRoutines.some(
+                    (item) => item.id === managedRoutine.id,
+                  ) && (
+                    <>
                       <button
                         type="button"
-                        onClick={() => onSelectRoutine(routine.id)}
-                        aria-pressed={selectedRoutineId === routine.id}
-                        className="w-full cursor-pointer text-left"
+                        onClick={() => beginRoutineEdit(managedRoutine)}
+                        className="min-h-11 flex-1 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
-                        <div className="mb-1 flex items-start justify-between">
-                          <div className="pr-8 text-sm font-semibold sm:text-base">
-                            {routine.name}
-                          </div>
-                          <span className="rounded bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
-                            Custom
-                          </span>
-                        </div>
-                        <div className="mb-2 text-xs text-muted-foreground">
-                          {routine.goal}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>⏱️ {formatTime(routine.totalDuration)}</span>
-                          <span>•</span>
-                          <span>{routine.stretches.length} stretches</span>
-                        </div>
+                        Edit routine
                       </button>
-                      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-                        <button
-                          type="button"
-                          aria-label={`Edit ${routine.name}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditRoutine(routine);
-                          }}
-                          className="rounded-lg bg-secondary/80 p-1.5 text-secondary-foreground transition-colors hover:bg-secondary"
-                          title="Edit routine"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Delete ${routine.name}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteRoutine(routine.id);
-                          }}
-                          className="rounded-lg bg-destructive/10 p-1.5 text-destructive transition-colors hover:bg-destructive/20"
-                          title="Delete routine"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                      <button
+                        type="button"
+                        onClick={() => deleteRoutine(managedRoutine)}
+                        className="min-h-11 rounded-xl bg-destructive/10 px-4 text-sm font-medium text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                  {onStartRoutine && (
+                    <button
+                      type="button"
+                      onClick={() => onStartRoutine(managedRoutine.id)}
+                      className="min-h-11 rounded-xl border border-primary px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      Start routine
+                    </button>
+                  )}
                 </div>
-              )}
-            </div>
+                {!onStartRoutine && (
+                  <p className="mt-5 text-xs text-muted-foreground">
+                    Choosing a routine here only manages it; starting a session
+                    is a separate action.
+                  </p>
+                )}
+              </article>
+            ) : (
+              <p className="rounded-2xl bg-muted/40 p-8 text-center text-sm text-muted-foreground">
+                No routines available.
+              </p>
+            )}
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
