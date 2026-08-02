@@ -265,7 +265,7 @@ export function ContentManager({
                     >
                       ⠿
                     </button>
-                    <div className="aspect-[1349/1536] w-16 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-20">
+                    <div className="aspect-[4/3] w-16 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-20">
                       <StretchImage
                         src={stretch.image || PLACEHOLDER_IMAGE}
                         alt=""

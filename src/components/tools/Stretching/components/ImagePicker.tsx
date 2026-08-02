@@ -172,7 +172,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
                           aria-label={`Select ${image.name}`}
                           aria-pressed={selected === image.url}
                           onClick={() => setDraftSelection(image.url)}
-                          className={`group relative aspect-[1349/1536] min-h-11 overflow-hidden rounded-xl border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected === image.url ? "border-primary ring-2 ring-primary/30" : "border-border/60 hover:border-primary/60"}`}
+                          className={`group relative aspect-[4/3] min-h-11 overflow-hidden rounded-xl border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected === image.url ? "border-primary ring-2 ring-primary/30" : "border-border/60 hover:border-primary/60"}`}
                         >
                           {!loadedImages.has(image.url) &&
                             !failedImages.has(image.url) && (
@@ -264,7 +264,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
           <footer className="shrink-0 border-t border-border/60 bg-card p-3 sm:p-4">
             {selected && (
               <div className="mb-3 flex min-w-0 items-center gap-3">
-                <div className="aspect-[1349/1536] w-11 shrink-0 overflow-hidden rounded-lg bg-muted">
+                <div className="aspect-[4/3] w-11 shrink-0 overflow-hidden rounded-lg bg-muted">
                   <StretchImage
                     src={selected}
                     alt="Draft selection"

@@ -191,7 +191,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
           <fieldset className="rounded-2xl border border-border/60 p-4 sm:p-5">
             <legend className="px-2 text-sm font-semibold">Visual</legend>
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row">
-              <div className="aspect-[1349/1536] w-28 shrink-0 overflow-hidden rounded-xl border border-border bg-muted sm:w-32">
+              <div className="aspect-[4/3] w-28 shrink-0 overflow-hidden rounded-xl border border-border bg-muted sm:w-32">
                 {fields.image ? (
                   <StretchImage
                     src={imageLoadError ? PLACEHOLDER_IMAGE : fields.image}

@@ -34,7 +34,7 @@ export function RestPeriodScreen({
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-stretch">
       {nextStretch && (
-        <div className="stretching-image-surface relative aspect-[1349/1536] shadow-sm sm:h-80 sm:aspect-auto lg:h-[36rem]">
+        <div className="stretching-image-surface relative aspect-[4/3] shadow-sm">
           <StretchImage
             src={nextStretch.image || PLACEHOLDER_IMAGE}
             alt={`Next: ${nextStretch.name}`}

@@ -32,9 +32,9 @@ export function getResponsiveStretchImageSources(
 
   return {
     avifSrcSet: buildSrcSet("avif"),
-    height: 1536,
+    height: 1086,
     webpSrcSet: buildSrcSet("webp"),
-    width: 1349,
+    width: 1448,
   };
 }
 

@@ -42,7 +42,7 @@ describe("image catalog", () => {
   it("describes local artwork with its native aspect ratio", () => {
     expect(
       getResponsiveStretchImageSources("/stretches/cat-pose.png"),
-    ).toMatchObject({ width: 1349, height: 1536 });
+    ).toMatchObject({ width: 1448, height: 1086 });
   });
 
   it("accepts catalog paths and complete web URLs without accepting arbitrary text", () => {

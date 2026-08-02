@@ -69,14 +69,14 @@ export function QuickStart({
           <button
             type="button"
             onClick={() => onSelectRoutine(recentRoutine.id)}
-            className="group grid w-full min-w-0 grid-cols-[8rem_minmax(0,1fr)] overflow-hidden rounded-2xl border border-border bg-card text-left transition-colors hover:border-primary/50 sm:grid-cols-[10rem_minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)]"
+            className="group grid w-full min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-left transition-colors hover:border-primary/50 md:grid-cols-[minmax(20rem,26.666rem)_minmax(0,1fr)]"
           >
-            <div className="stretching-image-surface min-h-56 rounded-none md:h-[21rem] md:min-h-0">
+            <div className="stretching-image-surface aspect-[4/3] rounded-none">
               <StretchImage
                 src={getRoutineRepresentativeImage(recentRoutine)}
                 alt=""
-                className="h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none md:object-cover"
-                sizes="(min-width: 768px) 224px, (min-width: 640px) 160px, 128px"
+                className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none"
+                sizes="(min-width: 768px) 427px, 100vw"
               />
             </div>
             <div className="flex min-w-0 flex-col justify-center p-5 sm:p-7">
@@ -85,7 +85,8 @@ export function QuickStart({
                   <DifficultyBadge difficulty={recentRoutine.difficulty} />
                 )}
                 <span className="text-xs text-muted-foreground">
-                  {formatTime(recentRoutine.totalDuration)} · {recentRoutine.stretches.length} stretches
+                  {formatTime(recentRoutine.totalDuration)} ·{" "}
+                  {recentRoutine.stretches.length} stretches
                 </span>
               </div>
               <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
@@ -96,8 +97,19 @@ export function QuickStart({
               </p>
               <span className="mt-5 inline-flex items-center gap-2 font-medium text-primary">
                 View routine
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 8l4 4m0 0l-4 4m4-4H3"
+                  />
                 </svg>
               </span>
             </div>
@@ -108,8 +120,13 @@ export function QuickStart({
       <section aria-labelledby="intent-heading">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Choose by how you feel</p>
-            <h2 id="intent-heading" className="text-xl font-semibold text-foreground sm:text-2xl">
+            <p className="text-sm text-muted-foreground">
+              Choose by how you feel
+            </p>
+            <h2
+              id="intent-heading"
+              className="text-xl font-semibold text-foreground sm:text-2xl"
+            >
               What would help right now?
             </h2>
           </div>
@@ -130,15 +147,22 @@ export function QuickStart({
               onClick={() => onBrowseAll(intent.category)}
               className="min-w-0 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
             >
-              <span className="block text-xs text-muted-foreground">{intent.prompt}</span>
-              <span className="mt-1 block font-semibold text-foreground">{intent.label}</span>
+              <span className="block text-xs text-muted-foreground">
+                {intent.prompt}
+              </span>
+              <span className="mt-1 block font-semibold text-foreground">
+                {intent.label}
+              </span>
             </button>
           ))}
         </div>
       </section>
 
       <section aria-labelledby="featured-routines-heading">
-        <h2 id="featured-routines-heading" className="mb-4 text-xl font-semibold text-foreground sm:text-2xl">
+        <h2
+          id="featured-routines-heading"
+          className="mb-4 text-xl font-semibold text-foreground sm:text-2xl"
+        >
           A few calm places to start
         </h2>
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

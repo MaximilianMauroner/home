@@ -16,7 +16,7 @@ export function StretchDetails({
   return (
     <div className="space-y-4">
       {showImage && (
-        <div className="stretching-image-surface relative aspect-[1349/1536] shadow-sm sm:h-80 sm:aspect-auto lg:h-[36rem]">
+        <div className="stretching-image-surface relative aspect-[4/3] shadow-sm">
           <StretchImage
             src={stretch.image || PLACEHOLDER_IMAGE}
             alt={stretch.name}
