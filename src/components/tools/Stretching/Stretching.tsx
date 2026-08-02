@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Stretch, StretchRoutine } from "./types";
-import { DEFAULT_ROUTINES, STORAGE_KEY, ROUTINE_SELECTOR_KEY, TIME_BETWEEN_KEY, CUSTOM_ROUTINES_KEY } from "./constants";
+import {
+  DEFAULT_ROUTINES,
+  STORAGE_KEY,
+  ROUTINE_SELECTOR_KEY,
+  TIME_BETWEEN_KEY,
+  CUSTOM_ROUTINES_KEY,
+} from "./constants";
 import { playTickSound, playEndSound } from "./utils";
 import { StretchDetails } from "./components/StretchDetails";
 import { RestPeriodScreen } from "./components/RestPeriodScreen";
@@ -10,141 +16,96 @@ import { ContentManager } from "./components/ContentManager";
 import { QuickStart } from "./components/QuickStart";
 import { RoutineBrowser } from "./components/RoutineBrowser";
 import { StretchPreview } from "./components/StretchPreview";
+import { StretchingShell } from "./components/StretchingShell";
+import {
+  parseStretchingNavigation,
+  serializeStretchingNavigation,
+  type StretchingNavigationState,
+  type StretchingView,
+} from "./navigation";
+import {
+  parseStoredCustomRoutines,
+  parseStoredRestDuration,
+  parseStoredStretches,
+} from "./persistence";
 
-type ViewState = "quickstart" | "browser" | "preview" | "active" | "content-manager";
+const DEFAULT_ROUTINE_ID = DEFAULT_ROUTINES[0]?.id || "routine_1";
 
-// Helper to get URL params
-function getViewFromURL(): { view: ViewState; routineId: string | null } {
-  if (typeof window === "undefined") return { view: "quickstart", routineId: null };
-  const params = new URLSearchParams(window.location.search);
-  const view = params.get("view") as ViewState | null;
-  const routineId = params.get("routine");
-  const validViews: ViewState[] = ["quickstart", "browser", "preview", "active", "content-manager"];
-  return {
-    view: view && validViews.includes(view) ? view : "quickstart",
-    routineId,
-  };
+function getRoutineStretches(
+  routineId: string,
+  customRoutines: StretchRoutine[],
+): Stretch[] {
+  const routine =
+    customRoutines.find((candidate) => candidate.id === routineId) ??
+    DEFAULT_ROUTINES.find((candidate) => candidate.id === routineId) ??
+    DEFAULT_ROUTINES[0];
+
+  return (
+    routine?.stretches.map((stretch, index) => ({
+      ...stretch,
+      id: `${routine.id}_${stretch.id || index + 1}`,
+    })) ?? []
+  );
 }
 
-// Helper to update URL params
-function updateURL(view: ViewState, routineId?: string | null) {
-  if (typeof window === "undefined") return;
+function replaceNavigation(navigation: StretchingNavigationState) {
   const url = new URL(window.location.href);
-  if (view === "quickstart") {
-    url.searchParams.delete("view");
-    url.searchParams.delete("routine");
-  } else {
-    url.searchParams.set("view", view);
-    if (routineId) {
-      url.searchParams.set("routine", routineId);
-    } else {
-      url.searchParams.delete("routine");
-    }
-  }
+  url.search = serializeStretchingNavigation(url.search, navigation);
   window.history.replaceState({}, "", url.toString());
 }
 
 export default function Stretching() {
-  const [viewState, setViewStateInternal] = useState<ViewState>(() => getViewFromURL().view);
-  const [previewRoutineId, setPreviewRoutineId] = useState<string | null>(() => getViewFromURL().routineId);
-
-  const [selectedRoutineId, setSelectedRoutineId] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(ROUTINE_SELECTOR_KEY);
-      return stored || "routine_1";
-    }
-    return "routine_1";
-  });
-
-  const [stretches, setStretches] = useState<Stretch[]>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed.length > 0) {
-            return parsed;
-          }
-        } catch {
-          // Fall through to load routine
-        }
-      }
-    }
-    const routineId = typeof window !== "undefined"
-      ? (localStorage.getItem(ROUTINE_SELECTOR_KEY) || "routine_1")
-      : "routine_1";
-
-    if (typeof window !== "undefined") {
-      const customRoutinesStored = localStorage.getItem(CUSTOM_ROUTINES_KEY);
-      if (customRoutinesStored) {
-        try {
-          const customRoutines = JSON.parse(customRoutinesStored);
-          const customRoutine = customRoutines.find((r: StretchRoutine) => r.id === routineId);
-          if (customRoutine) {
-            return customRoutine.stretches.map((s: Stretch, idx: number) => ({
-              ...s,
-              id: `${routineId}_${s.id || idx + 1}`,
-            }));
-          }
-        } catch {
-          // Fall through to default routines
-        }
-      }
-    }
-
-    const routine = DEFAULT_ROUTINES.find((r) => r.id === routineId);
-    if (routine) {
-      return routine.stretches.map((s, idx) => ({
-        ...s,
-        id: `${routineId}_${s.id || idx + 1}`,
-      }));
-    }
-    return DEFAULT_ROUTINES[0]?.stretches || [];
-  });
+  const [viewState, setViewStateInternal] =
+    useState<StretchingView>("quickstart");
+  const [previewRoutineId, setPreviewRoutineId] = useState<string | null>(null);
+  const [hasRestored, setHasRestored] = useState(false);
+  const [selectedRoutineId, setSelectedRoutineId] =
+    useState(DEFAULT_ROUTINE_ID);
+  const [stretches, setStretches] = useState<Stretch[]>(() =>
+    getRoutineStretches(DEFAULT_ROUTINE_ID, []),
+  );
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentRepetition, setCurrentRepetition] = useState(1);
-  const [timeRemaining, setTimeRemaining] = useState(stretches[0]?.duration || 60);
+  const [timeRemaining, setTimeRemaining] = useState(
+    stretches[0]?.duration || 60,
+  );
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isResting, setIsResting] = useState(false);
-  const [timeBetween, setTimeBetween] = useState<number>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(TIME_BETWEEN_KEY);
-      return stored ? parseInt(stored, 10) : 10;
-    }
-    return 10;
-  });
+  const [timeBetween, setTimeBetween] = useState(10);
   const [showTimeBetweenSettings, setShowTimeBetweenSettings] = useState(false);
-  const [customRoutines, setCustomRoutines] = useState<StretchRoutine[]>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(CUSTOM_ROUTINES_KEY);
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          return [];
-        }
-      }
-    }
-    return [];
-  });
+  const [customRoutines, setCustomRoutines] = useState<StretchRoutine[]>([]);
+
+  const availableRoutineIdsRef = useRef<ReadonlySet<string>>(
+    new Set(DEFAULT_ROUTINES.map((routine) => routine.id)),
+  );
+  availableRoutineIdsRef.current = new Set(
+    [...DEFAULT_ROUTINES, ...customRoutines].map((routine) => routine.id),
+  );
 
   // Wrapper to update both state and URL
-  const setViewState = useCallback((view: ViewState, routineId?: string | null) => {
-    setViewStateInternal(view);
-    if (view === "preview" && routineId) {
-      setPreviewRoutineId(routineId);
-    } else if (view !== "preview") {
-      setPreviewRoutineId(null);
-    }
-    updateURL(view, view === "preview" ? routineId : null);
-  }, []);
+  const setViewState = useCallback(
+    (view: StretchingView, routineId?: string | null) => {
+      const navigation: StretchingNavigationState =
+        view === "preview" && routineId
+          ? { view, routineId }
+          : { view: view === "preview" ? "browser" : view, routineId: null };
+
+      setViewStateInternal(navigation.view);
+      setPreviewRoutineId(navigation.routineId);
+      replaceNavigation(navigation);
+    },
+    [],
+  );
 
   // Sync with URL on popstate (back/forward navigation)
   useEffect(() => {
     const handlePopState = () => {
-      const { view, routineId } = getViewFromURL();
+      const { view, routineId } = parseStretchingNavigation(
+        window.location.search,
+        availableRoutineIdsRef.current,
+      );
       setViewStateInternal(view);
       setPreviewRoutineId(routineId);
     };
@@ -153,28 +114,13 @@ export default function Stretching() {
   }, []);
 
   const loadRoutineStretches = (routineId: string): Stretch[] => {
-    const customRoutine = customRoutines.find((r) => r.id === routineId);
-    if (customRoutine) {
-      return customRoutine.stretches.map((s, idx) => ({
-        ...s,
-        id: `${routineId}_${s.id || idx + 1}`,
-      }));
-    }
-    const routine = DEFAULT_ROUTINES.find((r) => r.id === routineId);
-    if (routine) {
-      return routine.stretches.map((s, idx) => ({
-        ...s,
-        id: `${routineId}_${s.id || idx + 1}`,
-      }));
-    }
-    return DEFAULT_ROUTINES[0]?.stretches || [];
+    return getRoutineStretches(routineId, customRoutines);
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(CUSTOM_ROUTINES_KEY, JSON.stringify(customRoutines));
-    }
-  }, [customRoutines]);
+    if (!hasRestored) return;
+    localStorage.setItem(CUSTOM_ROUTINES_KEY, JSON.stringify(customRoutines));
+  }, [customRoutines, hasRestored]);
 
   const [nextStretchIndex, setNextStretchIndex] = useState<number | null>(null);
   const [nextRepetition, setNextRepetition] = useState<number | null>(null);
@@ -190,18 +136,67 @@ export default function Stretching() {
   const nextStretchIndexRef = useRef<number | null>(null);
   const nextRepetitionRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    const restoredCustomRoutines = parseStoredCustomRoutines(
+      localStorage.getItem(CUSTOM_ROUTINES_KEY),
+    );
+    const restoredRoutines = [...DEFAULT_ROUTINES, ...restoredCustomRoutines];
+    const storedRoutineId = localStorage.getItem(ROUTINE_SELECTOR_KEY);
+    const restoredRoutineId = restoredRoutines.some(
+      (routine) => routine.id === storedRoutineId,
+    )
+      ? (storedRoutineId ?? DEFAULT_ROUTINE_ID)
+      : DEFAULT_ROUTINE_ID;
+    const restoredStretches =
+      parseStoredStretches(localStorage.getItem(STORAGE_KEY)) ??
+      getRoutineStretches(restoredRoutineId, restoredCustomRoutines);
+    const navigation = parseStretchingNavigation(
+      window.location.search,
+      new Set(restoredRoutines.map((routine) => routine.id)),
+    );
+
+    setCustomRoutines(restoredCustomRoutines);
+    setSelectedRoutineId(restoredRoutineId);
+    setStretches(restoredStretches);
+    setTimeBetween(
+      parseStoredRestDuration(localStorage.getItem(TIME_BETWEEN_KEY)),
+    );
+    setTimeRemaining(restoredStretches[0]?.duration || 60);
+    setViewStateInternal(navigation.view);
+    setPreviewRoutineId(navigation.routineId);
+    replaceNavigation(navigation);
+    setHasRestored(true);
+  }, []);
+
+  useEffect(() => {
+    const isFocusView =
+      viewState === "active" || viewState === "content-manager";
+    const body = document.body;
+
+    body.classList.toggle("stretching-focus-mode", isFocusView);
+    if (isFocusView) {
+      body.dataset.stretchingFocus = "true";
+    } else {
+      delete body.dataset.stretchingFocus;
+    }
+
+    return () => {
+      body.classList.remove("stretching-focus-mode");
+      delete body.dataset.stretchingFocus;
+    };
+  }, [viewState]);
+
   const calculateTotalDuration = () => {
     return stretches.reduce((total, stretch) => {
       const reps = stretch.repetitions || 1;
-      return total + (stretch.duration * reps);
+      return total + stretch.duration * reps;
     }, 0);
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(ROUTINE_SELECTOR_KEY, selectedRoutineId);
-    }
-  }, [selectedRoutineId]);
+    if (!hasRestored) return;
+    localStorage.setItem(ROUTINE_SELECTOR_KEY, selectedRoutineId);
+  }, [hasRestored, selectedRoutineId]);
 
   const loadRoutine = (routineId: string) => {
     const newStretches = loadRoutineStretches(routineId);
@@ -217,17 +212,16 @@ export default function Stretching() {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (hasRestored) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stretches));
     }
     totalDurationRef.current = calculateTotalDuration();
-  }, [stretches]);
+  }, [hasRestored, stretches]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(TIME_BETWEEN_KEY, timeBetween.toString());
-    }
-  }, [timeBetween]);
+    if (!hasRestored) return;
+    localStorage.setItem(TIME_BETWEEN_KEY, timeBetween.toString());
+  }, [hasRestored, timeBetween]);
 
   useEffect(() => {
     isRunningRef.current = isRunning;
@@ -238,7 +232,12 @@ export default function Stretching() {
   useEffect(() => {
     if (stretches[currentIndex]) {
       setTimeRemaining(stretches[currentIndex].duration);
-      if (isRunning && !isPaused && (currentIndex !== previousIndexRef.current || currentRepetition !== previousRepetitionRef.current)) {
+      if (
+        isRunning &&
+        !isPaused &&
+        (currentIndex !== previousIndexRef.current ||
+          currentRepetition !== previousRepetitionRef.current)
+      ) {
         playTickSound();
       }
       previousIndexRef.current = currentIndex;
@@ -265,7 +264,11 @@ export default function Stretching() {
       intervalRef.current = setInterval(() => {
         if (isRestingRef.current) {
           setTimeRemaining((prev) => {
-            if (!isRunningRef.current || isPausedRef.current || !isRestingRef.current) {
+            if (
+              !isRunningRef.current ||
+              isPausedRef.current ||
+              !isRestingRef.current
+            ) {
               return prev;
             }
 
@@ -293,7 +296,11 @@ export default function Stretching() {
           });
         } else {
           setTimeRemaining((prev) => {
-            if (!isRunningRef.current || isPausedRef.current || isRestingRef.current) {
+            if (
+              !isRunningRef.current ||
+              isPausedRef.current ||
+              isRestingRef.current
+            ) {
               return prev;
             }
 
@@ -469,7 +476,9 @@ export default function Stretching() {
   };
 
   const updateStretch = (id: string, stretch: Omit<Stretch, "id">) => {
-    setStretches(stretches.map((s) => (s.id === id ? { ...stretch, id: s.id } : s)));
+    setStretches(
+      stretches.map((s) => (s.id === id ? { ...stretch, id: s.id } : s)),
+    );
   };
 
   const deleteStretch = (id: string) => {
@@ -506,9 +515,9 @@ export default function Stretching() {
   };
 
   const updateRoutine = (id: string, routine: Omit<StretchRoutine, "id">) => {
-    setCustomRoutines(customRoutines.map((r) =>
-      r.id === id ? { ...r, ...routine } : r
-    ));
+    setCustomRoutines(
+      customRoutines.map((r) => (r.id === id ? { ...r, ...routine } : r)),
+    );
   };
 
   const deleteRoutine = (id: string) => {
@@ -630,7 +639,9 @@ export default function Stretching() {
   const currentRoutine = allRoutines.find((r) => r.id === selectedRoutineId);
 
   // Get preview routine from ID
-  const previewRoutine = previewRoutineId ? allRoutines.find((r) => r.id === previewRoutineId) : null;
+  const previewRoutine = previewRoutineId
+    ? allRoutines.find((r) => r.id === previewRoutineId)
+    : null;
 
   // Handler functions for view navigation
   const handleSelectRoutineFromQuickStart = (routineId: string) => {
@@ -656,31 +667,36 @@ export default function Stretching() {
 
   // Featured routines for quick start (therapeutic + popular)
   const featuredRoutines = [
-    ...DEFAULT_ROUTINES.filter(r => r.category === "pain-relief").slice(0, 1),
-    ...DEFAULT_ROUTINES.filter(r => r.category === "posture-correction").slice(0, 1),
-    ...DEFAULT_ROUTINES.filter(r => r.category === "mobility").slice(0, 1),
+    ...DEFAULT_ROUTINES.filter((r) => r.category === "pain-relief").slice(0, 1),
+    ...DEFAULT_ROUTINES.filter(
+      (r) => r.category === "posture-correction",
+    ).slice(0, 1),
+    ...DEFAULT_ROUTINES.filter((r) => r.category === "mobility").slice(0, 1),
   ];
 
   // Get recent routine from localStorage
   const recentRoutine = currentRoutine;
 
   return (
-    <div className="min-h-screen">
+    <div
+      className="stretching-app min-h-screen"
+      data-stretching-view={viewState}
+    >
       {/* QuickStart View */}
       {viewState === "quickstart" && (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 safe-area-inset">
+        <StretchingShell variant="discovery">
           <QuickStart
             featuredRoutines={featuredRoutines}
             recentRoutine={recentRoutine}
             onSelectRoutine={handleSelectRoutineFromQuickStart}
             onBrowseAll={() => setViewState("browser")}
           />
-        </div>
+        </StretchingShell>
       )}
 
       {/* Routine Browser */}
       {viewState === "browser" && (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 safe-area-inset">
+        <StretchingShell variant="wide">
           <RoutineBrowser
             routines={DEFAULT_ROUTINES}
             customRoutines={customRoutines}
@@ -694,23 +710,23 @@ export default function Stretching() {
             onCreateRoutine={() => setViewState("content-manager")}
             onClose={() => setViewState("quickstart")}
           />
-        </div>
+        </StretchingShell>
       )}
 
       {/* Stretch Preview */}
       {viewState === "preview" && previewRoutine && (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 safe-area-inset">
+        <StretchingShell variant="wide">
           <StretchPreview
             routine={previewRoutine}
             onBegin={handleBeginRoutine}
             onBack={() => setViewState("browser")}
           />
-        </div>
+        </StretchingShell>
       )}
 
       {/* Content Manager */}
       {viewState === "content-manager" && (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 safe-area-inset">
+        <StretchingShell variant="focus">
           <ContentManager
             defaultRoutines={DEFAULT_ROUTINES}
             customRoutines={customRoutines}
@@ -731,29 +747,45 @@ export default function Stretching() {
             onResetToDefault={resetToDefault}
             onClose={() => setViewState("quickstart")}
           />
-        </div>
+        </StretchingShell>
       )}
 
       {/* Active Stretching View */}
       {viewState === "active" && (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 space-y-4 sm:space-y-6 safe-area-inset">
+        <StretchingShell variant="focus" className="space-y-4 sm:space-y-6">
           {/* Back button and routine info */}
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={handleBackToQuickStart}
-              className="p-2 rounded-full bg-white/80 dark:bg-card hover:bg-white dark:hover:bg-card/80 shadow-sm transition-colors"
+              aria-label="Back to stretching overview"
+              className="rounded-full bg-white/80 p-2 shadow-sm transition-colors hover:bg-white dark:bg-card dark:hover:bg-card/80"
             >
-              <svg className="w-5 h-5 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className="h-5 w-5 text-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-foreground truncate">{currentRoutine?.name}</h2>
-              <p className="text-sm text-muted-foreground truncate">{currentRoutine?.goal}</p>
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-lg font-semibold text-foreground">
+                {currentRoutine?.name}
+              </h2>
+              <p className="truncate text-sm text-muted-foreground">
+                {currentRoutine?.goal}
+              </p>
             </div>
             <button
               onClick={() => setViewState("content-manager")}
-              className="px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-amber-600 transition-colors hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
             >
               Edit
             </button>
@@ -796,7 +828,9 @@ export default function Stretching() {
               timeRemainingTotal={timeRemainingTotal}
               stepsRemaining={stepsRemaining}
               timeBetween={timeBetween}
-              onTimeBetweenSettingsClick={() => setShowTimeBetweenSettings(!showTimeBetweenSettings)}
+              onTimeBetweenSettingsClick={() =>
+                setShowTimeBetweenSettings(!showTimeBetweenSettings)
+              }
               onStart={start}
               onPause={pause}
               onResume={resume}
@@ -813,16 +847,8 @@ export default function Stretching() {
           {currentStretch && !isResting && (
             <StretchDetails stretch={currentStretch} />
           )}
-        </div>
+        </StretchingShell>
       )}
-
-      <style>{`
-        .safe-area-inset {
-          padding-left: max(1rem, env(safe-area-inset-left));
-          padding-right: max(1rem, env(safe-area-inset-right));
-          padding-bottom: max(2rem, env(safe-area-inset-bottom));
-        }
-      `}</style>
     </div>
   );
 }
