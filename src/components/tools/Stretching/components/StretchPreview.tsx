@@ -39,7 +39,7 @@ export function StretchPreview({ routine, onBegin, onBack }: StretchPreviewProps
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)] lg:items-start">
         <aside className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card lg:sticky lg:top-6">
-          <div className="stretching-image-surface aspect-[4/3] rounded-none">
+          <div className="stretching-image-surface aspect-[1349/1536] rounded-none sm:aspect-[5/4] lg:aspect-[1349/1536]">
             <StretchImage
               src={getRoutineRepresentativeImage(routine)}
               alt=""
@@ -91,7 +91,7 @@ export function StretchPreview({ routine, onBegin, onBack }: StretchPreviewProps
             {routine.stretches.map((stretch, index) => (
               <li key={`${stretch.id}-${index}`} className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card">
                 <div className="grid min-w-0 grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-4 sm:p-4">
-                  <div className="stretching-image-surface aspect-square">
+                  <div className="stretching-image-surface aspect-[1349/1536]">
                     <StretchImage
                       src={stretch.image || PLACEHOLDER_IMAGE}
                       alt=""

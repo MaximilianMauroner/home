@@ -35,7 +35,7 @@ export function RoutineCard({
         aria-pressed={isSelected}
         className="block h-full w-full min-w-0 text-left"
       >
-        <div className="stretching-image-surface aspect-[4/3] rounded-none">
+        <div className="stretching-image-surface aspect-[6/5] rounded-none">
           <StretchImage
             src={getRoutineRepresentativeImage(routine)}
             alt=""

@@ -69,13 +69,13 @@ export function QuickStart({
           <button
             type="button"
             onClick={() => onSelectRoutine(recentRoutine.id)}
-            className="group grid w-full min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-left transition-colors hover:border-primary/50 md:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]"
+            className="group grid w-full min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-left transition-colors hover:border-primary/50 md:grid-cols-[24rem_minmax(0,1fr)]"
           >
-            <div className="stretching-image-surface aspect-[4/3] rounded-none md:h-96 md:aspect-auto">
+            <div className="stretching-image-surface aspect-square rounded-none md:h-96 md:aspect-auto">
               <StretchImage
                 src={getRoutineRepresentativeImage(recentRoutine)}
                 alt=""
-                className="h-full w-full object-cover object-[center_54%] transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none"
+                className="h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.015] motion-reduce:transform-none"
                 sizes="(min-width: 768px) 60vw, 100vw"
               />
             </div>
