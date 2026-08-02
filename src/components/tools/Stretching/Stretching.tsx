@@ -34,8 +34,18 @@ import {
   calculateStepsRemaining,
   getNextSessionPosition,
   getPreviousSessionPosition,
+  shouldAdvanceSession,
   type SessionPosition,
 } from "./sessionState";
+import {
+  createRoutine,
+  createWorkingSessionStretches,
+  deleteRoutineWithFallback,
+  getCurrentIndexAfterMove,
+  reorderItems,
+  type RoutineStudioIntent,
+  updateRoutineCollection,
+} from "./studioHelpers";
 
 const DEFAULT_ROUTINE_ID = DEFAULT_ROUTINES[0]?.id || "routine_1";
 
@@ -69,6 +79,11 @@ export default function Stretching() {
   const [browserInitialCategory, setBrowserInitialCategory] = useState<
     RoutineCategory | undefined
   >(undefined);
+  const [studioIntent, setStudioIntent] = useState<RoutineStudioIntent>({
+    mode: "manage",
+  });
+  const [studioReturnView, setStudioReturnView] =
+    useState<StretchingView>("quickstart");
   const [hasRestored, setHasRestored] = useState(false);
   const [selectedRoutineId, setSelectedRoutineId] =
     useState(DEFAULT_ROUTINE_ID);
@@ -199,6 +214,12 @@ export default function Stretching() {
   }, [viewState]);
 
   useEffect(() => {
+    if (viewState !== "active" && isRunning && !isPaused) {
+      setIsPaused(true);
+    }
+  }, [viewState, isRunning, isPaused]);
+
+  useEffect(() => {
     if (!hasRestored) return;
     localStorage.setItem(ROUTINE_SELECTOR_KEY, selectedRoutineId);
   }, [hasRestored, selectedRoutineId]);
@@ -317,7 +338,7 @@ export default function Stretching() {
   };
 
   useEffect(() => {
-    if (isRunning && !isPaused) {
+    if (shouldAdvanceSession(viewState === "active", isRunning, isPaused)) {
       intervalRef.current = setInterval(() => {
         if (!isRunningRef.current || isPausedRef.current) return;
 
@@ -368,6 +389,7 @@ export default function Stretching() {
     isResting,
     stretches,
     timeBetween,
+    viewState,
   ]);
 
   const start = () => {
@@ -459,38 +481,29 @@ export default function Stretching() {
   };
 
   const moveStretch = (fromIndex: number, toIndex: number) => {
-    const newStretches = [...stretches];
-    const [moved] = newStretches.splice(fromIndex, 1);
-    newStretches.splice(toIndex, 0, moved);
-    setStretches(newStretches);
-    if (currentIndex === fromIndex) {
-      setCurrentIndex(toIndex);
-    } else if (currentIndex === toIndex && fromIndex > toIndex) {
-      setCurrentIndex(currentIndex + 1);
-    } else if (currentIndex === toIndex && fromIndex < toIndex) {
-      setCurrentIndex(currentIndex - 1);
-    } else if (currentIndex > fromIndex && currentIndex <= toIndex) {
-      setCurrentIndex(currentIndex - 1);
-    } else if (currentIndex < fromIndex && currentIndex >= toIndex) {
-      setCurrentIndex(currentIndex + 1);
-    }
+    setStretches(reorderItems(stretches, fromIndex, toIndex));
+    setCurrentIndex(getCurrentIndexAfterMove(currentIndex, fromIndex, toIndex));
   };
 
   const saveRoutine = (routine: StretchRoutine) => {
-    setCustomRoutines([...customRoutines, routine]);
+    setCustomRoutines((current) => createRoutine(current, routine));
   };
 
   const updateRoutine = (id: string, routine: Omit<StretchRoutine, "id">) => {
-    setCustomRoutines(
-      customRoutines.map((r) => (r.id === id ? { ...r, ...routine } : r)),
+    setCustomRoutines((current) =>
+      updateRoutineCollection(current, id, routine),
     );
   };
 
   const deleteRoutine = (id: string) => {
-    setCustomRoutines(customRoutines.filter((r) => r.id !== id));
-    if (selectedRoutineId === id) {
-      loadRoutine(DEFAULT_ROUTINES[0]?.id || "routine_1");
-    }
+    const result = deleteRoutineWithFallback(
+      customRoutines,
+      id,
+      selectedRoutineId,
+      DEFAULT_ROUTINE_ID,
+    );
+    setCustomRoutines(result.routines);
+    if (result.selectedId !== selectedRoutineId) loadRoutine(result.selectedId);
   };
 
   const loadRoutineStretchesForEditing = (routine: StretchRoutine) => {
@@ -551,6 +564,34 @@ export default function Stretching() {
   const handleBrowseAll = (category?: RoutineCategory) => {
     setBrowserInitialCategory(category);
     setViewState("browser");
+  };
+
+  const openStudio = (
+    returnView: StretchingView,
+    intent: RoutineStudioIntent = { mode: "manage" },
+  ) => {
+    if (isRunning && !isPaused) setIsPaused(true);
+    setStudioReturnView(returnView);
+    setStudioIntent(intent);
+    setViewState("content-manager");
+  };
+
+  const startWorkingRoutine = (
+    routineId: string,
+    workingStretches: readonly Stretch[],
+  ) => {
+    const sessionStretches = createWorkingSessionStretches(workingStretches);
+    setSelectedRoutineId(routineId);
+    setStretches(sessionStretches);
+    setCurrentIndex(0);
+    setCurrentRepetition(1);
+    setTimeRemaining(sessionStretches[0]?.duration ?? 0);
+    setIsRunning(false);
+    setIsPaused(false);
+    setIsResting(false);
+    setIsCompleted(false);
+    clearRestDestination();
+    setViewState("active");
   };
 
   const handleBeginRoutine = () => {
@@ -620,10 +661,10 @@ export default function Stretching() {
             onSelectRoutine={handleSelectRoutineFromBrowser}
             onEditRoutine={(routine) => {
               loadRoutineStretchesForEditing(routine);
-              setViewState("content-manager");
+              openStudio("browser", { mode: "edit", routineId: routine.id });
             }}
             onDeleteRoutine={deleteRoutine}
-            onCreateRoutine={() => setViewState("content-manager")}
+            onCreateRoutine={() => openStudio("browser", { mode: "create" })}
             onClose={() => setViewState("quickstart")}
           />
         </StretchingShell>
@@ -653,16 +694,14 @@ export default function Stretching() {
             onDeleteStretch={deleteStretch}
             onMoveStretch={moveStretch}
             onManageRoutine={loadRoutine}
-            onStartRoutine={(id) => {
-              loadRoutine(id);
-              setViewState("active");
-            }}
+            onStartRoutine={startWorkingRoutine}
             onLoadRoutineStretches={loadRoutineStretchesForEditing}
             onSaveRoutine={saveRoutine}
             onUpdateRoutine={updateRoutine}
             onDeleteRoutine={deleteRoutine}
             onResetToDefault={resetToDefault}
-            onClose={() => setViewState("quickstart")}
+            onClose={() => setViewState(studioReturnView)}
+            initialRoutineIntent={studioIntent}
           />
         </StretchingShell>
       )}
@@ -719,7 +758,7 @@ export default function Stretching() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewState("content-manager")}
+                  onClick={() => openStudio("active")}
                   className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-muted"
                 >
                   Edit routine

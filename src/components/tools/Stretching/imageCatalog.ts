@@ -54,3 +54,16 @@ export function getDraftSelection(
 ): string {
   return selected ?? current;
 }
+
+export function isValidStretchImageSource(value: string): boolean {
+  const source = value.trim();
+  if (!source) return true;
+  if (/^\/stretches\/[\w./-]+$/.test(source)) return true;
+
+  try {
+    const url = new URL(source);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}

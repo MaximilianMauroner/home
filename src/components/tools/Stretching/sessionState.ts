@@ -12,6 +12,14 @@ export interface SessionTimingState extends SessionPosition {
   timeRemaining: number;
 }
 
+export function shouldAdvanceSession(
+  isActiveView: boolean,
+  isRunning: boolean,
+  isPaused: boolean,
+): boolean {
+  return isActiveView && isRunning && !isPaused;
+}
+
 function repetitionsFor(stretch: Stretch | undefined): number {
   return Math.max(1, stretch?.repetitions ?? 1);
 }

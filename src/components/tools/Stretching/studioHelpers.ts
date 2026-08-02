@@ -5,6 +5,19 @@ import type {
 
 export type MoveDirection = "up" | "down";
 
+export type RoutineStudioIntent =
+  | { mode: "manage" }
+  | { mode: "create" }
+  | { mode: "edit"; routineId: string };
+
+export interface RoutineStudioInitialState {
+  activeTab: "stretches" | "routines";
+  editingRoutine: StretchRoutine | null;
+  hasExternalRoutineIntent: boolean;
+  managedRoutineId: string;
+  routineMode: "list" | "create" | "edit";
+}
+
 export interface RoutineSummary {
   stretchCount: number;
   totalDuration: number;
@@ -18,6 +31,29 @@ export function getMoveTarget(
 ): number | null {
   const target = direction === "up" ? index - 1 : index + 1;
   return target >= 0 && target < length ? target : null;
+}
+
+export function resolveRoutineStudioIntent(
+  intent: RoutineStudioIntent,
+  selectedRoutineId: string,
+  customRoutines: readonly StretchRoutine[],
+): RoutineStudioInitialState {
+  const editingRoutine =
+    intent.mode === "edit"
+      ? (customRoutines.find((routine) => routine.id === intent.routineId) ??
+        null)
+      : null;
+  const routineMode =
+    intent.mode === "create" ? "create" : editingRoutine ? "edit" : "list";
+  const hasExternalRoutineIntent = routineMode !== "list";
+
+  return {
+    activeTab: hasExternalRoutineIntent ? "routines" : "stretches",
+    editingRoutine,
+    hasExternalRoutineIntent,
+    managedRoutineId: editingRoutine?.id ?? selectedRoutineId,
+    routineMode,
+  };
 }
 
 export function reorderItems<T>(
@@ -63,6 +99,15 @@ export function getCurrentIndexAfterMove(
     return currentIndex + 1;
   }
   return currentIndex;
+}
+
+export function createWorkingSessionStretches(
+  stretches: readonly Stretch[],
+): Stretch[] {
+  return stretches.map((stretch) => ({
+    ...stretch,
+    ...(stretch.targetAreas ? { targetAreas: [...stretch.targetAreas] } : {}),
+  }));
 }
 
 export function summarizeRoutine(

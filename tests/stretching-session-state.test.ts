@@ -7,6 +7,7 @@ import {
   calculateStepsRemaining,
   getNextSessionPosition,
   getPreviousSessionPosition,
+  shouldAdvanceSession,
 } from "../src/components/tools/Stretching/sessionState";
 import type { Stretch } from "../src/components/tools/Stretching/types";
 
@@ -73,6 +74,12 @@ describe("stretching session positions", () => {
 });
 
 describe("stretching session timing", () => {
+  test("advances only while a running session is visible and unpaused", () => {
+    expect(shouldAdvanceSession(true, true, false)).toBe(true);
+    expect(shouldAdvanceSession(false, true, false)).toBe(false);
+    expect(shouldAdvanceSession(true, true, true)).toBe(false);
+    expect(shouldAdvanceSession(true, false, false)).toBe(false);
+  });
   test("calculates routine duration and clamps progress boundaries", () => {
     expect(calculateRoutineDuration(stretches)).toBe(40);
     expect(

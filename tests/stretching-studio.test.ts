@@ -6,10 +6,12 @@ import type {
 import {
   buildRoutineDraft,
   createRoutine,
+  createWorkingSessionStretches,
   deleteRoutineWithFallback,
   getCurrentIndexAfterMove,
   getMoveTarget,
   reorderItems,
+  resolveRoutineStudioIntent,
   summarizeRoutine,
   updateRoutineCollection,
 } from "@/components/tools/Stretching/studioHelpers";
@@ -48,6 +50,52 @@ describe("Routine Studio helpers", () => {
     expect(getCurrentIndexAfterMove(1, 0, 2)).toBe(0);
     expect(getCurrentIndexAfterMove(1, 2, 0)).toBe(2);
     expect(getCurrentIndexAfterMove(3, 0, 2)).toBe(3);
+  });
+
+  it("starts from the edited working order without sharing mutable metadata", () => {
+    const working = [stretch("edited"), stretch("added")];
+    const session = createWorkingSessionStretches(working);
+
+    expect(session.map(({ id }) => id)).toEqual(["edited", "added"]);
+    expect(session).not.toBe(working);
+    expect(session[0]).not.toBe(working[0]);
+    expect(session[0]?.targetAreas).not.toBe(working[0]?.targetAreas);
+  });
+
+  it("resolves browser create/edit intents and rejects editing default routines", () => {
+    expect(
+      resolveRoutineStudioIntent({ mode: "create" }, "routine_1", [routine]),
+    ).toMatchObject({
+      activeTab: "routines",
+      routineMode: "create",
+      managedRoutineId: "routine_1",
+      hasExternalRoutineIntent: true,
+    });
+    expect(
+      resolveRoutineStudioIntent(
+        { mode: "edit", routineId: routine.id },
+        "routine_1",
+        [routine],
+      ),
+    ).toMatchObject({
+      activeTab: "routines",
+      routineMode: "edit",
+      editingRoutine: routine,
+      managedRoutineId: routine.id,
+      hasExternalRoutineIntent: true,
+    });
+    expect(
+      resolveRoutineStudioIntent(
+        { mode: "edit", routineId: "routine_1" },
+        "routine_1",
+        [routine],
+      ),
+    ).toMatchObject({
+      activeTab: "stretches",
+      routineMode: "list",
+      editingRoutine: null,
+      hasExternalRoutineIntent: false,
+    });
   });
 
   it("recomputes duration and steps from repetitions", () => {

@@ -4,7 +4,11 @@ import type {
   StretchRoutine,
 } from "@/components/tools/Stretching/types";
 import { formatTime } from "@/components/tools/Stretching/utils";
-import { getMoveTarget } from "@/components/tools/Stretching/studioHelpers";
+import {
+  getMoveTarget,
+  resolveRoutineStudioIntent,
+  type RoutineStudioIntent,
+} from "@/components/tools/Stretching/studioHelpers";
 import { PLACEHOLDER_IMAGE } from "../images";
 import { StretchForm } from "./StretchForm";
 import { RoutineForm } from "./RoutineForm";
@@ -20,13 +24,14 @@ export interface ContentManagerProps {
   onDeleteStretch: (id: string) => void;
   onMoveStretch: (fromIndex: number, toIndex: number) => void;
   onManageRoutine?: (id: string) => void;
-  onStartRoutine?: (id: string) => void;
+  onStartRoutine?: (id: string, workingStretches: readonly Stretch[]) => void;
   onLoadRoutineStretches: (routine: StretchRoutine) => void;
   onSaveRoutine: (routine: StretchRoutine) => void;
   onUpdateRoutine: (id: string, routine: Omit<StretchRoutine, "id">) => void;
   onDeleteRoutine: (id: string) => void;
   onResetToDefault: (routineId: string) => void;
   onClose: () => void;
+  initialRoutineIntent?: RoutineStudioIntent;
 }
 
 type Tab = "stretches" | "routines";
@@ -50,15 +55,28 @@ export function ContentManager({
   onDeleteRoutine,
   onResetToDefault,
   onClose,
+  initialRoutineIntent = { mode: "manage" },
 }: ContentManagerProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("stretches");
+  const initialState = resolveRoutineStudioIntent(
+    initialRoutineIntent,
+    selectedRoutineId,
+    customRoutines,
+  );
+  const [activeTab, setActiveTab] = useState<Tab>(initialState.activeTab);
   const [stretchMode, setStretchMode] = useState<StretchMode>("list");
-  const [routineMode, setRoutineMode] = useState<RoutineMode>("list");
+  const [routineMode, setRoutineMode] = useState<RoutineMode>(
+    initialState.routineMode,
+  );
   const [editingStretchId, setEditingStretchId] = useState<string | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<StretchRoutine | null>(
-    null,
+    initialState.editingRoutine,
   );
-  const [managedRoutineId, setManagedRoutineId] = useState(selectedRoutineId);
+  const [managedRoutineId, setManagedRoutineId] = useState(
+    initialState.managedRoutineId,
+  );
+  const [hasExternalRoutineIntent, setHasExternalRoutineIntent] = useState(
+    initialState.hasExternalRoutineIntent,
+  );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const routines = [...defaultRoutines, ...customRoutines];
@@ -82,6 +100,7 @@ export function ContentManager({
     onLoadRoutineStretches(routine);
     setEditingRoutine(routine);
     setRoutineMode("edit");
+    setHasExternalRoutineIntent(false);
   };
 
   const deleteRoutine = (routine: StretchRoutine) => {
@@ -103,6 +122,16 @@ export function ContentManager({
     }
     setEditingRoutine(null);
     setRoutineMode("list");
+    setHasExternalRoutineIntent(false);
+  };
+
+  const cancelRoutineForm = () => {
+    if (hasExternalRoutineIntent) {
+      onClose();
+      return;
+    }
+    setRoutineMode("list");
+    setEditingRoutine(null);
   };
 
   const moveStretch = (index: number, direction: "up" | "down") => {
@@ -336,6 +365,7 @@ export function ContentManager({
               onClick={() => {
                 setEditingRoutine(null);
                 setRoutineMode("create");
+                setHasExternalRoutineIntent(false);
               }}
               className="min-h-11 w-full rounded-xl bg-primary/10 px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
@@ -388,10 +418,7 @@ export function ContentManager({
                 routine={editingRoutine}
                 stretches={currentStretches}
                 onSubmit={submitRoutine}
-                onCancel={() => {
-                  setRoutineMode("list");
-                  setEditingRoutine(null);
-                }}
+                onCancel={cancelRoutineForm}
               />
             ) : managedRoutine ? (
               <article className="rounded-2xl border border-border/60 p-5 sm:p-6">
@@ -442,7 +469,9 @@ export function ContentManager({
                   {onStartRoutine && (
                     <button
                       type="button"
-                      onClick={() => onStartRoutine(managedRoutine.id)}
+                      onClick={() =>
+                        onStartRoutine(managedRoutine.id, currentStretches)
+                      }
                       className="min-h-11 rounded-xl border border-primary px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       Start routine

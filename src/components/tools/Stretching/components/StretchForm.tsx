@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Stretch } from "@/components/tools/Stretching/types";
 import { ImagePicker } from "./ImagePicker";
 import { PLACEHOLDER_IMAGE } from "../images";
 import { StretchImage } from "./StretchImage";
+import { isValidStretchImageSource } from "../imageCatalog";
 
 interface StretchFormProps {
   stretch: Stretch | null;
@@ -37,6 +38,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
   const [fields, setFields] = useState<StretchFields>(initial);
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const isDirty = JSON.stringify(fields) !== JSON.stringify(initial);
   const setField = <K extends keyof StretchFields>(
     key: K,
@@ -51,6 +53,13 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (!isValidStretchImageSource(fields.image)) {
+      imageInputRef.current?.setCustomValidity(
+        "Use an image from the library or enter a complete http:// or https:// URL.",
+      );
+      imageInputRef.current?.reportValidity();
+      return;
+    }
     onSubmit({
       ...fields,
       name: fields.name.trim(),
@@ -208,14 +217,18 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
                   Custom image URL
                 </label>
                 <input
+                  ref={imageInputRef}
                   id="stretch-image-url"
-                  type="url"
+                  type="text"
+                  inputMode="url"
                   value={fields.image}
                   onChange={(event) => {
                     setField("image", event.target.value);
                     setImageLoadError(false);
+                    event.currentTarget.setCustomValidity("");
                   }}
                   placeholder="Or paste an image URL"
+                  title="Choose a library image or enter a complete http:// or https:// URL."
                   className={inputClass}
                 />
                 {fields.image && (
@@ -306,6 +319,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
           onChange={(url) => {
             setField("image", url);
             setImageLoadError(false);
+            imageInputRef.current?.setCustomValidity("");
           }}
           onClose={() => setShowImagePicker(false)}
         />

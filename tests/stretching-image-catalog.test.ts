@@ -3,6 +3,7 @@ import {
   buildImageCatalog,
   filterImageCatalog,
   getDraftSelection,
+  isValidStretchImageSource,
 } from "@/components/tools/Stretching/imageCatalog";
 import { getResponsiveStretchImageSources } from "@/components/tools/Stretching/images";
 
@@ -41,5 +42,18 @@ describe("image catalog", () => {
     expect(
       getResponsiveStretchImageSources("/stretches/cat-pose.png"),
     ).toMatchObject({ width: 1349, height: 1536 });
+  });
+
+  it("accepts catalog paths and complete web URLs without accepting arbitrary text", () => {
+    expect(isValidStretchImageSource("/stretches/cat-pose.png")).toBe(true);
+    expect(isValidStretchImageSource("https://example.com/stretch.png")).toBe(
+      true,
+    );
+    expect(isValidStretchImageSource("http://example.com/stretch.png")).toBe(
+      true,
+    );
+    expect(isValidStretchImageSource("")).toBe(true);
+    expect(isValidStretchImageSource("cat-pose.png")).toBe(false);
+    expect(isValidStretchImageSource("javascript:alert(1)")).toBe(false);
   });
 });
