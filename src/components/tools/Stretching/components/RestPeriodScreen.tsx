@@ -1,5 +1,7 @@
 import type { Stretch } from "@/components/tools/Stretching/types";
+import { PLACEHOLDER_IMAGE } from "../images";
 import { BreathingTimer } from "./BreathingTimer";
+import { StretchImage } from "./StretchImage";
 
 interface RestPeriodScreenProps {
   timeRemaining: number;
@@ -8,8 +10,10 @@ interface RestPeriodScreenProps {
   nextStretchIndex: number | null;
   nextRepetition: number | null;
   stretches: Stretch[];
+  totalDuration: number;
   onPause: () => void;
   onResume: () => void;
+  onSkip: () => void;
 }
 
 export function RestPeriodScreen({
@@ -19,79 +23,87 @@ export function RestPeriodScreen({
   nextStretchIndex,
   nextRepetition,
   stretches,
+  totalDuration,
   onPause,
   onResume,
+  onSkip,
 }: RestPeriodScreenProps) {
-  const nextStretch = nextStretchIndex !== null ? stretches[nextStretchIndex] : null;
+  const nextStretch =
+    nextStretchIndex !== null ? stretches[nextStretchIndex] : null;
 
   return (
-    <div className="bg-card rounded-xl p-6 sm:p-8 shadow-sm border border-border space-y-6">
-      {/* Header */}
-      <div className="text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 dark:bg-teal-400/10 mb-4">
-          <div className="w-2 h-2 rounded-full bg-teal-500 dark:bg-teal-400 animate-pulse" />
-          <span className="text-sm font-semibold text-teal-600 dark:text-teal-400">Rest Period</span>
-        </div>
-        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground mb-2">
-          Take a Breath
-        </h2>
-        <p className="text-muted-foreground">
-          Prepare for the next stretch
-        </p>
-      </div>
-
-      {/* Timer */}
-      <div className="flex justify-center py-4">
-        <BreathingTimer
-          timeRemaining={timeRemaining}
-          totalDuration={10}
-          isRunning={isRunning}
-          isPaused={isPaused}
-          isResting={true}
-        />
-      </div>
-
-      {/* Next stretch preview */}
+    <section className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-stretch">
       {nextStretch && (
-        <div className="bg-muted rounded-lg p-4 sm:p-5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            Coming Up Next
-          </p>
-          <h3 className="font-semibold text-foreground mb-1">{nextStretch.name}</h3>
-          <p className="text-sm text-muted-foreground">{nextStretch.description}</p>
-          {nextRepetition !== null && (nextStretch.repetitions || 1) > 1 && (
-            <p className="text-xs text-teal-600 dark:text-teal-400 mt-2">
-              Rep {nextRepetition} of {nextStretch.repetitions || 1}
+        <div className="stretching-image-surface relative h-[13rem] shadow-sm sm:h-80 lg:h-[36rem]">
+          <StretchImage
+            src={nextStretch.image || PLACEHOLDER_IMAGE}
+            alt={`Next: ${nextStretch.name}`}
+            className="h-full w-full object-cover"
+            fetchPriority="high"
+            loading="eager"
+            sizes="(min-width: 1024px) 40vw, calc(100vw - 2rem)"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="absolute bottom-4 left-4 right-4 text-white">
+            <p className="text-xs font-semibold uppercase tracking-wider text-white/75">
+              Up next
             </p>
-          )}
+            <p className="mt-1 text-lg font-semibold sm:text-2xl">
+              {nextStretch.name}
+            </p>
+            {nextRepetition !== null && (nextStretch.repetitions || 1) > 1 && (
+              <p className="mt-1 text-sm text-white/80">
+                Repetition {nextRepetition} of {nextStretch.repetitions || 1}
+              </p>
+            )}
+          </div>
         </div>
       )}
-
-      {/* Controls */}
-      <div className="grid grid-cols-1 gap-3">
-        {isPaused ? (
-          <button
-            onClick={onResume}
-            className="flex items-center justify-center gap-2 py-4 min-h-[56px] bg-primary text-primary-foreground rounded-xl hover:bg-primary/90  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Resume Rest
-          </button>
-        ) : (
-          <button
-            onClick={onPause}
-            className="flex items-center justify-center gap-2 py-4 min-h-[56px] bg-teal-600 dark:bg-teal-500 text-white rounded-xl hover:bg-teal-700 dark:hover:bg-teal-600  transition-colors font-semibold text-lg touch-manipulation shadow-sm"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Pause Rest
-          </button>
+      <div className="flex flex-col justify-center space-y-4 rounded-2xl border border-border bg-card p-5 text-center shadow-sm sm:p-8">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-3 py-1 text-sm font-semibold text-teal-600 dark:bg-teal-400/10 dark:text-teal-400">
+            <span className="h-2 w-2 rounded-full bg-teal-500 motion-safe:animate-pulse dark:bg-teal-400" />
+            Rest
+          </div>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            Take a breath
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Settle your breathing and prepare for the next position.
+          </p>
+        </div>
+        <div className="flex justify-center">
+          <BreathingTimer
+            timeRemaining={timeRemaining}
+            totalDuration={totalDuration}
+            isRunning={isRunning}
+            isPaused={isPaused}
+            isResting
+            compact
+          />
+        </div>
+        {nextStretch && (
+          <p className="text-sm text-muted-foreground">
+            {nextStretch.description}
+          </p>
         )}
+        <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 gap-2 border-t border-border bg-card/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+          <button
+            type="button"
+            onClick={onSkip}
+            className="min-h-[52px] rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          >
+            Skip rest
+          </button>
+          <button
+            type="button"
+            onClick={isPaused ? onResume : onPause}
+            className="min-h-[52px] rounded-xl bg-muted px-4 py-3 font-medium text-foreground transition-colors hover:bg-primary/10"
+          >
+            {isPaused ? "Resume" : "Pause"}
+          </button>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

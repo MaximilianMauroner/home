@@ -28,6 +28,14 @@ import {
   parseStoredRestDuration,
   parseStoredStretches,
 } from "./persistence";
+import {
+  calculateSessionProgress,
+  calculateSessionTimeRemaining,
+  calculateStepsRemaining,
+  getNextSessionPosition,
+  getPreviousSessionPosition,
+  type SessionPosition,
+} from "./sessionState";
 
 const DEFAULT_ROUTINE_ID = DEFAULT_ROUTINES[0]?.id || "routine_1";
 
@@ -73,6 +81,7 @@ export default function Stretching() {
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isResting, setIsResting] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [timeBetween, setTimeBetween] = useState(10);
   const [showTimeBetweenSettings, setShowTimeBetweenSettings] = useState(false);
   const [customRoutines, setCustomRoutines] = useState<StretchRoutine[]>([]);
@@ -132,7 +141,7 @@ export default function Stretching() {
   const previousRepetitionRef = useRef<number>(1);
   const hasPlayedStartSoundRef = useRef(false);
   const startTimeRef = useRef<number | null>(null);
-  const totalDurationRef = useRef<number>(0);
+  const timeRemainingRef = useRef(timeRemaining);
   const nextStretchIndexRef = useRef<number | null>(null);
   const nextRepetitionRef = useRef<number | null>(null);
 
@@ -186,13 +195,6 @@ export default function Stretching() {
     };
   }, [viewState]);
 
-  const calculateTotalDuration = () => {
-    return stretches.reduce((total, stretch) => {
-      const reps = stretch.repetitions || 1;
-      return total + stretch.duration * reps;
-    }, 0);
-  };
-
   useEffect(() => {
     if (!hasRestored) return;
     localStorage.setItem(ROUTINE_SELECTOR_KEY, selectedRoutineId);
@@ -206,6 +208,12 @@ export default function Stretching() {
     setCurrentRepetition(1);
     setIsRunning(false);
     setIsPaused(false);
+    setIsResting(false);
+    setIsCompleted(false);
+    setNextStretchIndex(null);
+    setNextRepetition(null);
+    nextStretchIndexRef.current = null;
+    nextRepetitionRef.current = null;
     if (newStretches[0]) {
       setTimeRemaining(newStretches[0].duration);
     }
@@ -215,7 +223,6 @@ export default function Stretching() {
     if (hasRestored) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stretches));
     }
-    totalDurationRef.current = calculateTotalDuration();
   }, [hasRestored, stretches]);
 
   useEffect(() => {
@@ -227,7 +234,8 @@ export default function Stretching() {
     isRunningRef.current = isRunning;
     isPausedRef.current = isPaused;
     isRestingRef.current = isResting;
-  }, [isRunning, isPaused, isResting]);
+    timeRemainingRef.current = timeRemaining;
+  }, [isRunning, isPaused, isResting, timeRemaining]);
 
   useEffect(() => {
     if (stretches[currentIndex]) {
@@ -243,7 +251,7 @@ export default function Stretching() {
       previousIndexRef.current = currentIndex;
       previousRepetitionRef.current = currentRepetition;
     }
-  }, [currentIndex, currentRepetition, stretches, isRunning, isPaused]);
+  }, [currentIndex, currentRepetition, stretches]);
 
   useEffect(() => {
     if (isRunning && !isPaused && !hasPlayedStartSoundRef.current) {
@@ -259,103 +267,81 @@ export default function Stretching() {
     }
   }, [isRunning, isPaused]);
 
+  const clearRestDestination = () => {
+    setNextStretchIndex(null);
+    setNextRepetition(null);
+    nextStretchIndexRef.current = null;
+    nextRepetitionRef.current = null;
+  };
+
+  const moveToPosition = (position: SessionPosition) => {
+    setCurrentIndex(position.index);
+    setCurrentRepetition(position.repetition);
+    setTimeRemaining(stretches[position.index]?.duration ?? 0);
+  };
+
+  const completeRoutine = () => {
+    setIsRunning(false);
+    setIsPaused(false);
+    setIsResting(false);
+    setIsCompleted(true);
+    setTimeRemaining(0);
+    clearRestDestination();
+  };
+
+  const movePastCurrent = (withRest: boolean) => {
+    const destination = getNextSessionPosition(stretches, {
+      index: currentIndex,
+      repetition: currentRepetition,
+    });
+
+    if (!destination) {
+      completeRoutine();
+      return;
+    }
+
+    if (withRest && timeBetween > 0) {
+      setIsResting(true);
+      setTimeRemaining(timeBetween);
+      setNextStretchIndex(destination.index);
+      setNextRepetition(destination.repetition);
+      nextStretchIndexRef.current = destination.index;
+      nextRepetitionRef.current = destination.repetition;
+      return;
+    }
+
+    moveToPosition(destination);
+  };
+
   useEffect(() => {
     if (isRunning && !isPaused) {
       intervalRef.current = setInterval(() => {
+        if (!isRunningRef.current || isPausedRef.current) return;
+
+        const remaining = timeRemainingRef.current;
         if (isRestingRef.current) {
-          setTimeRemaining((prev) => {
-            if (
-              !isRunningRef.current ||
-              isPausedRef.current ||
-              !isRestingRef.current
-            ) {
-              return prev;
-            }
+          if (remaining <= 1) {
+            const nextIndex = nextStretchIndexRef.current;
+            const nextRep = nextRepetitionRef.current;
+            setTimeRemaining(0);
+            setIsResting(false);
 
-            if (prev <= 1) {
-              setIsResting(false);
-              const nextIndex = nextStretchIndexRef.current;
-              const nextRep = nextRepetitionRef.current;
-
-              if (nextIndex !== null && nextRep !== null) {
-                setCurrentIndex(nextIndex);
-                setCurrentRepetition(nextRep);
-                const nextStretch = stretches[nextIndex];
-                if (nextStretch) {
-                  setTimeRemaining(nextStretch.duration);
-                }
-                setNextStretchIndex(null);
-                setNextRepetition(null);
-                nextStretchIndexRef.current = null;
-                nextRepetitionRef.current = null;
-                playTickSound();
-              }
-              return 0;
+            if (nextIndex !== null && nextRep !== null) {
+              moveToPosition({ index: nextIndex, repetition: nextRep });
+              clearRestDestination();
             }
-            return prev - 1;
-          });
+          } else {
+            setTimeRemaining(remaining - 1);
+          }
+          return;
+        }
+
+        if (remaining <= 1) {
+          setTimeRemaining(0);
+          playEndSound();
+          movePastCurrent(true);
         } else {
-          setTimeRemaining((prev) => {
-            if (
-              !isRunningRef.current ||
-              isPausedRef.current ||
-              isRestingRef.current
-            ) {
-              return prev;
-            }
-
-            if (prev <= 1) {
-              playEndSound();
-              setTimeout(() => {
-                setCurrentRepetition((rep) => {
-                  setCurrentIndex((idx) => {
-                    const currentStretch = stretches[idx];
-                    const reps = currentStretch?.repetitions || 1;
-
-                    if (rep < reps) {
-                      if (timeBetween > 0) {
-                        setIsResting(true);
-                        setTimeRemaining(timeBetween);
-                        setNextStretchIndex(idx);
-                        setNextRepetition(rep + 1);
-                        nextStretchIndexRef.current = idx;
-                        nextRepetitionRef.current = rep + 1;
-                      } else {
-                        setCurrentRepetition(rep + 1);
-                        setTimeRemaining(currentStretch.duration);
-                        playTickSound();
-                      }
-                    } else {
-                      if (idx < stretches.length - 1) {
-                        if (timeBetween > 0) {
-                          setIsResting(true);
-                          setTimeRemaining(timeBetween);
-                          setNextStretchIndex(idx + 1);
-                          setNextRepetition(1);
-                          nextStretchIndexRef.current = idx + 1;
-                          nextRepetitionRef.current = 1;
-                        } else {
-                          setCurrentIndex(idx + 1);
-                          setCurrentRepetition(1);
-                          const nextStretch = stretches[idx + 1];
-                          if (nextStretch) {
-                            setTimeRemaining(nextStretch.duration);
-                          }
-                          playTickSound();
-                        }
-                      } else {
-                        setIsRunning(false);
-                      }
-                    }
-                    return idx;
-                  });
-                  return rep;
-                });
-              }, 0);
-              return 0;
-            }
-            return prev - 1;
-          });
+          setTimeRemaining(remaining - 1);
         }
       }, 1000);
     } else {
@@ -371,9 +357,18 @@ export default function Stretching() {
         intervalRef.current = null;
       }
     };
-  }, [isRunning, isPaused, isResting, stretches.length, timeBetween]);
+  }, [
+    currentIndex,
+    currentRepetition,
+    isRunning,
+    isPaused,
+    isResting,
+    stretches,
+    timeBetween,
+  ]);
 
   const start = () => {
+    if (isCompleted) return;
     setIsRunning(true);
     setIsPaused(false);
     if (currentIndex === 0 && timeRemaining === stretches[0]?.duration) {
@@ -394,13 +389,11 @@ export default function Stretching() {
     setIsRunning(false);
     setIsPaused(false);
     setIsResting(false);
+    setIsCompleted(false);
     setCurrentIndex(0);
     setCurrentRepetition(1);
-    setNextStretchIndex(null);
-    setNextRepetition(null);
     startTimeRef.current = null;
-    nextStretchIndexRef.current = null;
-    nextRepetitionRef.current = null;
+    clearRestDestination();
     if (stretches[0]) {
       setTimeRemaining(stretches[0].duration);
     }
@@ -413,50 +406,20 @@ export default function Stretching() {
       const nextRep = nextRepetitionRef.current;
 
       if (nextIndex !== null && nextRep !== null) {
-        setCurrentIndex(nextIndex);
-        setCurrentRepetition(nextRep);
-        const nextStretch = stretches[nextIndex];
-        if (nextStretch) {
-          setTimeRemaining(nextStretch.duration);
-        }
-        setNextStretchIndex(null);
-        setNextRepetition(null);
-        nextStretchIndexRef.current = null;
-        nextRepetitionRef.current = null;
+        moveToPosition({ index: nextIndex, repetition: nextRep });
+        clearRestDestination();
       }
       return;
     }
-
-    const currentStretch = stretches[currentIndex];
-    const reps = currentStretch?.repetitions || 1;
-
-    if (currentRepetition < reps) {
-      setCurrentRepetition(currentRepetition + 1);
-      setTimeRemaining(currentStretch.duration);
-    } else if (currentIndex < stretches.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setCurrentRepetition(1);
-      const nextStretch = stretches[currentIndex + 1];
-      if (nextStretch) {
-        setTimeRemaining(nextStretch.duration);
-      }
-    } else {
-      setIsRunning(false);
-    }
+    movePastCurrent(false);
   };
 
   const previous = () => {
-    if (currentRepetition > 1) {
-      setCurrentRepetition(currentRepetition - 1);
-      const currentStretch = stretches[currentIndex];
-      setTimeRemaining(currentStretch.duration);
-    } else if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      const prevStretch = stretches[currentIndex - 1];
-      const prevReps = prevStretch?.repetitions || 1;
-      setCurrentRepetition(prevReps);
-      setTimeRemaining(prevStretch.duration);
-    }
+    const destination = getPreviousSessionPosition(stretches, {
+      index: currentIndex,
+      repetition: currentRepetition,
+    });
+    if (destination) moveToPosition(destination);
   };
 
   const jumpToStretch = (index: number) => {
@@ -541,99 +504,29 @@ export default function Stretching() {
     setStretches(routineStretches);
     setCurrentIndex(0);
     setCurrentRepetition(1);
+    setIsCompleted(false);
     setTimeRemaining(routineStretches[0]?.duration || 60);
   };
 
   const currentStretch = stretches[currentIndex];
-
-  const calculateProgress = () => {
-    if (totalDurationRef.current === 0) return 0;
-
-    let elapsed = 0;
-
-    for (let i = 0; i < currentIndex; i++) {
-      const stretch = stretches[i];
-      const reps = stretch.repetitions || 1;
-      elapsed += stretch.duration * reps;
-    }
-
-    const currentReps = currentStretch?.repetitions || 1;
-    if (currentRepetition > 1) {
-      elapsed += currentStretch.duration * (currentRepetition - 1);
-    }
-
-    if (currentStretch) {
-      const isLastStretch = currentIndex === stretches.length - 1;
-      const isLastRep = currentRepetition === currentReps;
-      const isCompleted = isLastStretch && isLastRep && !isRunning;
-
-      if (isCompleted) {
-        elapsed += currentStretch.duration;
-      } else {
-        const elapsedInCurrent = currentStretch.duration - timeRemaining;
-        elapsed += Math.max(0, elapsedInCurrent);
-      }
-    }
-
-    const progress = (elapsed / totalDurationRef.current) * 100;
-    return Math.min(100, Math.max(0, progress));
+  const sessionTimingState = {
+    index: currentIndex,
+    repetition: currentRepetition,
+    timeRemaining,
+    isResting,
+    isCompleted,
+    nextPosition:
+      nextStretchIndex !== null && nextRepetition !== null
+        ? { index: nextStretchIndex, repetition: nextRepetition }
+        : null,
   };
-
-  const progress = calculateProgress();
-
-  const calculateTimeRemaining = () => {
-    let remaining = 0;
-
-    remaining += timeRemaining;
-
-    const currentReps = currentStretch?.repetitions || 1;
-    if (currentRepetition < currentReps) {
-      remaining += currentStretch.duration * (currentReps - currentRepetition);
-    }
-
-    for (let i = currentIndex + 1; i < stretches.length; i++) {
-      const stretch = stretches[i];
-      const reps = stretch.repetitions || 1;
-      remaining += stretch.duration * reps;
-    }
-
-    if (timeBetween > 0) {
-      if (currentRepetition < currentReps) {
-        remaining += timeBetween * (currentReps - currentRepetition);
-      }
-      for (let i = currentIndex + 1; i < stretches.length; i++) {
-        remaining += timeBetween;
-      }
-    }
-
-    return remaining;
-  };
-
-  const calculateStepsRemaining = () => {
-    const isLastStretch = currentIndex === stretches.length - 1;
-    const currentReps = currentStretch?.repetitions || 1;
-    const isLastRep = currentRepetition === currentReps;
-    const isCompleted = isLastStretch && isLastRep && !isRunning;
-
-    if (isCompleted) {
-      return 0;
-    }
-
-    let steps = 0;
-
-    steps += currentReps - currentRepetition;
-
-    for (let i = currentIndex + 1; i < stretches.length; i++) {
-      const stretch = stretches[i];
-      const reps = stretch.repetitions || 1;
-      steps += reps;
-    }
-
-    return steps;
-  };
-
-  const timeRemainingTotal = calculateTimeRemaining();
-  const stepsRemaining = calculateStepsRemaining();
+  const progress = calculateSessionProgress(stretches, sessionTimingState);
+  const timeRemainingTotal = calculateSessionTimeRemaining(
+    stretches,
+    sessionTimingState,
+    timeBetween,
+  );
+  const stepsRemaining = calculateStepsRemaining(stretches, sessionTimingState);
 
   const allRoutines = [...DEFAULT_ROUTINES, ...customRoutines];
   const currentRoutine = allRoutines.find((r) => r.id === selectedRoutineId);
@@ -676,6 +569,20 @@ export default function Stretching() {
 
   // Get recent routine from localStorage
   const recentRoutine = currentRoutine;
+  const phaseAnnouncement = isCompleted
+    ? "Routine complete."
+    : isResting
+      ? `Rest period. ${nextStretchIndex !== null ? (stretches[nextStretchIndex]?.name ?? "Next stretch") : "Next stretch"} is up next.`
+      : isPaused
+        ? `Paused on ${currentStretch?.name ?? "the current stretch"}.`
+        : isRunning
+          ? `${currentStretch?.name ?? "Stretch"} started, repetition ${currentRepetition}.`
+          : `Ready for ${currentStretch?.name ?? "the routine"}.`;
+
+  const restart = () => {
+    reset();
+    setIsRunning(true);
+  };
 
   return (
     <div
@@ -752,14 +659,16 @@ export default function Stretching() {
 
       {/* Active Stretching View */}
       {viewState === "active" && (
-        <StretchingShell variant="focus" className="space-y-4 sm:space-y-6">
-          {/* Back button and routine info */}
-          <div className="flex items-center gap-4">
+        <StretchingShell variant="focus" className="space-y-3 sm:space-y-5">
+          <p className="sr-only" aria-live="polite" aria-atomic="true">
+            {phaseAnnouncement}
+          </p>
+          <header className="flex min-h-[44px] items-center gap-3">
             <button
               type="button"
               onClick={handleBackToQuickStart}
               aria-label="Back to stretching overview"
-              className="rounded-full bg-white/80 p-2 shadow-sm transition-colors hover:bg-white dark:bg-card dark:hover:bg-card/80"
+              className="rounded-full bg-card p-2 shadow-sm transition-colors hover:bg-muted"
             >
               <svg
                 className="h-5 w-5 text-foreground"
@@ -776,32 +685,95 @@ export default function Stretching() {
               </svg>
             </button>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-lg font-semibold text-foreground">
+              <h2 className="truncate text-base font-semibold text-foreground sm:text-lg">
                 {currentRoutine?.name}
               </h2>
-              <p className="truncate text-sm text-muted-foreground">
+              <p className="hidden truncate text-sm text-muted-foreground sm:block">
                 {currentRoutine?.goal}
               </p>
             </div>
-            <button
-              onClick={() => setViewState("content-manager")}
-              className="px-4 py-2 text-sm font-medium text-amber-600 transition-colors hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
-            >
-              Edit
-            </button>
-          </div>
+            <details className="group relative">
+              <summary
+                className="flex min-h-[44px] min-w-[44px] cursor-pointer list-none items-center justify-center rounded-full text-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Routine menu"
+              >
+                <span aria-hidden="true">•••</span>
+              </summary>
+              <div className="stretching-popover absolute right-0 z-20 mt-2 w-52 space-y-1 p-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTimeBetweenSettings(true)}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-muted"
+                >
+                  Rest duration ({timeBetween}s)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewState("content-manager")}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-muted"
+                >
+                  Edit routine
+                </button>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  Reset routine
+                </button>
+              </div>
+            </details>
+          </header>
 
           {/* Time Between Settings */}
           {showTimeBetweenSettings && (
             <TimeBetweenSettings
               timeBetween={timeBetween}
-              onTimeBetweenChange={setTimeBetween}
-              onClose={() => setShowTimeBetweenSettings(false)}
+              onApply={(value) => {
+                setTimeBetween(value);
+                setShowTimeBetweenSettings(false);
+              }}
+              onCancel={() => setShowTimeBetweenSettings(false)}
             />
           )}
 
-          {/* Rest Period Screen */}
-          {isResting && (
+          {isCompleted ? (
+            <section className="mx-auto flex min-h-[65dvh] max-w-2xl flex-col items-center justify-center rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-10">
+              <div
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-3xl text-emerald-600 dark:text-emerald-400"
+                aria-hidden="true"
+              >
+                ✓
+              </div>
+              <p className="mt-5 text-sm font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                Routine complete
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                Nicely done.
+              </h1>
+              <p className="mt-3 max-w-md text-muted-foreground">
+                You completed{" "}
+                {currentRoutine?.name ?? "your stretching routine"}. Take a
+                moment before moving on.
+              </p>
+              <div className="mt-8 grid w-full max-w-sm gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={restart}
+                  className="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  Restart routine
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBackToQuickStart}
+                  className="rounded-xl bg-muted px-5 py-3 font-medium text-foreground transition-colors hover:bg-primary/10"
+                >
+                  Exit to overview
+                </button>
+              </div>
+            </section>
+          ) : isResting ? (
             <RestPeriodScreen
               timeRemaining={timeRemaining}
               isRunning={isRunning}
@@ -809,44 +781,44 @@ export default function Stretching() {
               nextStretchIndex={nextStretchIndex}
               nextRepetition={nextRepetition}
               stretches={stretches}
+              totalDuration={timeBetween}
               onPause={pause}
               onResume={resume}
+              onSkip={next}
             />
-          )}
-
-          {/* Control Panel */}
-          {currentStretch && !isResting && (
-            <ControlPanel
-              currentStretch={currentStretch}
-              currentIndex={currentIndex}
-              currentRepetition={currentRepetition}
-              stretchesLength={stretches.length}
-              timeRemaining={timeRemaining}
-              isRunning={isRunning}
-              isPaused={isPaused}
-              progress={progress}
-              timeRemainingTotal={timeRemainingTotal}
-              stepsRemaining={stepsRemaining}
-              timeBetween={timeBetween}
-              onTimeBetweenSettingsClick={() =>
-                setShowTimeBetweenSettings(!showTimeBetweenSettings)
-              }
-              onStart={start}
-              onPause={pause}
-              onResume={resume}
-              onNext={next}
-              onPrevious={previous}
-              onReset={reset}
-              isResting={isResting}
-              stretches={stretches}
-              onJumpTo={jumpToStretch}
-            />
-          )}
-
-          {/* Stretch Details */}
-          {currentStretch && !isResting && (
-            <StretchDetails stretch={currentStretch} />
-          )}
+          ) : currentStretch ? (
+            <>
+              <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-stretch lg:gap-5">
+                <StretchDetails stretch={currentStretch} section="image" />
+                <ControlPanel
+                  currentStretch={currentStretch}
+                  currentIndex={currentIndex}
+                  currentRepetition={currentRepetition}
+                  stretchesLength={stretches.length}
+                  timeRemaining={timeRemaining}
+                  isRunning={isRunning}
+                  isPaused={isPaused}
+                  progress={progress}
+                  timeRemainingTotal={timeRemainingTotal}
+                  stepsRemaining={stepsRemaining}
+                  timeBetween={timeBetween}
+                  onTimeBetweenSettingsClick={() =>
+                    setShowTimeBetweenSettings(true)
+                  }
+                  onStart={start}
+                  onPause={pause}
+                  onResume={resume}
+                  onNext={next}
+                  onPrevious={previous}
+                  onReset={reset}
+                  isResting={isResting}
+                  stretches={stretches}
+                  onJumpTo={jumpToStretch}
+                />
+              </div>
+              <StretchDetails stretch={currentStretch} section="guidance" />
+            </>
+          ) : null}
         </StretchingShell>
       )}
     </div>

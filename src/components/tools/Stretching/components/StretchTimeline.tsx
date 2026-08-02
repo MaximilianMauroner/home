@@ -39,7 +39,7 @@ export function StretchTimeline({
               >
                 {/* Main dot */}
                 <div
-                  className={`h-4 w-4 rounded-full transition-colors duration-300 ${
+                  className={`relative h-4 w-4 rounded-full transition-colors duration-300 motion-reduce:transition-none ${
                     isActive
                       ? "scale-125 bg-emerald-500 shadow-sm shadow-emerald-500/40 dark:bg-emerald-400 dark:shadow-emerald-400/40"
                       : isCompleted
@@ -53,7 +53,7 @@ export function StretchTimeline({
                 >
                   {/* Pulse effect for active */}
                   {isActive && (
-                    <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500 opacity-30 dark:bg-emerald-400" />
+                    <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500 opacity-30 motion-reduce:animate-none dark:bg-emerald-400" />
                   )}
                 </div>
 

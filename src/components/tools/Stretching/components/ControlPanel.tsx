@@ -52,77 +52,57 @@ export function ControlPanel({
   onJumpTo,
 }: ControlPanelProps) {
   return (
-    <div className="bg-card rounded-xl p-6 sm:p-8 shadow-sm border border-border space-y-6">
-      {/* Stretch Info */}
+    <section className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:flex lg:min-h-[36rem] lg:flex-col lg:justify-center lg:p-8">
       <div className="text-center">
-        <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
-          <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
+        <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
+          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary sm:text-sm">
             {currentIndex + 1} / {stretchesLength}
           </span>
           {(currentStretch.repetitions || 1) > 1 && (
-            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-400/10 px-3 py-1 rounded-full">
+            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 sm:text-sm dark:bg-emerald-400/10 dark:text-emerald-300">
               Rep {currentRepetition} / {currentStretch.repetitions || 1}
             </span>
           )}
-          <button
-            onClick={onTimeBetweenSettingsClick}
-            className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full hover:bg-muted/80 transition-colors"
-            title="Rest time between stretches"
-          >
-            Rest: {timeBetween}s
-          </button>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground mb-2">{currentStretch.name}</h2>
-        <p className="text-sm text-muted-foreground max-w-md mx-auto">{currentStretch.description}</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          {currentStretch.name}
+        </h1>
+        <p className="mx-auto mt-1 max-w-md text-sm leading-snug text-muted-foreground">
+          {currentStretch.description}
+        </p>
       </div>
 
-      {/* Breathing Timer */}
-      <div className="flex justify-center py-4">
+      <div className="flex justify-center py-1 sm:py-3">
         <BreathingTimer
           timeRemaining={timeRemaining}
           totalDuration={currentStretch.duration}
           isRunning={isRunning}
           isPaused={isPaused}
           isResting={isResting}
+          compact
         />
       </div>
 
-      {/* Progress Info */}
-      <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{formatTime(timeRemainingTotal)} left</span>
-        </div>
-        <div className="w-px h-4 bg-border" />
-        <div className="flex items-center gap-2">
-          <span>{stepsRemaining} {stepsRemaining === 1 ? 'step' : 'steps'} remaining</span>
-        </div>
-      </div>
-
-      {/* Timeline */}
-      {stretches.length > 0 && (
-        <div className="pt-2 border-t border-border">
-          <StretchTimeline
-            stretches={stretches}
-            currentIndex={currentIndex}
-            currentRepetition={currentRepetition}
-            isPaused={isPaused}
-            onJumpTo={onJumpTo}
+      <div className="space-y-2">
+        <div
+          aria-label={`${Math.round(progress)} percent complete`}
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={Math.round(progress)}
+          className="h-2 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+        >
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-300 motion-reduce:transition-none"
+            style={{ width: `${progress}%` }}
           />
         </div>
-      )}
-
-      {/* Progress Bar */}
-      <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-        <div
-          className="absolute inset-y-0 left-0 bg-primary rounded-full transition-colors duration-300"
-          style={{ width: `${progress}%` }}
-        />
+        <p className="text-center text-xs text-muted-foreground sm:text-sm">
+          {formatTime(timeRemainingTotal)} left · {stepsRemaining}{" "}
+          {stepsRemaining === 1 ? "step" : "steps"} remaining
+        </p>
       </div>
 
-      {/* Control Buttons */}
       <ControlButtons
         isRunning={isRunning}
         isPaused={isPaused}
@@ -136,8 +116,50 @@ export function ControlPanel({
         onResume={onResume}
         onNext={onNext}
         onPrevious={onPrevious}
-        onReset={onReset}
       />
-    </div>
+
+      <details className="group border-t border-border pt-1">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between rounded-lg px-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground">
+          Session options
+          <span aria-hidden="true" className="text-lg group-open:rotate-45">
+            +
+          </span>
+        </summary>
+        <div className="space-y-3 pb-1 pt-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onTimeBetweenSettingsClick}
+              className="rounded-xl bg-muted px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-primary/10"
+            >
+              Rest duration: {timeBetween}s
+            </button>
+            <button
+              type="button"
+              onClick={onReset}
+              className="rounded-xl px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              Reset routine
+            </button>
+          </div>
+          {stretches.length > 0 && (
+            <div className="rounded-xl bg-muted/40 p-2">
+              <p className="px-2 text-xs text-muted-foreground">
+                {isPaused
+                  ? "Choose a stretch to jump while paused."
+                  : "Pause to jump to another stretch."}
+              </p>
+              <StretchTimeline
+                stretches={stretches}
+                currentIndex={currentIndex}
+                currentRepetition={currentRepetition}
+                isPaused={isPaused}
+                onJumpTo={onJumpTo}
+              />
+            </div>
+          )}
+        </div>
+      </details>
+    </section>
   );
 }
