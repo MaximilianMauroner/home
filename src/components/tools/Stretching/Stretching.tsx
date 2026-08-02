@@ -39,10 +39,8 @@ import {
 } from "./sessionState";
 import {
   createRoutine,
-  createWorkingSessionStretches,
+  createStudioSessionStartState,
   deleteRoutineWithFallback,
-  getCurrentIndexAfterMove,
-  reorderItems,
   type RoutineStudioIntent,
   updateRoutineCollection,
 } from "./studioHelpers";
@@ -455,36 +453,6 @@ export default function Stretching() {
     }
   };
 
-  const addStretch = (stretch: Omit<Stretch, "id">) => {
-    const newStretch: Stretch = {
-      ...stretch,
-      id: Date.now().toString(),
-    };
-    setStretches([...stretches, newStretch]);
-  };
-
-  const updateStretch = (id: string, stretch: Omit<Stretch, "id">) => {
-    setStretches(
-      stretches.map((s) => (s.id === id ? { ...stretch, id: s.id } : s)),
-    );
-  };
-
-  const deleteStretch = (id: string) => {
-    const newStretches = stretches.filter((s) => s.id !== id);
-    setStretches(newStretches);
-    if (currentIndex >= newStretches.length && newStretches.length > 0) {
-      setCurrentIndex(newStretches.length - 1);
-    } else if (newStretches.length === 0) {
-      setCurrentIndex(0);
-      setTimeRemaining(0);
-    }
-  };
-
-  const moveStretch = (fromIndex: number, toIndex: number) => {
-    setStretches(reorderItems(stretches, fromIndex, toIndex));
-    setCurrentIndex(getCurrentIndexAfterMove(currentIndex, fromIndex, toIndex));
-  };
-
   const saveRoutine = (routine: StretchRoutine) => {
     setCustomRoutines((current) => createRoutine(current, routine));
   };
@@ -504,24 +472,6 @@ export default function Stretching() {
     );
     setCustomRoutines(result.routines);
     if (result.selectedId !== selectedRoutineId) loadRoutine(result.selectedId);
-  };
-
-  const loadRoutineStretchesForEditing = (routine: StretchRoutine) => {
-    const routineStretches = routine.stretches.map((s, idx) => ({
-      ...s,
-      id: `${routine.id}_${s.id || idx + 1}`,
-    }));
-    setStretches(routineStretches);
-    setSelectedRoutineId(routine.id);
-  };
-
-  const resetToDefault = (routineId: string) => {
-    const routineStretches = loadRoutineStretches(routineId);
-    setStretches(routineStretches);
-    setCurrentIndex(0);
-    setCurrentRepetition(1);
-    setIsCompleted(false);
-    setTimeRemaining(routineStretches[0]?.duration || 60);
   };
 
   const currentStretch = stretches[currentIndex];
@@ -580,17 +530,21 @@ export default function Stretching() {
     routineId: string,
     workingStretches: readonly Stretch[],
   ) => {
-    const sessionStretches = createWorkingSessionStretches(workingStretches);
+    const startState = createStudioSessionStartState(workingStretches);
     setSelectedRoutineId(routineId);
-    setStretches(sessionStretches);
-    setCurrentIndex(0);
-    setCurrentRepetition(1);
-    setTimeRemaining(sessionStretches[0]?.duration ?? 0);
-    setIsRunning(false);
-    setIsPaused(false);
-    setIsResting(false);
-    setIsCompleted(false);
-    clearRestDestination();
+    setStretches(startState.stretches);
+    setCurrentIndex(startState.currentIndex);
+    setCurrentRepetition(startState.currentRepetition);
+    setTimeRemaining(startState.timeRemaining);
+    setIsRunning(startState.isRunning);
+    setIsPaused(startState.isPaused);
+    setIsResting(startState.isResting);
+    setIsCompleted(startState.isCompleted);
+    setNextStretchIndex(startState.nextStretchIndex);
+    setNextRepetition(startState.nextRepetition);
+    nextStretchIndexRef.current = startState.nextStretchIndex;
+    nextRepetitionRef.current = startState.nextRepetition;
+    startTimeRef.current = null;
     setViewState("active");
   };
 
@@ -660,7 +614,6 @@ export default function Stretching() {
             selectedRoutineId={selectedRoutineId}
             onSelectRoutine={handleSelectRoutineFromBrowser}
             onEditRoutine={(routine) => {
-              loadRoutineStretchesForEditing(routine);
               openStudio("browser", { mode: "edit", routineId: routine.id });
             }}
             onDeleteRoutine={deleteRoutine}
@@ -689,17 +642,10 @@ export default function Stretching() {
             customRoutines={customRoutines}
             selectedRoutineId={selectedRoutineId}
             currentStretches={stretches}
-            onAddStretch={addStretch}
-            onUpdateStretch={updateStretch}
-            onDeleteStretch={deleteStretch}
-            onMoveStretch={moveStretch}
-            onManageRoutine={loadRoutine}
             onStartRoutine={startWorkingRoutine}
-            onLoadRoutineStretches={loadRoutineStretchesForEditing}
             onSaveRoutine={saveRoutine}
             onUpdateRoutine={updateRoutine}
             onDeleteRoutine={deleteRoutine}
-            onResetToDefault={resetToDefault}
             onClose={() => setViewState(studioReturnView)}
             initialRoutineIntent={studioIntent}
           />

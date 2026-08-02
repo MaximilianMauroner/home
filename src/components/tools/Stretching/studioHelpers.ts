@@ -18,6 +18,23 @@ export interface RoutineStudioInitialState {
   routineMode: "list" | "create" | "edit";
 }
 
+export interface RoutineStudioDraftState extends RoutineStudioInitialState {
+  stretches: Stretch[];
+}
+
+export interface StudioSessionStartState {
+  currentIndex: 0;
+  currentRepetition: 1;
+  isCompleted: false;
+  isPaused: false;
+  isResting: false;
+  isRunning: false;
+  nextRepetition: null;
+  nextStretchIndex: null;
+  stretches: Stretch[];
+  timeRemaining: number;
+}
+
 export interface RoutineSummary {
   stretchCount: number;
   totalDuration: number;
@@ -56,6 +73,40 @@ export function resolveRoutineStudioIntent(
   };
 }
 
+export function createRoutineWorkingStretches(
+  routine: StretchRoutine,
+): Stretch[] {
+  return routine.stretches.map((stretch, index) => {
+    const sourceId =
+      normalizeStretchId(stretch.id, routine.id) || `${index + 1}`;
+    return {
+      ...stretch,
+      id: `${routine.id}_${sourceId}`,
+      ...(stretch.targetAreas ? { targetAreas: [...stretch.targetAreas] } : {}),
+    };
+  });
+}
+
+export function initializeRoutineStudioDraft(
+  intent: RoutineStudioIntent,
+  selectedRoutineId: string,
+  liveStretches: readonly Stretch[],
+  customRoutines: readonly StretchRoutine[],
+): RoutineStudioDraftState {
+  const initialState = resolveRoutineStudioIntent(
+    intent,
+    selectedRoutineId,
+    customRoutines,
+  );
+
+  return {
+    ...initialState,
+    stretches: initialState.editingRoutine
+      ? createRoutineWorkingStretches(initialState.editingRoutine)
+      : createWorkingSessionStretches(liveStretches),
+  };
+}
+
 export function reorderItems<T>(
   items: readonly T[],
   fromIndex: number,
@@ -78,29 +129,6 @@ export function reorderItems<T>(
   return reordered;
 }
 
-export function getCurrentIndexAfterMove(
-  currentIndex: number,
-  fromIndex: number,
-  toIndex: number,
-): number {
-  if (currentIndex === fromIndex) return toIndex;
-  if (
-    fromIndex < toIndex &&
-    currentIndex > fromIndex &&
-    currentIndex <= toIndex
-  ) {
-    return currentIndex - 1;
-  }
-  if (
-    fromIndex > toIndex &&
-    currentIndex >= toIndex &&
-    currentIndex < fromIndex
-  ) {
-    return currentIndex + 1;
-  }
-  return currentIndex;
-}
-
 export function createWorkingSessionStretches(
   stretches: readonly Stretch[],
 ): Stretch[] {
@@ -108,6 +136,24 @@ export function createWorkingSessionStretches(
     ...stretch,
     ...(stretch.targetAreas ? { targetAreas: [...stretch.targetAreas] } : {}),
   }));
+}
+
+export function createStudioSessionStartState(
+  draftStretches: readonly Stretch[],
+): StudioSessionStartState {
+  const stretches = createWorkingSessionStretches(draftStretches);
+  return {
+    stretches,
+    currentIndex: 0,
+    currentRepetition: 1,
+    timeRemaining: stretches[0]?.duration ?? 0,
+    isRunning: false,
+    isPaused: false,
+    isResting: false,
+    isCompleted: false,
+    nextStretchIndex: null,
+    nextRepetition: null,
+  };
 }
 
 export function summarizeRoutine(

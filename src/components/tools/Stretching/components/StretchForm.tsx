@@ -3,7 +3,10 @@ import type { Stretch } from "@/components/tools/Stretching/types";
 import { ImagePicker } from "./ImagePicker";
 import { PLACEHOLDER_IMAGE } from "../images";
 import { StretchImage } from "./StretchImage";
-import { isValidStretchImageSource } from "../imageCatalog";
+import {
+  clearStretchImageValidity,
+  isValidStretchImageSource,
+} from "../imageCatalog";
 
 interface StretchFormProps {
   stretch: Stretch | null;
@@ -225,7 +228,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
                   onChange={(event) => {
                     setField("image", event.target.value);
                     setImageLoadError(false);
-                    event.currentTarget.setCustomValidity("");
+                    clearStretchImageValidity(event.currentTarget);
                   }}
                   placeholder="Or paste an image URL"
                   title="Choose a library image or enter a complete http:// or https:// URL."
@@ -237,6 +240,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
                     onClick={() => {
                       setField("image", "");
                       setImageLoadError(false);
+                      clearStretchImageValidity(imageInputRef.current);
                     }}
                     className="min-h-11 text-sm font-medium text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
@@ -319,7 +323,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
           onChange={(url) => {
             setField("image", url);
             setImageLoadError(false);
-            imageInputRef.current?.setCustomValidity("");
+            clearStretchImageValidity(imageInputRef.current);
           }}
           onClose={() => setShowImagePicker(false)}
         />

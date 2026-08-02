@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildImageCatalog,
+  clearStretchImageValidity,
   filterImageCatalog,
   getDraftSelection,
   isValidStretchImageSource,
@@ -55,5 +56,15 @@ describe("image catalog", () => {
     expect(isValidStretchImageSource("")).toBe(true);
     expect(isValidStretchImageSource("cat-pose.png")).toBe(false);
     expect(isValidStretchImageSource("javascript:alert(1)")).toBe(false);
+  });
+
+  it("clears stale image validity when the source is removed or replaced", () => {
+    const messages: string[] = [];
+    clearStretchImageValidity({
+      setCustomValidity: (message) => messages.push(message),
+    });
+    clearStretchImageValidity(null);
+
+    expect(messages).toEqual([""]);
   });
 });

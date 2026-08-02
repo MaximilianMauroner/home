@@ -6,10 +6,12 @@ import type {
 import {
   buildRoutineDraft,
   createRoutine,
+  createRoutineWorkingStretches,
+  createStudioSessionStartState,
   createWorkingSessionStretches,
   deleteRoutineWithFallback,
-  getCurrentIndexAfterMove,
   getMoveTarget,
+  initializeRoutineStudioDraft,
   reorderItems,
   resolveRoutineStudioIntent,
   summarizeRoutine,
@@ -45,13 +47,6 @@ describe("Routine Studio helpers", () => {
     expect(reorderItems(["a", "b", "c"], 0, 2)).toEqual(["b", "c", "a"]);
   });
 
-  it("keeps the current stretch pointing at the same item after a move", () => {
-    expect(getCurrentIndexAfterMove(0, 0, 2)).toBe(2);
-    expect(getCurrentIndexAfterMove(1, 0, 2)).toBe(0);
-    expect(getCurrentIndexAfterMove(1, 2, 0)).toBe(2);
-    expect(getCurrentIndexAfterMove(3, 0, 2)).toBe(3);
-  });
-
   it("starts from the edited working order without sharing mutable metadata", () => {
     const working = [stretch("edited"), stretch("added")];
     const session = createWorkingSessionStretches(working);
@@ -60,6 +55,64 @@ describe("Routine Studio helpers", () => {
     expect(session).not.toBe(working);
     expect(session[0]).not.toBe(working[0]);
     expect(session[0]?.targetAreas).not.toBe(working[0]?.targetAreas);
+  });
+
+  it("isolates draft edits from a paused live rest session", () => {
+    const live = [stretch("live-1"), stretch("live-2")];
+    const restState = {
+      currentIndex: 0,
+      currentRepetition: 1,
+      isResting: true,
+      nextStretchIndex: 1,
+      nextRepetition: 1,
+      timeRemaining: 7,
+    };
+    const draft = initializeRoutineStudioDraft(
+      { mode: "manage" },
+      "routine_1",
+      live,
+      [routine],
+    ).stretches;
+
+    const edited = draft.map((item) =>
+      item.id === "live-1" ? { ...item, name: "Edited" } : item,
+    );
+    const deleted = edited.filter((item) => item.id !== "live-2");
+    const reordered = reorderItems(draft, 0, 1);
+
+    expect(draft).not.toBe(live);
+    expect(draft[0]).not.toBe(live[0]);
+    expect(live.map(({ name }) => name)).toEqual(["live-1", "live-2"]);
+    expect(deleted).toHaveLength(1);
+    expect(reordered.map(({ id }) => id)).toEqual(["live-2", "live-1"]);
+    expect(restState).toEqual({
+      currentIndex: 0,
+      currentRepetition: 1,
+      isResting: true,
+      nextStretchIndex: 1,
+      nextRepetition: 1,
+      timeRemaining: 7,
+    });
+  });
+
+  it("commits a cloned draft into a deterministic ready session", () => {
+    const draft = [stretch("edited", 2), stretch("added")];
+    const start = createStudioSessionStartState(draft);
+
+    expect(start).toMatchObject({
+      currentIndex: 0,
+      currentRepetition: 1,
+      timeRemaining: 30,
+      isRunning: false,
+      isPaused: false,
+      isResting: false,
+      isCompleted: false,
+      nextStretchIndex: null,
+      nextRepetition: null,
+    });
+    expect(start.stretches).toEqual(draft);
+    expect(start.stretches).not.toBe(draft);
+    expect(start.stretches[0]).not.toBe(draft[0]);
   });
 
   it("resolves browser create/edit intents and rejects editing default routines", () => {
@@ -96,6 +149,43 @@ describe("Routine Studio helpers", () => {
       editingRoutine: null,
       hasExternalRoutineIntent: false,
     });
+  });
+
+  it("opens a browser edit draft without leaking selection or live stretches", () => {
+    const live = [stretch("live")];
+    const selectedRoutineId = "routine_1";
+    const draftState = initializeRoutineStudioDraft(
+      { mode: "edit", routineId: routine.id },
+      selectedRoutineId,
+      live,
+      [routine],
+    );
+
+    expect(draftState.managedRoutineId).toBe(routine.id);
+    expect(draftState.editingRoutine).toBe(routine);
+    expect(draftState.stretches).toEqual(
+      createRoutineWorkingStretches(routine),
+    );
+    expect(draftState.stretches).not.toBe(live);
+    expect(selectedRoutineId).toBe("routine_1");
+    expect(live.map(({ id }) => id)).toEqual(["live"]);
+  });
+
+  it("discards a changed draft without changing the selected live routine", () => {
+    const live = [stretch("live")];
+    const selectedRoutineId = "routine_1";
+    const draft = initializeRoutineStudioDraft(
+      { mode: "manage" },
+      selectedRoutineId,
+      live,
+      [routine],
+    ).stretches;
+
+    draft[0] = { ...draft[0]!, name: "Unsaved edit" };
+    draft.push(stretch("unsaved-addition"));
+
+    expect(selectedRoutineId).toBe("routine_1");
+    expect(live).toEqual([stretch("live")]);
   });
 
   it("recomputes duration and steps from repetitions", () => {

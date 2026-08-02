@@ -4,6 +4,10 @@ export interface ImageCatalogItem {
   url: string;
 }
 
+export interface StretchImageValidityTarget {
+  setCustomValidity: (message: string) => void;
+}
+
 type ImageSource = Record<string, Record<string, string>>;
 
 function toLabel(value: string): string {
@@ -66,4 +70,10 @@ export function isValidStretchImageSource(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function clearStretchImageValidity(
+  target: StretchImageValidityTarget | null,
+): void {
+  target?.setCustomValidity("");
 }

@@ -5,8 +5,11 @@ import type {
 } from "@/components/tools/Stretching/types";
 import { formatTime } from "@/components/tools/Stretching/utils";
 import {
+  createRoutineWorkingStretches,
   getMoveTarget,
-  resolveRoutineStudioIntent,
+  initializeRoutineStudioDraft,
+  reorderItems,
+  summarizeRoutine,
   type RoutineStudioIntent,
 } from "@/components/tools/Stretching/studioHelpers";
 import { PLACEHOLDER_IMAGE } from "../images";
@@ -18,18 +21,11 @@ export interface ContentManagerProps {
   defaultRoutines: StretchRoutine[];
   customRoutines: StretchRoutine[];
   selectedRoutineId: string;
-  currentStretches: Stretch[];
-  onAddStretch: (stretch: Omit<Stretch, "id">) => void;
-  onUpdateStretch: (id: string, stretch: Omit<Stretch, "id">) => void;
-  onDeleteStretch: (id: string) => void;
-  onMoveStretch: (fromIndex: number, toIndex: number) => void;
-  onManageRoutine?: (id: string) => void;
+  currentStretches: readonly Stretch[];
   onStartRoutine?: (id: string, workingStretches: readonly Stretch[]) => void;
-  onLoadRoutineStretches: (routine: StretchRoutine) => void;
   onSaveRoutine: (routine: StretchRoutine) => void;
   onUpdateRoutine: (id: string, routine: Omit<StretchRoutine, "id">) => void;
   onDeleteRoutine: (id: string) => void;
-  onResetToDefault: (routineId: string) => void;
   onClose: () => void;
   initialRoutineIntent?: RoutineStudioIntent;
 }
@@ -43,23 +39,17 @@ export function ContentManager({
   customRoutines,
   selectedRoutineId,
   currentStretches,
-  onAddStretch,
-  onUpdateStretch,
-  onDeleteStretch,
-  onMoveStretch,
-  onManageRoutine,
   onStartRoutine,
-  onLoadRoutineStretches,
   onSaveRoutine,
   onUpdateRoutine,
   onDeleteRoutine,
-  onResetToDefault,
   onClose,
   initialRoutineIntent = { mode: "manage" },
 }: ContentManagerProps) {
-  const initialState = resolveRoutineStudioIntent(
+  const initialState = initializeRoutineStudioDraft(
     initialRoutineIntent,
     selectedRoutineId,
+    currentStretches,
     customRoutines,
   );
   const [activeTab, setActiveTab] = useState<Tab>(initialState.activeTab);
@@ -77,6 +67,7 @@ export function ContentManager({
   const [hasExternalRoutineIntent, setHasExternalRoutineIntent] = useState(
     initialState.hasExternalRoutineIntent,
   );
+  const [draftStretches, setDraftStretches] = useState(initialState.stretches);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const routines = [...defaultRoutines, ...customRoutines];
@@ -85,19 +76,19 @@ export function ContentManager({
     routines[0] ??
     null;
   const editingStretch = editingStretchId
-    ? (currentStretches.find((stretch) => stretch.id === editingStretchId) ??
+    ? (draftStretches.find((stretch) => stretch.id === editingStretchId) ??
       null)
     : null;
+  const draftSummary = summarizeRoutine(draftStretches);
 
   const chooseRoutine = (routine: StretchRoutine) => {
     setManagedRoutineId(routine.id);
-    onManageRoutine?.(routine.id);
+    setDraftStretches(createRoutineWorkingStretches(routine));
   };
 
   const beginRoutineEdit = (routine: StretchRoutine) => {
     if (!customRoutines.some((item) => item.id === routine.id)) return;
     chooseRoutine(routine);
-    onLoadRoutineStretches(routine);
     setEditingRoutine(routine);
     setRoutineMode("edit");
     setHasExternalRoutineIntent(false);
@@ -110,7 +101,7 @@ export function ContentManager({
     if (managedRoutineId === routine.id) {
       const fallback = defaultRoutines[0] ?? null;
       setManagedRoutineId(fallback?.id ?? "");
-      if (fallback) onManageRoutine?.(fallback.id);
+      if (fallback) setDraftStretches(createRoutineWorkingStretches(fallback));
     }
   };
 
@@ -118,7 +109,9 @@ export function ContentManager({
     if (editingRoutine) {
       onUpdateRoutine(editingRoutine.id, routine);
     } else {
-      onSaveRoutine({ ...routine, id: `custom_${Date.now()}` });
+      const id = `custom_${Date.now()}`;
+      onSaveRoutine({ ...routine, id });
+      setManagedRoutineId(id);
     }
     setEditingRoutine(null);
     setRoutineMode("list");
@@ -135,8 +128,10 @@ export function ContentManager({
   };
 
   const moveStretch = (index: number, direction: "up" | "down") => {
-    const target = getMoveTarget(index, direction, currentStretches.length);
-    if (target !== null) onMoveStretch(index, target);
+    const target = getMoveTarget(index, direction, draftStretches.length);
+    if (target !== null) {
+      setDraftStretches((current) => reorderItems(current, index, target));
+    }
   };
 
   if (activeTab === "stretches" && stretchMode !== "list") {
@@ -145,8 +140,20 @@ export function ContentManager({
         <StretchForm
           stretch={editingStretch}
           onSubmit={(stretch) => {
-            if (editingStretchId) onUpdateStretch(editingStretchId, stretch);
-            else onAddStretch(stretch);
+            if (editingStretchId) {
+              setDraftStretches((current) =>
+                current.map((item) =>
+                  item.id === editingStretchId
+                    ? { ...stretch, id: item.id }
+                    : item,
+                ),
+              );
+            } else {
+              setDraftStretches((current) => [
+                ...current,
+                { ...stretch, id: `draft_${Date.now()}` },
+              ]);
+            }
             setStretchMode("list");
             setEditingStretchId(null);
           }}
@@ -201,7 +208,7 @@ export function ContentManager({
             className={`min-h-11 flex-1 px-3 text-sm font-medium capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:flex-none sm:px-5 ${activeTab === tab ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
           >
             {tab} (
-            {tab === "stretches" ? currentStretches.length : routines.length})
+            {tab === "stretches" ? draftStretches.length : routines.length})
           </button>
         ))}
       </div>
@@ -224,7 +231,7 @@ export function ContentManager({
               Add stretch
             </button>
           </div>
-          {currentStretches.length === 0 ? (
+          {draftStretches.length === 0 ? (
             <div className="rounded-2xl bg-muted/40 p-8 text-center">
               <p className="text-sm text-muted-foreground">
                 This routine has no stretches yet.
@@ -232,14 +239,16 @@ export function ContentManager({
             </div>
           ) : (
             <ol className="space-y-3">
-              {currentStretches.map((stretch, index) => (
+              {draftStretches.map((stretch, index) => (
                 <li
                   key={stretch.id}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
                     event.preventDefault();
                     if (draggedIndex !== null && draggedIndex !== index)
-                      onMoveStretch(draggedIndex, index);
+                      setDraftStretches((current) =>
+                        reorderItems(current, draggedIndex, index),
+                      );
                     setDraggedIndex(null);
                   }}
                   className={`min-w-0 rounded-2xl border border-border/60 p-3 transition-opacity sm:p-4 ${draggedIndex === index ? "opacity-50" : ""}`}
@@ -305,7 +314,11 @@ export function ContentManager({
                           type="button"
                           onClick={() => {
                             if (window.confirm(`Delete “${stretch.name}”?`))
-                              onDeleteStretch(stretch.id);
+                              setDraftStretches((current) =>
+                                current.filter(
+                                  (item) => item.id !== stretch.id,
+                                ),
+                              );
                           }}
                           className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         >
@@ -326,7 +339,7 @@ export function ContentManager({
                     </button>
                     <button
                       type="button"
-                      disabled={index === currentStretches.length - 1}
+                      disabled={index === draftStretches.length - 1}
                       onClick={() => moveStretch(index, "down")}
                       aria-label={`Move ${stretch.name} down`}
                       className="min-h-11 rounded-xl bg-secondary px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40"
@@ -343,15 +356,19 @@ export function ContentManager({
               type="button"
               onClick={() => {
                 if (
+                  managedRoutine &&
                   window.confirm(
-                    "Reset to default stretches? This replaces all current stretches.",
+                    "Reset to saved stretches? This replaces your unsaved Studio draft.",
                   )
-                )
-                  onResetToDefault(selectedRoutineId);
+                ) {
+                  setDraftStretches(
+                    createRoutineWorkingStretches(managedRoutine),
+                  );
+                }
               }}
               className="min-h-11 w-full rounded-xl bg-secondary px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              Reset to default stretches
+              Reset to saved stretches
             </button>
           </div>
         </div>
@@ -416,7 +433,7 @@ export function ContentManager({
             {routineMode !== "list" ? (
               <RoutineForm
                 routine={editingRoutine}
-                stretches={currentStretches}
+                stretches={draftStretches}
                 onSubmit={submitRoutine}
                 onCancel={cancelRoutineForm}
               />
@@ -435,13 +452,13 @@ export function ContentManager({
                   <div className="rounded-xl bg-muted/40 p-3">
                     <dt className="text-xs text-muted-foreground">Duration</dt>
                     <dd className="mt-1 font-semibold">
-                      {formatTime(managedRoutine.totalDuration)}
+                      {formatTime(draftSummary.totalDuration)}
                     </dd>
                   </div>
                   <div className="rounded-xl bg-muted/40 p-3">
                     <dt className="text-xs text-muted-foreground">Stretches</dt>
                     <dd className="mt-1 font-semibold">
-                      {managedRoutine.stretches.length}
+                      {draftSummary.stretchCount}
                     </dd>
                   </div>
                 </dl>
@@ -470,7 +487,7 @@ export function ContentManager({
                     <button
                       type="button"
                       onClick={() =>
-                        onStartRoutine(managedRoutine.id, currentStretches)
+                        onStartRoutine(managedRoutine.id, draftStretches)
                       }
                       className="min-h-11 rounded-xl border border-primary px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
