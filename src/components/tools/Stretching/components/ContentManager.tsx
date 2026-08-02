@@ -19,8 +19,6 @@ export interface ContentManagerProps {
   onUpdateStretch: (id: string, stretch: Omit<Stretch, "id">) => void;
   onDeleteStretch: (id: string) => void;
   onMoveStretch: (fromIndex: number, toIndex: number) => void;
-  /** @deprecated Use onManageRoutine and onStartRoutine as separate actions. */
-  onSelectRoutine?: (id: string) => void;
   onManageRoutine?: (id: string) => void;
   onStartRoutine?: (id: string) => void;
   onLoadRoutineStretches: (routine: StretchRoutine) => void;
@@ -233,7 +231,7 @@ export function ContentManager({
                       <StretchImage
                         src={stretch.image || PLACEHOLDER_IMAGE}
                         alt=""
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain object-center"
                         sizes="80px"
                       />
                     </div>

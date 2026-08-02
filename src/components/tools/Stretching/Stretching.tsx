@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { Stretch, StretchRoutine } from "./types";
+import type { RoutineCategory, Stretch, StretchRoutine } from "./types";
 import {
   DEFAULT_ROUTINES,
   STORAGE_KEY,
@@ -66,6 +66,9 @@ export default function Stretching() {
   const [viewState, setViewStateInternal] =
     useState<StretchingView>("quickstart");
   const [previewRoutineId, setPreviewRoutineId] = useState<string | null>(null);
+  const [browserInitialCategory, setBrowserInitialCategory] = useState<
+    RoutineCategory | undefined
+  >(undefined);
   const [hasRestored, setHasRestored] = useState(false);
   const [selectedRoutineId, setSelectedRoutineId] =
     useState(DEFAULT_ROUTINE_ID);
@@ -545,6 +548,11 @@ export default function Stretching() {
     setViewState("preview", routineId);
   };
 
+  const handleBrowseAll = (category?: RoutineCategory) => {
+    setBrowserInitialCategory(category);
+    setViewState("browser");
+  };
+
   const handleBeginRoutine = () => {
     if (previewRoutineId) {
       loadRoutine(previewRoutineId);
@@ -596,7 +604,7 @@ export default function Stretching() {
             featuredRoutines={featuredRoutines}
             recentRoutine={recentRoutine}
             onSelectRoutine={handleSelectRoutineFromQuickStart}
-            onBrowseAll={() => setViewState("browser")}
+            onBrowseAll={handleBrowseAll}
           />
         </StretchingShell>
       )}
@@ -607,6 +615,7 @@ export default function Stretching() {
           <RoutineBrowser
             routines={DEFAULT_ROUTINES}
             customRoutines={customRoutines}
+            initialCategory={browserInitialCategory}
             selectedRoutineId={selectedRoutineId}
             onSelectRoutine={handleSelectRoutineFromBrowser}
             onEditRoutine={(routine) => {
@@ -643,7 +652,8 @@ export default function Stretching() {
             onUpdateStretch={updateStretch}
             onDeleteStretch={deleteStretch}
             onMoveStretch={moveStretch}
-            onSelectRoutine={(id) => {
+            onManageRoutine={loadRoutine}
+            onStartRoutine={(id) => {
               loadRoutine(id);
               setViewState("active");
             }}

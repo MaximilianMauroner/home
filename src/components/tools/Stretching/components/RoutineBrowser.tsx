@@ -112,7 +112,7 @@ export function RoutineBrowser({
         <section className="rounded-2xl border border-dashed border-border bg-card/50 px-4 py-14 text-center" aria-live="polite">
           <h3 className="text-xl font-semibold text-foreground">No routines match</h3>
           <p className="mt-2 text-muted-foreground">Try another phrase or clear the filters.</p>
-          <button type="button" onClick={resetFilters} className="tool-button-secondary mt-5">
+          <button type="button" onClick={resetFilters} className="tool-button-secondary mt-5 !min-h-11">
             Clear filters
           </button>
         </section>
@@ -141,7 +141,7 @@ export function RoutineBrowser({
       )}
 
       <div className="text-center">
-        <button type="button" onClick={onCreateRoutine} className="tool-button-secondary px-6">
+        <button type="button" onClick={onCreateRoutine} className="tool-button-secondary !min-h-11 px-6">
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>

@@ -196,10 +196,10 @@ export function FilterPills({
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <button type="button" onClick={onReset} className="tool-button-secondary">
+              <button type="button" onClick={onReset} className="tool-button-secondary !min-h-11">
                 Reset all
               </button>
-              <button type="button" onClick={closeSheet} className="tool-button">
+              <button type="button" onClick={closeSheet} className="tool-button !min-h-11">
                 Show {resultCount}
               </button>
             </div>

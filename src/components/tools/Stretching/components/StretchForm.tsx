@@ -184,7 +184,7 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
                   <StretchImage
                     src={imageLoadError ? PLACEHOLDER_IMAGE : fields.image}
                     alt="Stretch preview"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain object-center"
                     onError={() => setImageLoadError(true)}
                     sizes="128px"
                   />

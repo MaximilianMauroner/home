@@ -35,11 +35,11 @@ export function RoutineCard({
         aria-pressed={isSelected}
         className="block h-full w-full min-w-0 text-left"
       >
-        <div className="stretching-image-surface aspect-[16/10] rounded-none">
+        <div className="stretching-image-surface aspect-[4/3] rounded-none">
           <StretchImage
             src={getRoutineRepresentativeImage(routine)}
             alt=""
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
+            className="h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
             sizes="(min-width: 1024px) 30vw, (min-width: 640px) 50vw, 100vw"
           />
         </div>

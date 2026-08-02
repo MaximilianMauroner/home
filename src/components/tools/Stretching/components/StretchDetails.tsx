@@ -20,7 +20,7 @@ export function StretchDetails({
           <StretchImage
             src={stretch.image || PLACEHOLDER_IMAGE}
             alt={stretch.name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain object-center"
             fetchPriority="high"
             loading="eager"
             sizes="(min-width: 1024px) 40vw, calc(100vw - 2rem)"

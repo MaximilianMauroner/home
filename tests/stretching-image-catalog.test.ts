@@ -4,6 +4,7 @@ import {
   filterImageCatalog,
   getDraftSelection,
 } from "@/components/tools/Stretching/imageCatalog";
+import { getResponsiveStretchImageSources } from "@/components/tools/Stretching/images";
 
 describe("image catalog", () => {
   const catalog = buildImageCatalog({
@@ -34,5 +35,11 @@ describe("image catalog", () => {
   it("keeps a selection as a draft until explicitly confirmed", () => {
     expect(getDraftSelection("/current.png", null)).toBe("/current.png");
     expect(getDraftSelection("/current.png", "/draft.png")).toBe("/draft.png");
+  });
+
+  it("describes local artwork with its native aspect ratio", () => {
+    expect(
+      getResponsiveStretchImageSources("/stretches/cat-pose.png"),
+    ).toMatchObject({ width: 1349, height: 1536 });
   });
 });

@@ -38,7 +38,7 @@ export function RestPeriodScreen({
           <StretchImage
             src={nextStretch.image || PLACEHOLDER_IMAGE}
             alt={`Next: ${nextStretch.name}`}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain object-center"
             fetchPriority="high"
             loading="eager"
             sizes="(min-width: 1024px) 40vw, calc(100vw - 2rem)"

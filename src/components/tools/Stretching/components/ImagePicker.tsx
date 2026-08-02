@@ -185,7 +185,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
                                 : image.url
                             }
                             alt=""
-                            className={`h-full w-full object-cover ${loadedImages.has(image.url) || failedImages.has(image.url) ? "opacity-100" : "opacity-0"}`}
+                            className={`h-full w-full object-contain object-center ${loadedImages.has(image.url) || failedImages.has(image.url) ? "opacity-100" : "opacity-0"}`}
                             onLoad={() =>
                               setLoadedImages((current) =>
                                 new Set(current).add(image.url),
@@ -252,7 +252,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
                     <StretchImage
                       src={customUrl.trim()}
                       alt="Custom image preview"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain object-center"
                       sizes="512px"
                     />
                   </div>
@@ -268,7 +268,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
                   <StretchImage
                     src={selected}
                     alt="Draft selection"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain object-center"
                     sizes="44px"
                   />
                 </div>
