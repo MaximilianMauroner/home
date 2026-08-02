@@ -1,82 +1,105 @@
 import type { StretchRoutine } from "@/components/tools/Stretching/types";
 import { formatTime } from "@/components/tools/Stretching/utils";
+import { getRoutineRepresentativeImage } from "../routineDiscovery";
+import { DifficultyBadge } from "./DifficultyBadge";
+import { StretchImage } from "./StretchImage";
 
 interface RoutineCardProps {
-  routine: StretchRoutine;
-  isSelected: boolean;
-  isCustom: boolean;
+  isCustom?: boolean;
+  isSelected?: boolean;
+  onDelete?: () => void;
+  onEdit?: () => void;
   onSelect: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  routine: StretchRoutine;
 }
 
 export function RoutineCard({
   routine,
-  isSelected,
-  isCustom,
+  isSelected = false,
+  isCustom = false,
   onSelect,
   onEdit,
   onDelete,
 }: RoutineCardProps) {
   return (
-    <div
-      className={`group relative rounded-xl border-2 p-3 text-left transition-colors sm:p-4 ${
+    <article
+      className={`group relative min-w-0 overflow-hidden rounded-2xl border bg-card transition-colors ${
         isSelected
-          ? "border-primary bg-primary/10 shadow-md"
-          : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card"
+          ? "border-primary ring-2 ring-primary"
+          : "border-border hover:border-primary/50"
       }`}
     >
       <button
         type="button"
         onClick={onSelect}
         aria-pressed={isSelected}
-        className="w-full text-left"
+        className="block h-full w-full min-w-0 text-left"
       >
-        <div className="mb-1 flex items-start justify-between">
-          <div className="pr-8 text-sm font-semibold sm:text-base">
-            {routine.name}
-          </div>
-          {isCustom && (
-            <span className="rounded bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
-              Custom
-            </span>
-          )}
+        <div className="stretching-image-surface aspect-[16/10] rounded-none">
+          <StretchImage
+            src={getRoutineRepresentativeImage(routine)}
+            alt=""
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
+            sizes="(min-width: 1024px) 30vw, (min-width: 640px) 50vw, 100vw"
+          />
         </div>
-        <div className="mb-2 text-xs text-muted-foreground">{routine.goal}</div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>⏱️ {formatTime(routine.totalDuration)}</span>
-          <span>•</span>
-          <span>{routine.stretches.length} stretches</span>
+
+        <div className="space-y-3 p-4">
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="line-clamp-2 font-semibold text-foreground">
+                {routine.name}
+              </h3>
+              <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                {routine.goal}
+              </p>
+            </div>
+            {isCustom && (
+              <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                Custom
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
+            <span>{formatTime(routine.totalDuration)}</span>
+            <span aria-hidden="true">·</span>
+            <span>{routine.stretches.length} stretches</span>
+            {routine.difficulty && (
+              <span className="ml-auto">
+                <DifficultyBadge difficulty={routine.difficulty} />
+              </span>
+            )}
+          </div>
         </div>
       </button>
-      {isCustom && (
-        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+
+      {isCustom && onEdit && onDelete && (
+        <div className="absolute right-2 top-2 flex gap-1 rounded-xl bg-card/90 p-1 opacity-100 shadow-sm backdrop-blur sm:opacity-0 sm:transition-opacity sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
           <button
             type="button"
             aria-label={`Edit ${routine.name}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className="rounded-lg bg-secondary/80 p-1.5 text-secondary-foreground transition-colors hover:bg-secondary"
+            onClick={onEdit}
+            className="grid h-11 w-11 place-items-center rounded-lg text-foreground hover:bg-muted"
             title="Edit routine"
           >
-            ✏️
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
           </button>
           <button
             type="button"
             aria-label={`Delete ${routine.name}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="rounded-lg bg-destructive/10 p-1.5 text-destructive transition-colors hover:bg-destructive/20"
+            onClick={onDelete}
+            className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-500/10 dark:text-red-400"
             title="Delete routine"
           >
-            🗑️
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
           </button>
         </div>
       )}
-    </div>
+    </article>
   );
 }
