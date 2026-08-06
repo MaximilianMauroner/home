@@ -26,3 +26,4 @@ pnpm-debug.log*
 .vercel
 .cursor
 /.field-guide/sessions/
+/.agent/artifacts/

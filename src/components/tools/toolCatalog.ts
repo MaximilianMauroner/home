@@ -12,6 +12,15 @@ export interface ToolMetadata {
 }
 
 export const TOOL_CATALOG = {
+  "ai-acceptability": {
+    category: "reflection",
+    status: "experimental",
+    featured: 72,
+    privacy: "local",
+    access: "local",
+    labels: ["local", "no account"],
+    tags: ["ai", "quiz", "ethics"],
+  },
   "ai-city-simulator": {
     category: "simulation",
     status: "experimental",

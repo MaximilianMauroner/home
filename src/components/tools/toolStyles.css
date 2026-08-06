@@ -23,6 +23,16 @@
   --tool-accent-text: oklch(0.81 0.1 76);
 }
 
+.tool-theme-ai-acceptability {
+  --tool-accent: oklch(0.84 0.16 92);
+  --tool-accent-foreground: oklch(0.12 0.02 92);
+  --tool-accent-text: oklch(0.58 0.14 75);
+}
+
+.dark .tool-theme-ai-acceptability {
+  --tool-accent-text: oklch(0.86 0.15 92);
+}
+
 .tool-theme-ai-city {
   --tool-accent: oklch(0.72 0.072 188);
   --tool-accent-foreground: oklch(0.2 0.022 194);
