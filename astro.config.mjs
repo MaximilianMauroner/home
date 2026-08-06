@@ -21,6 +21,9 @@ import vercel from "@astrojs/vercel";
 export default defineConfig({
   site: "https://www.mauroner.net",
   vite: {
+    server: {
+      allowedHosts: ["coding.tailbc92d.ts.net"],
+    },
     optimizeDeps: {
       include: ["dayjs", "dayjs/plugin/weekOfYear"],
     },
@@ -35,9 +38,7 @@ export default defineConfig({
         const pathname = new URL(page).pathname;
         const isTagDetail = /^\/tags\/[^/]+\/?$/.test(pathname);
         return (
-          !page.includes("/admin") &&
-          !isInactiveToolUrl(page) &&
-          !isTagDetail
+          !page.includes("/admin") && !isInactiveToolUrl(page) && !isTagDetail
         );
       },
       serialize: (item) => {

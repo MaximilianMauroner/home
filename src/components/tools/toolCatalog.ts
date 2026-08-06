@@ -39,14 +39,14 @@ export const TOOL_CATALOG = {
     labels: ["local", "no account"],
     tags: ["color", "accessibility", "design"],
   },
-  "frequency-tester": {
+  "microphone-tester": {
     category: "audio",
-    status: "stable",
-    featured: 50,
+    status: "beta",
+    featured: 65,
     privacy: "local",
     access: "local",
-    labels: ["local", "no account"],
-    tags: ["audio", "testing"],
+    labels: ["local", "microphone permission", "no account"],
+    tags: ["audio", "microphone", "frequency", "decibel", "testing"],
   },
   leaveify: {
     category: "music",

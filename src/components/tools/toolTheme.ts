@@ -2,7 +2,7 @@ export const TOOL_THEME_CLASSES: Record<string, string> = {
   "ai-acceptability": "tool-theme-ai-acceptability",
   "ai-city-simulator": "tool-theme-ai-city",
   "colour-game": "tool-theme-colour",
-  "frequency-tester": "tool-theme-frequency",
+  "microphone-tester": "tool-theme-microphone",
   leaveify: "tool-theme-leaveify",
   "pace-calculator": "tool-theme-pace",
   "readwise-tags-mapper": "tool-theme-readwise",

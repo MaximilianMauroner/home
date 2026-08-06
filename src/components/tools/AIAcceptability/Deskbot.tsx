@@ -10,7 +10,13 @@ const VERDICTS: Record<Exclude<DeskbotMood, "idle">, string> = {
   no: "Judged.",
 };
 
-export default function Deskbot({ mood }: { mood: DeskbotMood }) {
+export default function Deskbot({
+  mood,
+  isReacting,
+}: {
+  mood: DeskbotMood;
+  isReacting: boolean;
+}) {
   const robotRef = useRef<HTMLDivElement>(null);
   const [isBlinking, setIsBlinking] = useState(false);
 
@@ -90,6 +96,7 @@ export default function Deskbot({ mood }: { mood: DeskbotMood }) {
   const className = [
     "ai-deskbot",
     `ai-deskbot--${mood}`,
+    isReacting ? "ai-deskbot--reacting" : "",
     isBlinking ? "ai-deskbot--blinking" : "",
   ]
     .filter(Boolean)
@@ -97,74 +104,79 @@ export default function Deskbot({ mood }: { mood: DeskbotMood }) {
 
   return (
     <div ref={robotRef} className={className} aria-hidden="true">
+      <span className="ai-deskbot__identity">AI observer</span>
       <span className="ai-deskbot__bubble">
         {mood === "idle" ? "" : VERDICTS[mood]}
       </span>
-      <svg className="ai-deskbot__sprite" viewBox="0 0 78 96" focusable="false">
-        <path className="ai-deskbot__antenna" d="M36 0h6v9h-6z" />
-        <path className="ai-deskbot__signal" d="M32 0h14v6H32z" />
+      <svg
+        className="ai-deskbot__sprite"
+        viewBox="0 0 112 112"
+        focusable="false"
+      >
         <path
-          className="ai-deskbot__head"
-          d="M18 8h42v8h8v40h-8v8H18v-8h-8V16h8z"
+          className="ai-deskbot__signal"
+          d="M8 4h12v8H8zm21 0h12v8H29zm42 0h12v8H71zm21 0h12v8H92z"
         />
-        <path
-          className="ai-deskbot__shade"
-          d="M18 8h34v8H18zm-8 8h8v16h-8zm42 0h8v16h-8z"
-        />
+        <path className="ai-deskbot__head" d="M14 14h84v58H14z" />
+        <path className="ai-deskbot__shade" d="M20 20h72v46H20z" />
+        <path className="ai-deskbot__body" d="M4 25h10v36H4zm94 0h10v36H98z" />
         <path
           className="ai-deskbot__sockets"
-          d="M18 24h16v16H18zm26 0h16v16H44z"
+          d="M24 27h27v27H24zm37 0h27v27H61z"
         />
         <rect
           className="ai-deskbot__pupil"
-          x="24"
-          y="29"
-          width="5"
-          height="5"
+          x="34"
+          y="37"
+          width="7"
+          height="7"
         />
         <rect
           className="ai-deskbot__pupil"
-          x="50"
-          y="29"
-          width="5"
-          height="5"
+          x="71"
+          y="37"
+          width="7"
+          height="7"
         />
         <rect
           className="ai-deskbot__brow ai-deskbot__brow--left"
-          x="18"
-          y="19"
-          width="16"
+          x="24"
+          y="22"
+          width="27"
           height="4"
         />
         <rect
           className="ai-deskbot__brow ai-deskbot__brow--right"
-          x="44"
-          y="19"
-          width="16"
+          x="61"
+          y="22"
+          width="27"
           height="4"
         />
         <rect
           className="ai-deskbot__mouth ai-deskbot__mouth--neutral"
-          x="31"
-          y="48"
-          width="16"
-          height="4"
+          x="43"
+          y="59"
+          width="26"
+          height="5"
         />
         <path
           className="ai-deskbot__mouth ai-deskbot__mouth--happy"
-          d="M27 44h5v6h15v-6h5v11h-5v5H32v-5h-5z"
+          d="M38 54h6v6h24v-6h6v12h-6v5H44v-5h-6z"
         />
         <path
           className="ai-deskbot__mouth ai-deskbot__mouth--unsure"
-          d="M27 48h8v-4h8v4h9v5h-9v4h-8v-4h-8z"
+          d="M38 59h11v-5h11v5h14v6H60v5H49v-5H38z"
         />
         <path
           className="ai-deskbot__mouth ai-deskbot__mouth--frown"
-          d="M27 49h5v-5h15v5h5v11h-5v-6H32v6h-5z"
+          d="M38 61h6v-6h24v6h6v11h-6v-5H44v5h-6z"
         />
-        <path className="ai-deskbot__body" d="M10 64h58v24H10z" />
-        <path className="ai-deskbot__panel" d="M32 64h14v8H32z" />
-        <path className="ai-deskbot__ears" d="M4 27h6v14H4zm64 0h6v14h-6z" />
+        <path className="ai-deskbot__head" d="M51 72h10v13h27v22H24V85h27z" />
+        <path className="ai-deskbot__body" d="M31 91h50v9H31z" />
+        <path
+          className="ai-deskbot__panel"
+          d="M37 93h8v5h-8zm15 0h8v5h-8zm15 0h8v5h-8z"
+        />
       </svg>
     </div>
   );

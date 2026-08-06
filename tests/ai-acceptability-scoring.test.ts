@@ -49,6 +49,7 @@ describe("AI acceptability scoring", () => {
 
   it("pressure-tests both an initial Yes and an initial No for every question", () => {
     for (const question of AI_ACCEPTABILITY_QUESTIONS) {
+      expect(question.prompt.startsWith("Is AI acceptable for ")).toBe(true);
       expect(question.yesChallenge.trim().length).toBeGreaterThan(30);
       expect(question.noChallenge.trim().length).toBeGreaterThan(30);
       expect(question.yesChallenge.startsWith("What about")).toBe(true);

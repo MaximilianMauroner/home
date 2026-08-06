@@ -68,6 +68,7 @@
   margin: 0;
   color: var(--ai-grey);
   line-height: 1.6;
+  text-align: right;
 }
 
 .ai-quiz__panel {
@@ -128,6 +129,21 @@
   line-height: 1.02;
 }
 
+.ai-question__prompt-prefix {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--ai-yellow);
+  font:
+    900 clamp(0.72rem, 1.4vw, 0.9rem) / 1.2 "JetBrains_Mono",
+    ui-monospace,
+    monospace;
+  letter-spacing: 0.12em;
+}
+
+.ai-question__prompt-subject {
+  display: block;
+}
+
 .ai-question__context {
   max-width: 44rem;
   margin: 1rem 0 0;
@@ -144,15 +160,30 @@
   right: 0;
   z-index: 2;
   display: grid;
-  width: 5.2rem;
+  width: 6.4rem;
   justify-items: center;
   pointer-events: none;
   image-rendering: pixelated;
 }
 
+.ai-deskbot__identity {
+  padding: 0.3rem 0.45rem;
+  border: 2px solid var(--ai-white);
+  color: var(--ai-black);
+  background: var(--ai-yellow);
+  box-shadow: 3px 3px 0 #3a3a3a;
+  font-size: 0.5rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .ai-deskbot__bubble {
   min-height: 1.5rem;
-  margin-bottom: 0.35rem;
+  margin: 0.35rem 0;
   padding: 0.3rem 0.4rem;
   border: 2px solid transparent;
   color: transparent;
@@ -181,16 +212,14 @@
 
 .ai-deskbot__sprite {
   display: block;
-  width: 4.9rem;
+  width: 5.9rem;
   height: auto;
   overflow: visible;
   filter: drop-shadow(4px 4px 0 #353535);
   shape-rendering: crispEdges;
 }
 
-.ai-deskbot__antenna,
-.ai-deskbot__head,
-.ai-deskbot__ears {
+.ai-deskbot__head {
   fill: var(--ai-white);
 }
 
@@ -282,6 +311,42 @@
   transform: scaleY(0.15)
     translate(var(--deskbot-gaze-x), var(--deskbot-gaze-y));
   transform-origin: center;
+}
+
+.ai-deskbot--reacting.ai-deskbot--yes .ai-deskbot__sprite {
+  animation: ai-observer-yes 260ms steps(3, end) 1;
+}
+
+.ai-deskbot--reacting.ai-deskbot--maybe .ai-deskbot__sprite {
+  animation: ai-observer-maybe 300ms steps(3, end) 1;
+}
+
+.ai-deskbot--reacting.ai-deskbot--no .ai-deskbot__sprite {
+  animation: ai-observer-no 280ms steps(4, end) 1;
+}
+
+@keyframes ai-observer-yes {
+  45% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes ai-observer-maybe {
+  35% {
+    transform: rotate(-3deg);
+  }
+  70% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes ai-observer-no {
+  30% {
+    transform: translateX(-4px);
+  }
+  60% {
+    transform: translateX(4px);
+  }
 }
 
 @keyframes ai-deskbot-signal {
@@ -737,7 +802,7 @@
 
   .ai-question__lead {
     min-height: 0;
-    padding-top: 6.5rem;
+    padding-top: 9rem;
     padding-right: 0;
   }
 
@@ -761,10 +826,10 @@
     font-size: 1.75rem;
   }
   .ai-deskbot {
-    width: 4.7rem;
+    width: 5.8rem;
   }
   .ai-deskbot__sprite {
-    width: 4.3rem;
+    width: 5.2rem;
   }
   .ai-compass__axis,
   .ai-compass__quadrant {
@@ -789,6 +854,9 @@
     transition: none;
   }
   .ai-deskbot--waiting .ai-deskbot__signal {
+    animation: none;
+  }
+  .ai-deskbot--reacting .ai-deskbot__sprite {
     animation: none;
   }
 }

@@ -15,6 +15,8 @@ const ANSWER_OPTIONS = [
   label: string;
 }[];
 
+const QUESTION_PREFIX = "Is AI acceptable for ";
+
 const scrollPanelIntoView = () => {
   requestAnimationFrame(() => {
     document
@@ -144,6 +146,7 @@ export default function AIAcceptability() {
   const [isComplete, setIsComplete] = useState(false);
   const [copyLabel, setCopyLabel] = useState("Copy result");
   const [pendingAnswer, setPendingAnswer] = useState<QuizAnswer>();
+  const [previewedAnswer, setPreviewedAnswer] = useState<QuizAnswer>();
   const [isWaiting, setIsWaiting] = useState(false);
   const questionRef = useRef<HTMLDivElement>(null);
   const answerTimerRef = useRef<number>();
@@ -201,6 +204,7 @@ export default function AIAcceptability() {
     }
 
     setPendingAnswer(answer);
+    setPreviewedAnswer(undefined);
     setIsWaiting(false);
     questionRef.current?.style.setProperty(
       "--deskbot-eye",
@@ -238,7 +242,10 @@ export default function AIAcceptability() {
   };
 
   const previewAnswerProximity = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (pendingAnswer) return;
+    if (pendingAnswer || previewedAnswer) return;
+    if (event.target instanceof Element && event.target.closest(".ai-answer")) {
+      return;
+    }
     const bounds = event.currentTarget.getBoundingClientRect();
     const progress = (event.clientX - bounds.left) / bounds.width;
     questionRef.current?.style.setProperty(
@@ -249,8 +256,18 @@ export default function AIAcceptability() {
 
   const resetAnswerPreview = () => {
     if (!pendingAnswer) {
+      setPreviewedAnswer(undefined);
       questionRef.current?.style.setProperty("--deskbot-eye", "#a8ddff");
     }
+  };
+
+  const previewAnswer = (answer: QuizAnswer) => {
+    if (pendingAnswer) return;
+    setPreviewedAnswer(answer);
+    questionRef.current?.style.setProperty(
+      "--deskbot-eye",
+      ANSWER_EYE_COLORS[answer],
+    );
   };
 
   const copyResult = async () => {
@@ -280,7 +297,7 @@ export default function AIAcceptability() {
         </div>
         <p className="ai-quiz__intro">
           {AI_ACCEPTABILITY_QUESTIONS.length} concrete scenarios. No correct
-          answers. Nothing leaves your browser.
+          answers.
         </p>
       </header>
 
@@ -311,10 +328,22 @@ export default function AIAcceptability() {
                 {CATEGORY_LABELS[question.category]} ·{" "}
                 {question.agency === "assist" ? "AI assists" : "AI acts"}
               </p>
-              <h2>{question.prompt}</h2>
+              <h2>
+                <span className="ai-question__prompt-prefix">
+                  Is AI acceptable for
+                </span>
+                <span className="ai-question__prompt-subject">
+                  {question.prompt.slice(QUESTION_PREFIX.length)}
+                </span>
+              </h2>
               <p className="ai-question__context">{question.context}</p>
               <Deskbot
-                mood={pendingAnswer ?? (isWaiting ? "waiting" : "idle")}
+                isReacting={pendingAnswer !== undefined}
+                mood={
+                  pendingAnswer ??
+                  previewedAnswer ??
+                  (isWaiting ? "waiting" : "idle")
+                }
               />
             </div>
 
@@ -343,20 +372,9 @@ export default function AIAcceptability() {
                   aria-pressed={
                     (pendingAnswer ?? selectedAnswer) === option.value
                   }
-                  onPointerEnter={() =>
-                    !pendingAnswer &&
-                    questionRef.current?.style.setProperty(
-                      "--deskbot-eye",
-                      ANSWER_EYE_COLORS[option.value],
-                    )
-                  }
-                  onFocus={() =>
-                    !pendingAnswer &&
-                    questionRef.current?.style.setProperty(
-                      "--deskbot-eye",
-                      ANSWER_EYE_COLORS[option.value],
-                    )
-                  }
+                  onPointerEnter={() => previewAnswer(option.value)}
+                  onPointerLeave={() => setPreviewedAnswer(undefined)}
+                  onFocus={() => previewAnswer(option.value)}
                   onBlur={resetAnswerPreview}
                   onClick={() => answerQuestion(option.value)}
                 >
@@ -374,7 +392,6 @@ export default function AIAcceptability() {
               >
                 ← Previous
               </button>
-              <span>Your answer advances automatically</span>
             </div>
           </div>
         ) : null}

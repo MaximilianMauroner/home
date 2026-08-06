@@ -1,0 +1,16 @@
+---
+export const title = "Microphone tester";
+export const description =
+  "Check microphone levels, peaks, clipping, waveform, and frequency locally in your browser, with a stereo tone generator included.";
+
+import MicrophoneTester from "@/components/tools/MicrophoneTester/MicrophoneTester";
+import ToolPage from "@/components/tools/ToolPage.astro";
+import { getToolThemeClass } from "@/components/tools/toolTheme";
+import StarLayout from "@/layouts/StarLayout.astro";
+---
+
+<StarLayout title={title} description={description}>
+  <ToolPage theme={getToolThemeClass("microphone-tester")}>
+    <MicrophoneTester client:load />
+  </ToolPage>
+</StarLayout>
