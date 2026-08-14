@@ -1,75 +1,45 @@
-# Personal Website
+# Max Mauroner's website
 
-My personal website and blog, built with Astro. Visit at [mauroner.net](https://www.mauroner.net/)
+This repository contains my website, blog, development log, and small web tools.
+The live site is [mauroner.net](https://www.mauroner.net/).
 
-## 👋 About
+The tools cover audio tests, data analysis, planning, games, and personal
+workflows. Browse the current collection on the
+[tools page](https://www.mauroner.net/tools/). The route tree, not this README,
+is the tool inventory.
 
-This is where I document my journey, share technical insights, and build useful tools. Feel free to explore my:
+## Stack
 
-- Development logs tracking my projects' progress
-- Blog posts about tech, programming, and personal experiences
-- Tools I've built to solve specific problems
+- Astro for pages, content, and builds
+- React for interactive tools
+- Tailwind CSS for styling
+- TypeScript for application code
+- Vitest for tests
 
-## 🚀 Features
+## Commands
 
-- **Blog Posts**: Technical articles and personal thoughts
-- **Dev Logs**: Regular updates about my projects and learnings
-- **Tools**:
-  - WhatsApp Chat Statistics
-  - Spotify Listening History Analysis
-  - More coming soon...
+| Command | Action |
+| --- | --- |
+| `bun install` | Install dependencies |
+| `bun run dev` | Start the development server on `localhost:4321` |
+| `bun run test` | Run the Vitest suite |
+| `bun run build` | Check Astro and build `dist/` |
+| `bun run preview` | Preview the production build |
 
-## 🛠 Tech Stack
+## Content
 
-- [Astro](https://astro.build) - Core framework
-- [React](https://reactjs.org) - Interactive components
-- [Tailwind CSS](https://tailwindcss.com) - Styling
-- [Chart.js](https://www.chartjs.org) - Data visualization
-- [TypeScript](https://www.typescriptlang.org) - Type safety
+- Blog posts live in `src/content/blog/`.
+- Development logs live in `src/content/log/`.
+- Tools live under `src/pages/tools/` and their supporting component folders.
 
-## 📁 Project Structure
+Before you publish content:
 
-```text
-/
-├── public/          # Static assets
-├── src/
-│   ├── assets/      # Images and other assets
-│   ├── components/  # React and Astro components
-│   ├── content/     # Blog posts and dev logs (MDX)
-│   ├── layouts/     # Page layouts
-│   ├── pages/       # Routes and pages
-│   ├── styles/      # Global styles
-│   ├── types/       # TypeScript types
-│   └── utils/       # Helper functions
-└── package.json
-```
-
-## 🧞 Commands
-
-| Command           | Action                               |
-| :---------------- | :----------------------------------- |
-| `bun install`     | Install dependencies                 |
-| `bun run dev`     | Start dev server at `localhost:4321` |
-| `bun run test`    | Run the Vitest test suite            |
-| `bun run build`   | Build for production to `./dist/`    |
-| `bun run preview` | Preview production build locally     |
-
-## 📝 Adding Content
-
-- Blog posts go in `src/content/blog/`
-- Dev logs go in `src/content/log/`
-- New tools can be added to `src/pages/tools/`
-
-Before publishing content:
-
-- Trim the title and write a specific, standalone description.
+- Use a specific title and a standalone description.
 - Check spelling, sentence capitalization, and product names.
-- Test every link and replace local development URLs with production-relative URLs.
-- Confirm the publish flag, release date, tags, and image are intentional.
+- Test every link and remove local development URLs.
+- Confirm the publish flag, release date, tags, and image.
 
-## 📫 Contact
-
-Feel free to reach out or follow my work:
+## Contact
 
 - Website: [mauroner.net](https://www.mauroner.net)
-- GitHub: [@maximilianmauroner](https://github.com/MaximilianMauroner)
+- GitHub: [@MaximilianMauroner](https://github.com/MaximilianMauroner)
