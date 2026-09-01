@@ -25,4 +25,6 @@ pnpm-debug.log*
 .idea/
 .vercel
 .cursor
-/.field-guide/sessions/
+/.agent/sessions/
+/.agent/artifacts/
+/.agent/review/
