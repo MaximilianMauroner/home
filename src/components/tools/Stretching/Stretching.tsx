@@ -17,6 +17,8 @@ import { QuickStart } from "./components/QuickStart";
 import { RoutineBrowser } from "./components/RoutineBrowser";
 import { StretchPreview } from "./components/StretchPreview";
 import { StretchingShell } from "./components/StretchingShell";
+import { DurationRail } from "./components/DurationRail";
+import { buildRailSegments, describeRepetition } from "./rail";
 import {
   parseStretchingNavigation,
   serializeStretchingNavigation,
@@ -100,7 +102,9 @@ export default function Stretching() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [timeBetween, setTimeBetween] = useState(10);
   const [showTimeBetweenSettings, setShowTimeBetweenSettings] = useState(false);
+  const [showRoutineMenu, setShowRoutineMenu] = useState(false);
   const [customRoutines, setCustomRoutines] = useState<StretchRoutine[]>([]);
+  const routineMenuRef = useRef<HTMLDivElement | null>(null);
 
   const availableRoutineIdsRef = useRef<ReadonlySet<string>>(
     new Set(DEFAULT_ROUTINES.map((routine) => routine.id)),
@@ -212,6 +216,25 @@ export default function Stretching() {
   }, [viewState]);
 
   useEffect(() => {
+    if (!showRoutineMenu) return;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        routineMenuRef.current &&
+        !routineMenuRef.current.contains(target)
+      ) {
+        setShowRoutineMenu(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () =>
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, [showRoutineMenu]);
+
+  useEffect(() => {
     if (viewState !== "active" && isRunning && !isPaused) {
       setIsPaused(true);
     }
@@ -234,6 +257,8 @@ export default function Stretching() {
     setIsCompleted(false);
     setNextStretchIndex(null);
     setNextRepetition(null);
+    setShowRoutineMenu(false);
+    setShowTimeBetweenSettings(false);
     nextStretchIndexRef.current = null;
     nextRepetitionRef.current = null;
     if (newStretches[0]) {
@@ -446,11 +471,14 @@ export default function Stretching() {
   };
 
   const jumpToStretch = (index: number) => {
-    if (isPaused && index >= 0 && index < stretches.length) {
-      setCurrentIndex(index);
-      setCurrentRepetition(1);
-      setTimeRemaining(stretches[index].duration);
-    }
+    if (index < 0 || index >= stretches.length) return;
+
+    setCurrentIndex(index);
+    setCurrentRepetition(1);
+    setTimeRemaining(stretches[index]?.duration ?? 0);
+    setIsResting(false);
+    setIsCompleted(false);
+    clearRestDestination();
   };
 
   const saveRoutine = (routine: StretchRoutine) => {
@@ -487,6 +515,7 @@ export default function Stretching() {
         : null,
   };
   const progress = calculateSessionProgress(stretches, sessionTimingState);
+  const railSegments = buildRailSegments(stretches, sessionTimingState);
   const timeRemainingTotal = calculateSessionTimeRemaining(
     stretches,
     sessionTimingState,
@@ -496,6 +525,9 @@ export default function Stretching() {
 
   const allRoutines = [...DEFAULT_ROUTINES, ...customRoutines];
   const currentRoutine = allRoutines.find((r) => r.id === selectedRoutineId);
+  const currentRepetitionLabel = currentStretch
+    ? describeRepetition(currentRepetition, currentStretch.repetitions || 1)
+    : null;
 
   // Get preview routine from ID
   const previewRoutine = previewRoutineId
@@ -521,6 +553,8 @@ export default function Stretching() {
     intent: RoutineStudioIntent = { mode: "manage" },
   ) => {
     if (isRunning && !isPaused) setIsPaused(true);
+    setShowRoutineMenu(false);
+    setShowTimeBetweenSettings(false);
     setStudioReturnView(returnView);
     setStudioIntent(intent);
     setViewState("content-manager");
@@ -558,11 +592,18 @@ export default function Stretching() {
   const handleBackToQuickStart = () => {
     setIsRunning(false);
     setIsPaused(false);
+    setShowRoutineMenu(false);
+    setShowTimeBetweenSettings(false);
     setViewState("quickstart");
   };
 
-  // Featured routines for quick start (therapeutic + popular)
+  // Keep the minimum routine visible in the first library view as the clear
+  // starting point, then add a few routines from the main categories.
+  const suggestedRoutine = DEFAULT_ROUTINES.find(
+    (routine) => routine.id === "routine_10",
+  );
   const featuredRoutines = [
+    ...(suggestedRoutine ? [suggestedRoutine] : []),
     ...DEFAULT_ROUTINES.filter((r) => r.category === "pain-relief").slice(0, 1),
     ...DEFAULT_ROUTINES.filter(
       (r) => r.category === "posture-correction",
@@ -586,6 +627,73 @@ export default function Stretching() {
     reset();
     setIsRunning(true);
   };
+
+  useEffect(() => {
+    const handleKeyboard = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isEditable =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable);
+
+      if (isEditable) return;
+
+      if (event.key === "Escape") {
+        if (showTimeBetweenSettings) {
+          event.preventDefault();
+          setShowTimeBetweenSettings(false);
+          return;
+        }
+        if (showRoutineMenu) {
+          event.preventDefault();
+          setShowRoutineMenu(false);
+          return;
+        }
+        if (viewState === "active") {
+          event.preventDefault();
+          handleBackToQuickStart();
+        }
+        return;
+      }
+
+      if (viewState !== "active" || isCompleted) return;
+
+      if (
+        event.key === " " ||
+        event.key === "Space" ||
+        event.key === "Spacebar" ||
+        event.code === "Space"
+      ) {
+        event.preventDefault();
+        if (!isRunning) start();
+        else if (isPaused) resume();
+        else pause();
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        next();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        previous();
+      } else if (event.key.toLowerCase() === "r") {
+        event.preventDefault();
+        reset();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyboard);
+    return () => window.removeEventListener("keydown", handleKeyboard);
+  }, [
+    isCompleted,
+    isPaused,
+    isRunning,
+    showRoutineMenu,
+    showTimeBetweenSettings,
+    viewState,
+  ]);
 
   return (
     <div
@@ -687,37 +795,47 @@ export default function Stretching() {
                 {currentRoutine?.goal}
               </p>
             </div>
-            <details className="group relative">
-              <summary
-                className="flex min-h-[44px] min-w-[44px] cursor-pointer list-none items-center justify-center rounded-full text-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            <div ref={routineMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setShowRoutineMenu((open) => !open)}
+                aria-expanded={showRoutineMenu}
+                aria-haspopup="menu"
                 aria-label="Routine menu"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <span aria-hidden="true">•••</span>
-              </summary>
-              <div className="stretching-popover absolute right-0 z-20 mt-2 w-52 space-y-1 p-2">
-                <button
-                  type="button"
-                  onClick={() => setShowTimeBetweenSettings(true)}
-                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-muted"
+              </button>
+              {showRoutineMenu && (
+                <div
+                  className="stretching-popover absolute right-0 z-20 mt-2 w-52 space-y-1 p-2"
+                  role="menu"
                 >
-                  Rest duration ({timeBetween}s)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openStudio("active")}
-                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-muted"
-                >
-                  Edit routine
-                </button>
-                <button
-                  type="button"
-                  onClick={reset}
-                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  Reset routine
-                </button>
-              </div>
-            </details>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRoutineMenu(false);
+                      openStudio("active");
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-muted"
+                    role="menuitem"
+                  >
+                    Edit routine
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRoutineMenu(false);
+                      reset();
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                    role="menuitem"
+                  >
+                    Reset routine
+                  </button>
+                </div>
+              )}
+            </div>
           </header>
 
           {/* Time Between Settings */}
@@ -732,59 +850,97 @@ export default function Stretching() {
             />
           )}
 
-          {isCompleted ? (
-            <section className="mx-auto flex min-h-[65dvh] max-w-2xl flex-col items-center justify-center rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-10">
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-3xl text-emerald-600 dark:text-emerald-400"
-                aria-hidden="true"
-              >
-                ✓
+          <section
+            className={`stretching-session-frame ${isResting ? "stretching-session-frame--resting" : ""}`.trim()}
+            aria-label="Stretching session"
+          >
+            <div className="stretching-session-rail">
+              <div className="stretching-session-rail__meta">
+                <span>
+                  <strong>
+                    {isCompleted
+                      ? "Complete"
+                      : isResting
+                        ? "Rest"
+                        : isPaused
+                          ? "Paused"
+                          : isRunning
+                            ? "In progress"
+                            : "Ready"}
+                  </strong>
+                  {currentRepetitionLabel && !isResting && (
+                    <span className="ml-2 normal-case tracking-normal">
+                      {currentRepetitionLabel}
+                    </span>
+                  )}
+                </span>
+                <span>
+                  {currentRoutine?.name ?? "Your routine"} ·{" "}
+                  {Math.round(progress)}%
+                </span>
               </div>
-              <p className="mt-5 text-sm font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                Routine complete
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Nicely done.
-              </h1>
-              <p className="mt-3 max-w-md text-muted-foreground">
-                You completed{" "}
-                {currentRoutine?.name ?? "your stretching routine"}. Take a
-                moment before moving on.
-              </p>
-              <div className="mt-8 grid w-full max-w-sm gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={restart}
-                  className="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              <DurationRail
+                segments={railSegments}
+                onJumpTo={jumpToStretch}
+                isResting={isResting}
+                label="Jump to any stretch in the routine"
+              />
+            </div>
+
+            {isCompleted ? (
+              <section className="mx-auto flex min-h-[65dvh] max-w-2xl flex-col items-center justify-center rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-10">
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-3xl text-emerald-600 dark:text-emerald-400"
+                  aria-hidden="true"
                 >
-                  Restart routine
-                </button>
-                <button
-                  type="button"
-                  onClick={handleBackToQuickStart}
-                  className="rounded-xl bg-muted px-5 py-3 font-medium text-foreground transition-colors hover:bg-primary/10"
-                >
-                  Exit to overview
-                </button>
-              </div>
-            </section>
-          ) : isResting ? (
-            <RestPeriodScreen
-              timeRemaining={timeRemaining}
-              isRunning={isRunning}
-              isPaused={isPaused}
-              nextStretchIndex={nextStretchIndex}
-              nextRepetition={nextRepetition}
-              stretches={stretches}
-              totalDuration={timeBetween}
-              onPause={pause}
-              onResume={resume}
-              onSkip={next}
-            />
-          ) : currentStretch ? (
-            <>
-              <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-stretch lg:gap-5">
-                <StretchDetails stretch={currentStretch} section="image" />
+                  ✓
+                </div>
+                <p className="mt-5 text-sm font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                  Routine complete
+                </p>
+                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                  Nicely done.
+                </h1>
+                <p className="mt-3 max-w-md text-muted-foreground">
+                  You completed{" "}
+                  {currentRoutine?.name ?? "your stretching routine"}. Take a
+                  moment before moving on.
+                </p>
+                <div className="mt-8 grid w-full max-w-sm gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={restart}
+                    className="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Restart routine
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBackToQuickStart}
+                    className="rounded-xl bg-muted px-5 py-3 font-medium text-foreground transition-colors hover:bg-primary/10"
+                  >
+                    Exit to overview
+                  </button>
+                </div>
+              </section>
+            ) : isResting ? (
+              <RestPeriodScreen
+                timeRemaining={timeRemaining}
+                isRunning={isRunning}
+                isPaused={isPaused}
+                nextStretchIndex={nextStretchIndex}
+                nextRepetition={nextRepetition}
+                stretches={stretches}
+                totalDuration={timeBetween}
+                onPause={pause}
+                onResume={resume}
+                onSkip={next}
+              />
+            ) : currentStretch ? (
+              <div className="grid min-w-0 gap-3 min-[660px]:grid-cols-2 min-[660px]:gap-4 min-[1000px]:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)_minmax(15rem,0.72fr)] min-[1000px]:gap-5">
+                <div className="min-w-0">
+                  <StretchDetails stretch={currentStretch} section="image" />
+                </div>
                 <ControlPanel
                   currentStretch={currentStretch}
                   currentIndex={currentIndex}
@@ -793,27 +949,80 @@ export default function Stretching() {
                   timeRemaining={timeRemaining}
                   isRunning={isRunning}
                   isPaused={isPaused}
-                  progress={progress}
                   timeRemainingTotal={timeRemainingTotal}
                   stepsRemaining={stepsRemaining}
-                  timeBetween={timeBetween}
-                  onTimeBetweenSettingsClick={() =>
-                    setShowTimeBetweenSettings(true)
-                  }
                   onStart={start}
                   onPause={pause}
                   onResume={resume}
                   onNext={next}
                   onPrevious={previous}
-                  onReset={reset}
                   isResting={isResting}
-                  stretches={stretches}
-                  onJumpTo={jumpToStretch}
                 />
+                <aside className="stretching-session-context min-w-0 min-[660px]:col-span-2 min-[1000px]:col-span-1">
+                  <div className="space-y-4">
+                    {currentStretch.targetAreas &&
+                      currentStretch.targetAreas.length > 0 && (
+                        <section
+                          className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+                          aria-labelledby="session-targets-heading"
+                        >
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                            Focus
+                          </p>
+                          <h3
+                            id="session-targets-heading"
+                            className="mt-1 text-lg font-semibold text-foreground"
+                          >
+                            Target areas
+                          </h3>
+                          <ul className="mt-3 flex flex-wrap gap-2">
+                            {currentStretch.targetAreas.map((area) => (
+                              <li
+                                key={area}
+                                className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
+                              >
+                                {area}
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
+                    <StretchDetails
+                      stretch={currentStretch}
+                      section="guidance"
+                    />
+                    <section
+                      className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+                      aria-labelledby="session-settings-heading"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                        Session
+                      </p>
+                      <h3
+                        id="session-settings-heading"
+                        className="mt-1 text-lg font-semibold text-foreground"
+                      >
+                        Settings
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setShowTimeBetweenSettings(true)}
+                        className="mt-3 min-h-11 w-full rounded-xl bg-muted px-4 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-primary/10"
+                      >
+                        Rest between steps
+                        <span className="float-right tabular-nums text-muted-foreground">
+                          {timeBetween}s
+                        </span>
+                      </button>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Space to pause · ← / → to move · R to reset
+                      </p>
+                    </section>
+                  </div>
+                </aside>
               </div>
-              <StretchDetails stretch={currentStretch} section="guidance" />
-            </>
-          ) : null}
+            ) : null}
+          </section>
         </StretchingShell>
       )}
     </div>

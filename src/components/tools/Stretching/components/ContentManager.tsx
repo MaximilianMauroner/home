@@ -13,6 +13,8 @@ import {
   type RoutineStudioIntent,
 } from "@/components/tools/Stretching/studioHelpers";
 import { PLACEHOLDER_IMAGE } from "../images";
+import { buildRailSegments } from "../rail";
+import { DurationRail } from "./DurationRail";
 import { StretchForm } from "./StretchForm";
 import { RoutineForm } from "./RoutineForm";
 import { StretchImage } from "./StretchImage";
@@ -30,7 +32,6 @@ export interface ContentManagerProps {
   initialRoutineIntent?: RoutineStudioIntent;
 }
 
-type Tab = "stretches" | "routines";
 type StretchMode = "list" | "create" | "edit";
 type RoutineMode = "list" | "create" | "edit";
 
@@ -52,7 +53,6 @@ export function ContentManager({
     currentStretches,
     customRoutines,
   );
-  const [activeTab, setActiveTab] = useState<Tab>(initialState.activeTab);
   const [stretchMode, setStretchMode] = useState<StretchMode>("list");
   const [routineMode, setRoutineMode] = useState<RoutineMode>(
     initialState.routineMode,
@@ -80,6 +80,13 @@ export function ContentManager({
       null)
     : null;
   const draftSummary = summarizeRoutine(draftStretches);
+  const studioRailSegments = buildRailSegments(draftStretches, {
+    index: 0,
+    repetition: 1,
+    timeRemaining: draftStretches[0]?.duration ?? 0,
+    isResting: false,
+    isCompleted: false,
+  });
 
   const chooseRoutine = (routine: StretchRoutine) => {
     setManagedRoutineId(routine.id);
@@ -134,7 +141,7 @@ export function ContentManager({
     }
   };
 
-  if (activeTab === "stretches" && stretchMode !== "list") {
+  if (stretchMode !== "list") {
     return (
       <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-6">
         <StretchForm
@@ -193,28 +200,36 @@ export function ContentManager({
         </button>
       </header>
 
-      <div
-        className="mb-6 flex border-b border-border/60"
-        role="tablist"
-        aria-label="Routine Studio sections"
-      >
-        {(["stretches", "routines"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-            className={`min-h-11 flex-1 px-3 text-sm font-medium capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:flex-none sm:px-5 ${activeTab === tab ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}
-          >
-            {tab} (
-            {tab === "stretches" ? draftStretches.length : routines.length})
-          </button>
-        ))}
+      <div className="stretching-studio-rail rounded-2xl border border-border/60 bg-muted/20 p-3 sm:p-4">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+              Current sequence
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {draftSummary.stretchCount} stretches ·{" "}
+              {formatTime(draftSummary.totalDuration)}
+            </p>
+          </div>
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            Reorder below
+          </span>
+        </div>
+        {studioRailSegments.length > 0 ? (
+          <DurationRail
+            segments={studioRailSegments}
+            size="preview"
+            label="Routine Studio sequence rail"
+          />
+        ) : (
+          <p className="rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
+            Add a stretch to build the sequence.
+          </p>
+        )}
       </div>
 
-      {activeTab === "stretches" && (
-        <div className="space-y-5">
+      <div className="grid min-w-0 gap-6 min-[660px]:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.8fr)] min-[1000px]:gap-8">
+        <div className="min-w-0 space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               Arrange the current routine. Reordering never depends on drag
@@ -251,7 +266,7 @@ export function ContentManager({
                       );
                     setDraggedIndex(null);
                   }}
-                  className={`min-w-0 rounded-2xl border border-border/60 p-3 transition-opacity sm:p-4 ${draggedIndex === index ? "opacity-50" : ""}`}
+                  className={`stretching-studio-row min-w-0 rounded-2xl border border-border/60 p-3 transition-opacity sm:p-4 ${draggedIndex === index ? "opacity-50" : ""}`}
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <button
@@ -288,7 +303,12 @@ export function ContentManager({
                       <p className="mt-2 text-xs text-muted-foreground">
                         {formatTime(stretch.duration)}
                         {stretch.repetitions > 1
-                          ? ` · ${stretch.repetitions} rounds`
+                          ? stretch.repetitions === 2
+                            ? " · Left side · Right side"
+                            : ` · ${stretch.repetitions} rounds`
+                          : ""}
+                        {stretch.progressions && stretch.progressions.length > 0
+                          ? ` · ${stretch.progressions.length} levels`
                           : ""}
                       </p>
                     </div>
@@ -372,11 +392,16 @@ export function ContentManager({
             </button>
           </div>
         </div>
-      )}
-
-      {activeTab === "routines" && (
-        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(15rem,0.8fr)_minmax(0,1.2fr)]">
-          <div className="min-w-0 space-y-4">
+        <div className="min-w-0 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                Saved routines
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Choose a routine to edit or start.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -384,47 +409,47 @@ export function ContentManager({
                 setRoutineMode("create");
                 setHasExternalRoutineIntent(false);
               }}
-              className="min-h-11 w-full rounded-xl bg-primary/10 px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="min-h-11 shrink-0 rounded-xl bg-primary/10 px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              Create routine from current stretches
+              New routine
             </button>
-            <div className="space-y-2" role="list" aria-label="Routines">
-              {routines.map((routine) => {
-                const isCustom = customRoutines.some(
-                  (item) => item.id === routine.id,
-                );
-                return (
-                  <button
-                    key={routine.id}
-                    type="button"
-                    role="listitem"
-                    aria-current={
-                      managedRoutineId === routine.id ? "true" : undefined
-                    }
-                    onClick={() => {
-                      chooseRoutine(routine);
-                      setRoutineMode("list");
-                    }}
-                    className={`min-h-11 w-full min-w-0 rounded-xl border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${managedRoutineId === routine.id ? "border-primary bg-primary/10" : "border-border/60 hover:bg-muted/50"}`}
-                  >
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-semibold">
-                        {routine.name}
+          </div>
+          <div className="space-y-2" role="list" aria-label="Routines">
+            {routines.map((routine) => {
+              const isCustom = customRoutines.some(
+                (item) => item.id === routine.id,
+              );
+              return (
+                <button
+                  key={routine.id}
+                  type="button"
+                  role="listitem"
+                  aria-current={
+                    managedRoutineId === routine.id ? "true" : undefined
+                  }
+                  onClick={() => {
+                    chooseRoutine(routine);
+                    setRoutineMode("list");
+                  }}
+                  className={`min-h-11 w-full min-w-0 rounded-xl border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${managedRoutineId === routine.id ? "border-primary bg-primary/10" : "border-border/60 hover:bg-muted/50"}`}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-semibold">
+                      {routine.name}
+                    </span>
+                    {isCustom && (
+                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Custom
                       </span>
-                      {isCustom && (
-                        <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
-                          Custom
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      {formatTime(routine.totalDuration)} ·{" "}
-                      {routine.stretches.length} stretches
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+                    )}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {formatTime(routine.totalDuration)} ·{" "}
+                    {routine.stretches.length} stretches
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           <div
@@ -509,7 +534,7 @@ export function ContentManager({
             )}
           </div>
         </div>
-      )}
+      </div>
     </section>
   );
 }

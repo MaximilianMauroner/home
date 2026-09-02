@@ -165,11 +165,12 @@ export function QuickStart({
         >
           A few calm places to start
         </h2>
-        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {featuredRoutines.slice(0, 3).map((routine) => (
+        <div className="grid min-w-0 grid-cols-2 gap-3 min-[660px]:grid-cols-3 min-[660px]:gap-4 min-[1000px]:grid-cols-5">
+          {featuredRoutines.slice(0, 5).map((routine) => (
             <RoutineCard
               key={routine.id}
               routine={routine}
+              isSuggested={routine.id === "routine_10"}
               onSelect={() => onSelectRoutine(routine.id)}
             />
           ))}

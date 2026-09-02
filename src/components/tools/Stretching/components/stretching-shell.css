@@ -91,6 +91,315 @@
   background: var(--stretching-image-background);
 }
 
+.stretching-rail {
+  --stretching-rail-gap: 3px;
+  --stretching-rail-border: color-mix(
+    in oklch,
+    hsl(var(--border)) 72%,
+    var(--tool-accent) 28%
+  );
+  box-sizing: border-box;
+  min-height: 0;
+  height: 26px;
+  gap: var(--stretching-rail-gap);
+  overflow: hidden;
+  border: 1px solid var(--stretching-rail-border);
+  border-radius: 0.65rem;
+  background: color-mix(in oklch, hsl(var(--muted)) 72%, var(--tool-accent) 8%);
+}
+
+.stretching-rail--mini {
+  --stretching-rail-gap: 2px;
+  height: 6px;
+  border-radius: 999px;
+  border: 0;
+}
+
+.stretching-rail-seg {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  color: hsl(var(--foreground));
+  text-align: left;
+  transition:
+    background-color 180ms ease,
+    opacity 180ms ease,
+    filter 180ms ease;
+}
+
+.stretching-rail-seg--action {
+  cursor: pointer;
+}
+
+.stretching-rail-seg--action:hover {
+  filter: brightness(1.12);
+}
+
+.stretching-rail-seg--action:active {
+  filter: brightness(0.96);
+}
+
+.stretching-rail-seg--done {
+  background: color-mix(
+    in oklch,
+    var(--tool-accent) 64%,
+    hsl(var(--muted)) 36%
+  );
+}
+
+.stretching-rail-seg--current {
+  background: color-mix(
+    in oklch,
+    var(--tool-accent) 22%,
+    hsl(var(--muted)) 78%
+  );
+}
+
+.stretching-rail-seg--resting {
+  background: color-mix(
+    in oklch,
+    oklch(0.74 0.13 180) 28%,
+    hsl(var(--muted)) 72%
+  );
+}
+
+.stretching-rail-seg--upcoming {
+  background: color-mix(
+    in oklch,
+    hsl(var(--muted)) 86%,
+    var(--tool-accent) 14%
+  );
+  opacity: 0.72;
+}
+
+.stretching-rail-seg--selected {
+  z-index: 1;
+  background: color-mix(
+    in oklch,
+    var(--tool-accent) 54%,
+    hsl(var(--muted)) 46%
+  );
+  box-shadow: inset 0 0 0 2px
+    color-mix(in oklch, var(--tool-accent) 35%, white 65%);
+  opacity: 1;
+}
+
+.stretching-rail-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 0;
+  background: color-mix(in oklch, var(--tool-accent) 82%, white 18%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.stretching-rail-text {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding-inline: 0.35rem;
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 1px hsl(var(--background) / 0.28);
+}
+
+.stretching-rail-detail {
+  display: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.stretching-session-frame {
+  min-width: 0;
+  border: 1px solid
+    color-mix(in oklch, hsl(var(--border)) 72%, var(--tool-accent) 28%);
+  border-radius: var(--radius-xl);
+  background: color-mix(in oklch, hsl(var(--card)) 96%, var(--tool-accent) 4%);
+  padding: 0.75rem;
+}
+
+.stretching-session-frame--resting {
+  border-color: color-mix(
+    in oklch,
+    hsl(var(--border)) 62%,
+    oklch(0.74 0.13 180) 38%
+  );
+  background: color-mix(
+    in oklch,
+    hsl(var(--card)) 93%,
+    oklch(0.74 0.13 180) 7%
+  );
+}
+
+.stretching-session-rail {
+  min-width: 0;
+  margin-block-end: 0.75rem;
+  padding: 0.25rem;
+}
+
+.stretching-session-rail__meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-block-end: 0.45rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.stretching-session-rail__meta strong {
+  color: var(--tool-accent-text);
+}
+
+.stretching-session-context {
+  min-width: 0;
+}
+
+.stretching-session-context > .space-y-4 {
+  height: 100%;
+}
+
+.stretching-session-timer {
+  display: flex;
+  justify-content: center;
+}
+
+.stretching-control-dock {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  border-top: 1px solid hsl(var(--border));
+  background: color-mix(in oklch, hsl(var(--card)) 94%, transparent);
+  padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+  box-shadow: 0 -0.5rem 1.875rem hsl(var(--background) / 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.stretching-rest-dock {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  border-top: 1px solid hsl(var(--border));
+  background: color-mix(in oklch, hsl(var(--card)) 94%, transparent);
+  padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+  box-shadow: 0 -0.5rem 1.875rem hsl(var(--background) / 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.stretching-studio-rail {
+  margin-block: 0.75rem 1rem;
+}
+
+.stretching-studio-row {
+  min-width: 0;
+}
+
+.stretching-routine-card--suggested {
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--tool-accent) 45%, transparent);
+}
+
+.stretching-routine-card .stretching-rail--mini {
+  margin-block: 0.1rem;
+}
+
+@media (min-width: 660px) {
+  .stretching-rail:not(.stretching-rail--mini) {
+    height: 32px;
+  }
+
+  .stretching-session-frame {
+    padding: 1rem;
+  }
+
+  .stretching-session-rail {
+    margin-block-end: 1rem;
+    padding: 0.5rem;
+  }
+
+  .stretching-control-dock,
+  .stretching-rest-dock {
+    position: static;
+    inset: auto;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .stretching-shell--focus {
+    --stretching-dock-clearance: 2rem;
+  }
+}
+
+@media (min-width: 1000px) {
+  .stretching-rail:not(.stretching-rail--mini) {
+    height: 38px;
+  }
+
+  .stretching-rail-detail {
+    display: inline;
+  }
+
+  .stretching-rail-text {
+    justify-content: flex-start;
+    padding-inline: 0.6rem;
+  }
+
+  .stretching-session-timer .stretching-breathing-timer > svg {
+    width: 12rem;
+    height: 12rem;
+  }
+
+  .stretching-session-timer .stretching-breathing-timer > div:first-child {
+    width: 15rem;
+    height: 15rem;
+  }
+
+  .stretching-session-timer .stretching-breathing-timer [role="timer"] {
+    font-size: 4.5rem;
+  }
+}
+
+@media (max-width: 659px) {
+  .stretching-routine-card h3 {
+    font-size: 0.86rem;
+    line-height: 1.2;
+  }
+
+  .stretching-routine-card p {
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .stretching-routine-card .stretching-rail--mini {
+    display: flex;
+  }
+}
+
 body[data-stretching-focus="true"] > .site-header,
 body[data-stretching-focus="true"] > footer {
   display: none;

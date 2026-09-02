@@ -1,5 +1,6 @@
 import type { Stretch } from "@/components/tools/Stretching/types";
 import { PLACEHOLDER_IMAGE } from "../images";
+import { describeRepetition } from "../rail";
 import { BreathingTimer } from "./BreathingTimer";
 import { StretchImage } from "./StretchImage";
 
@@ -32,7 +33,7 @@ export function RestPeriodScreen({
     nextStretchIndex !== null ? stretches[nextStretchIndex] : null;
 
   return (
-    <section className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-stretch">
+    <section className="grid gap-4 min-[660px]:grid-cols-2 min-[660px]:items-stretch">
       {nextStretch && (
         <div className="stretching-image-surface relative aspect-[4/3] shadow-sm">
           <StretchImage
@@ -53,7 +54,10 @@ export function RestPeriodScreen({
             </p>
             {nextRepetition !== null && (nextStretch.repetitions || 1) > 1 && (
               <p className="mt-1 text-sm text-white/80">
-                Repetition {nextRepetition} of {nextStretch.repetitions || 1}
+                {describeRepetition(
+                  nextRepetition,
+                  nextStretch.repetitions || 1,
+                )}
               </p>
             )}
           </div>
@@ -87,7 +91,7 @@ export function RestPeriodScreen({
             {nextStretch.description}
           </p>
         )}
-        <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 gap-2 border-t border-border bg-card/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+        <div className="stretching-rest-dock grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={onSkip}

@@ -37,7 +37,7 @@ export function BreathingTimer({
     : "rgba(16, 185, 129, 0.3)";
 
   return (
-    <div className="relative flex items-center justify-center">
+    <div className="stretching-breathing-timer relative flex items-center justify-center">
       {/* Outer glow ring */}
       <div
         className={`absolute rounded-full transition-colors duration-1000 ${compact ? "h-36 w-36" : "h-52 w-52"} ${

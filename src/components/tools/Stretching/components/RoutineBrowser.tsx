@@ -74,19 +74,45 @@ export function RoutineBrowser({
           aria-label="Back to stretching overview"
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-foreground/10"
         >
-          <svg className="h-6 w-6 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="h-6 w-6 text-foreground"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </button>
         <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">Find the pace your body needs</p>
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground">Browse routines</h2>
+          <p className="text-sm text-muted-foreground">
+            Find the pace your body needs
+          </p>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+            Browse routines
+          </h2>
         </div>
       </header>
 
       <div className="relative">
-        <svg className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        <svg
+          className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
         </svg>
         <input
           aria-label="Search routines by name, goal, or tag"
@@ -109,15 +135,29 @@ export function RoutineBrowser({
       />
 
       {filteredRoutines.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-border bg-card/50 px-4 py-14 text-center" aria-live="polite">
-          <h3 className="text-xl font-semibold text-foreground">No routines match</h3>
-          <p className="mt-2 text-muted-foreground">Try another phrase or clear the filters.</p>
-          <button type="button" onClick={resetFilters} className="tool-button-secondary mt-5 !min-h-11">
+        <section
+          className="rounded-2xl border border-dashed border-border bg-card/50 px-4 py-14 text-center"
+          aria-live="polite"
+        >
+          <h3 className="text-xl font-semibold text-foreground">
+            No routines match
+          </h3>
+          <p className="mt-2 text-muted-foreground">
+            Try another phrase or clear the filters.
+          </p>
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="tool-button-secondary mt-5 !min-h-11"
+          >
             Clear filters
           </button>
         </section>
       ) : (
-        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite">
+        <div
+          className="grid min-w-0 grid-cols-2 gap-3 min-[660px]:grid-cols-3 min-[660px]:gap-4 min-[1000px]:grid-cols-5"
+          aria-live="polite"
+        >
           {filteredRoutines.map((routine) => {
             const isCustom = customRoutineIds.has(routine.id);
 
@@ -127,10 +167,15 @@ export function RoutineBrowser({
                 routine={routine}
                 isCustom={isCustom}
                 isSelected={routine.id === selectedRoutineId}
+                isSuggested={routine.id === "routine_10"}
                 onSelect={() => onSelectRoutine(routine.id)}
                 onEdit={() => onEditRoutine(routine)}
                 onDelete={() => {
-                  if (window.confirm(`Delete “${routine.name}”? This cannot be undone.`)) {
+                  if (
+                    window.confirm(
+                      `Delete “${routine.name}”? This cannot be undone.`,
+                    )
+                  ) {
                     onDeleteRoutine(routine.id);
                   }
                 }}
@@ -141,9 +186,24 @@ export function RoutineBrowser({
       )}
 
       <div className="text-center">
-        <button type="button" onClick={onCreateRoutine} className="tool-button-secondary !min-h-11 px-6">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        <button
+          type="button"
+          onClick={onCreateRoutine}
+          className="tool-button-secondary !min-h-11 px-6"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
           </svg>
           Create custom routine
         </button>

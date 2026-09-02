@@ -1,12 +1,15 @@
 import type { StretchRoutine } from "@/components/tools/Stretching/types";
 import { formatTime } from "@/components/tools/Stretching/utils";
+import { buildRailSegments } from "../rail";
 import { getRoutineRepresentativeImage } from "../routineDiscovery";
+import { DurationRail } from "./DurationRail";
 import { DifficultyBadge } from "./DifficultyBadge";
 import { StretchImage } from "./StretchImage";
 
 interface RoutineCardProps {
   isCustom?: boolean;
   isSelected?: boolean;
+  isSuggested?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
   onSelect: () => void;
@@ -17,16 +20,28 @@ export function RoutineCard({
   routine,
   isSelected = false,
   isCustom = false,
+  isSuggested = false,
   onSelect,
   onEdit,
   onDelete,
 }: RoutineCardProps) {
+  const railSegments = buildRailSegments(routine.stretches, {
+    index: 0,
+    repetition: 1,
+    timeRemaining: routine.stretches[0]?.duration ?? 0,
+    isResting: false,
+    isCompleted: false,
+  });
+
   return (
     <article
-      className={`group relative min-w-0 overflow-hidden rounded-2xl border bg-card transition-colors ${
-        isSelected
-          ? "border-primary ring-2 ring-primary"
-          : "border-border hover:border-primary/50"
+      data-suggested={isSuggested ? "true" : undefined}
+      className={`stretching-routine-card group relative min-w-0 overflow-hidden rounded-2xl border bg-card transition-colors ${
+        isSuggested
+          ? "stretching-routine-card--suggested border-primary/70"
+          : isSelected
+            ? "border-primary ring-2 ring-primary"
+            : "border-border hover:border-primary/50"
       }`}
     >
       <button
@@ -35,13 +50,18 @@ export function RoutineCard({
         aria-pressed={isSelected}
         className="block h-full w-full min-w-0 text-left"
       >
-        <div className="stretching-image-surface aspect-[4/3] rounded-none">
+        <div className="stretching-image-surface relative aspect-[4/3] rounded-none">
           <StretchImage
             src={getRoutineRepresentativeImage(routine)}
             alt=""
             className="h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
             sizes="(min-width: 1024px) 30vw, (min-width: 640px) 50vw, 100vw"
           />
+          {isSuggested && (
+            <span className="absolute left-3 top-3 rounded-full bg-primary px-2.5 py-1 text-xs font-bold text-primary-foreground shadow-sm">
+              Suggested
+            </span>
+          )}
         </div>
 
         <div className="space-y-3 p-4">
@@ -60,6 +80,12 @@ export function RoutineCard({
               </span>
             )}
           </div>
+
+          <DurationRail
+            segments={railSegments}
+            size="mini"
+            label={`${routine.name} duration rail`}
+          />
 
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
             <span>{formatTime(routine.totalDuration)}</span>

@@ -34,7 +34,7 @@ export function ControlButtons({
   const isLastRep = currentRepetition === currentReps;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
+    <div className="stretching-control-dock">
       <div className="mx-auto grid max-w-md grid-cols-5 gap-2 sm:max-w-none sm:gap-3">
         {/* Previous button */}
         <button

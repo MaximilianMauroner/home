@@ -1,7 +1,11 @@
+import { useState } from "react";
 import type { StretchRoutine } from "@/components/tools/Stretching/types";
 import { formatTime } from "@/components/tools/Stretching/utils";
+import { buildRailSegments } from "../rail";
 import { PLACEHOLDER_IMAGE } from "../images";
 import { getRoutineRepresentativeImage } from "../routineDiscovery";
+import { DurationRail } from "./DurationRail";
+import { StretchPreviewDialog } from "./StretchPreviewDialog";
 import { StretchImage } from "./StretchImage";
 
 interface StretchPreviewProps {
@@ -15,10 +19,29 @@ export function StretchPreview({
   onBegin,
   onBack,
 }: StretchPreviewProps) {
+  const [selectedStretchIndex, setSelectedStretchIndex] = useState<
+    number | null
+  >(null);
   const totalSteps = routine.stretches.reduce(
     (total, stretch) => total + (stretch.repetitions || 1),
     0,
   );
+  const railSegments = buildRailSegments(routine.stretches, {
+    index: 0,
+    repetition: 1,
+    timeRemaining: routine.stretches[0]?.duration ?? 0,
+    isResting: false,
+    isCompleted: false,
+  });
+  const selectedStretch =
+    selectedStretchIndex === null
+      ? null
+      : (routine.stretches[selectedStretchIndex] ?? null);
+
+  const previewStretch = (index: number) => {
+    if (index < 0 || index >= routine.stretches.length) return;
+    setSelectedStretchIndex(index);
+  };
 
   return (
     <div className="min-w-0 space-y-6 pb-28 sm:pb-0">
@@ -100,6 +123,24 @@ export function StretchPreview({
               </div>
             </dl>
 
+            <div className="stretching-preview-rail">
+              <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <span>Sequence</span>
+                <span>{formatTime(routine.totalDuration)}</span>
+              </div>
+              <DurationRail
+                segments={railSegments}
+                onJumpTo={previewStretch}
+                selectedIndex={selectedStretchIndex}
+                actionLabel="Preview"
+                size="preview"
+                label={`${routine.name} sequence rail`}
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Select a segment or movement to preview it.
+              </p>
+            </div>
+
             <button
               type="button"
               onClick={onBegin}
@@ -125,55 +166,88 @@ export function StretchPreview({
             {routine.stretches.map((stretch, index) => (
               <li
                 key={`${stretch.id}-${index}`}
-                className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card"
+                className={`min-w-0 overflow-hidden rounded-2xl border bg-card transition-colors ${selectedStretchIndex === index ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
               >
-                <div className="grid min-w-0 grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-4 sm:p-4">
-                  <div className="stretching-image-surface aspect-[4/3]">
-                    <StretchImage
-                      src={stretch.image || PLACEHOLDER_IMAGE}
-                      alt=""
-                      className="h-full w-full object-contain object-center"
-                      sizes="(min-width: 640px) 112px, 88px"
-                    />
-                  </div>
-
-                  <div className="min-w-0 self-center">
-                    <div className="flex min-w-0 items-start gap-2">
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                        {index + 1}
-                      </span>
-                      <h4 className="min-w-0 font-semibold leading-snug text-foreground">
-                        {stretch.name}
-                      </h4>
+                <button
+                  type="button"
+                  onClick={() => previewStretch(index)}
+                  aria-haspopup="dialog"
+                  aria-label={`Preview ${stretch.name}`}
+                  title={`Preview ${stretch.name}`}
+                  className="group block w-full min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                >
+                  <div className="grid min-w-0 grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-4 sm:p-4">
+                    <div className="stretching-image-surface aspect-[4/3]">
+                      <StretchImage
+                        src={stretch.image || PLACEHOLDER_IMAGE}
+                        alt=""
+                        className="h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
+                        sizes="(min-width: 640px) 112px, 88px"
+                      />
                     </div>
-                    <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                      {stretch.description}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                      <span>{formatTime(stretch.duration)}</span>
-                      {(stretch.repetitions || 1) > 1 && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span>{stretch.repetitions} repetitions</span>
-                        </>
-                      )}
-                      {stretch.targetAreas &&
-                        stretch.targetAreas.length > 0 && (
+
+                    <div className="min-w-0 self-center">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                          {index + 1}
+                        </span>
+                        <h4 className="min-w-0 font-semibold leading-snug text-foreground">
+                          {stretch.name}
+                        </h4>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                        {stretch.description}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <span>{formatTime(stretch.duration)} each</span>
+                        {(stretch.repetitions || 1) > 1 && (
                           <>
                             <span aria-hidden="true">·</span>
                             <span>
-                              {stretch.targetAreas.slice(0, 2).join(", ")}
+                              {stretch.repetitions === 2
+                                ? "Left side · Right side"
+                                : `${stretch.repetitions} rounds`}
                             </span>
                           </>
                         )}
+                        {stretch.targetAreas &&
+                          stretch.targetAreas.length > 0 && (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span>
+                                {stretch.targetAreas.slice(0, 2).join(", ")}
+                              </span>
+                            </>
+                          )}
+                      </div>
+                      {stretch.progressions &&
+                        stretch.progressions.length > 0 && (
+                          <p className="mt-2 line-clamp-1 text-xs text-primary">
+                            Next level:{" "}
+                            {stretch.progressions.find(
+                              (progression) =>
+                                progression.tier === "harder" ||
+                                progression.tier === "hardest",
+                            )?.name ?? "Progression available"}
+                          </p>
+                        )}
                     </div>
                   </div>
-                </div>
+                </button>
               </li>
             ))}
           </ol>
         </section>
       </div>
+
+      {selectedStretch && selectedStretchIndex !== null && (
+        <StretchPreviewDialog
+          index={selectedStretchIndex}
+          onClose={() => setSelectedStretchIndex(null)}
+          stretch={selectedStretch}
+          total={routine.stretches.length}
+        />
+      )}
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-[max(1rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur sm:hidden">
         <button
