@@ -168,4 +168,14 @@ export const STRETCH_IMAGES = {
     "hip-flexor-lunge": "/stretches/half-kneeling-hip-flexor-arms-overhead.png",
     "standing-figure-4": "/stretches/standing-figure-4.png",
   },
+
+  // Routine 10: Five Stretch Minimum
+  "five-stretch-minimum": {
+    "pancake-stretch": "/stretches/seated-straddle-forward-fold.png",
+    "figure-four-stretch": "/stretches/piriformis-figure-4-stretch.png",
+    "half-kneeling-hip-flexor-reach":
+      "/stretches/half-kneeling-hip-flexor-arms-overhead.png",
+    "jack-stretch": "/stretches/jack-stretch.png",
+    "counter-lat-stretch": "/stretches/counter-lat-stretch.png",
+  },
 } as const;

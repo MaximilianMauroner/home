@@ -8,6 +8,18 @@ export type RoutineCategory =
 
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
 
+export type ProgressionTier = 'easier' | 'standard' | 'harder' | 'hardest';
+
+/**
+ * One rung on a stretch's difficulty ladder. A stretch stores its rungs
+ * easiest first, so the array order is what tells you which way it climbs.
+ */
+export interface StretchProgression {
+  tier: ProgressionTier;
+  name: string;
+  detail: string;
+}
+
 export interface Stretch {
   id: string;
   name: string;
@@ -18,6 +30,7 @@ export interface Stretch {
   how: string; // How to do it
   lookFor: string; // What to look for
   targetAreas?: string[]; // NEW: ['hip flexors', 'lower back']
+  progressions?: StretchProgression[]; // easier and harder ways to run the same stretch
 }
 
 export interface StretchRoutine {

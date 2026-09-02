@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Byparr</Name>
+  <Repository>ghcr.io/thephaseless/byparr@sha256:ee50262bc83d21c364863948436a3e7444553331157a93444477e9f067de210e</Repository>
+  <Registry>https://github.com/ThePhaseless/Byparr</Registry>
+  <Network>suwayomi-net</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/ThePhaseless/Byparr/issues</Support>
+  <Project>https://github.com/ThePhaseless/Byparr</Project>
+  <Overview>Private FlareSolverr-compatible browser service used by Suwayomi for Cloudflare-protected manga sources.</Overview>
+  <Category>Tools:Other</Category>
+  <WebUI/>
+  <TemplateURL/>
+  <Icon/>
+  <ExtraParams>--restart unless-stopped --shm-size=512m --health-cmd 'curl -fsS --max-time 5 http://127.0.0.1:${PORT}/openapi.json &gt;/dev/null' --health-interval 5m --health-timeout 10s --health-retries 3 --health-start-period 20s</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled>1786300000</DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>The custom Docker network suwayomi-net must exist.</Requires>
+  <Config Name="Listen host" Target="HOST" Default="0.0.0.0" Mode="" Description="Listen on all interfaces inside the private Docker network." Type="Variable" Display="advanced" Required="true" Mask="false">0.0.0.0</Config>
+  <Config Name="Listen port" Target="PORT" Default="8191" Mode="" Description="Internal FlareSolverr-compatible API port." Type="Variable" Display="advanced" Required="true" Mask="false">8191</Config>
+</Container>

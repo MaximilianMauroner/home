@@ -1,6 +1,16 @@
-import type { Stretch } from "@/components/tools/Stretching/types";
+import type {
+  ProgressionTier,
+  Stretch,
+} from "@/components/tools/Stretching/types";
 import { PLACEHOLDER_IMAGE } from "../images";
 import { StretchImage } from "./StretchImage";
+
+const tierLabels: Record<ProgressionTier, string> = {
+  easier: "Easier",
+  standard: "Standard",
+  harder: "Harder",
+  hardest: "Hardest",
+};
 
 interface StretchDetailsProps {
   stretch: Stretch;
@@ -71,6 +81,34 @@ export function StretchDetails({
               {stretch.lookFor}
             </p>
           </details>
+          {stretch.progressions && stretch.progressions.length > 0 && (
+            <details className="group overflow-hidden rounded-xl border border-border bg-card sm:col-span-2">
+              <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between px-4 font-semibold text-foreground transition-colors hover:bg-muted/50">
+                Pick your level
+                <span
+                  aria-hidden="true"
+                  className="text-xl text-muted-foreground group-open:rotate-45"
+                >
+                  +
+                </span>
+              </summary>
+              <ol className="space-y-3 px-4 pb-4">
+                {stretch.progressions.map((progression) => (
+                  <li key={progression.name} className="leading-relaxed">
+                    <span className="mr-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      {tierLabels[progression.tier]}
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {progression.name}.
+                    </span>{" "}
+                    <span className="text-muted-foreground">
+                      {progression.detail}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
         </div>
       )}
     </div>

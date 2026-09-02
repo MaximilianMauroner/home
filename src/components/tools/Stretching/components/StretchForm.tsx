@@ -73,6 +73,13 @@ export function StretchForm({ stretch, onSubmit, onCancel }: StretchFormProps) {
       ...(stretch?.targetAreas
         ? { targetAreas: [...stretch.targetAreas] }
         : {}),
+      ...(stretch?.progressions
+        ? {
+            progressions: stretch.progressions.map((progression) => ({
+              ...progression,
+            })),
+          }
+        : {}),
     });
   };
 

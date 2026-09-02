@@ -41,6 +41,24 @@ export interface RoutineSummary {
   totalSteps: number;
 }
 
+/**
+ * Copies a stretch and its nested arrays so studio edits never write through
+ * to the shared default routine data.
+ */
+export function cloneStretch(stretch: Stretch): Stretch {
+  return {
+    ...stretch,
+    ...(stretch.targetAreas ? { targetAreas: [...stretch.targetAreas] } : {}),
+    ...(stretch.progressions
+      ? {
+          progressions: stretch.progressions.map((progression) => ({
+            ...progression,
+          })),
+        }
+      : {}),
+  };
+}
+
 export function getMoveTarget(
   index: number,
   direction: MoveDirection,
@@ -79,11 +97,7 @@ export function createRoutineWorkingStretches(
   return routine.stretches.map((stretch, index) => {
     const sourceId =
       normalizeStretchId(stretch.id, routine.id) || `${index + 1}`;
-    return {
-      ...stretch,
-      id: `${routine.id}_${sourceId}`,
-      ...(stretch.targetAreas ? { targetAreas: [...stretch.targetAreas] } : {}),
-    };
+    return { ...cloneStretch(stretch), id: `${routine.id}_${sourceId}` };
   });
 }
 
@@ -132,10 +146,7 @@ export function reorderItems<T>(
 export function createWorkingSessionStretches(
   stretches: readonly Stretch[],
 ): Stretch[] {
-  return stretches.map((stretch) => ({
-    ...stretch,
-    ...(stretch.targetAreas ? { targetAreas: [...stretch.targetAreas] } : {}),
-  }));
+  return stretches.map(cloneStretch);
 }
 
 export function createStudioSessionStartState(
@@ -196,9 +207,8 @@ export function buildRoutineDraft(
     goal: values.goal.trim(),
     totalDuration: summary.totalDuration,
     stretches: stretches.map((stretch) => ({
-      ...stretch,
+      ...cloneStretch(stretch),
       id: normalizeStretchId(stretch.id, routine?.id),
-      ...(stretch.targetAreas ? { targetAreas: [...stretch.targetAreas] } : {}),
     })),
   };
 }

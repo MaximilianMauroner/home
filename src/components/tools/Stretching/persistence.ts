@@ -1,4 +1,4 @@
-import type { Stretch, StretchRoutine } from "./types";
+import type { Stretch, StretchProgression, StretchRoutine } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -7,6 +7,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isStringArray(value: unknown): value is string[] {
   return (
     Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
+}
+
+function isStretchProgression(value: unknown): value is StretchProgression {
+  if (!isRecord(value)) return false;
+
+  return (
+    typeof value.name === "string" &&
+    typeof value.detail === "string" &&
+    (value.tier === "easier" ||
+      value.tier === "standard" ||
+      value.tier === "harder" ||
+      value.tier === "hardest")
   );
 }
 
@@ -24,7 +37,10 @@ function isStretch(value: unknown): value is Stretch {
     (value.image === undefined || typeof value.image === "string") &&
     typeof value.how === "string" &&
     typeof value.lookFor === "string" &&
-    (value.targetAreas === undefined || isStringArray(value.targetAreas))
+    (value.targetAreas === undefined || isStringArray(value.targetAreas)) &&
+    (value.progressions === undefined ||
+      (Array.isArray(value.progressions) &&
+        value.progressions.every(isStretchProgression)))
   );
 }
 

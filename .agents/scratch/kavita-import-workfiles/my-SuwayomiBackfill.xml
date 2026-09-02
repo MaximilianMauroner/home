@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>SuwayomiBackfill</Name>
+  <Repository>python@sha256:399babc8b49529dabfd9c922f2b5eea81d611e4512e3ed250d75bd2e7683f4b0</Repository>
+  <Registry>https://hub.docker.com/_/python</Registry>
+  <Network>host</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support/>
+  <Project>https://www.python.org/</Project>
+  <Overview>Provider-friendly Suwayomi download scheduler and verified Kavita ingester with automatic downloader and stalled-job recovery.</Overview>
+  <Category>MediaApp:Other</Category>
+  <WebUI/>
+  <TemplateURL/>
+  <Icon>https://raw.githubusercontent.com/Suwayomi/Suwayomi-Server/master/server/src/main/resources/icon/faviconlogo.png</Icon>
+  <ExtraParams>--restart unless-stopped --user 99:100 --entrypoint python3 --health-cmd 'python3 /app/controller.py health' --health-interval 30s --health-timeout 20s --health-retries 3 --health-start-period 60s</ExtraParams>
+  <PostArgs>/app/controller.py run</PostArgs>
+  <CPUset/>
+  <DateInstalled>1786283933</DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Suwayomi must be reachable at the GraphQL URL configured in config.json.</Requires>
+  <Config Name="Controller" Target="/app/controller.py" Default="/mnt/disk2/appdata/SuwayomiBackfill/src/controller.py" Mode="ro" Description="Persisted controller source executed by the pinned Python runtime." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/disk2/appdata/SuwayomiBackfill/src/controller.py</Config>
+  <Config Name="Downloads" Target="/downloads" Default="/mnt/user/SuwayomiDownloads" Mode="rw" Description="Suwayomi download output; write access is required to remove archives after verified ingestion." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/SuwayomiDownloads</Config>
+  <Config Name="Kavita library" Target="/library" Default="/mnt/user/Manga" Mode="rw" Description="Verified archives are ingested here." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/Manga</Config>
+  <Config Name="Quarantine" Target="/quarantine" Default="/mnt/user/SuwayomiBackfillQuarantine" Mode="rw" Description="Conflicting or invalid archives." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/SuwayomiBackfillQuarantine</Config>
+  <Config Name="Configuration" Target="/config/config.json" Default="/mnt/disk2/appdata/SuwayomiBackfill/src/config.json" Mode="ro" Description="Controller configuration." Type="Path" Display="always" Required="true" Mask="false">/mnt/disk2/appdata/SuwayomiBackfill/src/config.json</Config>
+  <Config Name="Discord webhook" Target="/config/discord_webhook_url" Default="/mnt/disk2/appdata/SuwayomiBackfill/src/discord_webhook_url" Mode="ro" Description="Webhook URL file." Type="Path" Display="advanced" Required="false" Mask="true">/mnt/disk2/appdata/SuwayomiBackfill/src/discord_webhook_url</Config>
+  <Config Name="State" Target="/state" Default="/mnt/disk2/appdata/SuwayomiBackfill/state" Mode="rw" Description="Durable SQLite state." Type="Path" Display="always" Required="true" Mask="false">/mnt/disk2/appdata/SuwayomiBackfill/state</Config>
+</Container>

@@ -673,6 +673,162 @@ export const DEFAULT_ROUTINES: StretchRoutine[] = [
         "targetAreas": ["glutes", "piriformis", "hip rotators"]
       }
     ]
+  },
+  {
+    "id": "routine_10",
+    "name": "Five Stretch Minimum",
+    "goal": "The five stretches that cover every major restriction. Run it twice a day Monday to Friday to reach five weekly minutes per stretch.",
+    "totalDuration": 210,
+    "category": "flexibility",
+    "difficulty": "intermediate",
+    "tags": ["minimal", "full-body", "progression", "30-second-holds"],
+    "stretches": [
+      {
+        "id": "1",
+        "name": "Pancake Stretch",
+        "description": "Trains straddle width and a flat-back forward fold in one position.",
+        "duration": 30,
+        "repetitions": 1,
+        "image": STRETCH_IMAGES["five-stretch-minimum"]["pancake-stretch"],
+        "how": "Sit with the legs wide and the toes pointing up. Arch the lower back first, then hinge from the hips and walk the hands forward along the floor. Hold 30s.",
+        "lookFor": "Stretch across both inner thighs and hamstrings. The lower back stays arched, not rounded.",
+        "targetAreas": ["adductors", "hamstrings", "inner thighs"],
+        "progressions": [
+          {
+            "tier": "easier",
+            "name": "Elevated pelvis",
+            "detail": "Sit on a cushion or a low stool so the hips are higher than the knees, then reach forward to a support of the same height."
+          },
+          {
+            "tier": "standard",
+            "name": "On the floor",
+            "detail": "Sit on the floor and lower in stages: fingertips down, then elbows down, then flat on the outside edge of the hands."
+          },
+          {
+            "tier": "harder",
+            "name": "Fists and forehead",
+            "detail": "Lower onto the fists, then rest the forehead on the floor between the legs."
+          },
+          {
+            "tier": "hardest",
+            "name": "Chest to the floor",
+            "detail": "Take the chin down, then the chest, then the stomach flat to the floor with the legs still wide."
+          }
+        ]
+      },
+      {
+        "id": "2",
+        "name": "Figure Four Stretch",
+        "description": "Opens the glutes and deep hip rotators that stiffen from sitting.",
+        "duration": 30,
+        "repetitions": 2,
+        "image": STRETCH_IMAGES["five-stretch-minimum"]["figure-four-stretch"],
+        "how": "Sit or lie down and cross one ankle over the opposite knee with the crossed foot flexed. Lean the chest forward, or pull the bottom thigh toward you. Hold 30s each side.",
+        "lookFor": "Stretch deep in the glute of the crossed leg. No pinch in the front of the hip and no pain in the knee.",
+        "targetAreas": ["glutes", "piriformis", "hip rotators"],
+        "progressions": [
+          {
+            "tier": "easier",
+            "name": "Banded knee pull",
+            "detail": "Lie on your back and loop a belt or band around the bottom thigh to pull it in when you cannot reach it. Sneak the crossed foot a little to the side."
+          },
+          {
+            "tier": "standard",
+            "name": "Cross and lean",
+            "detail": "Cross the ankle over the knee and lean the chest forward. If the crossed knee complains, pull the bottom knee toward the chest instead."
+          },
+          {
+            "tier": "hardest",
+            "name": "Half pigeon",
+            "detail": "Take the same shape on the floor with the front shin down and the back leg extended straight behind."
+          }
+        ]
+      },
+      {
+        "id": "3",
+        "name": "Half-Kneeling Hip Flexor Reach",
+        "description": "Works the hip flexors and the lower back they attach to at the same time.",
+        "duration": 30,
+        "repetitions": 2,
+        "image": STRETCH_IMAGES["five-stretch-minimum"]["half-kneeling-hip-flexor-reach"],
+        "how": "Half-kneel with the back knee padded. Point both hip bones straight forward and sink the hips down. Reach up and over toward the front leg. Hold 30s each side, breathing in small sips.",
+        "lookFor": "Stretch through the front of the back hip that carries up into the abs. Hips stay pointed forward and the back foot does not roll out.",
+        "targetAreas": ["hip flexors", "psoas", "abs", "lower back"],
+        "progressions": [
+          {
+            "tier": "easier",
+            "name": "Higher hips with support",
+            "detail": "Start with the hips a little higher, hold a counter or chair for balance, and look up instead of reaching over."
+          },
+          {
+            "tier": "standard",
+            "name": "Sink and reach over",
+            "detail": "Sink the hips as low as they go, force them to stay pointed forward, and reach up and over."
+          }
+        ]
+      },
+      {
+        "id": "4",
+        "name": "Jack Stretch",
+        "description": "Opens the whole front of the chest with a broom pole or a belt.",
+        "duration": 30,
+        "repetitions": 1,
+        "image": STRETCH_IMAGES["five-stretch-minimum"]["jack-stretch"],
+        "how": "Rest a broom pole across the top of the shoulders behind the neck. Push the chest out as far as it goes, grip the pole with both hands, and press it backward. Hold 30s.",
+        "lookFor": "A wide stretch across the whole front of the chest, sometimes into the biceps. Ribs stay down and the neck stays long.",
+        "targetAreas": ["chest", "pectorals", "front shoulders", "biceps"],
+        "progressions": [
+          {
+            "tier": "easier",
+            "name": "Wide grip",
+            "detail": "Slide the hands far apart on the pole. A belt held the same way works when no pole is available."
+          },
+          {
+            "tier": "standard",
+            "name": "Shoulder-width grip",
+            "detail": "Grip a little outside the shoulders and press the pole back until the chest opens."
+          },
+          {
+            "tier": "harder",
+            "name": "Narrow grip",
+            "detail": "Walk the hands in toward the neck. A narrow grip is much harder than a wide one."
+          }
+        ]
+      },
+      {
+        "id": "5",
+        "name": "Counter Lat Stretch",
+        "description": "Keeps the lats long so overhead reach and upright posture stay available.",
+        "duration": 30,
+        "repetitions": 1,
+        "image": STRETCH_IMAGES["five-stretch-minimum"]["counter-lat-stretch"],
+        "how": "Set both hands on a counter at hip height. Walk the feet back and push the hips away until arms, spine and hips make one long line. Let the chest sink between the arms. Hold 30s.",
+        "lookFor": "A long pull down both sides of the ribcage from armpit to hip. Ribs stay down, no arch in the lower back.",
+        "targetAreas": ["lats", "shoulders", "thoracic spine"],
+        "progressions": [
+          {
+            "tier": "easier",
+            "name": "Taller support",
+            "detail": "Use a higher support and stand closer, so the torso stays above horizontal."
+          },
+          {
+            "tier": "standard",
+            "name": "Counter height",
+            "detail": "Hands flat at hip height, arms straight, back flat, chest sinking between the arms."
+          },
+          {
+            "tier": "harder",
+            "name": "Elbows down",
+            "detail": "Drop to the elbows on the support and bend the knees so the chest sinks below the shoulders."
+          },
+          {
+            "tier": "hardest",
+            "name": "Feet elevated",
+            "detail": "Put the feet up on the support and take the forearms to the floor, letting the chest sink toward the ground."
+          }
+        ]
+      }
+    ]
   }
 ];
 

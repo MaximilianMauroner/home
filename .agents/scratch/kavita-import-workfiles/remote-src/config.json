@@ -1,0 +1,56 @@
+{
+  "graphql_url": "http://127.0.0.1:4567/api/graphql",
+  "categories": ["Prio Next", "On Hold", "Plan to Read PRIO", "Plan to Read"],
+  "blocked_sources": ["MangaFire", "Kissmanga.in", "MangaDex"],
+  "source_priority": [
+    "Mangahere",
+    "Weeb Central",
+    "ComicK Fanmade",
+    "MangaReader.site",
+    "MangaPill",
+    "Mangakakalot.fun",
+    "MangaDex",
+    "Mangakakalot",
+    "Mangatown",
+    "Asura Scans"
+  ],
+  "title_priority": [
+    "Kage no Jitsuryokusha ni Naritakute",
+    "Black Clover",
+    "Tamen de Gushi",
+    "SSS-Class Suicide Hunter",
+    "Sakamoto Days",
+    "Talent-Swallowing Magician",
+    "Mercenary Enrollment",
+    "Dungeon Ni Deai Wo Motomeru No Wa Machigatteiru Darou Ka Ii"
+  ],
+  "title_overrides": {
+    "24": "My New Wife is Forcing Herself to Smile"
+  },
+  "title_aliases": {
+    "Kaette kudasai! Akutsu-san": "Please Go Home, Akutsu-san!",
+    "Please Go Home, Akutsu-San!": "Please Go Home, Akutsu-san!"
+  },
+  "downloads_root": "/downloads/mangas",
+  "library_root": "/library",
+  "quarantine_root": "/quarantine",
+  "state_root": "/state",
+  "discord_webhook_url_file": "/config/discord_webhook_url",
+  "provider_cap": 3,
+  "provider_cooldown_seconds": 90,
+  "poll_seconds": 5,
+  "scope_refresh_seconds": 43200,
+  "download_stall_seconds": 900,
+  "backoff_seconds": [900, 3600, 21600, 86400],
+  "chapter_backoff_seconds": [3600, 21600, 86400],
+  "provider_failure_window_seconds": 3600,
+  "provider_failure_threshold": 2,
+  "reconciliation_interval_seconds": 900,
+  "reconciliation_batch_size": 50,
+  "heartbeat_max_age_seconds": 90,
+  "provider_backoff_overrides": {
+    "ComicK Fanmade": 86400,
+    "Mangakakalot": 86400,
+    "Mangakakalot.fun": 86400
+  }
+}

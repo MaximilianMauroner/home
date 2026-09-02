@@ -1,0 +1,161 @@
+---
+layout: "@/layouts/BlogLayout.astro"
+title: "Words of meaning, an analysis of the underlying impact of words"
+description: "A blind benchmark over 210 isolated model runs. Negative adjectives move the output by 4 to 5.5 points of pleasantness. Positive ones move it by 0.3, because the default is already at the ceiling."
+tags:
+  - llm
+  - benchmark
+  - prompting
+  - evaluation
+  - statistics
+published: false
+releaseDate: 2026-09-01
+---
+
+I wanted to know whether an adjective in a prompt actually changes what a model writes, or whether it just makes me feel like I asked for something.
+
+So I built a small benchmark for it. One generator writes a poem, a paragraph, or a React settings panel with a single adjective spliced into the task. A separate blind judge, which never sees the prompt, reads the output and tries to name which adjective was used. Six labels, five adjectives plus a no-adjective control, five runs each.
+
+Across 179 eligible writing runs the judge was right 25.1% of the time against 16.7% chance. That is a real signal (exact one-sided p = 0.0025), but almost all of it comes from one family of words.
+
+Negative adjectives change the text. Positive ones basically do not. Neutral ones leave no trace at all.
+
+The [full 210-run report](https://tools.mauroner.net/artifacts/QAz6qWk95cq-SK5FczXr1Qsecsf8bu5V) has every run, the probability distributions, the confusion matrices, and the isolation ledger.
+
+## How the benchmark works
+
+Each experiment fixes one task and six conditions. Every run goes through three stages, and each stage is a separate short-lived process with its own thread and its own temporary workspace.
+
+- **Generate.** A fresh process gets the task with one adjective spliced in and writes `output.md`.
+- **Classify.** A second fresh process gets only the adjective-free task, the generated text, and a shuffled list of the six candidate labels. It returns a probability for each. It never sees the condition, the run index, the generator thread, or the true label.
+- **Profile.** A third fresh process scores the same text on a fixed 1 to 7 rubric, also blind.
+
+Truth is joined only in the parent process at scoring time. If a run writes its own condition word into the output, it is dropped from every accuracy number, because that lets the judge win by reading rather than by recognizing style.
+
+Generator and judge are both gpt-5.6-terra at low reasoning through the Codex SDK. 7 experiments, 210 generations, 630 successful isolated model calls.
+
+## The three regimes
+
+Splitting the pooled 25.1% by word family is the whole result:
+
+| Family   | Words                                                | Correct | Eligible | Accuracy | One-sided p |
+| -------- | ---------------------------------------------------- | ------- | -------- | -------- | ----------- |
+| Positive | beautiful, lovely, pretty, attractive, gorgeous      | 12      | 60       | 20.0%    | 0.292       |
+| Neutral  | ordinary, plain, normal, typical, standard           | 10      | 60       | 16.7%    | 0.554       |
+| Negative | ugly, unattractive, hideous, unpleasant, unsightly   | 23      | 59       | 39.0%    | < 0.001     |
+
+Six-way naming is a hard task, though, and it undersells the effect. The easier question is whether any adjective was used at all, which is just the probability mass the judge put on everything except `control`.
+
+| Family   | Control mean | Adjective mean | Adjective found | Control clean |
+| -------- | ------------ | -------------- | --------------- | ------------- |
+| Positive | 0.616        | 0.786          | 45 / 50         | 3 / 10        |
+| Neutral  | 0.043        | 0.084          | 3 / 50          | 10 / 10       |
+| Negative | 0.009        | 0.980          | 49 / 49         | 10 / 10       |
+
+Negative words are fully legible. All 49 eligible negative runs were flagged as worded, and all 10 of their controls were flagged as clean. 59 out of 59.
+
+Neutral words are invisible. Only 3 of 50 runs under `ordinary`, `plain`, `normal`, `typical`, or `standard` looked worded. Asking for an ordinary poem produces text the judge cannot tell apart from just asking for a poem.
+
+Positive words are the interesting case, because the number looks good until you check the control. The mean for positive runs is 0.79, which is high. But their own controls sit at 0.62, and only 3 of 10 controls were correctly called unworded. The unprompted default already reads like someone asked for something beautiful.
+
+## The judge collapses onto one word per family
+
+Inside a family the judge does not spread its guesses. It picks a prototype and stays there.
+
+Under negative prompts, `ugly` took 26 of 59 predictions and `unsightly` was never chosen once. Under positive prompts, `beautiful` and `gorgeous` took 41 of 60, and `pretty` and `attractive` were never chosen. Under neutral prompts, `control` took 59 of 60. Five distinct neutral adjectives collapsed into "no adjective was used".
+
+That is what caps the negative family at 39%. The effect on the text is obvious, but the five negative words produce nearly the same text as each other, so the judge cannot split them. Detection and naming come apart: 100% on presence, 39% on identification, same runs.
+
+## How far the text actually moves
+
+The third pass scores each output on seven dimensions from 1 to 7 and compares it against the control of its own experiment. This is where the asymmetry stops being subtle.
+
+| Condition    | Pleasantness shift | Negative tone | Conventionality |
+| ------------ | ------------------ | ------------- | --------------- |
+| beautiful    | +0.20              | +0.00         | −0.10           |
+| gorgeous     | +0.30              | +0.00         | −0.10           |
+| ordinary     | −0.60              | +0.20         | +0.40           |
+| ugly         | −3.96              | +4.13         | −1.44           |
+| unpleasant   | −5.50              | +5.70         | −1.40           |
+
+No positive adjective moves pleasantness by more than 0.3 points. Every negative one moves it by 4.0 to 5.5.
+
+The cause is a ceiling. With no adjective at all, control poems already average 6.5 of 7 on pleasantness and control paragraphs average 6.9 of 7. There is almost no room above the default. There is a lot of room below it, and the negative words use all of it.
+
+The negative shift is also not only valence. Conventionality drops by 1.2 to 2.0 points and formality drops too, so a negative adjective buys rougher and less predictable diction as a side effect. Sensory imagery barely moves in any family, which suggests the model treats density of detail as part of the task rather than part of the adjective.
+
+## What this looks like on the page
+
+The statistics describe something you can see immediately. These are first runs, unedited.
+
+No adjective:
+
+> The train exhales beside the river road,
+> Low windows kindle one by one in gold.
+> Leaves gather softly at the garden gate,
+> And chimney smoke arrives before the late.
+
+With `beautiful`:
+
+> The road unspools beneath a copper sky,
+> and maples kindle softly by the lane.
+> My window gathers dusk; the swallows fly
+> like loosened stitches through the evening rain.
+
+With `ordinary`:
+
+> The bus sighs softly at the corner curb,
+> Leaves follow me along the fading street.
+> A chimney sends its ribbon through the dusk,
+> And porch lights make the quiet pavement sweet.
+
+With `ugly`:
+
+> Leaves stick blackly to my shoes.
+> The bus coughs away without me.
+> Rain has wrung the daylight thin.
+> I drag my coat through the gate.
+
+The first three are the same poem written three times. A train or a bus, leaves at a gate, a key, warm lamplight, a kettle. The judge swapped the first two outright: it called the unprompted control "beautiful" and called the `beautiful` one a control. Both readings are defensible, which is exactly the problem.
+
+Only `ugly` writes a different poem. Later in the same one there is a fence that leans like a bad tooth, a clock that chews at the wall, and a home that opens its tired mouth.
+
+## The code experiment
+
+I ran the same machinery earlier on a React settings panel with `lovely`, `beautiful`, `elegant`, `polished`, and `refined`. It scored 5 of 30, which is 16.7%, exactly chance.
+
+I originally read that as "aesthetic words do nothing to code". I don't think that is right anymore. All five of those words are positive, and positive is the family with no headroom. The judge did notice something had been asked for, with a mean presence probability of 0.78, but the control sat at 0.72.
+
+The panels are obviously different from each other. They are just not different in a way that tracks the word. The control invented a product called Notionary, `refined` invented Notespace, and `lovely` and `elegant` both independently invented Papertrail. Sidebar or modal, green accent or violet, serif or sans, none of it lines up with the adjective.
+
+The clearest bit was running one condition five times. Five runs of the control and five runs of `polished`, with nothing changing except the model's own sampling. The variation inside each row is larger than any difference between the rows. The judge called one control run `polished`, and called three of the five `polished` runs `control`. The two conditions just swap.
+
+So the correct reading is narrower: this benchmark cannot separate five positive aesthetic words on this task at five runs each.
+
+## Isolation
+
+The point of the design is that no two model calls can share state, so a result cannot be an artifact of a warm thread.
+
+637 attempts produced 630 successful calls across 630 distinct OS process IDs, 630 distinct model thread IDs, and 630 distinct workspace fingerprints. Counting failures, that is 637 processes and 637 workspaces across 637 attempts, so a retry never landed in an environment that had already been used. Each call got a temporary `CODEX_HOME` with a mode 0600 copy of the credentials and no extra readable directories.
+
+The 7 failures are worth naming. 5 were judge responses whose probabilities did not sum to 1, and the parser rejected them instead of renormalizing quietly. 2 were generations interrupted by a process restart. All were retried in a fresh environment.
+
+Total model time was 251 minutes. The six writing experiments account for 183 of those and ran concurrently in 28 minutes of wall clock.
+
+## What I don't know yet
+
+- Five runs per condition. One classification is worth 20 percentage points of per-word recall, so the family-level and pooled numbers are the ones to trust. Individual per-word recalls are noise.
+- One judge, and it is the same model as the generator. The collapse onto `ugly` and `beautiful` might be a property of that judge rather than of the text.
+- This is behavioral. It measures whether an instruction leaves a recognizable trace in the output. It says nothing about what the model represents internally, or whether it has a definition of any of these words.
+- Two tasks, an autumn poem and a bakery paragraph. Both are warm and pleasant by default, which is the exact condition that creates the ceiling on the positive side.
+- Process, thread, and workspace isolation is verified. Account, model version, and provider-side state are shared across every run and I cannot inspect them from here.
+
+## What is next
+
+Run the same six conditions at 20 to 50 runs each, which is roughly where per-word comparison starts to mean anything.
+
+Mix the families inside one candidate list. A six-way choice between `beautiful`, `ordinary`, `ugly`, and control tests whether the judge can place a text on the valence axis when the axis is the thing being asked about.
+
+Run a task whose default is not already pleasant, like an incident postmortem or an error message. If the ceiling explanation is right, positive adjectives should suddenly become detectable there. That is the test I care most about.
+
+And swap the judge for a different model family. If `ugly` stops being an attractor, the collapse was a judge artifact and not a fact about the writing.
