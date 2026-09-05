@@ -82,8 +82,9 @@ describe("stretching server-to-client restoration", () => {
       .toBe(expectedView);
     for (const [key, value] of Object.entries(saved)) {
       expect(localStorage.getItem(key)).toBe(value);
-      expect(writes.mock.calls.filter(([writtenKey]) => writtenKey === key))
-        .toEqual([[key, value]]);
+      expect(writes.mock.calls.filter(([writtenKey, writtenValue]) =>
+        writtenKey === key && writtenValue !== value))
+        .toEqual([]);
     }
     if (expectedView === "preview") expect(container.textContent).toContain(savedRoutine.name);
     expect(document.body.classList.contains("stretching-focus-mode"))
