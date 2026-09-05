@@ -78,6 +78,8 @@ describe("stretching server-to-client restoration", () => {
     expect(errors).toEqual([]);
     expect(consoleErrors).not.toHaveBeenCalled();
     expect(new URLSearchParams(window.location.search).get("view")).toBe(expectedView);
+    expect(container.querySelector("[data-stretching-view]")?.getAttribute("data-stretching-view"))
+      .toBe(expectedView);
     for (const [key, value] of Object.entries(saved)) {
       expect(localStorage.getItem(key)).toBe(value);
       expect(writes.mock.calls.filter(([writtenKey]) => writtenKey === key))
@@ -91,6 +93,8 @@ describe("stretching server-to-client restoration", () => {
       window.history.pushState({}, "", "/tools/stretching/?view=browser");
       window.dispatchEvent(new PopStateEvent("popstate"));
     });
+    expect(container.querySelector("[data-stretching-view]")?.getAttribute("data-stretching-view"))
+      .toBe("browser");
     expect(document.body.classList.contains("stretching-focus-mode")).toBe(false);
     expect(container.querySelector('[data-stretching-shell="wide"]')).not.toBeNull();
   });
