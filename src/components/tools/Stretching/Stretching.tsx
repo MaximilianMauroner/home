@@ -8,10 +8,10 @@ import {
   CUSTOM_ROUTINES_KEY,
 } from "./constants";
 import { playTickSound, playEndSound } from "./utils";
-import { StretchDetails } from "./components/StretchDetails";
 import { RestPeriodScreen } from "./components/RestPeriodScreen";
 import { TimeBetweenSettings } from "./components/TimeBetweenSettings";
 import { ControlPanel } from "./components/ControlPanel";
+import { InformationPane } from "./components/InformationPane";
 import { ContentManager } from "./components/ContentManager";
 import { QuickStart } from "./components/QuickStart";
 import { RoutineBrowser } from "./components/RoutineBrowser";
@@ -33,7 +33,6 @@ import {
 import {
   calculateSessionProgress,
   calculateSessionTimeRemaining,
-  calculateStepsRemaining,
   getNextSessionPosition,
   getPreviousSessionPosition,
   shouldAdvanceSession,
@@ -521,7 +520,6 @@ export default function Stretching() {
     sessionTimingState,
     timeBetween,
   );
-  const stepsRemaining = calculateStepsRemaining(stretches, sessionTimingState);
 
   const allRoutines = [...DEFAULT_ROUTINES, ...customRoutines];
   const currentRoutine = allRoutines.find((r) => r.id === selectedRoutineId);
@@ -937,10 +935,12 @@ export default function Stretching() {
                 onSkip={next}
               />
             ) : currentStretch ? (
-              <div className="grid min-w-0 gap-3 min-[660px]:grid-cols-2 min-[660px]:gap-4 min-[1000px]:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)_minmax(15rem,0.72fr)] min-[1000px]:gap-5">
-                <div className="min-w-0">
-                  <StretchDetails stretch={currentStretch} section="image" />
-                </div>
+              <div className="stretching-session-body">
+                <InformationPane
+                  stretch={currentStretch}
+                  timeBetween={timeBetween}
+                  onEditTimeBetween={() => setShowTimeBetweenSettings(true)}
+                />
                 <ControlPanel
                   currentStretch={currentStretch}
                   currentIndex={currentIndex}
@@ -950,7 +950,7 @@ export default function Stretching() {
                   isRunning={isRunning}
                   isPaused={isPaused}
                   timeRemainingTotal={timeRemainingTotal}
-                  stepsRemaining={stepsRemaining}
+                  progress={progress}
                   onStart={start}
                   onPause={pause}
                   onResume={resume}
@@ -958,68 +958,6 @@ export default function Stretching() {
                   onPrevious={previous}
                   isResting={isResting}
                 />
-                <aside className="stretching-session-context min-w-0 min-[660px]:col-span-2 min-[1000px]:col-span-1">
-                  <div className="space-y-4">
-                    {currentStretch.targetAreas &&
-                      currentStretch.targetAreas.length > 0 && (
-                        <section
-                          className="rounded-2xl border border-border bg-card p-4 shadow-sm"
-                          aria-labelledby="session-targets-heading"
-                        >
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                            Focus
-                          </p>
-                          <h3
-                            id="session-targets-heading"
-                            className="mt-1 text-lg font-semibold text-foreground"
-                          >
-                            Target areas
-                          </h3>
-                          <ul className="mt-3 flex flex-wrap gap-2">
-                            {currentStretch.targetAreas.map((area) => (
-                              <li
-                                key={area}
-                                className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
-                              >
-                                {area}
-                              </li>
-                            ))}
-                          </ul>
-                        </section>
-                      )}
-                    <StretchDetails
-                      stretch={currentStretch}
-                      section="guidance"
-                    />
-                    <section
-                      className="rounded-2xl border border-border bg-card p-4 shadow-sm"
-                      aria-labelledby="session-settings-heading"
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                        Session
-                      </p>
-                      <h3
-                        id="session-settings-heading"
-                        className="mt-1 text-lg font-semibold text-foreground"
-                      >
-                        Settings
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => setShowTimeBetweenSettings(true)}
-                        className="mt-3 min-h-11 w-full rounded-xl bg-muted px-4 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-primary/10"
-                      >
-                        Rest between steps
-                        <span className="float-right tabular-nums text-muted-foreground">
-                          {timeBetween}s
-                        </span>
-                      </button>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Space to pause · ← / → to move · R to reset
-                      </p>
-                    </section>
-                  </div>
-                </aside>
               </div>
             ) : null}
           </section>

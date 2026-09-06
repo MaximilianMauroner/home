@@ -1,6 +1,6 @@
 import type { Stretch } from "@/components/tools/Stretching/types";
-import { BreathingTimer } from "./BreathingTimer";
 import { ControlButtons } from "./ControlButtons";
+import { StretchDetails } from "./StretchDetails";
 import { describeRepetition } from "../rail";
 import { formatTime } from "@/components/tools/Stretching/utils";
 
@@ -13,7 +13,7 @@ interface ControlPanelProps {
   isRunning: boolean;
   isPaused: boolean;
   timeRemainingTotal: number;
-  stepsRemaining: number;
+  progress: number;
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -22,6 +22,10 @@ interface ControlPanelProps {
   isResting: boolean;
 }
 
+/**
+ * The cockpit half of the session: pose, clock bar, name, transport. Sized to
+ * the frame so that none of it scrolls while a hold is running.
+ */
 export function ControlPanel({
   currentStretch,
   currentIndex,
@@ -31,7 +35,7 @@ export function ControlPanel({
   isRunning,
   isPaused,
   timeRemainingTotal,
-  stepsRemaining,
+  progress,
   onStart,
   onPause,
   onResume,
@@ -43,55 +47,46 @@ export function ControlPanel({
     currentRepetition,
     currentStretch.repetitions || 1,
   );
+  const sessionProgress = Math.min(100, Math.max(0, progress));
 
   return (
-    <section className="stretching-session-cues space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:flex lg:min-h-[36rem] lg:flex-col lg:justify-center lg:p-8">
-      <div className="text-center">
-        <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
-          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary sm:text-sm">
-            {currentIndex + 1} / {stretchesLength}
-          </span>
-          {repetitionLabel && (
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 sm:text-sm dark:bg-emerald-400/10 dark:text-emerald-300">
-              {repetitionLabel}
-            </span>
-          )}
-        </div>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-3xl">
-          {currentStretch.name}
-        </h1>
-        <p className="mx-auto mt-1 max-w-md text-sm leading-snug text-muted-foreground">
-          {currentStretch.description}
+    <section className="stretching-cockpit" aria-label="Pose and timer">
+      <StretchDetails stretch={currentStretch} section="image" />
+
+      <div className="stretching-clockbar">
+        <p className="stretching-clockbar__count" aria-live="off">
+          <span className="sr-only">Time left in this hold: </span>
+          {formatTime(timeRemaining)}
         </p>
-      </div>
-
-      <div className="stretching-session-timer flex justify-center py-1 sm:py-3">
-        <BreathingTimer
-          timeRemaining={timeRemaining}
-          totalDuration={currentStretch.duration}
-          isRunning={isRunning}
-          isPaused={isPaused}
-          isResting={isResting}
-          compact
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 border-y border-border py-3 text-center">
-        <div>
-          <p className="text-lg font-semibold tabular-nums text-foreground">
-            {formatTime(timeRemainingTotal)}
+        <div className="stretching-clockbar__meta">
+          <p className="stretching-clockbar__row">
+            <span>hold</span>
+            <span>
+              <strong>{formatTime(timeRemainingTotal)}</strong> left in session
+            </span>
           </p>
-          <p className="text-xs text-muted-foreground">remaining</p>
-        </div>
-        <div>
-          <p className="text-lg font-semibold tabular-nums text-foreground">
-            {stepsRemaining}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {stepsRemaining === 1 ? "step" : "steps"} left
+          <div
+            className="stretching-track"
+            role="progressbar"
+            aria-label="Session progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(sessionProgress)}
+          >
+            <span style={{ width: `${sessionProgress}%` }} />
+          </div>
+          <p className="stretching-clockbar__row">
+            <span>
+              <strong>
+                Step {currentIndex + 1} of {stretchesLength}
+              </strong>
+            </span>
+            {repetitionLabel && <span>{repetitionLabel}</span>}
           </p>
         </div>
       </div>
+
+      <h1 className="stretching-cockpit__title">{currentStretch.name}</h1>
 
       <ControlButtons
         isRunning={isRunning}
