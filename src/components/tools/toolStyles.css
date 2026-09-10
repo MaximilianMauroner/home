@@ -183,6 +183,16 @@
   --tool-accent-text: oklch(0.77 0.09 154);
 }
 
+.tool-theme-photo-journey {
+  --tool-accent: oklch(0.82 0.13 88);
+  --tool-accent-foreground: oklch(0.18 0.035 80);
+  --tool-accent-text: oklch(0.55 0.12 72);
+}
+
+.dark .tool-theme-photo-journey {
+  --tool-accent-text: oklch(0.86 0.12 88);
+}
+
 .tool-theme-readwise {
   --tool-accent: oklch(0.68 0.095 252);
   --tool-accent-foreground: oklch(0.14 0.025 252);

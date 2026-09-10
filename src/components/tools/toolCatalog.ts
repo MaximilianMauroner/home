@@ -75,6 +75,15 @@ export const TOOL_CATALOG = {
     labels: ["local", "no account"],
     tags: ["running", "fitness", "calculator"],
   },
+  "photo-journey": {
+    category: "photo",
+    status: "experimental",
+    featured: 82,
+    privacy: "local",
+    access: "local files",
+    labels: ["local files", "no account"],
+    tags: ["photos", "metadata", "map", "animation"],
+  },
   "readwise-tags-mapper": {
     category: "reading",
     status: "beta",
