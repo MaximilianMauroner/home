@@ -5,6 +5,7 @@ export const TOOL_THEME_CLASSES: Record<string, string> = {
   "microphone-tester": "tool-theme-microphone",
   leaveify: "tool-theme-leaveify",
   "pace-calculator": "tool-theme-pace",
+  "photo-journey": "tool-theme-photo-journey",
   "readwise-tags-mapper": "tool-theme-readwise",
   "spotify-stats": "tool-theme-spotify",
   stretching: "tool-theme-stretching",

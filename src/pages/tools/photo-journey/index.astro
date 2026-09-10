@@ -1,0 +1,18 @@
+---
+export const title = "Photo Journey";
+export const description = "Play your photos as a journey, with animated maps, offline place names, and route exports.";
+
+import PhotoJourney from "@/components/tools/PhotoJourney/PhotoJourney";
+import ToolPage from "@/components/tools/ToolPage.astro";
+import { getToolThemeClass } from "@/components/tools/toolTheme";
+import StarLayout from "@/layouts/StarLayout.astro";
+---
+
+<StarLayout title={title} description={description}>
+  <ToolPage wide theme={getToolThemeClass("photo-journey")} title={title} description={description}>
+    <div slot="header-extra" class="rounded-lg border border-border bg-card p-3">
+      <p class="text-xs leading-5 text-muted-foreground">Photo files stay in this browser tab. The offline grid sends no map requests. Optional OpenStreetMap tiles reveal the areas shown to the tile provider.</p>
+    </div>
+    <PhotoJourney client:only="react" />
+  </ToolPage>
+</StarLayout>
