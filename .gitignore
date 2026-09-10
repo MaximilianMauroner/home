@@ -24,6 +24,5 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 .vercel
-.cursor
-/.field-guide/sessions/
-/.agents/artifacts/
+.cursor/
+.agents/
