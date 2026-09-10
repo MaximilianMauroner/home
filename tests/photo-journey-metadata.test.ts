@@ -16,8 +16,10 @@ describe("Photo Journey metadata", () => {
       new URL("./fixtures/geotagged-jpeg.b64", import.meta.url),
     );
     const encoded = await readFile(fixturePath, "utf8");
+    // exifr takes a plain Uint8Array. A Node Buffer carries an ArrayBufferLike that no
+    // longer satisfies that parameter type.
     const metadata = await extractMetadata(
-      Buffer.from(encoded.trim(), "base64"),
+      new Uint8Array(Buffer.from(encoded.trim(), "base64")),
     );
     expect(metadata.latitude).toBeCloseTo(-0.3713, 4);
     expect(metadata.longitude).toBeCloseTo(36.05642, 4);

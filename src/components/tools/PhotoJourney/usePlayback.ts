@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { buildTimeline, timelineAt } from "./timeline";
 import type { JourneyPhoto } from "./types";
 
@@ -44,17 +44,20 @@ export function usePlayback(photos: JourneyPhoto[]) {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
 
-  function seek(value: number, keepPlaying = false) {
+  // The clock re-renders this hook's consumer on every frame. Stable callbacks let the
+  // photo list and the inspector skip those renders.
+  const seek = useCallback((value: number, keepPlaying = false) => {
     if (!keepPlaying) setPlaying(false);
     setElapsed(Math.min(total, Math.max(0, value)));
     setSeekVersion((version) => version + 1);
-  }
-  function select(index: number) {
-    const stop = timeline.stops[Math.min(photos.length - 1, Math.max(0, index))];
+  }, [total]);
+  const select = useCallback((index: number) => {
+    const stop = timeline.stops[Math.min(timeline.stops.length - 1, Math.max(0, index))];
     if (!stop) return;
     // While playing, replay the leg into the stop. While paused, show the photo itself.
     seek(playing ? stop.start : stop.revealStart, playing);
-  }
+  }, [seek, timeline, playing]);
+  const pause = useCallback(() => setPlaying(false), []);
   function toggle() {
     if (!photos.length) return;
     if (elapsed >= total) {
@@ -64,5 +67,5 @@ export function usePlayback(photos: JourneyPhoto[]) {
     setPlaying((value) => !value);
   }
   return { timeline, state, elapsed, total, playing, speed, seekVersion, setSpeed,
-    pause: () => setPlaying(false), seek, select, toggle };
+    pause, seek, select, toggle };
 }

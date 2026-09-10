@@ -144,7 +144,7 @@ export async function readPhoto(
     ]);
     preview = created;
     const metadata = normalizeMetadata(file, data, created.width, created.height);
-    if (metadata.coordinates) metadata.place = nearestPlace(metadata.coordinates);
+    if (metadata.coordinates) metadata.place = await nearestPlace(metadata.coordinates);
     return {
       id: `${importOrder}-${file.name}-${file.lastModified}`,
       file,

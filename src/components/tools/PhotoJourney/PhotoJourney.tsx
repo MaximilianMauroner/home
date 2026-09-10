@@ -1,10 +1,11 @@
-import { ChevronDown, ChevronUp, Download, ImagePlus, Maximize2, Minimize2, Pause, Play, RotateCcw, SkipBack, SkipForward, Trash2, Upload, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ImagePlus, Maximize2, Minimize2, Pause, Play, RotateCcw, SkipBack, SkipForward, Upload, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { readPhoto, revokePhoto, sortPhotos } from "./metadata";
 import { acceptFiles } from "./ingestion";
-import { exportJourney, formatDistance, journeySummary } from "./journey-data";
+import { exportJourney, type ExportFormat } from "./journey-data";
 import JourneyStage from "./JourneyStage";
 import Inspector from "./Inspector";
+import StopList from "./StopList";
 import { usePlayback, useReducedMotion } from "./usePlayback";
 import type { JourneyPhoto } from "./types";
 import "./photo-journey.css";
@@ -52,7 +53,6 @@ export default function PhotoJourney() {
   const reducedMotion = useReducedMotion();
   const activeIndex = playback.state.photoIndex;
   const activePhoto = photos[activeIndex];
-  const summary = useMemo(() => journeySummary(photos), [photos]);
   const finished = playback.elapsed >= playback.total;
 
   useEffect(() => { photosRef.current = photos; }, [photos]);
@@ -83,21 +83,26 @@ export default function PhotoJourney() {
     } catch { setErrors(["Fullscreen is unavailable in this browser."]); }
   }
 
+  function onKey(event: KeyboardEvent) {
+    const target = event.target;
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey ||
+      (target instanceof HTMLElement && (target.isContentEditable || target.closest("input,textarea,select,button,a")))) return;
+    if (!photos.length) return;
+    if (event.code === "Space") { event.preventDefault(); togglePlay(); }
+    else if (event.key === "ArrowLeft") { event.preventDefault(); playback.select(activeIndex - 1); }
+    else if (event.key === "ArrowRight") { event.preventDefault(); playback.select(activeIndex + 1); }
+    else if (event.key.toLowerCase() === "f") { event.preventDefault(); void toggleFullscreen(); }
+    else if (event.key === "Escape" && fullscreen) void toggleFullscreen();
+  }
+  // The clock renders this component on every frame, so the listener is bound once and
+  // reads the current handler instead of being replaced sixty times a second.
+  const keyHandler = useRef(onKey);
+  keyHandler.current = onKey;
   useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      const target = event.target;
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey ||
-        (target instanceof HTMLElement && (target.isContentEditable || target.closest("input,textarea,select,button,a")))) return;
-      if (!photos.length) return;
-      if (event.code === "Space") { event.preventDefault(); togglePlay(); }
-      else if (event.key === "ArrowLeft") { event.preventDefault(); playback.select(activeIndex - 1); }
-      else if (event.key === "ArrowRight") { event.preventDefault(); playback.select(activeIndex + 1); }
-      else if (event.key.toLowerCase() === "f") { event.preventDefault(); void toggleFullscreen(); }
-      else if (event.key === "Escape" && fullscreen) void toggleFullscreen();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
+    const listener = (event: KeyboardEvent) => keyHandler.current(event);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
 
   async function addFiles(files: File[]) {
     if (importing.current || !files.length) return;
@@ -124,22 +129,23 @@ export default function PhotoJourney() {
     playback.seek(0);
   }
 
-  function removePhoto(id: string) {
+  const { seek } = playback;
+  const removePhoto = useCallback((id: string) => {
     const removed = photos.find((photo) => photo.id === id);
     if (removed) revokePhoto(removed);
     setPhotos(photos.filter((photo) => photo.id !== id));
-    playback.seek(0);
-  }
-  function movePhoto(index: number, direction: -1 | 1) {
+    seek(0);
+  }, [photos, seek]);
+  const movePhoto = useCallback((index: number, direction: -1 | 1) => {
     const target = index + direction;
     if (target < 0 || target >= photos.length) return;
     const next = [...photos];
     [next[index], next[target]] = [next[target], next[index]];
     setPhotos(next);
     setOrder("manual");
-    playback.seek(0);
-  }
-  function download(format: "gpx" | "geojson" | "json") {
+    seek(0);
+  }, [photos, seek]);
+  const download = useCallback((format: ExportFormat) => {
     const result = exportJourney(photos, format, title);
     const url = URL.createObjectURL(new Blob([result.content], { type: result.mime }));
     const anchor = document.createElement("a");
@@ -147,7 +153,7 @@ export default function PhotoJourney() {
     anchor.download = `photo-journey.${result.extension}`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
+  }, [photos, title]);
 
   return <div className="photo-journey">
     <input ref={inputRef} type="file" accept={ACCEPT} multiple hidden onChange={(event) => {
@@ -206,32 +212,8 @@ export default function PhotoJourney() {
         <p className="pj-keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> stops <kbd>F</kbd> fullscreen</p>
       </div>
       <div className="pj-workspace">
-        <section className="pj-panel pj-stops" aria-label="Journey order">
-          <header className="pj-panel-head">
-            <span className="pj-label">{summary.photoCount} photos · {summary.locatedCount} located · {formatDistance(summary.distanceKm)}</span>
-            <h2>Stops</h2>
-            <div className="pj-exports" aria-label="Export journey">
-              <Download size={14} aria-hidden="true" />
-              {(["gpx", "geojson", "json"] as const).map((format) =>
-                <button key={format} className="pj-pill" data-size="sm" onClick={() => download(format)}>{format === "geojson" ? "GeoJSON" : format.toUpperCase()}</button>)}
-            </div>
-          </header>
-          <ol className="pj-stop-list">{photos.map((photo, index) => <li key={photo.id} data-selected={index === activeIndex}>
-            <button className="pj-stop" aria-current={index === activeIndex ? "step" : undefined} onClick={() => playback.select(index)}>
-              <img src={photo.thumbnailUrl} alt="" loading="lazy" />
-              <span className="pj-stop-index">{String(index + 1).padStart(2, "0")}</span>
-              <span className="pj-stop-text">
-                <strong>{photo.name}</strong>
-                <small data-located={Boolean(photo.metadata.coordinates)}>{photo.metadata.place ?? "No GPS"}{photo.metadata.capturedAtLabel ? ` · ${photo.metadata.capturedAtLabel}` : ""}</small>
-              </span>
-            </button>
-            <div className="pj-stop-actions">
-              <button disabled={busy || index === 0} onClick={() => movePhoto(index, -1)} aria-label={`Move ${photo.name} earlier`}><ChevronUp /></button>
-              <button disabled={busy || index === photos.length - 1} onClick={() => movePhoto(index, 1)} aria-label={`Move ${photo.name} later`}><ChevronDown /></button>
-              <button disabled={busy} onClick={() => removePhoto(photo.id)} aria-label={`Remove ${photo.name}`}><Trash2 /></button>
-            </div>
-          </li>)}</ol>
-        </section>
+        <StopList photos={photos} activeIndex={activeIndex} busy={busy}
+          onSelect={playback.select} onMove={movePhoto} onRemove={removePhoto} onExport={download} />
         <Inspector photo={activePhoto} index={activeIndex} />
       </div>
     </>}

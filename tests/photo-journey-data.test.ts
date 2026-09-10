@@ -34,8 +34,8 @@ describe('journey metadata and geography', () => {
     expect(groups.map((group) => group.name)).toEqual(['Camera', 'Location']);
     expect(groups[1].details[0]).toEqual({ label: 'GPS Altitude', rawLabel: 'GPSAltitude', value: '10' });
   });
-  test('finds the nearest bundled place offline', () => {
-    expect(nearestPlace({ latitude: 48.208, longitude: 16.373 })).toMatch(/Vienna, Austria/);
+  test('finds the nearest bundled place offline', async () => {
+    expect(await nearestPlace({ latitude: 48.208, longitude: 16.373 })).toMatch(/Vienna, Austria/);
   });
   test('names the hemisphere instead of printing signed coordinates', () => {
     expect(formatCoordinates({ latitude: -0.37131, longitude: 36.05642 })).toBe('0.3713° S, 36.0564° E');

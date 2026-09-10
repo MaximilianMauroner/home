@@ -1,9 +1,11 @@
 import { ChevronDown } from "lucide-react";
+import { memo } from "react";
 import { formatCoordinates } from "./journey-data";
 import { groupMetadata } from "./metadata";
 import type { JourneyPhoto } from "./types";
 
-export default function Inspector({
+/** Memoized for the same reason as the stop list: the clock renders the tool every frame. */
+function Inspector({
   photo,
   index,
 }: {
@@ -85,3 +87,5 @@ export default function Inspector({
     </section>
   );
 }
+
+export default memo(Inspector);
