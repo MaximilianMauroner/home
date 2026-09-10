@@ -19,7 +19,11 @@ export function usePlayback(photos: JourneyPhoto[], placements?: readonly Placem
     () => placements?.map((placement) => (placement.source === "photo" || placement.source === "track" ? placement.coordinates : undefined)),
     [placements],
   );
-  const timeline = useMemo(() => buildTimeline(photos, positions), [photos, positions]);
+  const instants = useMemo(
+    () => placements?.map((placement) => placement.instant),
+    [placements],
+  );
+  const timeline = useMemo(() => buildTimeline(photos, positions, instants), [photos, positions, instants]);
   const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);

@@ -7,6 +7,7 @@ import { buildBundle, exportJourney, formatDistance, journeySummary, type Export
 import JourneyStage from "./JourneyStage";
 import Inspector from "./Inspector";
 import StopList from "./StopList";
+import type { MapMode } from "./JourneyMap";
 import { inferUtcOffsetMinutes, journeyStops, placementSummary, resolvePlacements } from "./track";
 import { usePlayback, useReducedMotion } from "./usePlayback";
 import type { JourneyPhoto } from "./types";
@@ -49,7 +50,9 @@ export default function PhotoJourney() {
   const [importProgress, setImportProgress] = useState("");
   const [order, setOrder] = useState<"capture" | "manual">("capture");
   const [title, setTitle] = useState("My photo journey");
-  const [offline, setOffline] = useState(true);
+  const [mapMode, setMapMode] = useState<MapMode>("offline");
+  const [terrain, setTerrain] = useState({ loading: false, failed: false });
+  const [mapDead, setMapDead] = useState(false);
   const [kenBurns, setKenBurns] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -225,8 +228,8 @@ export default function PhotoJourney() {
       <div className="pj-bar">
         <input className="pj-title" aria-label="Journey title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} />
         <div className="pj-bar-actions">
-          <Segmented label="Map" value={offline ? "offline" : "online"} onChange={(value) => setOffline(value === "offline")}
-            options={[{ value: "offline", label: "Offline" }, { value: "online", label: "OpenStreetMap" }]} />
+          <Segmented label="Map" value={mapMode} onChange={setMapMode}
+            options={[{ value: "offline", label: "Offline" }, { value: "online", label: "OpenStreetMap" }, { value: "terrain", label: "Terrain" }]} />
           <Segmented label="Order" value={order} disabled={busy} onChange={(value) => {
             setOrder(value); if (value === "capture") setPhotos(sortPhotos(photos)); playback.seek(0);
           }} options={[{ value: "capture", label: "By time" }, { value: "manual", label: "Manual" }]} />
@@ -240,7 +243,8 @@ export default function PhotoJourney() {
       <div className="pj-stage" ref={stageRef}>
         <JourneyStage photos={photos} stops={stops} track={track} summary={summary} activeIndex={activeIndex} state={playback.state}
           timeline={playback.timeline} playing={playback.playing}
-          reducedMotion={reducedMotion} offline={offline} kenBurns={kenBurns} title={title} speed={playback.speed} seekVersion={playback.seekVersion} />
+          reducedMotion={reducedMotion} mapMode={mapMode} kenBurns={kenBurns} title={title} speed={playback.speed} seekVersion={playback.seekVersion}
+          onTerrainState={setTerrain} onEngineFailed={() => setMapDead(true)} />
         <div className="pj-controls">
           <div className="pj-transport">
             <button disabled={activeIndex === 0} onClick={() => playback.select(activeIndex - 1)} aria-label="Previous photo"><SkipBack /></button>
@@ -265,7 +269,17 @@ export default function PhotoJourney() {
       <div className="pj-notes">
         {stats ? <p className="pj-track-note"><Route size={14} aria-hidden="true" />{trackNote}</p>
           : <p>Add a <strong>.gpx</strong> file to follow the recorded route. Photos are then placed by their timecode wherever the camera's own fix disagrees with it.</p>}
-        <p>{offline ? "Offline map. No map requests leave this tab." : "OpenStreetMap receives requests for the areas shown."}</p>
+        {mapDead
+          ? <p>The 3D map is unavailable here. The journey still plays as a slideshow.</p>
+          : mapMode === "offline"
+            ? <p>Offline map. No map requests leave this tab.</p>
+            : mapMode === "online"
+              ? <p>OpenStreetMap receives requests for the areas shown.</p>
+              : terrain.failed
+                ? <p>Terrain tiles failed to load, so the map stays flat. Tile requests still reveal the areas shown.</p>
+                : terrain.loading
+                  ? <p>Loading terrain… OpenStreetMap and elevation tiles reveal the areas shown.</p>
+                  : <p>Terrain on. OpenStreetMap and elevation tiles reveal the areas shown.</p>}
         <p className="pj-keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> stops <kbd>F</kbd> fullscreen</p>
       </div>
       <div className="pj-workspace">

@@ -43,10 +43,14 @@ export function distanceKm(a: Coordinates, b: Coordinates) {
 /**
  * `positions` overrides where each photo sits, which is how a GPX track moves a stop away from an
  * unreliable camera fix. Without it the photo's own coordinates are used.
+ * `instants` holds the resolved shutter instant per photo (epoch milliseconds, from the track
+ * placement). When two neighbours both have one, the leg between them is timed by the real gap on
+ * the tour rather than by the straight-line distance, compressed so a day still watches in minutes.
  */
 export function buildTimeline(
   photos: JourneyPhoto[],
   positions?: ReadonlyArray<Coordinates | undefined>,
+  instants?: ReadonlyArray<number | undefined>,
 ): JourneyTimeline {
   const positionOf = (index: number) =>
     positions ? positions[index] : photos[index]?.metadata.coordinates;
@@ -79,10 +83,20 @@ export function buildTimeline(
         distanceKm(own, previousPosition) < 0.05,
     );
     const distance = own && lastPosition ? distanceKm(lastPosition, own) : 0;
-    const approachDuration =
+    const distanceBased =
       !own || burst || distance < 0.001
         ? 0
         : Math.min(3000, Math.max(600, 600 + Math.log10(1 + distance) * 650));
+    // A two-hour ascent between photos should not feel like the ten minutes to the next
+    // viewpoint. The gap is log-compressed: two hours play ~3.7 s, eight hours stay under the cap.
+    const gapSeconds =
+      instants?.[photoIndex] !== undefined && instants?.[photoIndex - 1] !== undefined
+        ? (instants[photoIndex]! - instants[photoIndex - 1]!) / 1000
+        : undefined;
+    const approachDuration =
+      distanceBased > 0 && gapSeconds !== undefined && gapSeconds > 0
+        ? Math.min(6000, Math.max(distanceBased, 600 + Math.log10(1 + gapSeconds / 60) * 1500))
+        : distanceBased;
     if (own) lastPosition = own;
     const start = offset;
     const revealStart = start + approachDuration;

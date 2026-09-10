@@ -12,6 +12,7 @@ import {
   journeyStops,
   resolvePlacements,
 } from "../src/components/tools/PhotoJourney/track";
+import { legSpansGlobe } from "../src/components/tools/PhotoJourney/JourneyMap";
 import type { JourneyPhoto } from "../src/components/tools/PhotoJourney/types";
 
 function photo(latitude?: number, longitude?: number): JourneyPhoto {
@@ -66,6 +67,17 @@ describe("Photo Journey timeline", () => {
     expect(timelineAt(timeline.stops[2].dayStart, timeline).dayLabel).toContain(
       "Day 2",
     );
+  });
+  test("times legs by the real gap on the tour when shutter instants are known", () => {
+    const pair = [photo(48, 16), photo(48.1, 16.1)];
+    const positions = pair.map((entry) => entry.metadata.coordinates);
+    const flat = buildTimeline(pair, positions);
+    const twoHours = buildTimeline(pair, positions, [0, 2 * 3_600_000]);
+    expect(twoHours.stops[1].approachDuration).toBeGreaterThan(flat.stops[1].approachDuration);
+    const twoDays = buildTimeline(pair, positions, [0, 48 * 3_600_000]);
+    expect(twoDays.stops[1].approachDuration).toBeLessThanOrEqual(6000);
+    // Without instants the distance formula still rules.
+    expect(flat.stops[1].approachDuration).toBeLessThanOrEqual(3000);
   });
   test("uses great-circle distances across the date line", () => {
     expect(
@@ -136,5 +148,23 @@ describe("Photo Journey timeline", () => {
       { latitude: 1, longitude: 1 },
       { latitude: 2, longitude: 2 },
     ]);
+  });
+
+  test("sends only long legs to the globe projection", () => {
+    // Vienna to New York: ~6 800 km, arcs instead of smearing.
+    expect(
+      legSpansGlobe([
+        { latitude: 48.2, longitude: 16.37 },
+        { latitude: 40.71, longitude: -74 },
+      ]),
+    ).toBe(true);
+    // A Dolomites day: stays on Mercator.
+    expect(
+      legSpansGlobe([
+        { latitude: 46.46, longitude: 11.56 },
+        { latitude: 46.48, longitude: 11.66 },
+      ]),
+    ).toBe(false);
+    expect(legSpansGlobe([])).toBe(false);
   });
 });
