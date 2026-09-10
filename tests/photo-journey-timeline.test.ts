@@ -5,10 +5,14 @@ import {
   distanceKm,
   cameraFor,
   locatedPoints,
-  resolveStops,
   routeSegments,
   timelineAt,
 } from "../src/components/tools/PhotoJourney/timeline";
+import {
+  journeyStops,
+  resolvePlacements,
+} from "../src/components/tools/PhotoJourney/track";
+import { legSpansGlobe } from "../src/components/tools/PhotoJourney/JourneyMap";
 import type { JourneyPhoto } from "../src/components/tools/PhotoJourney/types";
 
 function photo(latitude?: number, longitude?: number): JourneyPhoto {
@@ -31,6 +35,11 @@ function photo(latitude?: number, longitude?: number): JourneyPhoto {
       details: [],
     },
   };
+}
+
+/** Where the stops land with no track loaded: each photo's own fix, carried forward when missing. */
+function stopsFor(photos: JourneyPhoto[]) {
+  return journeyStops(resolvePlacements(photos));
 }
 
 describe("Photo Journey timeline", () => {
@@ -59,6 +68,17 @@ describe("Photo Journey timeline", () => {
       "Day 2",
     );
   });
+  test("times legs by the real gap on the tour when shutter instants are known", () => {
+    const pair = [photo(48, 16), photo(48.1, 16.1)];
+    const positions = pair.map((entry) => entry.metadata.coordinates);
+    const flat = buildTimeline(pair, positions);
+    const twoHours = buildTimeline(pair, positions, [0, 2 * 3_600_000]);
+    expect(twoHours.stops[1].approachDuration).toBeGreaterThan(flat.stops[1].approachDuration);
+    const twoDays = buildTimeline(pair, positions, [0, 48 * 3_600_000]);
+    expect(twoDays.stops[1].approachDuration).toBeLessThanOrEqual(6000);
+    // Without instants the distance formula still rules.
+    expect(flat.stops[1].approachDuration).toBeLessThanOrEqual(3000);
+  });
   test("uses great-circle distances across the date line", () => {
     expect(
       distanceKm(
@@ -74,7 +94,7 @@ describe("Photo Journey timeline", () => {
   });
 
   test("carries the last known position across photos without GPS", () => {
-    const stops = resolveStops([
+    const stops = stopsFor([
       photo(48.2, 16.37),
       photo(),
       photo(40.71, -74),
@@ -87,20 +107,20 @@ describe("Photo Journey timeline", () => {
   });
 
   test("leaves the map alone until the first position is known", () => {
-    const stops = resolveStops([photo(), photo(48.2, 16.37)]);
+    const stops = stopsFor([photo(), photo(48.2, 16.37)]);
     expect(stops[0].coordinates).toBeUndefined();
     expect(cameraFor(stops, 0)).toBeUndefined();
   });
 
   test("holds still rather than flying to 0°, 0° on a photo without GPS", () => {
-    const stops = resolveStops([photo(48.2, 16.37), photo()]);
+    const stops = stopsFor([photo(48.2, 16.37), photo()]);
     const move = cameraFor(stops, 1);
     expect(move).toEqual({ center: { latitude: 48.2, longitude: 16.37 } });
     expect(move?.from).toBeUndefined();
   });
 
   test("reports the leg it is leaving when the location changes", () => {
-    const stops = resolveStops([photo(48.2, 16.37), photo(40.71, -74)]);
+    const stops = stopsFor([photo(48.2, 16.37), photo(40.71, -74)]);
     expect(cameraFor(stops, 1)).toEqual({
       center: { latitude: 40.71, longitude: -74 },
       from: { latitude: 48.2, longitude: 16.37 },
@@ -109,7 +129,7 @@ describe("Photo Journey timeline", () => {
 
   test("does not draw a false line across the antimeridian", () => {
     const segments = routeSegments(
-      locatedPoints([photo(0, 179), photo(0, -179)]),
+      locatedPoints(stopsFor([photo(0, 179), photo(0, -179)])),
     );
     expect(segments).toEqual([
       [
@@ -124,9 +144,27 @@ describe("Photo Journey timeline", () => {
   });
 
   test("skips photos without GPS when drawing the route", () => {
-    expect(locatedPoints([photo(1, 1), photo(), photo(2, 2)])).toEqual([
+    expect(locatedPoints(stopsFor([photo(1, 1), photo(), photo(2, 2)]))).toEqual([
       { latitude: 1, longitude: 1 },
       { latitude: 2, longitude: 2 },
     ]);
+  });
+
+  test("sends only long legs to the globe projection", () => {
+    // Vienna to New York: ~6 800 km, arcs instead of smearing.
+    expect(
+      legSpansGlobe([
+        { latitude: 48.2, longitude: 16.37 },
+        { latitude: 40.71, longitude: -74 },
+      ]),
+    ).toBe(true);
+    // A Dolomites day: stays on Mercator.
+    expect(
+      legSpansGlobe([
+        { latitude: 46.46, longitude: 11.56 },
+        { latitude: 46.48, longitude: 11.66 },
+      ]),
+    ).toBe(false);
+    expect(legSpansGlobe([])).toBe(false);
   });
 });

@@ -306,58 +306,118 @@
   font-size: 1.05rem;
 }
 
-/* Leaflet, restyled to the dark palette. OSM tiles are inverted rather than swapped for a
-   third-party dark style, so the tile provider and the privacy note stay the same. */
-.pj-leaflet-map {
+/* MapLibre, restyled to the dark palette. OSM tiles are darkened with raster paint rather
+   than swapped for a third-party dark style, so the tile provider and privacy note stay put. */
+.pj-gl-map {
   width: 100%;
   height: 100%;
   background: #0a1417;
   font: inherit;
 }
-.pj-leaflet-map[data-offline="true"] {
+.pj-gl-map[data-offline="true"] {
   background: #071014;
 }
-.pj-leaflet-map .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.92) saturate(0.4);
+/* Minimal engine frame (adapted from the BSD-licensed maplibre-gl.css). The library
+   stylesheet is not imported: its data-URI icons break this site's build pipeline. */
+.pj-gl-map .maplibregl-map {
+  overflow: hidden;
+  position: relative;
 }
-.pj-leaflet-map .leaflet-control-attribution {
+.pj-gl-map .maplibregl-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+.pj-gl-map .maplibregl-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+.pj-gl-map .maplibregl-ctrl-top-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.pj-gl-map .maplibregl-ctrl-top-left .maplibregl-ctrl {
+  margin: 10px 0 0 10px;
+  float: left;
+  pointer-events: auto;
+}
+.pj-gl-map .maplibregl-ctrl-bottom-right {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.pj-gl-map .maplibregl-ctrl-bottom-right .maplibregl-ctrl {
+  margin: 0 10px 10px 0;
+  float: right;
+  pointer-events: auto;
+}
+.pj-gl-map .maplibregl-ctrl-attrib {
   padding: 0.1rem 0.4rem;
   border-top-left-radius: 0.4rem;
   background: #05090bcc;
   color: var(--pj-muted);
   font-size: 9px;
 }
-.pj-leaflet-map .leaflet-control-attribution a {
+.pj-gl-map .maplibregl-ctrl-attrib a {
   color: var(--pj-soft);
+  text-decoration: none;
 }
-.pj-leaflet-map .leaflet-bar {
+.pj-gl-map .maplibregl-ctrl-group {
   overflow: hidden;
   border: 1px solid var(--pj-line-strong);
   border-radius: var(--pj-radius);
+  background: var(--pj-bg-1);
   box-shadow: none;
 }
-.pj-leaflet-map .leaflet-bar a {
-  border-color: var(--pj-line);
-  background: var(--pj-bg-1);
-  color: var(--pj-ink);
+.pj-gl-map .maplibregl-ctrl-group button {
+  display: block;
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
-.pj-leaflet-map .leaflet-bar a:hover {
+.pj-gl-map .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--pj-line);
+}
+.pj-gl-map .maplibregl-ctrl-group button:hover {
   background: var(--pj-bg-3);
 }
-.pj-leaflet-map .leaflet-tooltip {
-  border: 1px solid var(--pj-line-strong);
-  border-radius: 0.4rem;
-  background: var(--pj-bg-1);
+/* The zoom icons ship as data-URIs in the library stylesheet, so the glyphs are drawn here. */
+.pj-gl-map .maplibregl-ctrl-icon {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
   color: var(--pj-ink);
-  box-shadow: none;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
 }
-.pj-leaflet-map .leaflet-tooltip::before {
+.pj-gl-map .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon::after {
+  content: "+";
+}
+.pj-gl-map .maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon::after {
+  content: "−";
+}
+.pj-viewport[data-hero="expanded"][data-map="on"] .maplibregl-ctrl-top-left {
   display: none;
 }
-.pj-viewport[data-hero="expanded"][data-map="on"] .leaflet-control-zoom {
-  display: none;
-}
+/* The engine does not size custom marker elements; the wrapper keeps the old 34 px pin. */
 .pj-map-marker {
+  width: 34px;
+  height: 34px;
   border: 0;
   background: none;
 }
@@ -394,20 +454,23 @@
   inset: 0;
   z-index: 2;
   display: grid;
+  /* One cell that cannot grow past the frame. A default auto row takes the photo's own
+     height, so a portrait photo would size to the frame width, overflow, and be cropped. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
   overflow: hidden;
   background: var(--pj-bg-0);
   transform-origin: 0 0;
-  transition:
-    transform 0.55s var(--pj-ease),
-    opacity 0.35s;
+  /* The transform is driven frame by frame from the playback clock, so it must not be eased here
+     as well. A transition would also make the tile trail the pin it is meant to be sitting on. */
+  transition: opacity 0.35s;
   pointer-events: none;
 }
 .pj-hero-img,
 .pj-burst-previous {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 .pj-hero-img {
   position: relative;
@@ -415,9 +478,6 @@
 .pj-burst-previous {
   position: absolute;
   inset: 0;
-}
-.pj-viewport[data-hero="collapsed"] .pj-hero-img {
-  object-fit: cover;
 }
 .pj-viewport[data-card="true"] .pj-hero {
   opacity: 0;
@@ -739,6 +799,13 @@
 .pj-notes p {
   margin: 0;
 }
+/* The track line is the one note that reports a result, so it reads ahead of the rest. */
+.pj-track-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--pj-accent);
+}
 .pj-keys kbd {
   display: inline-grid;
   place-items: center;
@@ -795,9 +862,17 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  order: 3;
+  color: var(--pj-faint);
+}
+/* The whole journey in one file is the main action; the single formats stay beside it. */
+.pj-download {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
   order: 2;
   margin-left: auto;
-  color: var(--pj-faint);
 }
 .pj-stop-list {
   display: grid;
@@ -823,7 +898,7 @@
 }
 .pj-stop {
   display: grid;
-  grid-template-columns: 3.75rem 1.5rem minmax(0, 1fr);
+  grid-template-columns: 3.75rem 1.5rem minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.7rem;
   width: 100%;
@@ -870,6 +945,15 @@
 }
 .pj-stop-text small[data-located="false"] {
   color: var(--pj-faint);
+}
+/* Marks a stop the track moved off the camera's own fix. */
+.pj-stop-tag {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid color-mix(in oklch, var(--pj-accent) 35%, transparent);
+  border-radius: 999px;
+  color: var(--pj-accent);
+  font-size: 0.65rem;
+  white-space: nowrap;
 }
 .pj-stop-actions {
   display: flex;

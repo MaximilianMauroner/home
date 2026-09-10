@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   formatCoordinates,
   formatDateRange,
   formatDistance,
   journeySummary,
 } from "./journey-data";
-import JourneyMap from "./JourneyMap";
+import JourneyMap, { type MapMode } from "./JourneyMap";
+import type { Track } from "./gpx";
 import {
   distanceKm,
-  resolveStops,
   type JourneyPhase,
+  type JourneyStop,
   type JourneyTimeline,
   type TimelineState,
 } from "./timeline";
@@ -17,38 +18,55 @@ import type { JourneyPhoto } from "./types";
 import { usePhotoPreload } from "./usePhotoPreload";
 
 const CARD_PHASES = new Set<JourneyPhase>(["overview", "intro", "day", "outro", "complete"]);
+/** The photo's size while it waits on its pin. The frame keeps its own shape inside these bounds. */
+const TILE = { width: 76, height: 56 };
 const pad = (value: number) => String(value).padStart(2, "0");
+const clamp = (value: number) => Math.min(1, Math.max(0, value));
+/** Moving time from the track, compact enough for a stat tile: "24 min" or "8 h 24 min". */
+function formatMoving(totalSeconds: number) {
+  const minutes = Math.round(totalSeconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  return `${Math.floor(minutes / 60)} h ${pad(minutes % 60)} min`;
+}
 
 export default function JourneyStage({
   photos,
+  stops,
+  track,
+  summary,
   activeIndex,
   state,
   timeline,
   playing,
   reducedMotion,
-  offline,
+  mapMode,
   kenBurns,
   title,
   speed,
   seekVersion,
+  onTerrainState,
+  onEngineFailed,
 }: {
   photos: JourneyPhoto[];
+  stops: JourneyStop[];
+  track?: Track;
+  summary: ReturnType<typeof journeySummary>;
   activeIndex: number;
   state: TimelineState;
   timeline: JourneyTimeline;
   playing: boolean;
   reducedMotion: boolean;
-  offline: boolean;
+  mapMode: MapMode;
   kenBurns: boolean;
   title: string;
   speed: number;
   seekVersion: number;
+  onTerrainState?: (state: { loading: boolean; failed: boolean }) => void;
+  onEngineFailed?: () => void;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [marker, setMarker] = useState<{ x: number; y: number } | null>(null);
-  const stops = useMemo(() => resolveStops(photos), [photos]);
-  const summary = useMemo(() => journeySummary(photos), [photos]);
   const photo = photos[activeIndex];
   const stop = stops[activeIndex];
   const burst = timeline.stops[activeIndex]?.burst ?? false;
@@ -71,15 +89,42 @@ export default function JourneyStage({
   const onMarkerPosition = useCallback(
     (position: { x: number; y: number } | null) => {
       // Keep the last full-map position while the inset is resized for the reveal.
-      if (state.phase === "approach") setMarker(position);
+      if (state.phase !== "approach") return;
+      const box = viewport.current?.getBoundingClientRect();
+      // The map reports page coordinates; the hero is placed inside the stage.
+      setMarker(position && box ? { x: position.x - box.left, y: position.y - box.top } : null);
     },
     [state.phase],
   );
   // While the camera travels, the photo waits as a small tile on its map pin and grows from there.
+  // The whole move runs off the playback clock. A CSS transition cannot do this: the tile has to
+  // track the pin exactly while the map flies, and a transition retargeted every frame drags
+  // behind it. Growth is 0 on the pin and 1 filling the stage.
+  const measured = size.width > 1 && size.height > 1;
+  // A stop's index advances the moment its leg starts, so the photo mounted during the leg is
+  // already the next one. It has to stay a tile on its own pin for the whole leg: opening it, or
+  // folding it down from full size, shows the picture at a place it was not taken.
+  const growth = !measured || reducedMotion || card || !state.approachDuration
+    ? 1
+    : state.phase === "approach"
+      ? 0
+      : state.phase === "reveal"
+        ? clamp(state.phaseProgress)
+        : 1;
+  // One scale for both axes. Separate factors would squash the photo into the tile's shape and
+  // then unsquash it during the grow, which reads as the picture moving inside its own frame.
+  const tile = Math.min(TILE.width / size.width, TILE.height / size.height);
+  const eased = 1 - (1 - growth) ** 3;
+  const scale = tile + (1 - tile) * eased;
+  const pinX = marker?.x ?? size.width / 2;
+  const pinY = marker?.y ?? size.height / 2;
+  // The frame's centre travels from the pin to the middle of the stage as it grows.
+  const centerX = pinX + (size.width / 2 - pinX) * eased;
+  const centerY = pinY + (size.height / 2 - pinY) * eased;
   const transform =
-    expanded || reducedMotion
+    growth === 1
       ? "none"
-      : `translate(${(marker?.x ?? size.width / 2) - 28}px, ${(marker?.y ?? size.height / 2) - 21}px) scale(${56 / size.width}, ${42 / size.height})`;
+      : `translate(${centerX - (size.width * scale) / 2}px, ${centerY - (size.height * scale) / 2}px) scale(${scale})`;
   const previous = stops[activeIndex - 1]?.coordinates;
   const legKm =
     traveling && previous && stop?.coordinates
@@ -109,15 +154,18 @@ export default function JourneyStage({
           photos={photos}
           activeIndex={activeIndex}
           stops={stops}
+          track={track}
           reducedMotion={reducedMotion}
           phase={state.phase}
           approachDuration={state.approachDuration}
-          offline={offline}
+          mapMode={mapMode}
           playing={playing}
           speed={speed}
           seekVersion={seekVersion}
           frame={size}
           onMarkerPosition={onMarkerPosition}
+          onTerrainState={onTerrainState}
+          onEngineFailed={onEngineFailed}
         />
         {!summary.locatedCount && (
           <div className="pj-map-empty">
@@ -228,6 +276,9 @@ function JourneyCard({
     summary.altitudeMin === undefined
       ? undefined
       : `${Math.round(summary.altitudeMin)}–${Math.round(summary.altitudeMax ?? summary.altitudeMin)} m`;
+  // A recorded track knows the climb, the high point and the moving time; without one the
+  // photo altitudes are the best estimate.
+  const trackStats = summary.track;
   return (
     <div className="pj-card" data-kind={closing ? "outro" : "intro"}>
       <span className="pj-label">{closing ? "Journey complete" : "Photo journey"}</span>
@@ -252,7 +303,25 @@ function JourneyCard({
             <dd>{summary.tripDays}</dd>
           </div>
         )}
-        {closing && altitude && (
+        {closing && trackStats && trackStats.ascentM >= 20 && (
+          <div>
+            <dt>Ascent</dt>
+            <dd>{Math.round(trackStats.ascentM).toLocaleString("en")} m</dd>
+          </div>
+        )}
+        {closing && trackStats?.maxElevation !== undefined && (
+          <div>
+            <dt>High point</dt>
+            <dd>{Math.round(trackStats.maxElevation).toLocaleString("en")} m</dd>
+          </div>
+        )}
+        {closing && trackStats && trackStats.movingSeconds >= 60 && (
+          <div>
+            <dt>Moving</dt>
+            <dd>{formatMoving(trackStats.movingSeconds)}</dd>
+          </div>
+        )}
+        {closing && !trackStats && altitude && (
           <div>
             <dt>Altitude</dt>
             <dd>{altitude}</dd>

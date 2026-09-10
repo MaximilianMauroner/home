@@ -3,6 +3,8 @@ export type Coordinates = { latitude: number; longitude: number };
 export type PhotoMetadata = {
   capturedAt?: Date;
   capturedAtLabel?: string;
+  /** Minutes east of UTC from OffsetTimeOriginal. Without it the capture clock has no zone. */
+  utcOffsetMinutes?: number;
   modifiedAtLabel: string;
   coordinates?: Coordinates;
   altitude?: number;

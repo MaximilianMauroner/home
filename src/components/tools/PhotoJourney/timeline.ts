@@ -40,7 +40,20 @@ export function distanceKm(a: Coordinates, b: Coordinates) {
   return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, value)));
 }
 
-export function buildTimeline(photos: JourneyPhoto[]): JourneyTimeline {
+/**
+ * `positions` overrides where each photo sits, which is how a GPX track moves a stop away from an
+ * unreliable camera fix. Without it the photo's own coordinates are used.
+ * `instants` holds the resolved shutter instant per photo (epoch milliseconds, from the track
+ * placement). When two neighbours both have one, the leg between them is timed by the real gap on
+ * the tour rather than by the straight-line distance, compressed so a day still watches in minutes.
+ */
+export function buildTimeline(
+  photos: JourneyPhoto[],
+  positions?: ReadonlyArray<Coordinates | undefined>,
+  instants?: ReadonlyArray<number | undefined>,
+): JourneyTimeline {
+  const positionOf = (index: number) =>
+    positions ? positions[index] : photos[index]?.metadata.coordinates;
   let offset = photos.length ? 2500 : 0;
   let day = 0;
   let lastDay: string | undefined;
@@ -56,23 +69,34 @@ export function buildTimeline(photos: JourneyPhoto[]): JourneyTimeline {
     }
     const dayStart = offset;
     if (dayLabel) offset += 1500;
-    const own = photo.metadata.coordinates;
+    const own = positionOf(photoIndex);
     const previous = photos[photoIndex - 1];
+    const previousPosition = positionOf(photoIndex - 1);
     const previousDate = previous?.metadata.capturedAt;
     const burst = Boolean(
       own &&
-        previous?.metadata.coordinates &&
+        previousPosition &&
         date &&
         previousDate &&
         Math.floor(date.getTime() / 60000) ===
           Math.floor(previousDate.getTime() / 60000) &&
-        distanceKm(own, previous.metadata.coordinates) < 0.05,
+        distanceKm(own, previousPosition) < 0.05,
     );
     const distance = own && lastPosition ? distanceKm(lastPosition, own) : 0;
-    const approachDuration =
+    const distanceBased =
       !own || burst || distance < 0.001
         ? 0
         : Math.min(3000, Math.max(600, 600 + Math.log10(1 + distance) * 650));
+    // A two-hour ascent between photos should not feel like the ten minutes to the next
+    // viewpoint. The gap is log-compressed: two hours play ~3.7 s, eight hours stay under the cap.
+    const gapSeconds =
+      instants?.[photoIndex] !== undefined && instants?.[photoIndex - 1] !== undefined
+        ? (instants[photoIndex]! - instants[photoIndex - 1]!) / 1000
+        : undefined;
+    const approachDuration =
+      distanceBased > 0 && gapSeconds !== undefined && gapSeconds > 0
+        ? Math.min(6000, Math.max(distanceBased, 600 + Math.log10(1 + gapSeconds / 60) * 1500))
+        : distanceBased;
     if (own) lastPosition = own;
     const start = offset;
     const revealStart = start + approachDuration;
@@ -151,22 +175,6 @@ export type JourneyStop = {
   located: boolean;
 };
 
-/**
- * A photo without GPS should not move the map. Each such stop inherits the position of the
- * last located photo before it, so the camera holds still instead of falling back to 0°, 0°.
- */
-export function resolveStops(photos: JourneyPhoto[]): JourneyStop[] {
-  let carried: Coordinates | undefined;
-  return photos.map((photo) => {
-    const own = photo.metadata.coordinates;
-    if (own) carried = own;
-    return {
-      photoId: photo.id,
-      coordinates: own ?? carried,
-      located: Boolean(own),
-    };
-  });
-}
 
 export type CameraMove = {
   center: Coordinates;
@@ -225,6 +233,7 @@ export function routeSegments(points: Coordinates[]): Coordinates[][] {
   return segments;
 }
 
-export function locatedPoints(photos: JourneyPhoto[]): Coordinates[] {
-  return photos.flatMap((photo) => photo.metadata.coordinates ?? []);
+/** The positions the route is drawn through: every stop that has one of its own. */
+export function locatedPoints(stops: readonly JourneyStop[]): Coordinates[] {
+  return stops.flatMap((stop) => (stop.located && stop.coordinates ? [stop.coordinates] : []));
 }
