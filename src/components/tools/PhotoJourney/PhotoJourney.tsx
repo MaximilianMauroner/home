@@ -1,19 +1,29 @@
-import { ImagePlus, Maximize2, Minimize2, Pause, Play, RotateCcw, SkipBack, SkipForward, Upload, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ImagePlus, Maximize2, Minimize2, Pause, Play, Route, RotateCcw, SkipBack, SkipForward, Upload, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { readPhoto, revokePhoto, sortPhotos } from "./metadata";
 import { acceptFiles } from "./ingestion";
-import { exportJourney, type ExportFormat } from "./journey-data";
+import { mergeTracks, parseGpx, trackStats, type Track } from "./gpx";
+import { buildBundle, exportJourney, formatDistance, journeySummary, type ExportFormat } from "./journey-data";
 import JourneyStage from "./JourneyStage";
 import Inspector from "./Inspector";
 import StopList from "./StopList";
+import { inferUtcOffsetMinutes, journeyStops, placementSummary, resolvePlacements } from "./track";
 import { usePlayback, useReducedMotion } from "./usePlayback";
 import type { JourneyPhoto } from "./types";
 import "./photo-journey.css";
 
-const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
+const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,.gpx,application/gpx+xml";
 function formatDuration(milliseconds: number) {
   const seconds = Math.round(milliseconds / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+function save(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function Segmented<T extends string>({ label, value, options, disabled, onChange }: {
@@ -43,13 +53,40 @@ export default function PhotoJourney() {
   const [kenBurns, setKenBurns] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [track, setTrack] = useState<Track>();
+  const [includePhotos, setIncludePhotos] = useState(false);
+  const [packing, setPacking] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const photosRef = useRef(photos);
   const importing = useRef(false);
   const mounted = useRef(true);
   const nextImportOrder = useRef(0);
-  const playback = usePlayback(photos);
+  // The track is the better witness, so every position is resolved against it before playback.
+  const offsetMinutes = useMemo(
+    () => (track ? inferUtcOffsetMinutes(photos, track) : undefined),
+    [photos, track],
+  );
+  const placements = useMemo(
+    () => resolvePlacements(photos, track, { offsetMinutes }),
+    [photos, track, offsetMinutes],
+  );
+  const stops = useMemo(() => journeyStops(placements), [placements]);
+  const stats = useMemo(() => (track ? trackStats(track) : undefined), [track]);
+  const summary = useMemo(() => journeySummary(photos, placements, stats), [photos, placements, stats]);
+  const placed = useMemo(() => placementSummary(placements), [placements]);
+  const photoBytes = useMemo(() => photos.reduce((sum, photo) => sum + photo.file.size, 0), [photos]);
+  const trackNote = useMemo(() => {
+    if (!stats) return undefined;
+    const plural = (count: number) => (count === 1 ? "" : "s");
+    return [
+      `${formatDistance(stats.distanceKm)} walked`,
+      stats.ascentM >= 20 ? `${Math.round(stats.ascentM).toLocaleString("en")} m ascent` : undefined,
+      placed.fromTrack ? `${placed.fromTrack} photo${plural(placed.fromTrack)} placed by timecode` : "every photo agrees with the track",
+      placed.correctedCount ? `worst camera fix off by ${Math.round(placed.worstCorrectionM).toLocaleString("en")} m` : undefined,
+    ].filter(Boolean).join(" · ");
+  }, [stats, placed]);
+  const playback = usePlayback(photos, placements);
   const reducedMotion = useReducedMotion();
   const activeIndex = playback.state.photoIndex;
   const activePhoto = photos[activeIndex];
@@ -110,8 +147,19 @@ export default function PhotoJourney() {
     setBusy(true);
     playback.pause();
     setErrors([]);
-    const { accepted, skipped } = acceptFiles(files, photosRef.current);
+    const { accepted, tracks, skipped } = acceptFiles(files, photosRef.current);
     const failures = skipped.map(({ file, reason }) => `${file.name}: ${reason}`);
+    if (tracks.length) {
+      const parsed: Track[] = [];
+      for (const file of tracks) {
+        try {
+          parsed.push(parseGpx(await file.text()));
+        } catch (error) {
+          failures.push(`${file.name}: ${error instanceof Error ? error.message : "could not be read"}`);
+        }
+      }
+      if (parsed.length) setTrack((current) => mergeTracks(current ? [current, ...parsed] : parsed));
+    }
     const loaded: JourneyPhoto[] = [];
     // Decode one original at a time so a large folder does not exhaust memory.
     for (const [index, file] of accepted.entries()) {
@@ -146,14 +194,20 @@ export default function PhotoJourney() {
     seek(0);
   }, [photos, seek]);
   const download = useCallback((format: ExportFormat) => {
-    const result = exportJourney(photos, format, title);
-    const url = URL.createObjectURL(new Blob([result.content], { type: result.mime }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `photo-journey.${result.extension}`;
-    anchor.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }, [photos, title]);
+    const result = exportJourney(photos, format, title, placements, track);
+    save(new Blob([result.content], { type: result.mime }), `photo-journey.${result.extension}`);
+  }, [photos, title, placements, track]);
+  const downloadBundle = useCallback(async () => {
+    setPacking(true);
+    try {
+      const blob = await buildBundle(photos, { title, includePhotos, track, placements });
+      save(blob, "photo-journey.zip");
+    } catch (error) {
+      setErrors([`The download could not be built: ${error instanceof Error ? error.message : "unknown error"}`]);
+    } finally {
+      setPacking(false);
+    }
+  }, [photos, title, includePhotos, track, placements]);
 
   return <div className="photo-journey">
     <input ref={inputRef} type="file" accept={ACCEPT} multiple hidden onChange={(event) => {
@@ -184,7 +238,8 @@ export default function PhotoJourney() {
         </div>
       </div>
       <div className="pj-stage" ref={stageRef}>
-        <JourneyStage photos={photos} activeIndex={activeIndex} state={playback.state} timeline={playback.timeline} playing={playback.playing}
+        <JourneyStage photos={photos} stops={stops} track={track} summary={summary} activeIndex={activeIndex} state={playback.state}
+          timeline={playback.timeline} playing={playback.playing}
           reducedMotion={reducedMotion} offline={offline} kenBurns={kenBurns} title={title} speed={playback.speed} seekVersion={playback.seekVersion} />
         <div className="pj-controls">
           <div className="pj-transport">
@@ -208,13 +263,17 @@ export default function PhotoJourney() {
         </div>
       </div>
       <div className="pj-notes">
+        {stats ? <p className="pj-track-note"><Route size={14} aria-hidden="true" />{trackNote}</p>
+          : <p>Add a <strong>.gpx</strong> file to follow the recorded route. Photos are then placed by their timecode wherever the camera's own fix disagrees with it.</p>}
         <p>{offline ? "Offline map. No map requests leave this tab." : "OpenStreetMap receives requests for the areas shown."}</p>
         <p className="pj-keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> stops <kbd>F</kbd> fullscreen</p>
       </div>
       <div className="pj-workspace">
-        <StopList photos={photos} activeIndex={activeIndex} busy={busy}
-          onSelect={playback.select} onMove={movePhoto} onRemove={removePhoto} onExport={download} />
-        <Inspector photo={activePhoto} index={activeIndex} />
+        <StopList photos={photos} placements={placements} summary={summary} activeIndex={activeIndex} busy={busy}
+          packing={packing} includePhotos={includePhotos} photoBytes={photoBytes}
+          onSelect={playback.select} onMove={movePhoto} onRemove={removePhoto} onExport={download}
+          onIncludePhotos={setIncludePhotos} onBundle={downloadBundle} />
+        <Inspector photo={activePhoto} placement={placements[activeIndex]} index={activeIndex} />
       </div>
     </>}
     {errors.length > 0 && <div className="pj-errors" role="status">

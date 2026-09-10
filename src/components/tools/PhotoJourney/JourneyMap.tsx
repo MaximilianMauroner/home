@@ -2,6 +2,7 @@ import L from "leaflet";
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 
+import { trackSegments, type Track } from "./gpx";
 import {
   cameraFor,
   locatedPoints,
@@ -22,6 +23,8 @@ type JourneyMapProps = {
   photos: JourneyPhoto[];
   reducedMotion: boolean;
   stops: JourneyStop[];
+  /** The recorded tour, when one was loaded. It replaces the photo-to-photo route. */
+  track?: Track;
   phase: JourneyPhase;
   approachDuration: number;
   offline: boolean;
@@ -42,6 +45,7 @@ export default function JourneyMap({
   photos,
   reducedMotion,
   stops,
+  track,
   phase,
   approachDuration,
   offline,
@@ -136,13 +140,21 @@ export default function JourneyMap({
     if (!map) return;
     const layer = L.layerGroup().addTo(map);
     const markers = new Map<string, L.Marker>();
-    routeSegments(locatedPoints(photos)).forEach((segment) => {
+    // A recorded track is the route when there is one: the walk, not the shortcut between photos.
+    const walked = track ? trackSegments(track) : undefined;
+    const lines = walked?.length
+      ? walked.flatMap((segment) => routeSegments(segment))
+      : routeSegments(locatedPoints(stops));
+    lines.forEach((segment) => {
       const points = segment.map(latLng);
       L.polyline(points, { color: "#eac86b", opacity: 0.18, weight: 7, interactive: false }).addTo(layer);
-      L.polyline(points, { color: "#f2d487", dashArray: "2 7", lineCap: "round", opacity: 0.95, weight: 2.5, interactive: false }).addTo(layer);
+      walked?.length
+        ? L.polyline(points, { color: "#f2d487", lineCap: "round", opacity: 0.95, weight: 2.5, interactive: false }).addTo(layer)
+        : L.polyline(points, { color: "#f2d487", dashArray: "2 7", lineCap: "round", opacity: 0.95, weight: 2.5, interactive: false }).addTo(layer);
     });
-    photos.forEach((photo) => {
-      const coordinates = photo.metadata.coordinates;
+    photos.forEach((photo, index) => {
+      const stop = stops[index];
+      const coordinates = stop?.located ? stop.coordinates : undefined;
       if (!coordinates) return;
       const tooltip = document.createElement("span");
       tooltip.textContent = photo.name;
@@ -159,7 +171,7 @@ export default function JourneyMap({
       layer.remove();
       markersRef.current = new Map();
     };
-  }, [photos]);
+  }, [photos, stops, track]);
 
   // Restyle only the two markers that changed state.
   useEffect(() => {
@@ -216,7 +228,10 @@ export default function JourneyMap({
       phase === "complete" ||
       phase === "overview";
     if (overview) {
-      const points = locatedPoints(photos);
+      // The opening and closing views frame the whole tour, which is wider than the photo stops.
+      const points = track
+        ? trackSegments(track, 60).flat()
+        : locatedPoints(stops);
       if (!points.length) return;
       const view = frameBounds(map, unwrapPoints(points), frameRef.current, 70, stopZoom);
       map.setView(view.center, view.zoom, { animate: !reducedMotion && playing });
@@ -255,7 +270,7 @@ export default function JourneyMap({
     phase,
     reducedMotion,
     stops,
-    photos,
+    track,
     playing,
     speed,
     seekVersion,

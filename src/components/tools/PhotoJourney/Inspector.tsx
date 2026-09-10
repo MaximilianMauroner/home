@@ -2,32 +2,53 @@ import { ChevronDown } from "lucide-react";
 import { memo } from "react";
 import { formatCoordinates } from "./journey-data";
 import { groupMetadata } from "./metadata";
+import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
+
+/** How the stop reached its position, in the words of the decision that put it there. */
+function placedBy(placement: Placement) {
+  const off = placement.discrepancyM === undefined ? undefined : `${Math.round(placement.discrepancyM).toLocaleString("en")} m from the track`;
+  if (placement.source === "track")
+    return off ? `Track, by timecode. The camera's fix was ${off}.` : "Track, by timecode. This photo has no GPS.";
+  if (placement.source === "photo")
+    return off ? `This photo's own GPS, ${off}.` : "This photo's own GPS.";
+  if (placement.source === "carried") return "Held at the previous stop. Nothing places this photo.";
+  return "Not placed.";
+}
 
 /** Memoized for the same reason as the stop list: the clock renders the tool every frame. */
 function Inspector({
   photo,
+  placement,
   index,
 }: {
   photo?: JourneyPhoto;
+  placement?: Placement;
   index: number;
 }) {
   if (!photo) return null;
   const { metadata } = photo;
+  // A carried position belongs to the stop before this one, so it is not this photo's coordinates.
+  const located = placement?.source === "photo" || placement?.source === "track";
+  const shown = located ? placement.coordinates : metadata.coordinates;
   const facts = [
     ["Captured", metadata.capturedAtLabel ?? "Date unavailable"],
     ["Place", metadata.place ?? "Place unavailable"],
     [
       "Coordinates",
-      metadata.coordinates
-        ? formatCoordinates(metadata.coordinates)
-        : "No GPS in this photo",
+      shown ? formatCoordinates(shown) : "No GPS in this photo",
+    ],
+    [
+      "Placed by",
+      placement && (placement.source !== "photo" || placement.discrepancyM !== undefined)
+        ? placedBy(placement)
+        : undefined,
     ],
     [
       "Altitude",
-      metadata.altitude === undefined
+      (placement?.elevation ?? metadata.altitude) === undefined
         ? undefined
-        : `${Math.round(metadata.altitude)} m`,
+        : `${Math.round((placement?.elevation ?? metadata.altitude)!)} m`,
     ],
     ["Camera", metadata.camera],
     ["Lens", metadata.lens],

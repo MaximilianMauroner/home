@@ -394,6 +394,9 @@
   inset: 0;
   z-index: 2;
   display: grid;
+  /* One cell that cannot grow past the frame. A default auto row takes the photo's own
+     height, so a portrait photo would size to the frame width, overflow, and be cropped. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
   overflow: hidden;
   background: var(--pj-bg-0);
@@ -739,6 +742,13 @@
 .pj-notes p {
   margin: 0;
 }
+/* The track line is the one note that reports a result, so it reads ahead of the rest. */
+.pj-track-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--pj-accent);
+}
 .pj-keys kbd {
   display: inline-grid;
   place-items: center;
@@ -795,9 +805,17 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  order: 3;
+  color: var(--pj-faint);
+}
+/* The whole journey in one file is the main action; the single formats stay beside it. */
+.pj-download {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
   order: 2;
   margin-left: auto;
-  color: var(--pj-faint);
 }
 .pj-stop-list {
   display: grid;
@@ -823,7 +841,7 @@
 }
 .pj-stop {
   display: grid;
-  grid-template-columns: 3.75rem 1.5rem minmax(0, 1fr);
+  grid-template-columns: 3.75rem 1.5rem minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.7rem;
   width: 100%;
@@ -870,6 +888,15 @@
 }
 .pj-stop-text small[data-located="false"] {
   color: var(--pj-faint);
+}
+/* Marks a stop the track moved off the camera's own fix. */
+.pj-stop-tag {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid color-mix(in oklch, var(--pj-accent) 35%, transparent);
+  border-radius: 999px;
+  color: var(--pj-accent);
+  font-size: 0.65rem;
+  white-space: nowrap;
 }
 .pj-stop-actions {
   display: flex;

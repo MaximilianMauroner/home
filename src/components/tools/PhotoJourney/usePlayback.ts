@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { buildTimeline, timelineAt } from "./timeline";
+import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
 
 const motionQuery = "(prefers-reduced-motion: reduce)";
@@ -12,8 +13,13 @@ export function useReducedMotion() {
   return useSyncExternalStore(subscribeMotion, () => window.matchMedia(motionQuery).matches, () => false);
 }
 
-export function usePlayback(photos: JourneyPhoto[]) {
-  const timeline = useMemo(() => buildTimeline(photos), [photos]);
+/** `placements` decide where each stop sits, so a track correction also retimes its approach. */
+export function usePlayback(photos: JourneyPhoto[], placements?: readonly Placement[]) {
+  const positions = useMemo(
+    () => placements?.map((placement) => (placement.source === "photo" || placement.source === "track" ? placement.coordinates : undefined)),
+    [placements],
+  );
+  const timeline = useMemo(() => buildTimeline(photos, positions), [photos, positions]);
   const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);

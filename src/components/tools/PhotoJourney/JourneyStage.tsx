@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   formatCoordinates,
   formatDateRange,
@@ -6,10 +6,11 @@ import {
   journeySummary,
 } from "./journey-data";
 import JourneyMap from "./JourneyMap";
+import type { Track } from "./gpx";
 import {
   distanceKm,
-  resolveStops,
   type JourneyPhase,
+  type JourneyStop,
   type JourneyTimeline,
   type TimelineState,
 } from "./timeline";
@@ -21,6 +22,9 @@ const pad = (value: number) => String(value).padStart(2, "0");
 
 export default function JourneyStage({
   photos,
+  stops,
+  track,
+  summary,
   activeIndex,
   state,
   timeline,
@@ -33,6 +37,9 @@ export default function JourneyStage({
   seekVersion,
 }: {
   photos: JourneyPhoto[];
+  stops: JourneyStop[];
+  track?: Track;
+  summary: ReturnType<typeof journeySummary>;
   activeIndex: number;
   state: TimelineState;
   timeline: JourneyTimeline;
@@ -47,8 +54,6 @@ export default function JourneyStage({
   const viewport = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [marker, setMarker] = useState<{ x: number; y: number } | null>(null);
-  const stops = useMemo(() => resolveStops(photos), [photos]);
-  const summary = useMemo(() => journeySummary(photos), [photos]);
   const photo = photos[activeIndex];
   const stop = stops[activeIndex];
   const burst = timeline.stops[activeIndex]?.burst ?? false;
@@ -109,6 +114,7 @@ export default function JourneyStage({
           photos={photos}
           activeIndex={activeIndex}
           stops={stops}
+          track={track}
           reducedMotion={reducedMotion}
           phase={state.phase}
           approachDuration={state.approachDuration}

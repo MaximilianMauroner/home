@@ -53,6 +53,14 @@ function formatShutter(value: number) {
   return `1/${Math.round(1 / value)} s`;
 }
 
+/** "+02:00" becomes 120. Without this tag the capture clock cannot be compared with a GPX time. */
+export function parseUtcOffset(value?: string) {
+  const match = /^([+-])(\d{2}):?(\d{2})$/.exec(value?.trim() ?? "");
+  if (!match) return undefined;
+  const minutes = Number(match[2]) * 60 + Number(match[3]);
+  return match[1] === "-" ? -minutes : minutes;
+}
+
 function validCoordinates(latitude?: number, longitude?: number) {
   if (latitude === undefined || longitude === undefined) return undefined;
   if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
@@ -107,6 +115,7 @@ export function normalizeMetadata(
 
   return {
     capturedAt,
+    utcOffsetMinutes: parseUtcOffset(offset),
     capturedAtLabel: capturedAt
       ? `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(capturedAt)}${offset ? ` ${offset}` : ""}`
       : undefined,
