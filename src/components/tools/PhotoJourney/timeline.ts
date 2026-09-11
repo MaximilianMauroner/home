@@ -40,39 +40,74 @@ export function distanceKm(a: Coordinates, b: Coordinates) {
   return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, value)));
 }
 
-export function buildTimeline(photos: JourneyPhoto[]): JourneyTimeline {
+/**
+ * `positions` overrides where each photo sits, which is how a GPX track moves a stop away from an
+ * unreliable camera fix. Without it the photo's own coordinates are used.
+ * `instants` holds the resolved shutter instant per photo (epoch milliseconds, from the track
+ * placement). When two neighbours both have one, the leg between them is timed by the real gap on
+ * the tour rather than by the straight-line distance, compressed so a day still watches in minutes.
+ */
+export function buildTimeline(
+  photos: JourneyPhoto[],
+  positions?: ReadonlyArray<Coordinates | undefined>,
+  instants?: ReadonlyArray<number | undefined>,
+  options?: {
+    /** Calendar keys and labels derived from the selected trip timezone. */
+    dayKeys?: ReadonlyArray<string | undefined>;
+    dayLabels?: ReadonlyArray<string | undefined>;
+  },
+): JourneyTimeline {
+  const positionOf = (index: number) =>
+    positions ? positions[index] : photos[index]?.metadata.coordinates;
   let offset = photos.length ? 2500 : 0;
   let day = 0;
   let lastDay: string | undefined;
   let lastPosition: Coordinates | undefined;
   const stops = photos.map((photo, photoIndex) => {
     const date = photo.metadata.capturedAt;
-    const key = date?.toISOString().slice(0, 10);
+    const instant = instants?.[photoIndex] ?? date?.getTime();
+    const key = options?.dayKeys?.[photoIndex] ?? (instant === undefined ? undefined : new Date(instant).toISOString().slice(0, 10));
     let dayLabel: string | undefined;
     if (key && key !== lastDay) {
       day += 1;
-      dayLabel = `Day ${day} · ${date!.toLocaleDateString("en", { day: "numeric", month: "long", timeZone: "UTC" })}`;
+      dayLabel = options?.dayLabels?.[photoIndex]
+        ? `Day ${day} · ${options.dayLabels[photoIndex]}`
+        : instant !== undefined
+          ? `Day ${day} · ${new Date(instant).toLocaleDateString("en", { day: "numeric", month: "long", timeZone: "UTC" })}`
+          : `Day ${day}`;
       lastDay = key;
     }
     const dayStart = offset;
     if (dayLabel) offset += 1500;
-    const own = photo.metadata.coordinates;
+    const own = positionOf(photoIndex);
     const previous = photos[photoIndex - 1];
+    const previousPosition = positionOf(photoIndex - 1);
     const previousDate = previous?.metadata.capturedAt;
+    const previousInstant = instants?.[photoIndex - 1] ?? previousDate?.getTime();
     const burst = Boolean(
       own &&
-        previous?.metadata.coordinates &&
-        date &&
-        previousDate &&
-        Math.floor(date.getTime() / 60000) ===
-          Math.floor(previousDate.getTime() / 60000) &&
-        distanceKm(own, previous.metadata.coordinates) < 0.05,
+        previousPosition &&
+        instant !== undefined &&
+        previousInstant !== undefined &&
+        Math.floor(instant / 60000) ===
+          Math.floor(previousInstant / 60000) &&
+        distanceKm(own, previousPosition) < 0.05,
     );
     const distance = own && lastPosition ? distanceKm(lastPosition, own) : 0;
-    const approachDuration =
+    const distanceBased =
       !own || burst || distance < 0.001
         ? 0
         : Math.min(3000, Math.max(600, 600 + Math.log10(1 + distance) * 650));
+    // A two-hour ascent between photos should not feel like the ten minutes to the next
+    // viewpoint. The gap is log-compressed: two hours play ~3.7 s, eight hours stay under the cap.
+    const gapSeconds =
+      instants?.[photoIndex] !== undefined && instants?.[photoIndex - 1] !== undefined
+        ? (instants[photoIndex]! - instants[photoIndex - 1]!) / 1000
+        : undefined;
+    const approachDuration =
+      distanceBased > 0 && gapSeconds !== undefined && gapSeconds > 0
+        ? Math.min(6000, Math.max(distanceBased, 600 + Math.log10(1 + gapSeconds / 60) * 1500))
+        : distanceBased;
     if (own) lastPosition = own;
     const start = offset;
     const revealStart = start + approachDuration;
@@ -145,28 +180,12 @@ export function timelineAt(
 
 export type JourneyStop = {
   photoId: string;
-  /** Where the map sits for this stop: the photo's own GPS, or the last known position. */
+  /** Where the map sits for this stop: an explicitly accepted photo or recording position. */
   coordinates?: Coordinates;
-  /** True when the photo carries its own GPS rather than an inherited position. */
+  /** True when the position belongs to this photo or an unambiguous recording match. */
   located: boolean;
 };
 
-/**
- * A photo without GPS should not move the map. Each such stop inherits the position of the
- * last located photo before it, so the camera holds still instead of falling back to 0°, 0°.
- */
-export function resolveStops(photos: JourneyPhoto[]): JourneyStop[] {
-  let carried: Coordinates | undefined;
-  return photos.map((photo) => {
-    const own = photo.metadata.coordinates;
-    if (own) carried = own;
-    return {
-      photoId: photo.id,
-      coordinates: own ?? carried,
-      located: Boolean(own),
-    };
-  });
-}
 
 export type CameraMove = {
   center: Coordinates;
@@ -225,6 +244,7 @@ export function routeSegments(points: Coordinates[]): Coordinates[][] {
   return segments;
 }
 
-export function locatedPoints(photos: JourneyPhoto[]): Coordinates[] {
-  return photos.flatMap((photo) => photo.metadata.coordinates ?? []);
+/** The positions the route is drawn through: every stop that has one of its own. */
+export function locatedPoints(stops: readonly JourneyStop[]): Coordinates[] {
+  return stops.flatMap((stop) => (stop.located && stop.coordinates ? [stop.coordinates] : []));
 }

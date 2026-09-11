@@ -3,7 +3,8 @@ import { acceptFiles } from '../src/components/tools/PhotoJourney/ingestion';
 import { normalizeMetadata, groupMetadata, MAX_TOTAL_BYTES } from '../src/components/tools/PhotoJourney/metadata';
 import { dominantColor } from '../src/components/tools/PhotoJourney/thumbnail';
 import { nearestPlace } from '../src/components/tools/PhotoJourney/places';
-import { exportJourney, formatCoordinates, journeySummary } from '../src/components/tools/PhotoJourney/journey-data';
+import { exportJourney, formatCoordinates, formatDayKeyRange, journeySummary } from '../src/components/tools/PhotoJourney/journey-data';
+import { resolvePlacements } from '../src/components/tools/PhotoJourney/track';
 import type { JourneyPhoto } from '../src/components/tools/PhotoJourney/types';
 
 function photo(name: string, data: Record<string, unknown> = {}): JourneyPhoto {
@@ -41,6 +42,10 @@ describe('journey metadata and geography', () => {
     expect(formatCoordinates({ latitude: -0.37131, longitude: 36.05642 })).toBe('0.3713° S, 36.0564° E');
     expect(formatCoordinates({ latitude: 40.7128, longitude: -74.006 })).toBe('40.7128° N, 74.0060° W');
   });
+  test('formats trip calendar keys independently of the viewer timezone', () => {
+    expect(formatDayKeyRange('2026-08-20', '2026-08-20')).toMatch(/Aug 20, 2026/);
+    expect(formatDayKeyRange('2026-08-20', '2026-08-21')).toMatch(/Aug 20.*21, 2026/);
+  });
   test('uses the common colour and ignores transparent pixels', () => {
     expect(dominantColor(new Uint8ClampedArray([240, 0, 0, 255, 240, 0, 0, 255, 0, 240, 0, 255]))).toBe('rgb(240, 16, 16)');
     expect(dominantColor(new Uint8ClampedArray([255, 255, 255, 0]))).toBe('#071319');
@@ -58,7 +63,8 @@ describe('journey exports', () => {
     const result = exportJourney(photos, 'gpx', 'Trip & friends');
     expect(result.content).toContain('Trip &amp; friends');
     expect(result.content).toContain('<name>A&lt;&amp;</name>');
-    expect(result.content.match(/<trkpt /g)).toHaveLength(1);
+    expect(result.content).not.toContain('<trkpt ');
+    expect(result.content.match(/<wpt /g)).toHaveLength(1);
   });
   test('exports longitude first without an invalid single-point LineString', () => {
     expect(JSON.parse(exportJourney(photos, 'geojson').content).features).toHaveLength(1);
@@ -68,5 +74,61 @@ describe('journey exports', () => {
     const output = exportJourney(photos, 'json').content;
     expect(JSON.parse(output).photos).toHaveLength(2);
     expect(output).not.toContain('blob:');
+  });
+  test('metadata export keeps an unresolved camera clock out of UTC fields', () => {
+    const unknown = photo('unknown', { DateTimeOriginal: '2026:08:20 08:02:00' });
+    const output = exportJourney([unknown], 'json', 'Unknown').content;
+    const record = JSON.parse(output).photos[0];
+    expect(record.capturedAt).toBeUndefined();
+    expect(record.capturedAtCamera).toBe('2026-08-20T08:02:00');
+    expect(record.capturedAtUtc).toBeUndefined();
+  });
+  test('metadata export includes a known camera instant without placements', () => {
+    const known = photo('known', {
+      DateTimeOriginal: '2024-01-01T14:00:00',
+      OffsetTimeOriginal: '+02:00',
+    });
+    const output = exportJourney([known], 'json', 'Known').content;
+    expect(JSON.parse(output).photos[0].capturedAtUtc).toBe('2024-01-01T12:00:00.000Z');
+  });
+  test('photo-only GPX includes an explicitly offset camera instant without placements', () => {
+    const known = photo('known', {
+      DateTimeOriginal: '2024-01-01T14:00:00',
+      OffsetTimeOriginal: '+02:00',
+      latitude: 1,
+      longitude: 2,
+    });
+    expect(exportJourney([known], 'gpx').content).toContain('<time>2024-01-01T12:00:00.000Z</time>');
+  });
+  test('metadata export records a user supplied camera offset separately from EXIF', () => {
+    const unknown = photo('unknown', { DateTimeOriginal: '2024:01:01 14:00:00', latitude: 1, longitude: 2 });
+    const placement = resolvePlacements([unknown], undefined, { offsetMinutes: 120 });
+    const record = JSON.parse(exportJourney([unknown], 'json', 'Fallback', placement).content).photos[0];
+    expect(record.cameraUtcOffsetMinutes).toBeUndefined();
+    expect(record.resolvedUtcOffsetMinutes).toBe(120);
+    expect(record.capturedAtUtc).toBe('2024-01-01T12:00:00.000Z');
+  });
+  test('GeoJSON keeps a singleton recording sample as a point', () => {
+    const track = {
+      points: [{ latitude: 1, longitude: 2, elevation: 3, time: 0 }],
+      segmentStarts: [0],
+    };
+    const features = JSON.parse(exportJourney([], 'geojson', 'One', [], track).content).features;
+    expect(features).toEqual([expect.objectContaining({ geometry: { type: 'Point', coordinates: [2, 1, 3] } })]);
+  });
+  test('GeoJSON keeps elevation on recorded line vertices', () => {
+    const track = {
+      points: [{ latitude: 1, longitude: 2, elevation: 3 }, { latitude: 1.1, longitude: 2.1, elevation: 4 }],
+      segmentStarts: [0],
+    };
+    const features = JSON.parse(exportJourney([], 'geojson', 'Line', [], track).content).features;
+    expect(features[0].geometry.coordinates).toEqual([[2, 1, 3], [2.1, 1.1, 4]]);
+  });
+  test('exports recording provenance and unresolved location state', () => {
+    const placement = { photoId: 'A<&', source: 'photo' as const, coordinates: { latitude: 10, longitude: 20 }, recordingId: 'walk', conflict: true, ambiguous: true };
+    const output = JSON.parse(exportJourney([photos[0]], 'json', 'Trip', [placement]).content);
+    expect(output.photos[0]).toMatchObject({ recordingId: 'walk', locationConflict: true, ambiguousRecordingMatch: true });
+    const geojson = JSON.parse(exportJourney([photos[0]], 'geojson', 'Trip', [placement]).content);
+    expect(geojson.features[0].properties).toMatchObject({ recordingId: 'walk', locationConflict: true, ambiguousRecordingMatch: true });
   });
 });

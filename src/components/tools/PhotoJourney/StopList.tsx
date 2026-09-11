@@ -1,9 +1,8 @@
-import { ChevronDown, ChevronUp, Download, Trash2 } from "lucide-react";
-import { memo, useMemo } from "react";
-import { formatDistance, journeySummary, type ExportFormat } from "./journey-data";
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Fragment, memo } from "react";
+import { formatDistance, type journeySummary } from "./journey-data";
+import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
-
-const FORMATS: ExportFormat[] = ["gpx", "geojson", "json"];
 
 /**
  * The playback clock re-renders the tool on every frame. This panel holds one row per photo,
@@ -11,22 +10,31 @@ const FORMATS: ExportFormat[] = ["gpx", "geojson", "json"];
  */
 function StopList({
   photos,
+  placements,
+  summary,
   activeIndex,
   busy,
+  editingOrder,
+  dayKeys,
+  dayLabels,
   onSelect,
   onMove,
+  canMove,
   onRemove,
-  onExport,
 }: {
   photos: JourneyPhoto[];
+  placements: readonly Placement[];
+  summary: ReturnType<typeof journeySummary>;
   activeIndex: number;
   busy: boolean;
+  editingOrder: boolean;
+  dayKeys: readonly (string | undefined)[];
+  dayLabels: readonly (string | undefined)[];
   onSelect: (index: number) => void;
   onMove: (index: number, direction: -1 | 1) => void;
+  canMove: (index: number, direction: -1 | 1) => boolean;
   onRemove: (id: string) => void;
-  onExport: (format: ExportFormat) => void;
 }) {
-  const summary = useMemo(() => journeySummary(photos), [photos]);
   return (
     <section className="pj-panel pj-stops" aria-label="Journey order">
       <header className="pj-panel-head">
@@ -34,18 +42,28 @@ function StopList({
           {summary.photoCount} photos · {summary.locatedCount} located · {formatDistance(summary.distanceKm)}
         </span>
         <h2>Stops</h2>
-        <div className="pj-exports" aria-label="Export journey">
-          <Download size={14} aria-hidden="true" />
-          {FORMATS.map((format) => (
-            <button key={format} className="pj-pill" data-size="sm" onClick={() => onExport(format)}>
-              {format === "geojson" ? "GeoJSON" : format.toUpperCase()}
-            </button>
-          ))}
-        </div>
       </header>
       <ol className="pj-stop-list">
-        {photos.map((photo, index) => (
-          <li key={photo.id} data-selected={index === activeIndex}>
+        {photos.map((photo, index) => {
+          const placement = placements[index];
+          const dayKey = dayKeys[index];
+          const previousDayKey = dayKeys[index - 1];
+          const located = placement ? placement.source === "photo" || placement.source === "track" : Boolean(photo.metadata.coordinates);
+          const place = placement?.conflict && placement.source === "photo"
+            ? "Photo GPS selected · recording differs"
+            : placement?.conflict && placement.source === "track"
+              ? "Recorded position selected"
+              : placement?.conflict
+                ? "Needs a location choice"
+            : placement?.source === "track"
+              ? "On the recording"
+              : placement?.source === "carried"
+                ? "Previous position · not this photo"
+                : photo.metadata.place ?? (located ? "Located" : "No GPS");
+          return (
+          <Fragment key={photo.id}>
+            {dayKey && dayKey !== previousDayKey && <li className="pj-stop-day"><span role="heading" aria-level={3}>{dayLabels[index] ?? dayKey}</span></li>}
+          <li data-selected={index === activeIndex}>
             <button
               className="pj-stop"
               aria-current={index === activeIndex ? "step" : undefined}
@@ -55,17 +73,27 @@ function StopList({
               <span className="pj-stop-index">{String(index + 1).padStart(2, "0")}</span>
               <span className="pj-stop-text">
                 <strong>{photo.name}</strong>
-                <small data-located={Boolean(photo.metadata.coordinates)}>
-                  {photo.metadata.place ?? "No GPS"}
-                  {photo.metadata.capturedAtLabel ? ` · ${photo.metadata.capturedAtLabel}` : ""}
+                <small data-located={located}>
+                  {place}
+                  {photo.metadata.capturedAtLabel ? ` · ${photo.metadata.capturedAtLabel}${photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined && placement?.instant === undefined ? " · time not resolved" : ""}` : ""}
                 </small>
               </span>
+              {placement?.conflict && (
+                <span className="pj-stop-tag" data-conflict="true">{placement.ambiguous ? "overlap" : "review"}</span>
+              )}
+              {placement?.source === "track" && !placement.conflict && (
+                <span className="pj-stop-tag" title={placement.discrepancyM === undefined
+                  ? "This photo has no GPS. The track places it by its timecode."
+                  : `The camera's own fix was ${Math.round(placement.discrepancyM).toLocaleString("en")} m away, so the track places it by its timecode.`}>
+                  by time
+                </span>
+              )}
             </button>
             <div className="pj-stop-actions">
-              <button disabled={busy || index === 0} onClick={() => onMove(index, -1)} aria-label={`Move ${photo.name} earlier`}>
+              <button disabled={busy || !editingOrder || !canMove(index, -1)} onClick={() => onMove(index, -1)} aria-label={`Move ${photo.name} earlier`}>
                 <ChevronUp />
               </button>
-              <button disabled={busy || index === photos.length - 1} onClick={() => onMove(index, 1)} aria-label={`Move ${photo.name} later`}>
+              <button disabled={busy || !editingOrder || !canMove(index, 1)} onClick={() => onMove(index, 1)} aria-label={`Move ${photo.name} later`}>
                 <ChevronDown />
               </button>
               <button disabled={busy} onClick={() => onRemove(photo.id)} aria-label={`Remove ${photo.name}`}>
@@ -73,7 +101,9 @@ function StopList({
               </button>
             </div>
           </li>
-        ))}
+          </Fragment>
+          );
+        })}
       </ol>
     </section>
   );

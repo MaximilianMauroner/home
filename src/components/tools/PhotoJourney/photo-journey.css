@@ -27,6 +27,10 @@
   outline: 2px solid var(--pj-accent);
   outline-offset: 2px;
 }
+.photo-journey[data-dragging="true"] {
+  outline: 2px dashed var(--pj-accent);
+  outline-offset: 0.5rem;
+}
 .pj-label {
   color: var(--pj-accent);
   font-size: 0.7rem;
@@ -174,7 +178,7 @@
     border-color 0.15s,
     background 0.15s;
 }
-.pj-upload[data-dragging="true"] {
+.photo-journey[data-dragging="true"] .pj-upload {
   border-color: var(--pj-accent);
   background: var(--pj-bg-2);
 }
@@ -234,6 +238,56 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+}
+.pj-view-settings {
+  position: relative;
+}
+.pj-view-settings summary {
+  list-style: none;
+  cursor: pointer;
+}
+.pj-view-settings summary::-webkit-details-marker {
+  display: none;
+}
+.pj-view-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 0.55rem;
+  min-width: 18rem;
+  padding: 0.7rem;
+  border: 1px solid var(--pj-line-strong);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-1);
+  box-shadow: 0 12px 30px #000b;
+}
+.pj-pill[data-active="true"] {
+  border-color: var(--pj-accent);
+  color: var(--pj-accent);
+}
+.pj-timezone,
+.pj-day-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--pj-faint);
+  font-size: 0.72rem;
+}
+.pj-timezone input,
+.pj-day-select select {
+  min-width: 7rem;
+  height: 2rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--pj-line);
+  border-radius: 999px;
+  background: var(--pj-bg-2);
+  color: var(--pj-soft);
+  font: inherit;
+}
+.pj-day-select select {
+  max-width: 16rem;
 }
 
 /* ---- Stage: the map leads while travelling, the photo takes the frame on arrival ---- */
@@ -306,58 +360,118 @@
   font-size: 1.05rem;
 }
 
-/* Leaflet, restyled to the dark palette. OSM tiles are inverted rather than swapped for a
-   third-party dark style, so the tile provider and the privacy note stay the same. */
-.pj-leaflet-map {
+/* MapLibre, restyled to the dark palette. OSM tiles are darkened with raster paint rather
+   than swapped for a third-party dark style, so the tile provider and privacy note stay put. */
+.pj-gl-map {
   width: 100%;
   height: 100%;
   background: #0a1417;
   font: inherit;
 }
-.pj-leaflet-map[data-offline="true"] {
+.pj-gl-map[data-offline="true"] {
   background: #071014;
 }
-.pj-leaflet-map .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.92) saturate(0.4);
+/* Minimal engine frame (adapted from the BSD-licensed maplibre-gl.css). The library
+   stylesheet is not imported: its data-URI icons break this site's build pipeline. */
+.pj-gl-map .maplibregl-map {
+  overflow: hidden;
+  position: relative;
 }
-.pj-leaflet-map .leaflet-control-attribution {
+.pj-gl-map .maplibregl-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+.pj-gl-map .maplibregl-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+.pj-gl-map .maplibregl-ctrl-top-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.pj-gl-map .maplibregl-ctrl-top-left .maplibregl-ctrl {
+  margin: 10px 0 0 10px;
+  float: left;
+  pointer-events: auto;
+}
+.pj-gl-map .maplibregl-ctrl-bottom-right {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.pj-gl-map .maplibregl-ctrl-bottom-right .maplibregl-ctrl {
+  margin: 0 10px 10px 0;
+  float: right;
+  pointer-events: auto;
+}
+.pj-gl-map .maplibregl-ctrl-attrib {
   padding: 0.1rem 0.4rem;
   border-top-left-radius: 0.4rem;
   background: #05090bcc;
   color: var(--pj-muted);
   font-size: 9px;
 }
-.pj-leaflet-map .leaflet-control-attribution a {
+.pj-gl-map .maplibregl-ctrl-attrib a {
   color: var(--pj-soft);
+  text-decoration: none;
 }
-.pj-leaflet-map .leaflet-bar {
+.pj-gl-map .maplibregl-ctrl-group {
   overflow: hidden;
   border: 1px solid var(--pj-line-strong);
   border-radius: var(--pj-radius);
+  background: var(--pj-bg-1);
   box-shadow: none;
 }
-.pj-leaflet-map .leaflet-bar a {
-  border-color: var(--pj-line);
-  background: var(--pj-bg-1);
-  color: var(--pj-ink);
+.pj-gl-map .maplibregl-ctrl-group button {
+  display: block;
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
-.pj-leaflet-map .leaflet-bar a:hover {
+.pj-gl-map .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--pj-line);
+}
+.pj-gl-map .maplibregl-ctrl-group button:hover {
   background: var(--pj-bg-3);
 }
-.pj-leaflet-map .leaflet-tooltip {
-  border: 1px solid var(--pj-line-strong);
-  border-radius: 0.4rem;
-  background: var(--pj-bg-1);
+/* The zoom icons ship as data-URIs in the library stylesheet, so the glyphs are drawn here. */
+.pj-gl-map .maplibregl-ctrl-icon {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
   color: var(--pj-ink);
-  box-shadow: none;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
 }
-.pj-leaflet-map .leaflet-tooltip::before {
+.pj-gl-map .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon::after {
+  content: "+";
+}
+.pj-gl-map .maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon::after {
+  content: "−";
+}
+.pj-viewport[data-hero="expanded"][data-map="on"] .maplibregl-ctrl-top-left {
   display: none;
 }
-.pj-viewport[data-hero="expanded"][data-map="on"] .leaflet-control-zoom {
-  display: none;
-}
+/* The engine does not size custom marker elements; the wrapper keeps the old 34 px pin. */
 .pj-map-marker {
+  width: 34px;
+  height: 34px;
   border: 0;
   background: none;
 }
@@ -394,20 +508,23 @@
   inset: 0;
   z-index: 2;
   display: grid;
+  /* One cell that cannot grow past the frame. A default auto row takes the photo's own
+     height, so a portrait photo would size to the frame width, overflow, and be cropped. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
   overflow: hidden;
   background: var(--pj-bg-0);
   transform-origin: 0 0;
-  transition:
-    transform 0.55s var(--pj-ease),
-    opacity 0.35s;
+  /* The transform is driven frame by frame from the playback clock, so it must not be eased here
+     as well. A transition would also make the tile trail the pin it is meant to be sitting on. */
+  transition: opacity 0.35s;
   pointer-events: none;
 }
 .pj-hero-img,
 .pj-burst-previous {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 .pj-hero-img {
   position: relative;
@@ -415,9 +532,6 @@
 .pj-burst-previous {
   position: absolute;
   inset: 0;
-}
-.pj-viewport[data-hero="collapsed"] .pj-hero-img {
-  object-fit: cover;
 }
 .pj-viewport[data-card="true"] .pj-hero {
   opacity: 0;
@@ -739,6 +853,52 @@
 .pj-notes p {
   margin: 0;
 }
+.pj-time-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+  margin-top: 0.9rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--pj-line);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-1);
+}
+.pj-time-controls > div {
+  flex: 1 1 18rem;
+}
+.pj-time-controls strong {
+  font-size: 0.82rem;
+}
+.pj-time-controls p {
+  margin: 0.2rem 0 0;
+  color: var(--pj-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.pj-time-controls label {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--pj-faint);
+  font-size: 0.68rem;
+}
+.pj-time-controls input {
+  width: 8rem;
+  height: 2.25rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--pj-line);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-2);
+  color: var(--pj-ink);
+  font: inherit;
+}
+/* The track line is the one note that reports a result, so it reads ahead of the rest. */
+.pj-track-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--pj-accent);
+}
 .pj-keys kbd {
   display: inline-grid;
   place-items: center;
@@ -766,6 +926,76 @@
   gap: 1rem;
   margin-top: 1.25rem;
 }
+.pj-recordings {
+  grid-column: 1 / -1;
+}
+.pj-recording-list {
+  display: grid;
+  gap: 2px;
+  margin: 0 -0.4rem;
+  padding: 0;
+  list-style: none;
+}
+.pj-recording-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.5rem;
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-2);
+}
+.pj-recording-list li[data-included="false"] {
+  opacity: 0.58;
+}
+.pj-recording-main {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+.pj-recording-main strong,
+.pj-recording-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pj-recording-main strong {
+  font-size: 0.85rem;
+}
+.pj-recording-main small {
+  color: var(--pj-muted);
+  font-size: 0.74rem;
+}
+.pj-recording-main .pj-recording-warning {
+  color: var(--pj-accent);
+}
+.pj-recording-actions {
+  display: flex;
+  flex: none;
+  gap: 0.1rem;
+}
+.pj-recording-actions button {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pj-muted);
+}
+.pj-recording-actions button:hover:not(:disabled) {
+  background: var(--pj-bg-3);
+  color: var(--pj-ink);
+}
+.pj-recording-actions button:disabled {
+  opacity: 0.35;
+}
+.pj-recording-actions svg {
+  width: 1rem;
+  height: 1rem;
+}
 .pj-panel {
   padding: 1.1rem;
   border: 1px solid var(--pj-line);
@@ -791,13 +1021,20 @@
   letter-spacing: 0.04em;
   text-transform: none;
 }
-.pj-exports {
+.pj-export {
+  margin-top: 1rem;
+}
+.pj-export-summary {
+  flex: 1 1 100%;
+  margin: 0.2rem 0 0;
+  color: var(--pj-muted);
+  font-size: 0.76rem;
+}
+.pj-export-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
-  order: 2;
-  margin-left: auto;
-  color: var(--pj-faint);
+  gap: 0.4rem;
 }
 .pj-stop-list {
   display: grid;
@@ -814,6 +1051,15 @@
   align-items: center;
   border-radius: var(--pj-radius);
 }
+.pj-stop-list li.pj-stop-day {
+  display: block;
+  padding: 0.7rem 0.5rem 0.25rem;
+  color: var(--pj-accent);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .pj-stop-list li:hover {
   background: var(--pj-bg-2);
 }
@@ -823,7 +1069,7 @@
 }
 .pj-stop {
   display: grid;
-  grid-template-columns: 3.75rem 1.5rem minmax(0, 1fr);
+  grid-template-columns: 3.75rem 1.5rem minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.7rem;
   width: 100%;
@@ -871,6 +1117,19 @@
 .pj-stop-text small[data-located="false"] {
   color: var(--pj-faint);
 }
+/* Marks a stop the track moved off the camera's own fix. */
+.pj-stop-tag {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid color-mix(in oklch, var(--pj-accent) 35%, transparent);
+  border-radius: 999px;
+  color: var(--pj-accent);
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+.pj-stop-tag[data-conflict="true"] {
+  border-color: #df9a5b88;
+  color: #f2b377;
+}
 .pj-stop-actions {
   display: flex;
   padding-right: 0.3rem;
@@ -907,6 +1166,54 @@
 }
 .pj-inspector .pj-panel-head .pj-label {
   order: 0;
+}
+.pj-placement-choice {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--pj-line);
+}
+.pj-placement-choice strong {
+  font-size: 0.82rem;
+}
+.pj-placement-choice p {
+  margin: 0.25rem 0 0.6rem;
+  color: var(--pj-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+.pj-placement-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.pj-placement-buttons [aria-pressed="true"] {
+  border-color: var(--pj-accent);
+  color: var(--pj-accent);
+}
+.pj-time-choice {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--pj-line);
+}
+.pj-time-choice strong {
+  font-size: 0.82rem;
+}
+.pj-time-choice p {
+  margin: 0.25rem 0 0.6rem;
+  color: var(--pj-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+.pj-time-choice input {
+  width: 8rem;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--pj-line);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-2);
+  color: var(--pj-ink);
+  font: inherit;
+  font-size: 0.75rem;
 }
 .pj-facts {
   display: grid;

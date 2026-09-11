@@ -81,6 +81,45 @@ describe("Photo Journey metadata", () => {
       ]).map((item) => item.importOrder),
     ).toEqual([0, 1, 2]);
   });
+
+  test("uses import order as the stable tie-breaker for equal resolved times", () => {
+    const same = new Date("2024-01-01T12:00:00Z");
+    const makePhoto = (importOrder: number) =>
+      ({ importOrder, metadata: { capturedAt: same } }) as JourneyPhoto;
+    expect(sortPhotos([makePhoto(2), makePhoto(0), makePhoto(1)]).map((item) => item.importOrder)).toEqual([0, 1, 2]);
+  });
+
+  test("orders unresolved camera clocks by their wall-clock reading", () => {
+    const makePhoto = (importOrder: number, capturedAtWallClock: string) =>
+      ({ importOrder, metadata: { capturedAtWallClock } }) as JourneyPhoto;
+    expect(sortPhotos([
+      makePhoto(1, "2024-01-01T14:00:00"),
+      makePhoto(0, "2024-01-01T09:00:00"),
+    ]).map((item) => item.importOrder)).toEqual([0, 1]);
+  });
+
+  test("preserves a Date-backed camera wall clock without using the viewer timezone", () => {
+    const result = normalizeMetadata(
+      { name: "clock.jpg", size: 1, type: "image/jpeg", lastModified: 0 },
+      { DateTimeOriginal: new Date("2024-01-01T14:02:03.000Z"), OffsetTimeOriginal: "+02:00" },
+      1,
+      1,
+    );
+    expect(result.capturedAtWallClock).toBe("2024-01-01T14:02:03.000");
+    expect(result.utcOffsetMinutes).toBe(120);
+  });
+
+  test("shows a zone-less camera wall clock even while its instant is unresolved", () => {
+    const result = normalizeMetadata(
+      { name: "clock.jpg", size: 1, type: "image/jpeg", lastModified: 0 },
+      { DateTimeOriginal: "2024:01:01 14:02:03" },
+      1,
+      1,
+    );
+    expect(result.capturedAt).toBeUndefined();
+    expect(result.capturedAtWallClock).toBe("2024-01-01T14:02:03");
+    expect(result.capturedAtLabel).toBe("2024-01-01 14:02:03");
+  });
 });
 
 describe("Photo Journey previews", () => {
