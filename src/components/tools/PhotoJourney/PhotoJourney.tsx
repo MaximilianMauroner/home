@@ -109,7 +109,6 @@ export default function PhotoJourney() {
   const [mapMode, setMapMode] = useState<MapMode>("offline");
   const [terrain, setTerrain] = useState({ loading: false, failed: false });
   const [mapDead, setMapDead] = useState(false);
-  const [kenBurns, setKenBurns] = useState(false);
   const [editingOrder, setEditingOrder] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -434,29 +433,6 @@ export default function PhotoJourney() {
       <div className="pj-bar">
         <input className="pj-title" aria-label="Journey title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} />
         <div className="pj-bar-actions">
-          <details className="pj-view-settings">
-            <summary className="pj-pill">View settings</summary>
-            <div className="pj-view-popover">
-              <Segmented label="Map" value={mapMode} onChange={setMapMode}
-                options={[{ value: "offline", label: "Offline" }, { value: "online", label: "OpenStreetMap" }, { value: "terrain", label: "Terrain" }]} />
-              <Segmented label="Order" value={order} disabled={busy} onChange={(value) => {
-                setOrder(value); if (value === "capture") setPhotos(sortPhotos(photos, placements.map((placement) => placement.instant))); playback.seek(0);
-              }} options={[{ value: "capture", label: "By time" }, { value: "manual", label: "Manual" }]} />
-              <label className="pj-pill pj-toggle" data-disabled={reducedMotion}>
-                <input type="checkbox" checked={kenBurns && !reducedMotion} disabled={reducedMotion} onChange={(event) => setKenBurns(event.target.checked)} />
-                Slow zoom
-              </label>
-            </div>
-          </details>
-          <button className="pj-pill" data-active={editingOrder} disabled={busy} onClick={() => {
-            setEditingOrder((value) => !value);
-            if (!editingOrder) setOrder("manual");
-          }}>{editingOrder ? "Done editing" : "Edit order"}</button>
-          <label className="pj-timezone">
-            <span>Trip timezone</span>
-            <input aria-label="Trip timezone" list="pj-timezones" value={tripTimezone} onChange={(event) => setTripTimezone(event.target.value)} onBlur={() => setTripTimezone((value) => normalizeTimezone(value))} placeholder="UTC" />
-            <datalist id="pj-timezones"><option value="UTC" /><option value="Europe/Rome" /><option value="Europe/Berlin" /><option value="America/New_York" /><option value="America/Los_Angeles" /><option value="Asia/Tokyo" /></datalist>
-          </label>
           <label className="pj-day-select">
             <span>Show</span>
             <select aria-label="Journey day" value={selectedDay} onChange={(event) => setSelectedDay(event.target.value)}>
@@ -465,13 +441,12 @@ export default function PhotoJourney() {
             </select>
           </label>
           <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />{busy ? `Reading ${importProgress}` : "Add photos or GPX"}</button>
-          <button className="pj-pill" disabled={busy || packing} onClick={() => void downloadScopedBundle()}>Export trip scopes</button>
         </div>
       </div>
       <div className="pj-stage" ref={stageRef}>
         <JourneyStage photos={visiblePhotos} stops={stops} track={scopedTrack} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} state={playback.state}
           timeline={playback.timeline} playing={playback.playing}
-          reducedMotion={reducedMotion} mapMode={mapMode} kenBurns={kenBurns} title={title} timezone={tripTimezone} speed={playback.speed} seekVersion={playback.seekVersion}
+          reducedMotion={reducedMotion} mapMode={mapMode} title={title} timezone={tripTimezone} speed={playback.speed} seekVersion={playback.seekVersion}
           onTerrainState={setTerrain} onEngineFailed={() => setMapDead(true)} />
         <div className="pj-controls">
           <div className="pj-transport">
@@ -512,7 +487,32 @@ export default function PhotoJourney() {
                   : <p>Terrain on. OpenStreetMap and elevation tiles reveal the areas shown.</p>}
         <p className="pj-keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> stops <kbd>F</kbd> fullscreen</p>
       </div>
-      {visiblePhotos.some((photo) => photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined) && (
+      <details className="pj-edit-journey">
+        <summary className="pj-pill">Edit journey</summary>
+        <div className="pj-edit-journey-content">
+          <div className="pj-bar-actions">
+            <details className="pj-view-settings">
+              <summary className="pj-pill">View settings</summary>
+              <div className="pj-view-popover">
+                <Segmented label="Map" value={mapMode} onChange={setMapMode}
+                  options={[{ value: "offline", label: "Offline" }, { value: "online", label: "OpenStreetMap" }, { value: "terrain", label: "Terrain" }]} />
+                <Segmented label="Order" value={order} disabled={busy} onChange={(value) => {
+                  setOrder(value); if (value === "capture") setPhotos(sortPhotos(photos, placements.map((placement) => placement.instant))); playback.seek(0);
+                }} options={[{ value: "capture", label: "By time" }, { value: "manual", label: "Manual" }]} />
+              </div>
+            </details>
+            <button className="pj-pill" data-active={editingOrder} disabled={busy} onClick={() => {
+              setEditingOrder((value) => !value);
+              if (!editingOrder) setOrder("manual");
+            }}>{editingOrder ? "Done editing" : "Edit order"}</button>
+            <label className="pj-timezone">
+              <span>Trip timezone</span>
+              <input aria-label="Trip timezone" list="pj-timezones" value={tripTimezone} onChange={(event) => setTripTimezone(event.target.value)} onBlur={() => setTripTimezone((value) => normalizeTimezone(value))} placeholder="UTC" />
+              <datalist id="pj-timezones"><option value="UTC" /><option value="Europe/Rome" /><option value="Europe/Berlin" /><option value="America/New_York" /><option value="America/Los_Angeles" /><option value="Asia/Tokyo" /></datalist>
+            </label>
+            <button className="pj-pill" disabled={busy || packing} onClick={() => void downloadScopedBundle()}>Export trip scopes</button>
+          </div>
+          {visiblePhotos.some((photo) => photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined) && (
         <section className="pj-time-controls" aria-label="Photo clock settings">
           <div>
             <strong>Some camera clocks have no timezone</strong>
@@ -541,15 +541,17 @@ export default function PhotoJourney() {
             setFallbackOffsetInput("");
           }}>Clear</button>}
         </section>
-      )}
-      <ExportPanel scopeLabel={dayLabel(days, selectedDay)} summary={summary} hasPhotos={hasPhotos} photoBytes={photoBytes} includePhotos={includePhotos} packing={packing} busy={busy}
-        onExport={download} onIncludePhotos={setIncludePhotos} onBundle={downloadBundle} />
-      <div className="pj-workspace">
+          )}
+          <ExportPanel scopeLabel={dayLabel(days, selectedDay)} summary={summary} hasPhotos={hasPhotos} photoBytes={photoBytes} includePhotos={includePhotos} packing={packing} busy={busy}
+            onExport={download} onIncludePhotos={setIncludePhotos} onBundle={downloadBundle} />
+          <div className="pj-workspace">
           <RecordingList recordings={recordings} overlappingIds={overlappingIds} busy={busy} timezone={tripTimezone} onToggle={toggleRecording} onRemove={removeRecording} onDownload={downloadOriginal} />
         {hasPhotos && <StopList photos={visiblePhotos} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} busy={busy} editingOrder={editingOrder} dayKeys={timelineDayKeys} dayLabels={timelineDayLabels}
           onSelect={playback.select} onMove={movePhoto} canMove={canMovePhoto} onRemove={removePhoto} />}
         <Inspector photo={activePhoto} placement={visiblePlacements[activeIndex]} index={activeIndex} recordings={recordings} choice={activePhoto ? placementChoices[activePhoto.id] : undefined} offsetMinutes={activePhoto ? offsetMinutesByPhoto[activePhoto.id] : undefined} onSetOffset={setPhotoOffset} onChoosePlacement={choosePlacement} />
-      </div>
+          </div>
+        </div>
+      </details>
     </>}
     {errors.length > 0 && <div className="pj-errors" role="status">
       <button onClick={() => setErrors([])} aria-label="Dismiss messages"><X size={14} /></button>

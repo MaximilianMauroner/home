@@ -4,7 +4,9 @@ import {
   buildTimeline,
   distanceKm,
   cameraFor,
+  inferredRouteSegments,
   locatedPoints,
+  placementLegEligibility,
   routeSegments,
   timelineAt,
 } from "../src/components/tools/PhotoJourney/timeline";
@@ -14,6 +16,7 @@ import {
 } from "../src/components/tools/PhotoJourney/track";
 import { legSpansGlobe } from "../src/components/tools/PhotoJourney/JourneyMap";
 import type { JourneyPhoto } from "../src/components/tools/PhotoJourney/types";
+import type { Placement } from "../src/components/tools/PhotoJourney/track";
 
 function photo(latitude?: number, longitude?: number): JourneyPhoto {
   return {
@@ -55,6 +58,51 @@ describe("Photo Journey timeline", () => {
     );
     expect(second.approachDuration).toBeGreaterThan(2000);
   });
+  test("publishes exact phase boundaries for reveal, hold, departure, and ending", () => {
+    const timeline = buildTimeline([photo(48, 16)]);
+    const stop = timeline.stops[0];
+    expect(timelineAt(stop.revealStart, timeline)).toMatchObject({
+      phase: "reveal",
+      phaseStart: stop.revealStart,
+      phaseEnd: stop.revealEnd,
+      phaseProgress: 0,
+      currentLegProgress: 1,
+    });
+    expect(timelineAt(stop.revealEnd, timeline).phase).toBe("hold");
+    expect(timelineAt(stop.departureStart, timeline)).toMatchObject({
+      phase: "departure",
+      phaseStart: stop.departureStart,
+      phaseEnd: stop.end,
+      panelVisible: true,
+    });
+    const middle = timelineAt(stop.departureStart + (stop.end - stop.departureStart) / 2, timeline);
+    expect(middle.phaseProgress).toBe(0.5);
+    expect(middle.phaseRemaining).toBe(middle.phaseDuration / 2);
+    expect(timelineAt(stop.end, timeline).phase).toBe("outro");
+    expect(timelineAt(timeline.totalDuration, timeline)).toMatchObject({
+      phase: "complete",
+      phaseProgress: 1,
+      phaseRemaining: 0,
+    });
+  });
+
+  test("only marks same-source, forward, within-day recording legs as structurally eligible", () => {
+    const placement = (photoId: string, instant: number, recordingId = "walk"): Placement => ({
+      photoId,
+      instant,
+      recordingId,
+      gapSeconds: 0,
+      source: "photo",
+      coordinates: { latitude: instant, longitude: instant },
+      trackCoordinates: { latitude: instant + 1, longitude: instant + 1 },
+    });
+    const forward = [placement("a", 1), placement("b", 2)];
+    expect(placementLegEligibility(forward, ["2025-03-14", "2025-03-14"])).toEqual([false, true]);
+    expect(placementLegEligibility(forward, ["2025-03-14", "2025-03-15"])).toEqual([false, false]);
+    expect(placementLegEligibility([forward[1], forward[0]], ["2025-03-14", "2025-03-14"])).toEqual([false, false]);
+    expect(placementLegEligibility([forward[0], placement("b", 2, "bike")], ["2025-03-14", "2025-03-14"])).toEqual([false, false]);
+    expect(placementLegEligibility([forward[0], { ...forward[1], ambiguous: true }], ["2025-03-14", "2025-03-14"])).toEqual([false, false]);
+  });
   test("groups days and collapses same-minute nearby bursts", () => {
     const photos = [photo(48, 16), photo(48, 16), photo(49, 17)];
     photos[0].metadata.capturedAt = new Date("2024-03-14T12:00:01Z");
@@ -64,9 +112,13 @@ describe("Photo Journey timeline", () => {
     expect(timeline.stops[1].burst).toBe(true);
     expect(timeline.stops[1].approachDuration).toBe(0);
     expect(timeline.stops[1].duration).toBeLessThan(timeline.stops[0].duration);
-    expect(timelineAt(timeline.stops[2].dayStart, timeline).dayLabel).toContain(
-      "Day 2",
-    );
+    expect(timelineAt(timeline.stops[2].dayStart, timeline)).toMatchObject({
+      phase: "day",
+      dayChange: true,
+      phaseStart: timeline.stops[2].dayStart,
+      phaseEnd: timeline.stops[2].start,
+    });
+    expect(timelineAt(timeline.stops[2].dayStart, timeline).dayLabel).toContain("Day 2");
   });
   test("times legs by the real gap on the tour when shutter instants are known", () => {
     const pair = [photo(48, 16), photo(48.1, 16.1)];
@@ -153,6 +205,21 @@ describe("Photo Journey timeline", () => {
     expect(locatedPoints(stopsFor([photo(1, 1), photo(), photo(2, 2)]))).toEqual([
       { latitude: 1, longitude: 1 },
       { latitude: 2, longitude: 2 },
+    ]);
+  });
+
+  test("splits inferred photo connections at missing fixes and day boundaries", () => {
+    const stops = stopsFor([
+      photo(1, 1),
+      photo(2, 2),
+      photo(),
+      photo(3, 3),
+      photo(4, 4),
+      photo(5, 5),
+    ]);
+    expect(inferredRouteSegments(stops, [false, false, false, false, false, true])).toEqual([
+      [{ latitude: 1, longitude: 1 }, { latitude: 2, longitude: 2 }],
+      [{ latitude: 3, longitude: 3 }, { latitude: 4, longitude: 4 }],
     ]);
   });
 

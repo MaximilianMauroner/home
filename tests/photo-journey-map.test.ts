@@ -9,6 +9,16 @@ describe("Photo Journey map timing and recording budgets", () => {
     expect(approachAnimationDuration(3_000, 2)).toBe(1_500);
   });
 
+  test("scales only the remaining phase time after a pause or speed change", () => {
+    const remainingTimelineMs = 1_800;
+    expect(approachAnimationDuration(remainingTimelineMs, 0.75)).toBe(2_400);
+    expect(approachAnimationDuration(remainingTimelineMs, 1)).toBe(1_800);
+    expect(approachAnimationDuration(remainingTimelineMs, 1.5)).toBe(1_200);
+    expect(approachAnimationDuration(remainingTimelineMs, 2)).toBe(900);
+    // Changing speed halfway through a leg uses what is left, never the original 3,000 ms.
+    expect(approachAnimationDuration(1_500, 2)).toBe(750);
+  });
+
   test("handles recording-sized arrays without spread argument limits", () => {
     const points = Array.from({ length: 20_000 }, (_, index) => ({ latitude: 45, longitude: 11 + index / 1_000, elevation: index % 2 ? 100 : 101, time: index * 1_000 }));
     const track: Track = { points, segmentStarts: [0] };

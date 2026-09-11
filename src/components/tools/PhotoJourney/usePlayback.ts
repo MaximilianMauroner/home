@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { buildTimeline, timelineAt } from "./timeline";
+import { buildTimeline, placementLegEligibility, timelineAt } from "./timeline";
 import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
 
@@ -30,9 +30,13 @@ export function usePlayback(
     () => placements?.map((placement) => placement.instant),
     [placements],
   );
+  const legEligibility = useMemo(
+    () => placementLegEligibility(placements, dayOptions?.dayKeys),
+    [placements, dayOptions?.dayKeys],
+  );
   const timeline = useMemo(
-    () => buildTimeline(photos, positions, instants, dayOptions),
-    [photos, positions, instants, dayOptions?.dayKeys, dayOptions?.dayLabels],
+    () => buildTimeline(photos, positions, instants, { ...dayOptions, legEligibility }),
+    [photos, positions, instants, dayOptions?.dayKeys, dayOptions?.dayLabels, legEligibility],
   );
   const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(false);

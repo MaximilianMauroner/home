@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   formatCoordinates,
   formatDayKeyRange,
@@ -20,10 +20,8 @@ import type { Placement } from "./track";
 import { usePhotoPreload } from "./usePhotoPreload";
 
 const CARD_PHASES = new Set<JourneyPhase>(["overview", "intro", "day", "outro", "complete"]);
-/** The photo's size while it waits on its pin. The frame keeps its own shape inside these bounds. */
-const TILE = { width: 76, height: 56 };
 const pad = (value: number) => String(value).padStart(2, "0");
-const clamp = (value: number) => Math.min(1, Math.max(0, value));
+const clamp = (value: number) => Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
 /** Moving time from the track, compact enough for a stat tile: "24 min" or "8 h 24 min". */
 function formatMoving(totalSeconds: number) {
   const minutes = Math.round(totalSeconds / 60);
@@ -43,7 +41,6 @@ export default function JourneyStage({
   playing,
   reducedMotion,
   mapMode,
-  kenBurns,
   title,
   timezone = "UTC",
   speed,
@@ -62,7 +59,6 @@ export default function JourneyStage({
   playing: boolean;
   reducedMotion: boolean;
   mapMode: MapMode;
-  kenBurns: boolean;
   title: string;
   timezone?: string;
   speed: number;
@@ -72,16 +68,32 @@ export default function JourneyStage({
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1, height: 1 });
-  const [marker, setMarker] = useState<{ x: number; y: number } | null>(null);
-  const photo = photos[activeIndex];
-  const stop = stops[activeIndex];
-  const burst = timeline.stops[activeIndex]?.burst ?? false;
+  const [previewFailure, setPreviewFailure] = useState<string>();
+  // The clock is the source of truth during playback. Keep the direct index fallback while the
+  // timeline contract lands, and for the empty/initial state.
+  const timelineIndex = photos[state.photoIndex] ? state.photoIndex : activeIndex;
+  const photo = photos[timelineIndex];
+  const stop = stops[timelineIndex];
   const card = CARD_PHASES.has(state.phase);
   const traveling = state.phase === "approach";
-  const expanded = !card && (reducedMotion || !traveling);
+  const phase = state.phase;
+  const departing = phase === "departure";
   const hasMapData = summary.locatedCount > 0 || Boolean(track?.points.length);
-  const dayChange = Boolean(timeline.stops[activeIndex]?.dayLabel);
-  usePhotoPreload(photos, activeIndex);
+  const dayChange = state.dayChange ?? Boolean(timeline.stops[timelineIndex]?.dayLabel);
+  const preload = usePhotoPreload(photos, timelineIndex);
+  const originalStatus = preload.statusFor(photo?.url);
+  const originalReady = originalStatus === "ready";
+  const handoff = card
+    ? 0
+    : reducedMotion
+      ? phase === "approach" || departing ? 0 : 1
+      : phase === "reveal"
+        ? clamp(state.phaseProgress)
+        : departing
+          ? 1 - clamp(state.phaseProgress)
+          : phase === "hold"
+            ? 1
+            : 0;
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
@@ -94,46 +106,7 @@ export default function JourneyStage({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const onMarkerPosition = useCallback(
-    (position: { x: number; y: number } | null) => {
-      // Keep the last full-map position while the inset is resized for the reveal.
-      if (state.phase !== "approach") return;
-      const box = viewport.current?.getBoundingClientRect();
-      // The map reports page coordinates; the hero is placed inside the stage.
-      setMarker(position && box ? { x: position.x - box.left, y: position.y - box.top } : null);
-    },
-    [state.phase],
-  );
-  // While the camera travels, the photo waits as a small tile on its map pin and grows from there.
-  // The whole move runs off the playback clock. A CSS transition cannot do this: the tile has to
-  // track the pin exactly while the map flies, and a transition retargeted every frame drags
-  // behind it. Growth is 0 on the pin and 1 filling the stage.
-  const measured = size.width > 1 && size.height > 1;
-  // A stop's index advances the moment its leg starts, so the photo mounted during the leg is
-  // already the next one. It has to stay a tile on its own pin for the whole leg: opening it, or
-  // folding it down from full size, shows the picture at a place it was not taken.
-  const growth = !measured || reducedMotion || card || !state.approachDuration
-    ? 1
-    : state.phase === "approach"
-      ? 0
-      : state.phase === "reveal"
-        ? clamp(state.phaseProgress)
-        : 1;
-  // One scale for both axes. Separate factors would squash the photo into the tile's shape and
-  // then unsquash it during the grow, which reads as the picture moving inside its own frame.
-  const tile = Math.min(TILE.width / size.width, TILE.height / size.height);
-  const eased = 1 - (1 - growth) ** 3;
-  const scale = tile + (1 - tile) * eased;
-  const pinX = marker?.x ?? size.width / 2;
-  const pinY = marker?.y ?? size.height / 2;
-  // The frame's centre travels from the pin to the middle of the stage as it grows.
-  const centerX = pinX + (size.width / 2 - pinX) * eased;
-  const centerY = pinY + (size.height / 2 - pinY) * eased;
-  const transform =
-    growth === 1
-      ? "none"
-      : `translate(${centerX - (size.width * scale) / 2}px, ${centerY - (size.height * scale) / 2}px) scale(${scale})`;
-  const previous = stops[activeIndex - 1]?.coordinates;
+  const previous = stops[timelineIndex - 1]?.coordinates;
   const legKm =
     traveling && previous && stop?.coordinates
       ? distanceKm(previous, stop.coordinates)
@@ -142,12 +115,10 @@ export default function JourneyStage({
     <div
       ref={viewport}
       className="pj-viewport"
-      data-hero={expanded ? "expanded" : "collapsed"}
       data-map={hasMapData ? "on" : "off"}
       data-card={card}
-      data-ken-burns={kenBurns && !reducedMotion && state.phase === "hold"}
       data-playing={playing}
-      data-burst={burst}
+      data-phase={phase}
     >
       <div
         className="pj-map"
@@ -162,19 +133,24 @@ export default function JourneyStage({
       >
         <JourneyMap
           photos={photos}
-          activeIndex={activeIndex}
+          activeIndex={timelineIndex}
           stops={stops}
           track={track}
           reducedMotion={reducedMotion}
           phase={state.phase}
           dayChange={dayChange}
           approachDuration={state.approachDuration}
+          phaseRemaining={state.phaseRemaining}
+          currentLegProgress={state.currentLegProgress}
+          currentLegEligible={state.currentLegEligible}
+          legEligibility={timeline.stops.map((entry) => entry.legEligible)}
+          dayChanges={timeline.stops.map((entry) => entry.dayChange)}
+          placements={placements}
           mapMode={mapMode}
           playing={playing}
           speed={speed}
           seekVersion={seekVersion}
           frame={size}
-          onMarkerPosition={onMarkerPosition}
           onTerrainState={onTerrainState}
           onEngineFailed={onEngineFailed}
         />
@@ -189,41 +165,65 @@ export default function JourneyStage({
         <div
           className="pj-hero"
           style={{
-            transform,
+            opacity: handoff,
+            visibility: handoff > 0 ? "visible" : "hidden",
             // A dark tint of the photo's own colour fills the letterbox around mixed aspect ratios.
             backgroundColor: photo.dominantColor
               ? `color-mix(in oklch, ${photo.dominantColor} 26%, #05090b)`
               : undefined,
           }}
         >
-          {burst && !reducedMotion && photos[activeIndex - 1] && (
+          {previewFailure !== photo.id ? (
             <img
-              className="pj-burst-previous"
-              src={photos[activeIndex - 1].thumbnailUrl}
-              alt=""
+              key={`${photo.id}:preview`}
+              className="pj-hero-preview"
+              src={photo.thumbnailUrl}
+              // The preview is present for the whole stop, so it carries the name. Naming the
+              // original instead would move the accessible name on a decode race.
+              alt={photo.name}
+              onError={() => setPreviewFailure(photo.id)}
             />
+          ) : (
+            <div className="pj-photo-fallback" role="img" aria-label={`${photo.name}; preview unavailable`}>
+              <span>Preview unavailable</span>
+            </div>
           )}
-          <img
-            key={photo.id}
-            className="pj-hero-img"
-            src={photo.url}
-            alt={photo.name}
-          />
+          {originalReady && (
+            <a
+              className="pj-hero-original-link"
+              href={photo.url}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Open ${photo.name} at full resolution`}
+            >
+              <img className="pj-hero-img" src={photo.url} alt="" />
+            </a>
+          )}
         </div>
       )}
+      {/* Outside .pj-hero: that subtree is `visibility: hidden` for most of the timeline, and a
+          live region inside a hidden subtree is never announced. */}
+      {photo && originalStatus === "error" && (
+        <p className="pj-photo-status" role="status">Original image unavailable; showing preview.</p>
+      )}
       {photo && !card && (
-        <Caption photo={photo} placement={placements?.[activeIndex]} located={stop?.located ?? false} />
+        <Caption
+          photo={photo}
+          placement={placements?.[timelineIndex]}
+          located={stop?.located ?? false}
+          handoff={handoff}
+        />
       )}
       {photo && traveling && !reducedMotion && (
         <div className="pj-travel" aria-hidden="true">
           <span className="pj-label">Next stop</span>
-          <strong>{placements?.[activeIndex]?.conflict
-            ? placements[activeIndex]?.source === "photo"
+          <strong>{placements?.[timelineIndex]?.conflict
+            ? placements[timelineIndex]?.source === "photo"
               ? "Photo GPS selected"
-              : placements[activeIndex]?.source === "track"
+              : placements[timelineIndex]?.source === "track"
                 ? "Recorded position selected"
                 : "Choose a location"
-            : placements?.[activeIndex]?.source === "track"
+            : placements?.[timelineIndex]?.source === "track"
               ? (photo.metadata.place ?? "Recorded position")
               : photo.metadata.place ?? photo.name}</strong>
           {legKm !== undefined && <span className="pj-travel-distance">{formatDistance(legKm)}</span>}
@@ -240,14 +240,19 @@ export default function JourneyStage({
       )}
       {photo && !card && (
         <div className="pj-counter" aria-hidden="true">
-          {pad(activeIndex + 1)} <span>/ {pad(photos.length)}</span>
+          {pad(timelineIndex + 1)} <span>/ {pad(photos.length)}</span>
         </div>
       )}
     </div>
   );
 }
 
-function Caption({ photo, placement, located }: { photo: JourneyPhoto; placement?: Placement; located: boolean }) {
+function Caption({ photo, placement, located, handoff }: {
+  photo: JourneyPhoto;
+  placement?: Placement;
+  located: boolean;
+  handoff: number;
+}) {
   const { metadata } = photo;
   const exposure = [metadata.focalLength, metadata.aperture, metadata.shutterSpeed, metadata.iso]
     .filter(Boolean)
@@ -275,7 +280,7 @@ function Caption({ photo, placement, located }: { photo: JourneyPhoto; placement
           ? "No GPS in this photo"
           : (metadata.place ?? (placement?.coordinates && formatCoordinates(placement.coordinates)));
   return (
-    <div className="pj-caption" aria-hidden="true">
+    <section className="pj-caption" style={{ opacity: handoff, visibility: handoff > 0 ? "visible" : "hidden" }}>
       <p className="pj-caption-place" data-located={located}>{place}</p>
       <h2>{photo.name}</h2>
       {facts.length > 0 && (
@@ -285,7 +290,7 @@ function Caption({ photo, placement, located }: { photo: JourneyPhoto; placement
           ))}
         </p>
       )}
-    </div>
+    </section>
   );
 }
 

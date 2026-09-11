@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   GeoJSONSource,
   Map as MapLibreMap,
@@ -8,17 +8,24 @@ import type {
 
 import { trackSegments, type Track } from "./gpx";
 import {
+  buildRouteStory,
+  recordedLegPrefix,
+  type RouteStory,
+} from "./route-progress";
+import {
   cameraFor,
+  inferredRouteSegments,
   locatedPoints,
   routeSegments,
   type JourneyStop,
   type JourneyPhase,
 } from "./timeline";
+import type { Placement } from "./track";
 import type { Coordinates, JourneyPhoto } from "./types";
 
 /** Street level for map tiles. The offline outline has no detail past regional scale. */
 const STOP_ZOOM = 13;
-const OFFLINE_STOP_ZOOM = 6;
+const OFFLINE_STOP_ZOOM = 8;
 const OFFLINE_MAX_ZOOM = 8;
 
 /** AWS Terrain Tiles, Terrarium-encoded PNG. Open data, no key, attribution required. */
@@ -44,6 +51,15 @@ type JourneyMapProps = {
   /** A chapter boundary must reposition instead of animating an unrecorded overnight leg. */
   dayChange?: boolean;
   approachDuration: number;
+  /** Remaining timeline time in the current phase; read only when a camera command starts. */
+  phaseRemaining?: number;
+  /** Timeline-derived progress for the active recorded leg. */
+  currentLegProgress?: number;
+  currentLegEligible?: boolean;
+  /** Eligibility for all destination-indexed legs, including already completed stops. */
+  legEligibility?: readonly boolean[];
+  dayChanges?: readonly boolean[];
+  placements?: readonly Placement[];
   /** "offline" draws the bundled outline; "online" and "terrain" fetch OpenStreetMap tiles. */
   mapMode?: MapMode;
   playing: boolean;
@@ -112,7 +128,10 @@ export function baseStyle(): StyleSpecification {
         attribution:
           'Terrain: <a href="https://registry.opendata.aws/terrain-tiles/">AWS Terrain Tiles</a> (3DEP, SRTM, GMTED)',
       },
-      route: { type: "geojson", data: EMPTY_FEATURES },
+      "route-context": { type: "geojson", data: EMPTY_FEATURES },
+      "route-completed": { type: "geojson", data: EMPTY_FEATURES },
+      "route-current": { type: "geojson", data: EMPTY_FEATURES },
+      "route-inferred": { type: "geojson", data: EMPTY_FEATURES },
     },
     layers: [
       {
@@ -163,42 +182,75 @@ export function baseStyle(): StyleSpecification {
         },
       },
       {
-        id: "route-halo",
+        id: "route-context",
         type: "line",
-        source: "route",
+        source: "route-context",
         paint: {
           "line-color": "#eac86b",
-          "line-opacity": 0.18,
+          "line-opacity": 0.22,
+          "line-width": 2,
+        },
+      },
+      {
+        id: "route-completed-halo",
+        type: "line",
+        source: "route-completed",
+        layout: { "line-cap": "round" },
+        paint: {
+          "line-color": "#071014",
+          "line-opacity": 0.7,
           "line-width": 7,
         },
       },
       {
-        id: "route-core",
+        id: "route-completed",
         type: "line",
-        source: "route",
+        source: "route-completed",
         layout: { "line-cap": "round" },
         paint: {
           "line-color": "#f2d487",
-          "line-opacity": 0.95,
+          "line-opacity": 0.82,
           "line-width": 2.5,
         },
       },
       {
-        id: "route-core-dash",
+        id: "route-current-halo",
         type: "line",
-        source: "route",
+        source: "route-current",
+        layout: { "line-cap": "round" },
+        paint: {
+          "line-color": "#071014",
+          "line-opacity": 0.8,
+          "line-width": 8,
+        },
+      },
+      {
+        id: "route-current",
+        type: "line",
+        source: "route-current",
+        layout: { "line-cap": "round" },
+        paint: {
+          "line-color": "#fff0bd",
+          "line-opacity": 1,
+          "line-width": 3.5,
+        },
+      },
+      {
+        id: "route-inferred",
+        type: "line",
+        source: "route-inferred",
         layout: { "line-cap": "round" },
         paint: {
           "line-color": "#f2d487",
-          "line-opacity": 0.95,
-          "line-width": 2.5,
+          "line-opacity": 0.7,
+          "line-width": 2,
           "line-dasharray": [0.8, 2.8],
         },
       },
       {
         id: "route-points",
         type: "circle",
-        source: "route",
+        source: "route-context",
         paint: {
           "circle-color": "#f2d487",
           "circle-radius": 4,
@@ -235,19 +287,51 @@ function applyMode(map: MapLibreMap, mode: MapMode) {
   if (flat && map.getTerrain()) map.setTerrain(null);
 }
 
-/** MapLibre can briefly unload a style while a source or mode changes. Retry the caller once the
- * style is ready instead of allowing a setLayoutProperty/setTerrain call to tear down the map. */
-function retryAfterStyleLoad(map: MapLibreMap, retry: () => void) {
-  if (map.isStyleLoaded()) return undefined;
-  const onStyleData = () => {
-    if (!map.isStyleLoaded()) return;
-    map.off("styledata", onStyleData);
-    retry();
-  };
-  map.on("styledata", onStyleData);
-  return () => {
-    map.off("styledata", onStyleData);
-  };
+function routeData(segments: readonly (readonly Coordinates[])[]): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  for (const segment of segments) {
+    if (segment.length === 1) {
+      features.push({
+        type: "Feature",
+        properties: { singleton: true },
+        geometry: { type: "Point", coordinates: lngLat(segment[0]) },
+      });
+      continue;
+    }
+    for (const part of routeSegments([...segment])) {
+      features.push({
+        type: "Feature",
+        properties: {},
+        geometry: { type: "LineString", coordinates: part.map(lngLat) },
+      });
+    }
+  }
+  return { type: "FeatureCollection", features };
+}
+
+/** Pure presentation state, exported so gap and ambiguity behavior stays regression-testable. */
+export function visibleRouteSegments(
+  story: RouteStory,
+  activeIndex: number,
+  phase: JourneyPhase,
+  currentProgress: number,
+  currentEligible: boolean,
+) {
+  if (phase === "outro" || phase === "complete")
+    return { completed: story.context, current: [] as Coordinates[][] };
+  const completed: Coordinates[][] = [];
+  for (let index = 1; index < activeIndex; index += 1) {
+    const leg = story.legs[index];
+    if (leg) completed.push(leg.drawable);
+  }
+  const active = story.legs[activeIndex];
+  if (!active || !currentEligible)
+    return { completed, current: [] as Coordinates[][] };
+  if (phase === "approach")
+    return { completed, current: [recordedLegPrefix(active, currentProgress)] };
+  if (phase === "reveal" || phase === "hold" || phase === "departure")
+    completed.push(active.drawable);
+  return { completed, current: [] as Coordinates[][] };
 }
 
 export default function JourneyMap({
@@ -259,6 +343,12 @@ export default function JourneyMap({
   phase,
   dayChange = false,
   approachDuration,
+  phaseRemaining,
+  currentLegProgress = 0,
+  currentLegEligible = false,
+  legEligibility,
+  dayChanges,
+  placements,
   mapMode = "offline",
   playing,
   speed,
@@ -274,8 +364,7 @@ export default function JourneyMap({
   const moduleRef = useRef<typeof import("maplibre-gl")>();
   const markersRef = useRef(new Map<string, MapLibreMarker>());
   const activeIdRef = useRef<string>();
-  const pitchRef = useRef<{ key: string; pitched: boolean }>({ key: "", pitched: false });
-  const bearingRef = useRef("");
+  const completedRef = useRef<{ engine: number; segments: readonly (readonly Coordinates[])[] }>();
   const projectionRef = useRef<"mercator" | "globe">("mercator");
   // Bumped once the engine arrives, so every effect below runs again against the live map.
   const [engine, setEngine] = useState(0);
@@ -286,11 +375,23 @@ export default function JourneyMap({
   // Read at command time only: a resize must not restart a camera move.
   const frameRef = useRef(frame);
   frameRef.current = frame;
+  const remainingRef = useRef(phaseRemaining ?? approachDuration);
+  remainingRef.current = phaseRemaining ?? approachDuration;
   const cameraStateRef = useRef<{
     activeIndex: number;
     seekVersion: number;
     playing: boolean;
+    phase: JourneyPhase;
   }>();
+  const eligibilityKey = legEligibility?.map((eligible) => eligible ? "1" : "0").join("");
+  const dayChangesKey = dayChanges?.map((change) => change ? "1" : "0").join("");
+  const routeStory = useMemo(
+    () => track ? buildRouteStory(track, placements, legEligibility ? [...legEligibility] : undefined) : undefined,
+    // Eligibility is scalar data frequently assembled at the JSX boundary; key it by value so
+    // playback renders do not rebuild recording-sized route context or recreate markers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [track, placements, eligibilityKey],
+  );
 
   // The engine loads behind the same wait that already decodes the photos: a dynamic import
   // keeps the ~272 KB gz of WebGL mapping out of the first paint.
@@ -368,8 +469,6 @@ export default function JourneyMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
-    if (retry) return retry;
     applyMode(map, mode);
     if (mode !== "offline") return;
     let active = true;
@@ -395,8 +494,6 @@ export default function JourneyMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
-    if (retry) return retry;
     if (mode !== "terrain") {
       onTerrainState?.({ loading: false, failed: false });
       return;
@@ -430,45 +527,19 @@ export default function JourneyMap({
     };
   }, [mode, ready, onTerrainState, engine]);
 
-  // The route and the markers only change when the photo set changes. Rebuilding them per stop
-  // would recreate every marker on the map on every beat of the journey.
+  // Static context and markers change with source data, never with the playback frame.
   useEffect(() => {
     const map = mapRef.current;
     const module = moduleRef.current;
     if (!map || !module || !ready) return;
-    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
-    if (retry) return retry;
-    // A recorded track is the route when there is one: the walk, not the shortcut between photos.
-    const walked = track ? trackSegments(track) : undefined;
-    const drawable = walked?.filter((segment) => segment.length > 1) ?? [];
-    const lines = track
-      ? drawable.flatMap((segment) => routeSegments(segment))
-      : routeSegments(locatedPoints(stops));
-    const pointFeatures = walked?.filter((segment) => segment.length === 1).map((segment) => ({
-      type: "Feature" as const,
-      properties: { singleton: true },
-      geometry: { type: "Point" as const, coordinates: [segment[0].longitude, segment[0].latitude] },
-    })) ?? [];
-    (map.getSource("route") as GeoJSONSource | undefined)?.setData({
-      type: "FeatureCollection",
-      features: [
-        ...lines.map((segment) => ({
-        type: "Feature" as const,
-        properties: {},
-        geometry: {
-          type: "LineString" as const,
-          coordinates: segment.map((point) => [point.longitude, point.latitude]),
-        },
-        })),
-        ...pointFeatures,
-      ],
-    });
-    // The dashed line reads as "as the crow flies" only when no recording exists. A recording
-    // with singleton segments has points but no continuous line; drawing a dashed photo route
-    // there would invent a route and make the source look absent.
-    const dashed = !track;
-    map.setLayoutProperty("route-core", "visibility", dashed ? "none" : "visible");
-    map.setLayoutProperty("route-core-dash", "visibility", dashed ? "visible" : "none");
+    (map.getSource("route-context") as GeoJSONSource | undefined)?.setData(
+      routeStory ? routeData(routeStory.context) : EMPTY_FEATURES,
+    );
+    // A dashed photo-to-photo connection is explicitly inferred and only exists without a
+    // recording. A recording with sparse or singleton data must not be replaced by an invented line.
+    (map.getSource("route-inferred") as GeoJSONSource | undefined)?.setData(
+      track ? EMPTY_FEATURES : routeData(inferredRouteSegments(stops, dayChanges)),
+    );
     for (const marker of markersRef.current.values()) marker.remove();
     const markers = new Map<string, MapLibreMarker>();
     photos.forEach((photo, index) => {
@@ -495,7 +566,42 @@ export default function JourneyMap({
     });
     markersRef.current = markers;
     activeIdRef.current = undefined;
-  }, [photos, stops, track, ready, engine]);
+    // dayChanges is commonly mapped from stable timeline stops at the JSX boundary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos, stops, track, routeStory, dayChangesKey, ready, engine]);
+
+  // Only the two small narrative overlays change with playback. The full recording stays in the
+  // static context source, avoiding repeated work on recording-sized arrays.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    if (!routeStory) {
+      completedRef.current = undefined;
+      (map.getSource("route-completed") as GeoJSONSource | undefined)?.setData(EMPTY_FEATURES);
+      (map.getSource("route-current") as GeoJSONSource | undefined)?.setData(EMPTY_FEATURES);
+      return;
+    }
+    const visible = visibleRouteSegments(
+      routeStory,
+      activeIndex,
+      phase,
+      currentLegProgress,
+      currentLegEligible,
+    );
+    // Completed legs are whole recorded slices that only change at a stop boundary, while this
+    // effect runs on every playback frame. Re-serializing them per frame would ship the entire
+    // travelled route to the GeoJSON worker 60 times a second.
+    const previous = completedRef.current;
+    const unchanged =
+      previous?.engine === engine &&
+      previous.segments.length === visible.completed.length &&
+      previous.segments.every((segment, index) => segment === visible.completed[index]);
+    if (!unchanged) {
+      completedRef.current = { engine, segments: visible.completed };
+      (map.getSource("route-completed") as GeoJSONSource | undefined)?.setData(routeData(visible.completed));
+    }
+    (map.getSource("route-current") as GeoJSONSource | undefined)?.setData(routeData(visible.current));
+  }, [routeStory, activeIndex, phase, currentLegProgress, currentLegEligible, ready, engine]);
 
   // Restyle only the two markers that changed state.
   useEffect(() => {
@@ -519,11 +625,16 @@ export default function JourneyMap({
       nextElement.style.zIndex = "2";
     }
     activeIdRef.current = nextId;
-  }, [activeIndex, stops, ready]);
+    // The markers effect above rebuilds every pin and clears `activeIdRef`, so this must re-run
+    // on the same inputs or the rebuilt active pin keeps the inactive styling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, photos, stops, track, routeStory, dayChangesKey, ready, engine]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    // `emit` forces a layout read on every rendered frame, so it stays unsubscribed until a
+    // caller actually wants marker positions.
+    if (!map || !onMarkerPosition) return;
     const emit = () => {
       const position = stops[activeIndex]?.coordinates;
       const element = containerRef.current;
@@ -554,17 +665,16 @@ export default function JourneyMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
-    if (retry) return retry;
+    if (!map || !ready) return;
     map.stop();
     const previousState = cameraStateRef.current;
-    cameraStateRef.current = { activeIndex, seekVersion, playing };
+    cameraStateRef.current = { activeIndex, seekVersion, playing, phase };
     if (
       !playing &&
       previousState?.playing &&
       previousState.activeIndex === activeIndex &&
-      previousState.seekVersion === seekVersion
+      previousState.seekVersion === seekVersion &&
+      previousState.phase === phase
     )
       return;
     const stopZoom = mode === "offline" ? OFFLINE_STOP_ZOOM : STOP_ZOOM;
@@ -574,12 +684,12 @@ export default function JourneyMap({
       phase === "complete" ||
       phase === "overview";
     const move = cameraFor(stops, activeIndex);
+    // Simplifying a recording-sized track is only worth it for the framing branch below, which
+    // runs four times per stop. A leg needs its own two endpoints instead.
+    const overviewPoints = () => (track ? trackSegments(track, 60).flat() : locatedPoints(stops));
     // A long hop arcs on a globe instead of smearing across Mercator.
-    const overviewPoints = track
-      ? trackSegments(track, 60).flat()
-      : locatedPoints(stops);
     const projectionPoints = overview
-      ? overviewPoints
+      ? overviewPoints()
       : [move?.from, move?.center].flatMap((point) => (point ? [point] : []));
     const globe = mode !== "offline" && legSpansGlobe(projectionPoints);
     if (projectionRef.current !== (globe ? "globe" : "mercator")) {
@@ -592,20 +702,18 @@ export default function JourneyMap({
     }
     if (overview) {
       // The opening and closing views frame the whole tour, which is wider than the photo stops.
-      if (!overviewPoints.length) return;
-      const view = frameBounds(map, unwrapPoints(overviewPoints), frameRef.current, 70, stopZoom);
-      if (!playing || reducedMotion) map.jumpTo({ center: view.center, zoom: view.zoom, bearing: 0 });
-      else map.easeTo({ center: view.center, zoom: view.zoom, bearing: 0, duration: 1000 });
+      if (!projectionPoints.length) return;
+      const maxOverviewZoom = mode === "offline" ? OFFLINE_MAX_ZOOM : stopZoom;
+      const view = frameBounds(map, unwrapPoints(projectionPoints), frameRef.current, 70, maxOverviewZoom);
+      if (!playing || reducedMotion) map.jumpTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch: 0 });
+      else map.easeTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch: 0, duration: approachAnimationDuration(remainingRef.current, speed) });
       return;
     }
     if (!move) return;
-    // A day card holds the previous stop, so the next leg still starts from there.
+    // Reposition while the opaque day card covers the map. The first uncovered frame is already
+    // at the next day's real first fix, so there is no invented overnight flight or visible snap.
     if (phase === "day") {
-      if (!playing)
-        map.jumpTo({
-          center: lngLat(move.from ?? move.center),
-          zoom: stopZoom,
-        });
+      map.jumpTo({ center: lngLat(move.center), zoom: stopZoom, bearing: 0, pitch: 0 });
       return;
     }
     // Missing fixes inherit the last camera position. Seeking still restores that position.
@@ -620,21 +728,26 @@ export default function JourneyMap({
       longitude: nearestLongitude(move.center.longitude, map.getCenter().lng),
     };
     if (dayChange && phase === "approach") {
-      map.jumpTo({ center: lngLat(center), zoom: stopZoom });
+      map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch: 0 });
       return;
     }
-    if (reducedMotion || !playing || phase !== "approach" || !move.from) {
-      map.jumpTo({ center: lngLat(center), zoom: stopZoom });
+    const recordedLegKnown = !track || (currentLegEligible && Boolean(routeStory?.legs[activeIndex]));
+    if (reducedMotion || !playing || phase !== "approach" || !move.from || !recordedLegKnown) {
+      map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch: 0 });
       return;
     }
     const leg = frameBounds(map, unwrapPoints([move.from, move.center]), frameRef.current, 70, stopZoom);
-    // The leg's bounds select its pull-back; the engine performs each animation itself.
-    // Bearing snaps straight here so the flight itself never un-rotates a hold drift.
-    map.jumpTo({ center: map.getCenter(), zoom: leg.zoom, bearing: 0 });
+    const continuing = previousState?.activeIndex === activeIndex &&
+      previousState.seekVersion === seekVersion && previousState.phase === "approach";
+    // Pull back once when a leg starts. Pause/resume and speed changes continue from the live
+    // camera with only the remaining timeline duration; they never restart the whole leg.
+    if (!continuing) map.jumpTo({ center: map.getCenter(), zoom: leg.zoom, bearing: 0, pitch: 0 });
     map.flyTo({
       center: lngLat(center),
       zoom: stopZoom,
-      duration: approachAnimationDuration(approachDuration, speed),
+      bearing: 0,
+      pitch: 0,
+      duration: approachAnimationDuration(remainingRef.current, speed),
     });
   }, [
     activeIndex,
@@ -643,43 +756,16 @@ export default function JourneyMap({
     reducedMotion,
     stops,
     track,
+    routeStory,
     playing,
     speed,
     seekVersion,
     approachDuration,
+    currentLegEligible,
     mode,
+    ready,
     engine,
   ]);
-
-  // The last 600 ms of the approach tip toward the horizon, so the ridge stands up exactly as
-  // the photo takes the frame. Flat modes never pitch: only chosen terrain spends the GPU.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || mode !== "terrain") return;
-    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
-    if (retry) return retry;
-    const key = `${activeIndex}:${seekVersion}`;
-    const arriving =
-      playing && !reducedMotion && (phase === "reveal" || phase === "hold");
-    const pitched = pitchRef.current;
-    if (pitched.key === key && pitched.pitched === arriving) return;
-    pitchRef.current = { key, pitched: arriving };
-    map.easeTo({ pitch: arriving ? TERRAIN_PITCH : 0, duration: arriving ? 600 : 300 });
-  }, [mode, phase, playing, reducedMotion, activeIndex, seekVersion, engine]);
-
-  // A slow drift during the hold reads as a real camera move on pitched terrain.
-  // Straightening happens in the camera effect, never here: two eases would fight the flight.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || mode === "offline") return;
-    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
-    if (retry) return retry;
-    const key = `${activeIndex}:${seekVersion}:${phase}`;
-    if (bearingRef.current === key) return;
-    bearingRef.current = key;
-    if (playing && !reducedMotion && phase === "hold")
-      map.easeTo({ bearing: map.getBearing() + 12, duration: 4000 });
-  }, [mode, phase, playing, reducedMotion, activeIndex, seekVersion, engine]);
 
   return (
     <div ref={containerRef} className="pj-gl-map" data-offline={mode === "offline"}>
