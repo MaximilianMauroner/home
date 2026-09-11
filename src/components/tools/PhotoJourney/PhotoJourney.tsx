@@ -1,7 +1,7 @@
 import { Download, ImagePlus, Maximize2, Minimize2, Package, Pause, Play, Route, RotateCcw, SkipBack, SkipForward, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isValidUtcOffsetMinutes, parseOffsetMinutes, readPhoto, revokePhoto, sortPhotos } from "./metadata";
-import { acceptFiles, digestFile, filesEqual, MAX_GPX_BYTES, MAX_GPX_POINTS, MAX_GPX_TOTAL_BYTES } from "./ingestion";
+import { acceptFiles, digestFile, expandJourneyArchives, filesEqual, isArchiveFile, MAX_GPX_BYTES, MAX_GPX_POINTS, MAX_GPX_TOTAL_BYTES } from "./ingestion";
 import { mergeTracks, parseGpx, trackStats } from "./gpx";
 import { buildBundle, buildScopedBundle, exportJourney, formatDistance, journeySummary, type ExportFormat } from "./journey-data";
 import { ALL_DAYS, dayLabel, deriveJourneyDays, filterTrackToDay, normalizeTimezone, photoDayKey, scopedPhotos, UNDATED_DAY, type DayScope } from "./days";
@@ -15,7 +15,7 @@ import { usePlayback, useReducedMotion } from "./usePlayback";
 import type { JourneyPhoto, JourneyRecording } from "./types";
 import "./photo-journey.css";
 
-const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,.gpx,application/gpx+xml";
+const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,.gpx,application/gpx+xml,.zip,application/zip,application/x-zip-compressed";
 function formatDuration(milliseconds: number) {
   const seconds = Math.round(milliseconds / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -106,7 +106,7 @@ export default function PhotoJourney() {
   const [importProgress, setImportProgress] = useState("");
   const [order, setOrder] = useState<"capture" | "manual">("capture");
   const [title, setTitle] = useState("My photo journey");
-  const [mapMode, setMapMode] = useState<MapMode>("offline");
+  const [mapMode, setMapMode] = useState<MapMode>("terrain");
   const [terrain, setTerrain] = useState({ loading: false, failed: false });
   const [mapDead, setMapDead] = useState(false);
   const [editingOrder, setEditingOrder] = useState(false);
@@ -240,8 +240,24 @@ export default function PhotoJourney() {
     setBusy(true);
     playback.pause();
     setErrors([]);
-    const { accepted, tracks, skipped } = acceptFiles(files, photosRef.current);
-    const failures = skipped.map(({ file, reason }) => `${file.name}: ${reason}`);
+    const archives = files.filter(isArchiveFile);
+    let flatFiles = files.filter((file) => !isArchiveFile(file));
+    const failures: string[] = [];
+    if (archives.length) {
+      setImportProgress(`Unpacking ${archives.length} ZIP${archives.length === 1 ? "" : "s"}…`);
+      try {
+        const { expanded, skipped } = await expandJourneyArchives(archives);
+        flatFiles = [...flatFiles, ...expanded.files];
+        for (const { file, reason } of skipped) failures.push(`${file.name}: ${reason}`);
+        if (expanded.bundleTitle && photosRef.current.length === 0 && recordings.length === 0) {
+          setTitle(expanded.bundleTitle);
+        }
+      } catch {
+        for (const archive of archives) failures.push(`${archive.name}: could not be read as a ZIP`);
+      }
+    }
+    const { accepted, tracks, skipped } = acceptFiles(flatFiles, photosRef.current);
+    failures.push(...skipped.map(({ file, reason }) => `${file.name}: ${reason}`));
     const existingDigests = new Set(recordings.map((recording) => recording.digest));
     let recordingBytes = recordings.reduce((sum, recording) => sum + recording.file.size, 0);
     let recordingPoints = recordings.reduce((sum, recording) => sum + recording.track.points.length, 0);
@@ -426,9 +442,9 @@ export default function PhotoJourney() {
     }} />
     {!hasJourney ? <section className="pj-upload">
       <div className="pj-upload-icon"><Upload size={22} /></div>
-      <h2>{busy ? `Reading files ${importProgress}` : "Drop your photos or GPX here"}</h2>
-      <p>JPEG, PNG, WebP, HEIC, or GPX. Add all days together, or add more later. Files stay in this tab; place names come from a bundled offline list.</p>
-      <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />Add photos or GPX</button>
+      <h2>{busy ? `Reading files ${importProgress}` : "Drop your photos, GPX, or journey ZIP here"}</h2>
+      <p>JPEG, PNG, WebP, HEIC, GPX, or an exported journey ZIP. Add all days together, or add more later. Files stay in this tab; place names come from a bundled offline list.</p>
+      <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />Add photos, GPX, or ZIP</button>
     </section> : <>
       <div className="pj-bar">
         <input className="pj-title" aria-label="Journey title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} />
@@ -440,7 +456,7 @@ export default function PhotoJourney() {
               {days.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}{entry.photoIds.length ? ` · ${entry.photoIds.length} photo${entry.photoIds.length === 1 ? "" : "s"}` : " · recording only"}</option>)}
             </select>
           </label>
-          <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />{busy ? `Reading ${importProgress}` : "Add photos or GPX"}</button>
+          <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />{busy ? `Reading ${importProgress}` : "Add photos, GPX, or ZIP"}</button>
         </div>
       </div>
       <div className="pj-stage" ref={stageRef}>

@@ -232,7 +232,8 @@ export async function buildBundle(photos: readonly JourneyPhoto[], options: Bund
   if (options.includePhotos) {
     const folder = zip.folder('photos')!;
     for (const [index, photo] of photos.entries()) {
-      folder.file(`${String(index + 1).padStart(2, '0')}-${photo.file.name}`, photo.file);
+      // ArrayBuffer keeps this working in browsers and in Node tests, where JSZip cannot read Blob/File.
+      folder.file(`${String(index + 1).padStart(2, '0')}-${photo.file.name}`, await photo.file.arrayBuffer());
     }
   }
   // No compression: photos and a short text file both fare better without the CPU cost.
@@ -330,12 +331,12 @@ export async function buildScopedBundle(options: ScopedBundleOptions) {
     const sourcePhotos = sourceEntries.map((entry) => entry.photo);
     const sourcePlacements = sourceEntries.map((entry) => entry.placement);
     zip.file(`recordings/${name}.gpx`, exportJourney(sourcePhotos, 'gpx', recording.name, sourcePlacements, recording.track, options.timezone).content);
-    zip.file(`recordings/${name}-original.gpx`, recording.file);
+    zip.file(`recordings/${name}-original.gpx`, await recording.file.arrayBuffer());
   }
 
   if (options.includePhotos) {
     const folder = zip.folder('photos')!;
-    for (const [index, photo] of options.photos.entries()) folder.file(`${String(index + 1).padStart(2, '0')}-${photo.file.name}`, photo.file);
+    for (const [index, photo] of options.photos.entries()) folder.file(`${String(index + 1).padStart(2, '0')}-${photo.file.name}`, await photo.file.arrayBuffer());
   }
   const unresolved = options.placements.filter((placement) => placement.source === 'none' || placement.source === 'carried').length;
   const unresolvedTime = options.photos.filter((photo, index) => photo.metadata.capturedAtWallClock && options.placements[index]?.instant === undefined).length;

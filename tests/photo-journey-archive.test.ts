@@ -1,0 +1,122 @@
+import { JSDOM } from "jsdom";
+import { describe, expect, test } from "vitest";
+import JSZip from "jszip";
+
+import { buildBundle, buildScopedBundle } from "../src/components/tools/PhotoJourney/journey-data";
+import { expandJourneyArchives, isArchiveFile } from "../src/components/tools/PhotoJourney/ingestion";
+import { parseGpx } from "../src/components/tools/PhotoJourney/gpx";
+import { normalizeMetadata } from "../src/components/tools/PhotoJourney/metadata";
+import { resolvePlacementsForRecordings } from "../src/components/tools/PhotoJourney/track";
+import type { JourneyPhoto, JourneyRecording } from "../src/components/tools/PhotoJourney/types";
+
+globalThis.DOMParser = new JSDOM().window.DOMParser;
+
+const gpx = (body: string) => `<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">${body}</gpx>`;
+const point = (lat: number, lon: number, time?: string) =>
+  `<trkpt lat="${lat}" lon="${lon}">${time ? `<time>${time}</time>` : ""}</trkpt>`;
+
+function photo(id: string, wallClock?: string): JourneyPhoto {
+  const file = new File([`bytes-${id}`], `${id}.jpg`, { type: "image/jpeg", lastModified: 0 });
+  return {
+    id,
+    name: id,
+    file,
+    url: `blob:${id}`,
+    thumbnailUrl: `blob:${id}-thumb`,
+    importOrder: Number(id.replace(/\D/g, "")) || 0,
+    metadata: normalizeMetadata(file, wallClock ? { DateTimeOriginal: wallClock } : {}, 1, 1),
+  };
+}
+
+function recording(id: string, body: string): JourneyRecording {
+  const file = new File([body], `${id}.gpx`, { type: "application/gpx+xml" });
+  return { id, file, name: id, digest: id, track: parseGpx(gpx(body)), importOrder: 0, included: true, warnings: [] };
+}
+
+async function zipFile(files: Record<string, string | Uint8Array>): Promise<File> {
+  const zip = new JSZip();
+  for (const [name, content] of Object.entries(files)) zip.file(name, content);
+  const bytes = await zip.generateAsync({ type: "uint8array", compression: "STORE" });
+  return new File([bytes as BlobPart], "journey.zip", { type: "application/zip" });
+}
+
+describe("journey zip import", () => {
+  test("detects archives by name and type", () => {
+    expect(isArchiveFile(new File([], "trip.zip"))).toBe(true);
+    expect(isArchiveFile(new File([], "trip.ZIP", { type: "application/zip" }))).toBe(true);
+    expect(isArchiveFile(new File([], "track.gpx"))).toBe(false);
+    expect(isArchiveFile(new File([], "photo.jpg", { type: "image/jpeg" }))).toBe(false);
+  });
+
+  test("unpacks a plain zip of photos and GPX", async () => {
+    const archive = await zipFile({
+      "IMG_001.jpg": "photo-bytes",
+      "track.gpx": gpx(`<trk><trkseg>${point(1, 2, "2026-08-20T10:00:00Z")}</trkseg></trk>`),
+    });
+    const { expanded, skipped } = await expandJourneyArchives([archive]);
+    expect(skipped).toEqual([]);
+    expect(expanded.files.map((file) => file.name).sort()).toEqual(["IMG_001.jpg", "track.gpx"]);
+    expect(expanded.files.find((file) => file.name.endsWith(".jpg"))?.type).toBe("image/jpeg");
+  });
+
+  test("restores a simple bundle without duplicating the route", async () => {
+    const photos = [photo("a", "2026:08:20 10:00:00")];
+    const source = recording("walk", `<trk><trkseg>${point(1, 2, "2026-08-20T10:00:00Z")}${point(1, 2.1, "2026-08-20T10:01:00Z")}</trkseg></trk>`);
+    const placements = resolvePlacementsForRecordings(photos, [source], { offsetMinutes: 0 });
+    const bundle = await buildBundle(photos, {
+      title: "Summer Trip",
+      includePhotos: true,
+      track: source.track,
+      placements,
+      timezone: "UTC",
+    });
+    const archive = new File([bundle], "summer.zip", { type: "application/zip" });
+    const { expanded, skipped } = await expandJourneyArchives([archive]);
+    expect(skipped).toEqual([]);
+    expect(expanded.bundleTitle).toBe("Summer Trip");
+    // Photos lose the `01-` bundle prefix; the single journey.gpx is the only track source.
+    expect(expanded.files.map((file) => file.name).sort()).toEqual(["a.jpg", "journey.gpx"]);
+  });
+
+  test("prefers original recordings over generated day and recording copies", async () => {
+    const photos = [photo("1", "2026:08:20 10:00:00")];
+    const source = recording("walk", `<trk><name>Morning</name><trkseg>${point(1, 2, "2026-08-20T10:00:00Z")}${point(1, 2.1, "2026-08-20T10:01:00Z")}</trkseg></trk>`);
+    const placements = resolvePlacementsForRecordings(photos, [source], { offsetMinutes: 0 });
+    const bundle = await buildScopedBundle({ title: "Trip", timezone: "UTC", photos, placements, recordings: [source], includePhotos: true });
+    const archive = new File([bundle], "scopes.zip", { type: "application/zip" });
+    const { expanded } = await expandJourneyArchives([archive]);
+    const gpxFiles = expanded.files.filter((file) => file.name.endsWith(".gpx"));
+    expect(gpxFiles).toHaveLength(1);
+    expect(gpxFiles[0].name).toBe("walk.gpx");
+    expect(expanded.files.map((file) => file.name)).toContain("1.jpg");
+  });
+
+  test("ignores bundle metadata and OS files", async () => {
+    const archive = await zipFile({
+      "__MACOSX/._IMG_001.jpg": "x",
+      "photos/01-IMG_001.jpg": "photo-bytes",
+      ".DS_Store": "x",
+      "readme.txt": "hello",
+      "journey.json": JSON.stringify({ title: "Kept Title" }),
+      "journey.geojson": "{}",
+    });
+    const { expanded, skipped } = await expandJourneyArchives([archive]);
+    expect(skipped).toEqual([]);
+    expect(expanded.files.map((file) => file.name)).toEqual(["IMG_001.jpg"]);
+    expect(expanded.bundleTitle).toBe("Kept Title");
+  });
+
+  test("reports a zip with nothing importable", async () => {
+    const archive = await zipFile({ "readme.txt": "hello", "journey.json": "{}" });
+    const { expanded, skipped } = await expandJourneyArchives([archive]);
+    expect(expanded.files).toEqual([]);
+    expect(skipped[0].reason).toMatch(/no photos or GPX/i);
+  });
+
+  test("reports a file that is not a zip", async () => {
+    const fake = new File(["not a zip"], "fake.zip", { type: "application/zip" });
+    const { expanded, skipped } = await expandJourneyArchives([fake]);
+    expect(expanded.files).toEqual([]);
+    expect(skipped[0].reason).toMatch(/could not be read as a ZIP/i);
+  });
+});

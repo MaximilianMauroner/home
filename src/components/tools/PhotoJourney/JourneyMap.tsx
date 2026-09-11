@@ -736,6 +736,20 @@ export default function JourneyMap({
       map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch: 0 });
       return;
     }
+    // Garmin/Strava style: ride the recorded line instead of flying straight at the photo.
+    // The follow effect below re-centers on every progress frame; here only set the zoom
+    // and an initial position so there is no straight-line flight to fight it.
+    const activeLeg = currentLegEligible ? routeStory?.legs[activeIndex] : undefined;
+    if (activeLeg && activeLeg.drawable.length > 1) {
+      const tip = recordedLegPrefix(activeLeg, currentLegProgress).at(-1) ?? move.from;
+      map.jumpTo({
+        center: lngLat({ latitude: tip.latitude, longitude: nearestLongitude(tip.longitude, map.getCenter().lng) }),
+        zoom: stopZoom,
+        bearing: 0,
+        pitch: 0,
+      });
+      return;
+    }
     const leg = frameBounds(map, unwrapPoints([move.from, move.center]), frameRef.current, 70, stopZoom);
     const continuing = previousState?.activeIndex === activeIndex &&
       previousState.seekVersion === seekVersion && previousState.phase === "approach";
@@ -766,6 +780,19 @@ export default function JourneyMap({
     ready,
     engine,
   ]);
+
+  // Per-frame follow: while a recorded leg plays, keep the moving tip centered like a
+  // Garmin/Strava flyover. setCenter preserves the zoom the main effect chose.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    if (!playing || phase !== "approach" || reducedMotion || !currentLegEligible) return;
+    const leg = routeStory?.legs[activeIndex];
+    if (!leg || leg.drawable.length < 2) return;
+    const tip = recordedLegPrefix(leg, currentLegProgress).at(-1);
+    if (!tip) return;
+    map.setCenter(lngLat({ latitude: tip.latitude, longitude: nearestLongitude(tip.longitude, map.getCenter().lng) }));
+  }, [currentLegProgress, activeIndex, phase, playing, reducedMotion, currentLegEligible, routeStory, ready, engine]);
 
   return (
     <div ref={containerRef} className="pj-gl-map" data-offline={mode === "offline"}>

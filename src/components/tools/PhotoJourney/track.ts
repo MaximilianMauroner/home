@@ -47,6 +47,10 @@ function isTrackChoice(choice: PlacementChoice | undefined) {
   return choice === "track" || (typeof choice === "object" && choice.source === "track");
 }
 
+function isPhotoChoice(choice: PlacementChoice | undefined) {
+  return choice === "photo";
+}
+
 type LookupSource = { id?: string; groups: TimedIndex["points"][] };
 
 function sourceLookup(track: Track, id?: string): LookupSource {
@@ -168,7 +172,9 @@ function resolve(
           choiceUnavailable,
         };
       }
-      const useTrack = !own || isTrackChoice(choice);
+      // The shutter instant decides the position, like a Garmin/Strava flyover. A camera
+      // fix never wins on its own; it is only used when the viewer explicitly picks photo GPS.
+      const useTrack = !isPhotoChoice(choice) || !own;
       const coordinates = useTrack ? onTrack : own;
       carried = coordinates;
       return {
