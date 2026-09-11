@@ -41,6 +41,8 @@ type JourneyMapProps = {
   /** The recorded tour, when one was loaded. It replaces the photo-to-photo route. */
   track?: Track;
   phase: JourneyPhase;
+  /** A chapter boundary must reposition instead of animating an unrecorded overnight leg. */
+  dayChange?: boolean;
   approachDuration: number;
   /** "offline" draws the bundled outline; "online" and "terrain" fetch OpenStreetMap tiles. */
   mapMode?: MapMode;
@@ -53,6 +55,11 @@ type JourneyMapProps = {
   onTerrainState?: (state: { loading: boolean; failed: boolean }) => void;
   onEngineFailed?: () => void;
 };
+
+/** MapLibre and the timeline both use milliseconds; playback speed scales that duration. */
+export function approachAnimationDuration(approachDuration: number, speed: number) {
+  return Math.max(0, approachDuration / Math.max(0.01, speed));
+}
 
 function lngLat({ latitude, longitude }: Coordinates): [number, number] {
   return [longitude, latitude];
@@ -188,6 +195,17 @@ export function baseStyle(): StyleSpecification {
           "line-dasharray": [0.8, 2.8],
         },
       },
+      {
+        id: "route-points",
+        type: "circle",
+        source: "route",
+        paint: {
+          "circle-color": "#f2d487",
+          "circle-radius": 4,
+          "circle-stroke-color": "#071014",
+          "circle-stroke-width": 1.5,
+        },
+      },
     ],
   };
 }
@@ -217,6 +235,21 @@ function applyMode(map: MapLibreMap, mode: MapMode) {
   if (flat && map.getTerrain()) map.setTerrain(null);
 }
 
+/** MapLibre can briefly unload a style while a source or mode changes. Retry the caller once the
+ * style is ready instead of allowing a setLayoutProperty/setTerrain call to tear down the map. */
+function retryAfterStyleLoad(map: MapLibreMap, retry: () => void) {
+  if (map.isStyleLoaded()) return undefined;
+  const onStyleData = () => {
+    if (!map.isStyleLoaded()) return;
+    map.off("styledata", onStyleData);
+    retry();
+  };
+  map.on("styledata", onStyleData);
+  return () => {
+    map.off("styledata", onStyleData);
+  };
+}
+
 export default function JourneyMap({
   activeIndex,
   photos,
@@ -224,6 +257,7 @@ export default function JourneyMap({
   stops,
   track,
   phase,
+  dayChange = false,
   approachDuration,
   mapMode = "offline",
   playing,
@@ -234,7 +268,7 @@ export default function JourneyMap({
   onTerrainState,
   onEngineFailed,
 }: JourneyMapProps) {
-  const mode: MapMode = mapMode;
+  const mode = mapMode;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap>();
   const moduleRef = useRef<typeof import("maplibre-gl")>();
@@ -334,6 +368,8 @@ export default function JourneyMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
+    if (retry) return retry;
     applyMode(map, mode);
     if (mode !== "offline") return;
     let active = true;
@@ -353,12 +389,14 @@ export default function JourneyMap({
     return () => {
       active = false;
     };
-  }, [mode, ready]);
+  }, [mode, ready, engine]);
 
   // Terrain is a tile download, so its state is reported for the mode notice.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
+    if (retry) return retry;
     if (mode !== "terrain") {
       onTerrainState?.({ loading: false, failed: false });
       return;
@@ -390,7 +428,7 @@ export default function JourneyMap({
       map.off("sourcedata", onSource);
       map.off("error", onError);
     };
-  }, [mode, ready, onTerrainState]);
+  }, [mode, ready, onTerrainState, engine]);
 
   // The route and the markers only change when the photo set changes. Rebuilding them per stop
   // would recreate every marker on the map on every beat of the journey.
@@ -398,24 +436,37 @@ export default function JourneyMap({
     const map = mapRef.current;
     const module = moduleRef.current;
     if (!map || !module || !ready) return;
+    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
+    if (retry) return retry;
     // A recorded track is the route when there is one: the walk, not the shortcut between photos.
     const walked = track ? trackSegments(track) : undefined;
-    const lines = walked?.length
-      ? walked.flatMap((segment) => routeSegments(segment))
+    const drawable = walked?.filter((segment) => segment.length > 1) ?? [];
+    const lines = track
+      ? drawable.flatMap((segment) => routeSegments(segment))
       : routeSegments(locatedPoints(stops));
+    const pointFeatures = walked?.filter((segment) => segment.length === 1).map((segment) => ({
+      type: "Feature" as const,
+      properties: { singleton: true },
+      geometry: { type: "Point" as const, coordinates: [segment[0].longitude, segment[0].latitude] },
+    })) ?? [];
     (map.getSource("route") as GeoJSONSource | undefined)?.setData({
       type: "FeatureCollection",
-      features: lines.map((segment) => ({
-        type: "Feature",
+      features: [
+        ...lines.map((segment) => ({
+        type: "Feature" as const,
         properties: {},
         geometry: {
-          type: "LineString",
+          type: "LineString" as const,
           coordinates: segment.map((point) => [point.longitude, point.latitude]),
         },
-      })),
+        })),
+        ...pointFeatures,
+      ],
     });
-    // The dashed line reads as "as the crow flies"; the solid one as "walked".
-    const dashed = !walked?.length;
+    // The dashed line reads as "as the crow flies" only when no recording exists. A recording
+    // with singleton segments has points but no continuous line; drawing a dashed photo route
+    // there would invent a route and make the source look absent.
+    const dashed = !track;
     map.setLayoutProperty("route-core", "visibility", dashed ? "none" : "visible");
     map.setLayoutProperty("route-core-dash", "visibility", dashed ? "visible" : "none");
     for (const marker of markersRef.current.values()) marker.remove();
@@ -444,7 +495,7 @@ export default function JourneyMap({
     });
     markersRef.current = markers;
     activeIdRef.current = undefined;
-  }, [photos, stops, track, ready]);
+  }, [photos, stops, track, ready, engine]);
 
   // Restyle only the two markers that changed state.
   useEffect(() => {
@@ -504,6 +555,8 @@ export default function JourneyMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
+    if (retry) return retry;
     map.stop();
     const previousState = cameraStateRef.current;
     cameraStateRef.current = { activeIndex, seekVersion, playing };
@@ -566,6 +619,10 @@ export default function JourneyMap({
       ...move.center,
       longitude: nearestLongitude(move.center.longitude, map.getCenter().lng),
     };
+    if (dayChange && phase === "approach") {
+      map.jumpTo({ center: lngLat(center), zoom: stopZoom });
+      return;
+    }
     if (reducedMotion || !playing || phase !== "approach" || !move.from) {
       map.jumpTo({ center: lngLat(center), zoom: stopZoom });
       return;
@@ -577,11 +634,12 @@ export default function JourneyMap({
     map.flyTo({
       center: lngLat(center),
       zoom: stopZoom,
-      duration: approachDuration / 1000 / speed,
+      duration: approachAnimationDuration(approachDuration, speed),
     });
   }, [
     activeIndex,
     phase,
+    dayChange,
     reducedMotion,
     stops,
     track,
@@ -598,6 +656,8 @@ export default function JourneyMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || mode !== "terrain") return;
+    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
+    if (retry) return retry;
     const key = `${activeIndex}:${seekVersion}`;
     const arriving =
       playing && !reducedMotion && (phase === "reveal" || phase === "hold");
@@ -612,6 +672,8 @@ export default function JourneyMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || mode === "offline") return;
+    const retry = retryAfterStyleLoad(map, () => setEngine((version) => version + 1));
+    if (retry) return retry;
     const key = `${activeIndex}:${seekVersion}:${phase}`;
     if (bearingRef.current === key) return;
     bearingRef.current = key;
@@ -644,10 +706,16 @@ function frameBounds(
 ) {
   const zoom = map.getZoom();
   const projected = points.map((point) => map.project(lngLat(point)));
-  const minX = Math.min(...projected.map((point) => point.x));
-  const maxX = Math.max(...projected.map((point) => point.x));
-  const minY = Math.min(...projected.map((point) => point.y));
-  const maxY = Math.max(...projected.map((point) => point.y));
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const point of projected) {
+    minX = Math.min(minX, point.x);
+    maxX = Math.max(maxX, point.x);
+    minY = Math.min(minY, point.y);
+    maxY = Math.max(maxY, point.y);
+  }
   // The map element is never larger than the frame, which is unmeasured on the first render.
   const size = map.getContainer().getBoundingClientRect();
   const width = Math.max(1, Math.max(frame.width, size.width) - padding * 2);

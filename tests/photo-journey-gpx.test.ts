@@ -12,15 +12,16 @@ import {
   trackStats,
 } from "../src/components/tools/PhotoJourney/gpx";
 import { exportJourney } from "../src/components/tools/PhotoJourney/journey-data";
-import { parseUtcOffset } from "../src/components/tools/PhotoJourney/metadata";
+import { isValidUtcOffsetMinutes, parseOffsetMinutes, parseUtcOffset } from "../src/components/tools/PhotoJourney/metadata";
 import {
   DISCREPANCY_LIMIT_M,
-  inferUtcOffsetMinutes,
+  overlappingRecordingIds,
   photoInstant,
   placementSummary,
   resolvePlacements,
+  resolvePlacementsForRecordings,
 } from "../src/components/tools/PhotoJourney/track";
-import type { JourneyPhoto } from "../src/components/tools/PhotoJourney/types";
+import type { JourneyPhoto, JourneyRecording } from "../src/components/tools/PhotoJourney/types";
 
 // parseGpx uses the browser parser and the suite runs in node. Fixtures are parsed while the
 // describe blocks are collected, so this has to happen at import time rather than in beforeAll.
@@ -110,7 +111,13 @@ describe("GPX parsing", () => {
     );
     expect(track.points).toHaveLength(3);
     expect(track.segmentStarts).toEqual([0, 1]);
-    expect(trackSegments(track)).toHaveLength(1);
+    expect(trackSegments(track)).toHaveLength(2);
+  });
+
+  test("does not treat a timezone-less GPX clock as a false instant", () => {
+    const track = parseGpx(gpx(`<trk><trkseg><trkpt lat="1" lon="2"><time>2026-08-20T06:00:00</time></trkpt><trkpt lat="1" lon="2.1"><time>2026-08-20T06:01:00Z</time></trkpt></trkseg></trk>`));
+    expect(track.points[0].time).toBeUndefined();
+    expect(track.points[1].time).toBe(Date.parse("2026-08-20T06:01:00Z"));
   });
 
   test("rejects a file with no track points", () => {
@@ -131,6 +138,72 @@ describe("GPX parsing", () => {
     expect(merged.points).toHaveLength(7);
     expect(merged.segmentStarts).toEqual([0, 5]);
     expect(merged.points[0].time).toBe(Date.parse("2026-08-20T06:00:00Z"));
+  });
+
+  test("keeps a boundary when merging legacy tracks without explicit starts", () => {
+    const first = { points: [{ latitude: 1, longitude: 2, elevation: 100 }], segmentStarts: [] };
+    const second = { points: [{ latitude: 3, longitude: 4, elevation: 200 }], segmentStarts: [] };
+    const merged = mergeTracks([first, second]);
+    expect(merged.segmentStarts).toEqual([0, 1]);
+    expect(trackStats(merged).distanceKm).toBe(0);
+    expect(trackStats(merged).ascentM).toBe(0);
+  });
+
+  test("retains every source track for an export", () => {
+    const track = parseGpx(gpx(
+      `<trk><name>Morning</name><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>` +
+      `<trk><name>Evening</name><trkseg>${trkpt(3, 4, 0, "2026-08-20T18:00:00Z")}</trkseg></trk>`,
+    ));
+    expect(track.parts?.map((part) => part.name)).toEqual(["Morning", "Evening"]);
+    const output = buildGpx("Two tracks", track, []);
+    expect(output.match(/<trk>/g)).toHaveLength(2);
+    expect(output).toContain("<name>Morning</name>");
+    expect(output).toContain("<name>Evening</name>");
+  });
+
+  test("keeps overlapping recordings source-aware and marks a tie", () => {
+    const first = parseGpx(gpx(`<trk><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`));
+    const second = parseGpx(gpx(`<trk><trkseg>${trkpt(1.01, 2.01, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`));
+    const recordings: JourneyRecording[] = [
+      { id: "first", file: new File([], "first.gpx"), name: "first", digest: "first", track: first, importOrder: 0, included: true, warnings: [] },
+      { id: "second", file: new File([], "second.gpx"), name: "second", digest: "second", track: second, importOrder: 1, included: true, warnings: [] },
+    ];
+    const placements = resolvePlacementsForRecordings([photo("tie", { capturedAt: wallClock("2026-08-20T06:00:00Z", 0), utcOffsetMinutes: 0 })], recordings);
+    expect(placements[0]).toMatchObject({ source: "none", conflict: true, ambiguous: true, recordingId: "first" });
+    expect(resolvePlacementsForRecordings([photo("tie", { capturedAt: wallClock("2026-08-20T06:00:00Z", 0), utcOffsetMinutes: 0 })], recordings, { choices: { tie: "track" } })[0].source).toBe("track");
+  });
+
+  test("keeps an explicit recording choice bound to its source", () => {
+    const first = parseGpx(gpx(`<trk><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`));
+    const second = parseGpx(gpx(`<trk><trkseg>${trkpt(3, 4, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`));
+    const recordings: JourneyRecording[] = [
+      { id: "first", file: new File([], "first.gpx"), name: "first", digest: "first", track: first, importOrder: 0, included: true, warnings: [] },
+      { id: "second", file: new File([], "second.gpx"), name: "second", digest: "second", track: second, importOrder: 1, included: true, warnings: [] },
+    ];
+    const selected = resolvePlacementsForRecordings(
+      [photo("bound", { capturedAt: wallClock("2026-08-20T06:00:00Z", 0), utcOffsetMinutes: 0 })],
+      recordings,
+      { choices: { bound: { source: "track", recordingId: "second" } } },
+    )[0];
+    expect(selected).toMatchObject({ source: "track", recordingId: "second", coordinates: { latitude: 3, longitude: 4 } });
+    const unavailable = resolvePlacementsForRecordings(
+      [photo("bound", { capturedAt: wallClock("2026-08-20T06:00:00Z", 0), utcOffsetMinutes: 0 })],
+      [recordings[0]],
+      { choices: { bound: { source: "track", recordingId: "second" } } },
+    )[0];
+    expect(unavailable).toMatchObject({ source: "none", choiceUnavailable: true });
+  });
+
+  test("derives overlap warnings from included recordings", () => {
+    const first = parseGpx(gpx(`<trk><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}${trkpt(1, 2.1, 0, "2026-08-20T07:00:00Z")}</trkseg></trk>`));
+    const second = parseGpx(gpx(`<trk><trkseg>${trkpt(2, 3, 0, "2026-08-20T06:30:00Z")}${trkpt(2, 3.1, 0, "2026-08-20T07:30:00Z")}</trkseg></trk>`));
+    const recordings: JourneyRecording[] = [
+      { id: "first", file: new File([], "first.gpx"), name: "first", digest: "first", track: first, importOrder: 0, included: true, warnings: [] },
+      { id: "second", file: new File([], "second.gpx"), name: "second", digest: "second", track: second, importOrder: 1, included: true, warnings: [] },
+    ];
+    expect([...overlappingRecordingIds(recordings)]).toEqual(["first", "second"]);
+    recordings[1].included = false;
+    expect([...overlappingRecordingIds(recordings)]).toEqual([]);
   });
 });
 
@@ -238,10 +311,22 @@ describe("placing photos on the track", () => {
       ],
       track,
     );
-    expect(placement.source).toBe("track");
+    expect(placement.source).toBe("photo");
+    expect(placement.conflict).toBe(true);
     expect(placement.discrepancyM).toBeGreaterThan(700);
-    expect(placement.coordinates).toEqual({ latitude: 46.47, longitude: 11.6014 });
-    expect(placement.elevation).toBe(1825);
+    expect(placement.coordinates).toEqual({ latitude: 46.4772, longitude: 11.6014 });
+    const [chosen] = resolvePlacements(
+      [photo("phone-drift", {
+        capturedAt: wallClock("2026-08-20T06:02:00Z", 120),
+        utcOffsetMinutes: 120,
+        coordinates: { latitude: 46.4772, longitude: 11.6014 },
+      })],
+      track,
+      { choices: { "phone-drift": "track" } },
+    );
+    expect(chosen.source).toBe("track");
+    expect(chosen.coordinates).toEqual({ latitude: 46.47, longitude: 11.6014 });
+    expect(chosen.elevation).toBe(1825);
   });
 
   test("places a photo that carries no GPS at all", () => {
@@ -299,6 +384,7 @@ describe("placing photos on the track", () => {
       fromTrack: 2,
       fromPhoto: 1,
       unplaced: 1,
+      conflictCount: 0,
       correctedCount: 1,
       worstCorrectionM: 800,
     });
@@ -312,7 +398,27 @@ describe("clock handling", () => {
     expect(parseUtcOffset("+02:00")).toBe(120);
     expect(parseUtcOffset("-05:30")).toBe(-330);
     expect(parseUtcOffset("bogus")).toBeUndefined();
+    expect(parseUtcOffset("+01:60")).toBeUndefined();
+    expect(parseUtcOffset("+15:00")).toBeUndefined();
     expect(parseUtcOffset(undefined)).toBeUndefined();
+  });
+
+  test("accepts only bounded explicit numeric offsets", () => {
+    expect(isValidUtcOffsetMinutes(-720)).toBe(true);
+    expect(isValidUtcOffsetMinutes(840)).toBe(true);
+    expect(isValidUtcOffsetMinutes(841)).toBe(false);
+    expect(isValidUtcOffsetMinutes(Number.NaN)).toBe(false);
+    expect(parseOffsetMinutes("")).toBeUndefined();
+    expect(parseOffsetMinutes("120")).toBe(120);
+    expect(parseOffsetMinutes("900")).toBeUndefined();
+  });
+
+  test("ignores an invalid metadata offset and accepts a valid fallback", () => {
+    const captured = wallClock("2026-08-20T06:02:00Z", 120);
+    expect(photoInstant({ capturedAt: captured, utcOffsetMinutes: 900 } as never, 120)).toBe(
+      Date.parse("2026-08-20T06:02:00Z"),
+    );
+    expect(photoInstant({ capturedAt: captured, utcOffsetMinutes: 900 } as never, 900)).toBeUndefined();
   });
 
   test("recovers the shutter instant from wall-clock time and an offset", () => {
@@ -322,7 +428,7 @@ describe("clock handling", () => {
     );
   });
 
-  test("infers the zone from photos that carry GPS when the camera wrote none", () => {
+  test("leaves an untagged camera clock unresolved until an explicit offset is supplied", () => {
     const photos = [
       photo("one", {
         capturedAt: wallClock("2026-08-20T06:01:00Z", 120),
@@ -333,11 +439,11 @@ describe("clock handling", () => {
         coordinates: { latitude: 46.47, longitude: 11.6021 },
       }),
     ];
-    expect(inferUtcOffsetMinutes(photos, track)).toBe(120);
-    const placements = resolvePlacements(photos, track, {
-      offsetMinutes: inferUtcOffsetMinutes(photos, track),
-    });
+    const unresolved = resolvePlacements(photos, track);
+    expect(unresolved.every((placement) => placement.source === "photo" && placement.instant === undefined)).toBe(true);
+    const placements = resolvePlacements(photos, track, { offsetMinutes: 120 });
     expect(placements.every((placement) => placement.source === "photo")).toBe(true);
+    expect(placements.every((placement) => placement.instant !== undefined)).toBe(true);
   });
 
   test("does not slide the clock to split the difference with a bad fix", () => {
@@ -354,11 +460,11 @@ describe("clock handling", () => {
       }),
     ];
     const track = parseGpx(WANDER);
-    expect(inferUtcOffsetMinutes(photos, track)).toBe(120);
     const placements = resolvePlacements(photos, track, { offsetMinutes: 120 });
     expect(placements[0]).toMatchObject({ source: "photo" });
-    expect(placements[1]).toMatchObject({ source: "track" });
+    expect(placements[1]).toMatchObject({ source: "photo", conflict: true });
     expect(placements[1].discrepancyM).toBeGreaterThan(250);
+    expect(resolvePlacements(photos, track, { offsetMinutes: 120, choices: { "bad fix": "track" } })[1].source).toBe("track");
   });
 
   test("still finds the three real quarter-hour zones", () => {
@@ -368,7 +474,7 @@ describe("clock handling", () => {
         coordinates: { latitude: 46.47, longitude: 11.63 },
       }),
     ];
-    expect(inferUtcOffsetMinutes(photos, parseGpx(WANDER))).toBe(345);
+    expect(resolvePlacements(photos, parseGpx(WANDER), { offsetMinutes: 345 })[0].instant).toBe(Date.parse("2026-08-20T06:30:00Z"));
   });
 
   test("prefers a stated offset over inference", () => {
@@ -379,7 +485,7 @@ describe("clock handling", () => {
         coordinates: { latitude: 46.47, longitude: 11.6007 },
       }),
     ];
-    expect(inferUtcOffsetMinutes(photos, track)).toBe(60);
+    expect(resolvePlacements(photos, track)[0].instant).toBe(Date.parse("2026-08-20T06:01:00Z"));
   });
 });
 
@@ -413,6 +519,12 @@ describe("writing GPX back out", () => {
     expect(output).not.toContain("<trk>");
   });
 
+  test("omits non-finite source timestamps instead of producing invalid XML", () => {
+    const output = buildGpx("Finite", { points: [{ latitude: 1, longitude: 2, time: Number.NaN }], segmentStarts: [0] }, []);
+    expect(output).not.toContain("<time>");
+    expect(() => parseGpx(output)).not.toThrow();
+  });
+
   test("times the waypoints by the resolved instant, not the viewer's reading of the clock", () => {
     // The wall clock says 06:02 and the camera was two hours ahead of UTC. Writing the clock
     // itself would place the photo hours away on the track in whatever library re-tags from it.
@@ -427,5 +539,16 @@ describe("writing GPX back out", () => {
     const placements = resolvePlacements(photos, track);
     const output = exportJourney(photos, "gpx", "Instants", placements, track);
     expect(output.content).toContain("<time>2026-08-20T06:02:00.000Z</time>");
+  });
+
+  test("omits an unresolved wall clock from a photo-only waypoint", () => {
+    const photos = [photo("unknown", {
+      capturedAt: wallClock("2026-08-20T06:02:00Z", 120),
+      capturedAtWallClock: "2026-08-20T08:02:00",
+      coordinates: { latitude: 46.47, longitude: 11.6014 },
+    })];
+    const output = exportJourney(photos, "gpx", "Unknown", resolvePlacements(photos));
+    expect(output.content).toContain('<wpt lat="46.47" lon="11.6014">');
+    expect(output.content).not.toContain("<time>");
   });
 });

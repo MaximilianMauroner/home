@@ -79,6 +79,12 @@ describe("Photo Journey timeline", () => {
     // Without instants the distance formula still rules.
     expect(flat.stops[1].approachDuration).toBeLessThanOrEqual(3000);
   });
+  test("uses resolved instants for nearby burst grouping", () => {
+    const pair = [photo(48, 16), photo(48, 16)];
+    const timeline = buildTimeline(pair, pair.map((entry) => entry.metadata.coordinates), [0, 30_000]);
+    expect(timeline.stops[1].burst).toBe(true);
+    expect(timeline.stops[1].approachDuration).toBe(0);
+  });
   test("uses great-circle distances across the date line", () => {
     expect(
       distanceKm(

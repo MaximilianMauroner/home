@@ -43,6 +43,38 @@ function date(value: unknown) {
   return Number.isNaN(parsed.valueOf()) ? undefined : parsed;
 }
 
+function wallClock(value: unknown) {
+  if (typeof value === "string") {
+    const match = /^(\d{4})[:\-](\d{2})[:\-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:[.,](\d+))?)?/.exec(value.trim());
+    if (match) {
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      const hour = Number(match[4]);
+      const minute = Number(match[5]);
+      const second = Number(match[6] ?? "00");
+      const check = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+      if (
+        check.getUTCFullYear() === year &&
+        check.getUTCMonth() === month - 1 &&
+        check.getUTCDate() === day &&
+        check.getUTCHours() === hour &&
+        check.getUTCMinutes() === minute &&
+        check.getUTCSeconds() === second
+      ) {
+        return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6] ?? "00"}${match[7] ? `.${match[7].slice(0, 3).padEnd(3, "0")}` : ""}`;
+      }
+    }
+  }
+  if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+    const pad = (part: number, size = 2) => String(part).padStart(size, "0");
+    // exifr represents EXIF's zone-less camera clock as a UTC Date. Read UTC fields here so the
+    // wall clock does not change when the viewer opens the same file in another browser zone.
+    return `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${pad(value.getUTCDate())}T${pad(value.getUTCHours())}:${pad(value.getUTCMinutes())}:${pad(value.getUTCSeconds())}.${pad(value.getUTCMilliseconds(), 3)}`;
+  }
+  return undefined;
+}
+
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -53,12 +85,28 @@ function formatShutter(value: number) {
   return `1/${Math.round(1 / value)} s`;
 }
 
+/** Offsets are expressed in minutes east of UTC. */
+export function isValidUtcOffsetMinutes(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= -720 && value <= 840;
+}
+
+/** Parses the numeric value used by the explicit offset controls. */
+export function parseOffsetMinutes(value: string) {
+  if (!value.trim()) return undefined;
+  const parsed = Number(value);
+  return isValidUtcOffsetMinutes(parsed) ? parsed : undefined;
+}
+
 /** "+02:00" becomes 120. Without this tag the capture clock cannot be compared with a GPX time. */
 export function parseUtcOffset(value?: string) {
   const match = /^([+-])(\d{2}):?(\d{2})$/.exec(value?.trim() ?? "");
   if (!match) return undefined;
-  const minutes = Number(match[2]) * 60 + Number(match[3]);
-  return match[1] === "-" ? -minutes : minutes;
+  const hours = Number(match[2]);
+  const remainder = Number(match[3]);
+  if (remainder > 59) return undefined;
+  const minutes = hours * 60 + remainder;
+  const signed = match[1] === "-" ? -minutes : minutes;
+  return isValidUtcOffsetMinutes(signed) ? signed : undefined;
 }
 
 function validCoordinates(latitude?: number, longitude?: number) {
@@ -99,6 +147,9 @@ export function normalizeMetadata(
   const capturedAt = date(
     data.DateTimeOriginal ?? data.CreateDate ?? data.DateTimeDigitized,
   );
+  const capturedAtWallClock = wallClock(
+    data.DateTimeOriginal ?? data.CreateDate ?? data.DateTimeDigitized,
+  );
   const latitude = number(data.latitude ?? data.GPSLatitude);
   const longitude = number(data.longitude ?? data.GPSLongitude);
   const exposure = number(data.ExposureTime);
@@ -115,10 +166,13 @@ export function normalizeMetadata(
 
   return {
     capturedAt,
+    capturedAtWallClock,
     utcOffsetMinutes: parseUtcOffset(offset),
-    capturedAtLabel: capturedAt
-      ? `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(capturedAt)}${offset ? ` ${offset}` : ""}`
-      : undefined,
+    capturedAtLabel: capturedAtWallClock
+      ? `${capturedAtWallClock.replace("T", " ").replace(/\.\d{3}$/, "")}${offset ? ` ${offset}` : ""}`
+      : capturedAt
+        ? `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(capturedAt)}${offset ? ` ${offset}` : ""}`
+        : undefined,
     modifiedAtLabel: new Intl.DateTimeFormat(undefined, {
       dateStyle: "medium",
       timeStyle: "short",
@@ -193,14 +247,23 @@ export async function extractMetadata(input: Blob | ArrayBuffer | Uint8Array) {
   };
 }
 
-export function sortPhotos(photos: JourneyPhoto[]) {
+function metadataSortTime(metadata: Pick<PhotoMetadata, "capturedAt" | "capturedAtWallClock">) {
+  if (metadata.capturedAtWallClock) {
+    const parsed = Date.parse(`${metadata.capturedAtWallClock}Z`);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  const captured = metadata.capturedAt?.valueOf();
+  return captured !== undefined && Number.isFinite(captured) ? captured : undefined;
+}
+
+export function sortPhotos(photos: JourneyPhoto[], resolvedInstants?: readonly (number | undefined)[]) {
   return [...photos].sort((a, b) => {
-    const aTime = a.metadata.capturedAt?.valueOf();
-    const bTime = b.metadata.capturedAt?.valueOf();
+    const aTime = resolvedInstants?.[photos.indexOf(a)] ?? metadataSortTime(a.metadata);
+    const bTime = resolvedInstants?.[photos.indexOf(b)] ?? metadataSortTime(b.metadata);
     if (aTime !== undefined && bTime !== undefined && aTime !== bTime)
       return aTime - bTime;
-    if (aTime !== undefined) return -1;
-    if (bTime !== undefined) return 1;
+    if (aTime !== undefined && bTime === undefined) return -1;
+    if (bTime !== undefined && aTime === undefined) return 1;
     return a.importOrder - b.importOrder;
   });
 }

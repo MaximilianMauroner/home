@@ -1,14 +1,8 @@
-import { ChevronDown, ChevronUp, Download, Package, Trash2 } from "lucide-react";
-import { memo } from "react";
-import { formatDistance, type journeySummary, type ExportFormat } from "./journey-data";
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Fragment, memo } from "react";
+import { formatDistance, type journeySummary } from "./journey-data";
 import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
-
-const FORMATS: ExportFormat[] = ["gpx", "geojson", "json"];
-
-function formatBytes(bytes: number) {
-  return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`;
-}
 
 /**
  * The playback clock re-renders the tool on every frame. This panel holds one row per photo,
@@ -20,30 +14,26 @@ function StopList({
   summary,
   activeIndex,
   busy,
-  packing,
-  includePhotos,
-  photoBytes,
+  editingOrder,
+  dayKeys,
+  dayLabels,
   onSelect,
   onMove,
+  canMove,
   onRemove,
-  onExport,
-  onIncludePhotos,
-  onBundle,
 }: {
   photos: JourneyPhoto[];
   placements: readonly Placement[];
   summary: ReturnType<typeof journeySummary>;
   activeIndex: number;
   busy: boolean;
-  packing: boolean;
-  includePhotos: boolean;
-  photoBytes: number;
+  editingOrder: boolean;
+  dayKeys: readonly (string | undefined)[];
+  dayLabels: readonly (string | undefined)[];
   onSelect: (index: number) => void;
   onMove: (index: number, direction: -1 | 1) => void;
+  canMove: (index: number, direction: -1 | 1) => boolean;
   onRemove: (id: string) => void;
-  onExport: (format: ExportFormat) => void;
-  onIncludePhotos: (value: boolean) => void;
-  onBundle: () => void;
 }) {
   return (
     <section className="pj-panel pj-stops" aria-label="Journey order">
@@ -52,31 +42,28 @@ function StopList({
           {summary.photoCount} photos · {summary.locatedCount} located · {formatDistance(summary.distanceKm)}
         </span>
         <h2>Stops</h2>
-        <div className="pj-download">
-          <button className="pj-pill" data-tone="accent" disabled={busy || packing} onClick={onBundle}>
-            <Package size={16} aria-hidden="true" />
-            {packing ? "Packing…" : "Download everything"}
-          </button>
-          <label className="pj-pill pj-toggle" data-size="sm">
-            <input type="checkbox" checked={includePhotos} onChange={(event) => onIncludePhotos(event.target.checked)} />
-            Include the photos ({formatBytes(photoBytes)})
-          </label>
-        </div>
-        <div className="pj-exports" aria-label="Export one file">
-          <Download size={14} aria-hidden="true" />
-          {FORMATS.map((format) => (
-            <button key={format} className="pj-pill" data-size="sm" onClick={() => onExport(format)}>
-              {format === "geojson" ? "GeoJSON" : format.toUpperCase()}
-            </button>
-          ))}
-        </div>
       </header>
       <ol className="pj-stop-list">
         {photos.map((photo, index) => {
           const placement = placements[index];
+          const dayKey = dayKeys[index];
+          const previousDayKey = dayKeys[index - 1];
           const located = placement ? placement.source === "photo" || placement.source === "track" : Boolean(photo.metadata.coordinates);
+          const place = placement?.conflict && placement.source === "photo"
+            ? "Photo GPS selected · recording differs"
+            : placement?.conflict && placement.source === "track"
+              ? "Recorded position selected"
+              : placement?.conflict
+                ? "Needs a location choice"
+            : placement?.source === "track"
+              ? "On the recording"
+              : placement?.source === "carried"
+                ? "Previous position · not this photo"
+                : photo.metadata.place ?? (located ? "Located" : "No GPS");
           return (
-          <li key={photo.id} data-selected={index === activeIndex}>
+          <Fragment key={photo.id}>
+            {dayKey && dayKey !== previousDayKey && <li className="pj-stop-day"><span role="heading" aria-level={3}>{dayLabels[index] ?? dayKey}</span></li>}
+          <li data-selected={index === activeIndex}>
             <button
               className="pj-stop"
               aria-current={index === activeIndex ? "step" : undefined}
@@ -87,11 +74,14 @@ function StopList({
               <span className="pj-stop-text">
                 <strong>{photo.name}</strong>
                 <small data-located={located}>
-                  {photo.metadata.place ?? (located ? "On the track" : "No GPS")}
-                  {photo.metadata.capturedAtLabel ? ` · ${photo.metadata.capturedAtLabel}` : ""}
+                  {place}
+                  {photo.metadata.capturedAtLabel ? ` · ${photo.metadata.capturedAtLabel}${photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined && placement?.instant === undefined ? " · time not resolved" : ""}` : ""}
                 </small>
               </span>
-              {placement?.source === "track" && (
+              {placement?.conflict && (
+                <span className="pj-stop-tag" data-conflict="true">{placement.ambiguous ? "overlap" : "review"}</span>
+              )}
+              {placement?.source === "track" && !placement.conflict && (
                 <span className="pj-stop-tag" title={placement.discrepancyM === undefined
                   ? "This photo has no GPS. The track places it by its timecode."
                   : `The camera's own fix was ${Math.round(placement.discrepancyM).toLocaleString("en")} m away, so the track places it by its timecode.`}>
@@ -100,10 +90,10 @@ function StopList({
               )}
             </button>
             <div className="pj-stop-actions">
-              <button disabled={busy || index === 0} onClick={() => onMove(index, -1)} aria-label={`Move ${photo.name} earlier`}>
+              <button disabled={busy || !editingOrder || !canMove(index, -1)} onClick={() => onMove(index, -1)} aria-label={`Move ${photo.name} earlier`}>
                 <ChevronUp />
               </button>
-              <button disabled={busy || index === photos.length - 1} onClick={() => onMove(index, 1)} aria-label={`Move ${photo.name} later`}>
+              <button disabled={busy || !editingOrder || !canMove(index, 1)} onClick={() => onMove(index, 1)} aria-label={`Move ${photo.name} later`}>
                 <ChevronDown />
               </button>
               <button disabled={busy} onClick={() => onRemove(photo.id)} aria-label={`Remove ${photo.name}`}>
@@ -111,6 +101,7 @@ function StopList({
               </button>
             </div>
           </li>
+          </Fragment>
           );
         })}
       </ol>

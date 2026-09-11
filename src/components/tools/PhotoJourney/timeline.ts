@@ -51,6 +51,11 @@ export function buildTimeline(
   photos: JourneyPhoto[],
   positions?: ReadonlyArray<Coordinates | undefined>,
   instants?: ReadonlyArray<number | undefined>,
+  options?: {
+    /** Calendar keys and labels derived from the selected trip timezone. */
+    dayKeys?: ReadonlyArray<string | undefined>;
+    dayLabels?: ReadonlyArray<string | undefined>;
+  },
 ): JourneyTimeline {
   const positionOf = (index: number) =>
     positions ? positions[index] : photos[index]?.metadata.coordinates;
@@ -60,11 +65,16 @@ export function buildTimeline(
   let lastPosition: Coordinates | undefined;
   const stops = photos.map((photo, photoIndex) => {
     const date = photo.metadata.capturedAt;
-    const key = date?.toISOString().slice(0, 10);
+    const instant = instants?.[photoIndex] ?? date?.getTime();
+    const key = options?.dayKeys?.[photoIndex] ?? (instant === undefined ? undefined : new Date(instant).toISOString().slice(0, 10));
     let dayLabel: string | undefined;
     if (key && key !== lastDay) {
       day += 1;
-      dayLabel = `Day ${day} · ${date!.toLocaleDateString("en", { day: "numeric", month: "long", timeZone: "UTC" })}`;
+      dayLabel = options?.dayLabels?.[photoIndex]
+        ? `Day ${day} · ${options.dayLabels[photoIndex]}`
+        : instant !== undefined
+          ? `Day ${day} · ${new Date(instant).toLocaleDateString("en", { day: "numeric", month: "long", timeZone: "UTC" })}`
+          : `Day ${day}`;
       lastDay = key;
     }
     const dayStart = offset;
@@ -73,13 +83,14 @@ export function buildTimeline(
     const previous = photos[photoIndex - 1];
     const previousPosition = positionOf(photoIndex - 1);
     const previousDate = previous?.metadata.capturedAt;
+    const previousInstant = instants?.[photoIndex - 1] ?? previousDate?.getTime();
     const burst = Boolean(
       own &&
         previousPosition &&
-        date &&
-        previousDate &&
-        Math.floor(date.getTime() / 60000) ===
-          Math.floor(previousDate.getTime() / 60000) &&
+        instant !== undefined &&
+        previousInstant !== undefined &&
+        Math.floor(instant / 60000) ===
+          Math.floor(previousInstant / 60000) &&
         distanceKm(own, previousPosition) < 0.05,
     );
     const distance = own && lastPosition ? distanceKm(lastPosition, own) : 0;
@@ -169,9 +180,9 @@ export function timelineAt(
 
 export type JourneyStop = {
   photoId: string;
-  /** Where the map sits for this stop: the photo's own GPS, or the last known position. */
+  /** Where the map sits for this stop: an explicitly accepted photo or recording position. */
   coordinates?: Coordinates;
-  /** True when the photo carries its own GPS rather than an inherited position. */
+  /** True when the position belongs to this photo or an unambiguous recording match. */
   located: boolean;
 };
 

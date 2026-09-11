@@ -1,7 +1,11 @@
+import type { Track } from "./gpx";
+
 export type Coordinates = { latitude: number; longitude: number };
 
 export type PhotoMetadata = {
   capturedAt?: Date;
+  /** Camera wall-clock reading before a timezone is applied. */
+  capturedAtWallClock?: string;
   capturedAtLabel?: string;
   /** Minutes east of UTC from OffsetTimeOriginal. Without it the capture clock has no zone. */
   utcOffsetMinutes?: number;
@@ -32,4 +36,15 @@ export type JourneyPhoto = {
   name: string;
   metadata: PhotoMetadata;
   importOrder: number;
+};
+
+export type JourneyRecording = {
+  id: string;
+  file: File;
+  name: string;
+  digest: string;
+  track: Track;
+  importOrder: number;
+  included: boolean;
+  warnings: string[];
 };

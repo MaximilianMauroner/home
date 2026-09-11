@@ -1,132 +1,174 @@
-import { pointAtTime, type Track } from "./gpx";
+import { buildTimedIndex, pointAtTimedIndex, trackStats, type TimedIndex, type Track } from "./gpx";
+import { isValidUtcOffsetMinutes } from "./metadata";
 import { distanceKm, type JourneyStop } from "./timeline";
-import type { Coordinates, JourneyPhoto, PhotoMetadata } from "./types";
+import type { Coordinates, JourneyPhoto, JourneyRecording, PhotoMetadata } from "./types";
 
-/**
- * A recorded track is the better witness. A watch logs continuously with a clear sky view, while a
- * phone fixes once, indoors or under a cliff, and can be far out. So when the two disagree by more
- * than this, the photo is placed by its timecode on the track instead of by its own coordinates.
- */
-export const DISCREPANCY_LIMIT_M = 60;
-/** Beyond this the track was not recording when the photo was taken, so it cannot place it. */
+/** Beyond this the recording was not close enough in time to place a photo. */
 export const COVERAGE_LIMIT_SECONDS = 150;
+/** A discrepancy this large is worth showing as a conflict, but never silently resolves one. */
+export const DISCREPANCY_LIMIT_M = 60;
 
-export type PlacementSource =
-  /** The photo's own GPS, which agrees with the track or has no track to check against. */
-  | "photo"
-  /** The track position at the photo's timecode. */
-  | "track"
-  /** No position of its own; holds the last known one so the camera does not jump. */
-  | "carried"
-  | "none";
+export type PlacementSource = "photo" | "track" | "carried" | "none";
+export type PlacementChoice = "photo" | "track" | { source: "track"; recordingId: string };
 
 export type Placement = {
   photoId: string;
   coordinates?: Coordinates;
   source: PlacementSource;
-  /** Metres between the photo's own fix and the track at that instant, when both exist. */
   discrepancyM?: number;
-  /** Seconds between the photo's timecode and the nearest recorded fix. */
   gapSeconds?: number;
   elevation?: number;
-  /**
-   * The instant the shutter fired, once the zone is known. EXIF holds only a wall clock, so this
-   * is the only time worth writing out: a photo library re-tagging from the exported GPX has to
-   * match the same instants the track was recorded in.
-   */
+  /** True instant once the camera wall-clock has a known offset. */
   instant?: number;
+  /** Effective camera offset used to resolve the instant, including an explicit user fallback. */
+  offsetMinutes?: number;
+  /** Source recording for an unambiguous time match. */
+  recordingId?: string;
+  /** Recording position kept alongside an original photo fix for an explicit choice. */
+  trackCoordinates?: Coordinates;
+  /** A source or GPS conflict needs a user decision. */
+  conflict?: boolean;
+  /** More than one included recording is equally close at this instant. */
+  ambiguous?: boolean;
+  /** A previously chosen recording no longer covers this photo's resolved instant. */
+  choiceUnavailable?: boolean;
 };
 
+export type PlacementOptions = {
+  /** Bulk fallback for photos that have no EXIF offset. */
+  offsetMinutes?: number;
+  /** Per-photo fallback/override, keyed by stable photo ID. */
+  offsetMinutesByPhoto?: Readonly<Record<string, number | undefined>>;
+  /** Explicitly chosen source for a photo/recording discrepancy. */
+  choices?: Readonly<Record<string, PlacementChoice | undefined>>;
+};
+
+function isTrackChoice(choice: PlacementChoice | undefined) {
+  return choice === "track" || (typeof choice === "object" && choice.source === "track");
+}
+
+type LookupSource = { id?: string; groups: TimedIndex["points"][] };
+
+function sourceLookup(track: Track, id?: string): LookupSource {
+  const groups = new Map<string, TimedIndex["points"]>();
+  for (const entry of buildTimedIndex(track, id).points) {
+    const key = `${entry.trackIndex ?? 0}:${entry.segmentIndex ?? 0}`;
+    const group = groups.get(key);
+    if (group) group.push(entry);
+    else groups.set(key, [entry]);
+  }
+  return { id, groups: [...groups.values()] };
+}
+
 /**
- * EXIF stores wall-clock time with no zone. `capturedAt` is that clock read in the viewer's own
- * zone, so both are removed here to recover the instant the shutter actually fired.
+ * EXIF dates are wall-clock readings. Preserve and use the raw value when available so the
+ * viewer's timezone never changes the instant. The Date fallback keeps older in-memory photos
+ * readable while they are re-imported.
  */
+export function photoOffsetMinutes(metadata: PhotoMetadata, fallbackOffsetMinutes?: number) {
+  return isValidUtcOffsetMinutes(metadata.utcOffsetMinutes)
+    ? metadata.utcOffsetMinutes
+    : isValidUtcOffsetMinutes(fallbackOffsetMinutes)
+      ? fallbackOffsetMinutes
+      : undefined;
+}
+
 export function photoInstant(metadata: PhotoMetadata, fallbackOffsetMinutes?: number) {
+  const offset = photoOffsetMinutes(metadata, fallbackOffsetMinutes);
+  if (offset === undefined) return undefined;
+  if (metadata.capturedAtWallClock) {
+    const wall = Date.parse(`${metadata.capturedAtWallClock}Z`);
+    if (Number.isFinite(wall)) return wall - offset * 60_000;
+  }
   const captured = metadata.capturedAt;
   if (!captured) return undefined;
-  const offset = metadata.utcOffsetMinutes ?? fallbackOffsetMinutes;
-  if (offset === undefined) return undefined;
   return captured.getTime() - captured.getTimezoneOffset() * 60_000 - offset * 60_000;
 }
 
-/**
- * Every zone in use is a whole hour, a half hour, or one of three quarter-hour zones. A free
- * 15-minute grid lets the fit slide along the track to absorb a bad fix instead of finding the
- * clock, so only real offsets are offered.
- */
-const CANDIDATE_OFFSETS = (() => {
-  const offsets = new Set([5 * 60 + 45, 8 * 60 + 45, 12 * 60 + 45]);
-  for (let minutes = -12 * 60; minutes <= 14 * 60; minutes += 30) offsets.add(minutes);
-  return [...offsets].sort((a, b) => a - b);
-})();
-
-/**
- * A phone fix is either close or badly wrong, so an average over all of them says little. At the
- * true offset the well-fixed photos land on the track almost exactly, so the better half of the
- * errors identifies the clock and one indoor fix cannot drag the answer away.
- */
-function betterHalfMean(values: number[]) {
-  const sorted = [...values].sort((a, b) => a - b);
-  const half = sorted.slice(0, Math.max(1, Math.ceil(sorted.length / 2)));
-  return half.reduce((total, value) => total + value, 0) / half.length;
+function sourcesForTrack(track?: Track): LookupSource[] {
+  return track ? [sourceLookup(track)] : [];
 }
 
-/**
- * Cameras that write no time-zone tag leave the clock ambiguous by whole hours. Photos that do
- * carry GPS reveal the answer: only the true offset puts them where the track says they were.
- */
-export function inferUtcOffsetMinutes(photos: readonly JourneyPhoto[], track: Track) {
-  const stated = photos.find((photo) => photo.metadata.utcOffsetMinutes !== undefined);
-  if (stated) return stated.metadata.utcOffsetMinutes;
-  const located = photos.filter(
-    (photo) => photo.metadata.capturedAt && photo.metadata.coordinates,
-  );
-  let best: { offset: number; score: number } | undefined;
-  for (const offset of CANDIDATE_OFFSETS) {
-    const errors: number[] = [];
-    let covered = 0;
-    for (const photo of photos) {
-      const instant = photoInstant(photo.metadata, offset);
-      if (instant === undefined) continue;
-      const found = pointAtTime(track, instant);
-      if (!found || found.gapMs > COVERAGE_LIMIT_SECONDS * 1000) continue;
-      covered += 1;
-      const own = photo.metadata.coordinates;
-      if (own) errors.push(distanceKm(own, found.point) * 1000);
+function sourcesForRecordings(recordings: readonly JourneyRecording[]) {
+  return recordings
+    .filter((recording) => recording.included)
+    .map((recording) => sourceLookup(recording.track, recording.id));
+}
+
+function lookup(sources: readonly LookupSource[], instant: number, preferredSourceId?: string) {
+  const matches: Array<{ source: LookupSource; found: NonNullable<ReturnType<typeof pointAtTimedIndex>> }> = [];
+  const candidates = preferredSourceId ? sources.filter((source) => source.id === preferredSourceId) : sources;
+  for (const source of candidates) {
+    // Keep each recorded segment independent. A sorted index may contain adjacent timestamps
+    // on opposite sides of a pause, but that boundary is still not a continuous candidate.
+    for (const points of source.groups) {
+      const found = pointAtTimedIndex({ points, sourceId: source.id }, instant);
+      if (!found) continue;
+      const candidates = [found, ...found.alternatives.map((entry) => ({
+        index: entry.pointIndex,
+        ...entry,
+        gapMs: Math.abs(entry.point.time! - instant),
+        alternatives: [] as typeof found.alternatives,
+      }))];
+      for (const candidate of candidates) {
+        if (candidate.gapMs <= COVERAGE_LIMIT_SECONDS * 1000) matches.push({ source, found: candidate });
+      }
     }
-    if (!covered) continue;
-    // With located photos, trust the fit. Without any, prefer the offset that lands the most
-    // photos inside the recording at all.
-    const score = located.length
-      ? (errors.length ? betterHalfMean(errors) : Number.POSITIVE_INFINITY)
-      : -covered;
-    if (!best || score < best.score) best = { offset, score };
   }
-  return best?.offset;
+  matches.sort((a, b) => a.found.gapMs - b.found.gapMs);
+  if (!matches.length) return undefined;
+  const best = matches[0];
+  const competing = matches.filter((match) =>
+    Math.abs(match.found.gapMs - best.found.gapMs) <= 1000 &&
+    distanceKm(match.found.point, best.found.point) * 1000 > 5,
+  );
+  return { ...best, ambiguous: competing.length > 0 };
 }
 
-/**
- * Decides where every photo sits. Order of authority: an agreeing pair keeps the photo's own fix,
- * a disagreeing pair or a missing fix takes the track, and anything the track cannot reach falls
- * back to the photo, then to the position carried forward from the stop before it.
- */
-export function resolvePlacements(
+function resolve(
   photos: readonly JourneyPhoto[],
-  track?: Track,
-  options: { offsetMinutes?: number; discrepancyLimitM?: number } = {},
+  sources: readonly LookupSource[],
+  options: PlacementOptions,
 ): Placement[] {
-  const limit = options.discrepancyLimitM ?? DISCREPANCY_LIMIT_M;
-  const offset = options.offsetMinutes;
+  const choices = options.choices ?? {};
   let carried: Coordinates | undefined;
   return photos.map((photo) => {
     const own = photo.metadata.coordinates;
-    const instant = track ? photoInstant(photo.metadata, offset) : undefined;
-    const found = instant === undefined || !track ? undefined : pointAtTime(track, instant);
-    const covered = found && found.gapMs <= COVERAGE_LIMIT_SECONDS * 1000;
-    if (covered && found) {
-      const onTrack = { latitude: found.point.latitude, longitude: found.point.longitude };
+    const fallbackOffset = options.offsetMinutesByPhoto?.[photo.id] ?? options.offsetMinutes;
+    const offsetMinutes = photoOffsetMinutes(photo.metadata, fallbackOffset);
+    const instant = photoInstant(photo.metadata, fallbackOffset);
+    const choice = choices[photo.id];
+    const preferredRecordingId = typeof choice === "object" ? choice.recordingId : undefined;
+    const match = instant === undefined ? undefined : lookup(sources, instant, preferredRecordingId);
+    const choiceUnavailable = Boolean(preferredRecordingId && !match);
+    if (match) {
+      const onTrack = { latitude: match.found.point.latitude, longitude: match.found.point.longitude };
       const discrepancyM = own ? distanceKm(own, onTrack) * 1000 : undefined;
-      const useTrack = !own || (discrepancyM ?? 0) > limit;
+      if (match.ambiguous) {
+        // An overlapping recording is not evidence that lets us choose a position. Keep a
+        // camera fix visible by default, and leave a photo without one unresolved until the
+        // viewer explicitly chooses the recording position.
+        const useTrack = isTrackChoice(choice) && Boolean(onTrack);
+        const usePhoto = !isTrackChoice(choice) && Boolean(own);
+        const coordinates = useTrack ? onTrack : usePhoto ? own : carried;
+        const source: PlacementSource = useTrack ? "track" : usePhoto ? "photo" : coordinates ? "carried" : "none";
+        carried = source === "photo" || source === "track" ? coordinates : carried;
+        return {
+          photoId: photo.id,
+          coordinates,
+          source,
+          discrepancyM,
+          gapSeconds: match.found.gapMs / 1000,
+          instant,
+          offsetMinutes,
+          recordingId: match.source.id,
+          trackCoordinates: onTrack,
+          conflict: true,
+          ambiguous: true,
+          choiceUnavailable,
+        };
+      }
+      const useTrack = !own || isTrackChoice(choice);
       const coordinates = useTrack ? onTrack : own;
       carried = coordinates;
       return {
@@ -134,28 +176,63 @@ export function resolvePlacements(
         coordinates,
         source: useTrack ? "track" : "photo",
         discrepancyM,
-        gapSeconds: found.gapMs / 1000,
-        elevation: useTrack ? found.point.elevation : photo.metadata.altitude,
+        gapSeconds: match.found.gapMs / 1000,
+        elevation: useTrack ? match.found.point.elevation : photo.metadata.altitude,
         instant,
+        offsetMinutes,
+        recordingId: match.source.id,
+        trackCoordinates: own ? onTrack : undefined,
+        conflict: Boolean(own && discrepancyM !== undefined && discrepancyM > DISCREPANCY_LIMIT_M),
+        ambiguous: match.ambiguous,
+        choiceUnavailable,
       };
     }
     if (own) {
       carried = own;
-      return { photoId: photo.id, coordinates: own, source: "photo", elevation: photo.metadata.altitude, instant };
+      return { photoId: photo.id, coordinates: own, source: "photo", elevation: photo.metadata.altitude, instant, offsetMinutes, choiceUnavailable };
     }
-    return {
-      photoId: photo.id,
-      coordinates: carried,
-      source: carried ? "carried" : "none",
-      instant,
-    };
+    return { photoId: photo.id, coordinates: carried, source: carried ? "carried" : "none", instant, offsetMinutes, choiceUnavailable };
   });
 }
 
-/**
- * The camera's view of the same decision. A carried position keeps the map still on a stop that
- * could not be placed, rather than sending it to 0°, 0°.
- */
+/** Resolves against one legacy/derived track. New callers should use recordings. */
+export function resolvePlacements(
+  photos: readonly JourneyPhoto[],
+  track?: Track,
+  options: PlacementOptions = {},
+) {
+  return resolve(photos, sourcesForTrack(track), options);
+}
+
+/** Resolves each photo against independently retained recording sources. */
+export function resolvePlacementsForRecordings(
+  photos: readonly JourneyPhoto[],
+  recordings: readonly JourneyRecording[],
+  options: PlacementOptions = {},
+) {
+  return resolve(photos, sourcesForRecordings(recordings), options);
+}
+
+/** Returns included sources whose recorded time ranges overlap another included source. */
+export function overlappingRecordingIds(recordings: readonly JourneyRecording[]) {
+  const included = recordings
+    .filter((recording) => recording.included)
+    .map((recording) => ({ recording, stats: trackStats(recording.track) }))
+    .filter(({ stats }) => stats.start && stats.end);
+  const ids = new Set<string>();
+  for (let first = 0; first < included.length; first += 1) {
+    for (let second = first + 1; second < included.length; second += 1) {
+      const a = included[first].stats;
+      const b = included[second].stats;
+      if (a.start!.valueOf() <= b.end!.valueOf() && a.end!.valueOf() >= b.start!.valueOf()) {
+        ids.add(included[first].recording.id);
+        ids.add(included[second].recording.id);
+      }
+    }
+  }
+  return ids;
+}
+
 export function journeyStops(placements: readonly Placement[]): JourneyStop[] {
   return placements.map((placement) => ({
     photoId: placement.photoId,
@@ -166,10 +243,12 @@ export function journeyStops(placements: readonly Placement[]): JourneyStop[] {
 
 export function placementSummary(placements: readonly Placement[]) {
   const corrected = placements.filter((placement) => placement.source === "track" && placement.discrepancyM !== undefined);
+  const conflicts = placements.filter((placement) => placement.conflict);
   return {
     fromTrack: placements.filter((placement) => placement.source === "track").length,
     fromPhoto: placements.filter((placement) => placement.source === "photo").length,
     unplaced: placements.filter((placement) => placement.source !== "track" && placement.source !== "photo").length,
+    conflictCount: conflicts.length,
     correctedCount: corrected.length,
     worstCorrectionM: corrected.reduce((worst, placement) => Math.max(worst, placement.discrepancyM ?? 0), 0),
   };

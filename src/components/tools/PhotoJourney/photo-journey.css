@@ -27,6 +27,10 @@
   outline: 2px solid var(--pj-accent);
   outline-offset: 2px;
 }
+.photo-journey[data-dragging="true"] {
+  outline: 2px dashed var(--pj-accent);
+  outline-offset: 0.5rem;
+}
 .pj-label {
   color: var(--pj-accent);
   font-size: 0.7rem;
@@ -174,7 +178,7 @@
     border-color 0.15s,
     background 0.15s;
 }
-.pj-upload[data-dragging="true"] {
+.photo-journey[data-dragging="true"] .pj-upload {
   border-color: var(--pj-accent);
   background: var(--pj-bg-2);
 }
@@ -234,6 +238,56 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+}
+.pj-view-settings {
+  position: relative;
+}
+.pj-view-settings summary {
+  list-style: none;
+  cursor: pointer;
+}
+.pj-view-settings summary::-webkit-details-marker {
+  display: none;
+}
+.pj-view-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 0.55rem;
+  min-width: 18rem;
+  padding: 0.7rem;
+  border: 1px solid var(--pj-line-strong);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-1);
+  box-shadow: 0 12px 30px #000b;
+}
+.pj-pill[data-active="true"] {
+  border-color: var(--pj-accent);
+  color: var(--pj-accent);
+}
+.pj-timezone,
+.pj-day-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--pj-faint);
+  font-size: 0.72rem;
+}
+.pj-timezone input,
+.pj-day-select select {
+  min-width: 7rem;
+  height: 2rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--pj-line);
+  border-radius: 999px;
+  background: var(--pj-bg-2);
+  color: var(--pj-soft);
+  font: inherit;
+}
+.pj-day-select select {
+  max-width: 16rem;
 }
 
 /* ---- Stage: the map leads while travelling, the photo takes the frame on arrival ---- */
@@ -799,6 +853,45 @@
 .pj-notes p {
   margin: 0;
 }
+.pj-time-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+  margin-top: 0.9rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--pj-line);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-1);
+}
+.pj-time-controls > div {
+  flex: 1 1 18rem;
+}
+.pj-time-controls strong {
+  font-size: 0.82rem;
+}
+.pj-time-controls p {
+  margin: 0.2rem 0 0;
+  color: var(--pj-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.pj-time-controls label {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--pj-faint);
+  font-size: 0.68rem;
+}
+.pj-time-controls input {
+  width: 8rem;
+  height: 2.25rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--pj-line);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-2);
+  color: var(--pj-ink);
+  font: inherit;
+}
 /* The track line is the one note that reports a result, so it reads ahead of the rest. */
 .pj-track-note {
   display: flex;
@@ -833,6 +926,76 @@
   gap: 1rem;
   margin-top: 1.25rem;
 }
+.pj-recordings {
+  grid-column: 1 / -1;
+}
+.pj-recording-list {
+  display: grid;
+  gap: 2px;
+  margin: 0 -0.4rem;
+  padding: 0;
+  list-style: none;
+}
+.pj-recording-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.5rem;
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-2);
+}
+.pj-recording-list li[data-included="false"] {
+  opacity: 0.58;
+}
+.pj-recording-main {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+.pj-recording-main strong,
+.pj-recording-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pj-recording-main strong {
+  font-size: 0.85rem;
+}
+.pj-recording-main small {
+  color: var(--pj-muted);
+  font-size: 0.74rem;
+}
+.pj-recording-main .pj-recording-warning {
+  color: var(--pj-accent);
+}
+.pj-recording-actions {
+  display: flex;
+  flex: none;
+  gap: 0.1rem;
+}
+.pj-recording-actions button {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pj-muted);
+}
+.pj-recording-actions button:hover:not(:disabled) {
+  background: var(--pj-bg-3);
+  color: var(--pj-ink);
+}
+.pj-recording-actions button:disabled {
+  opacity: 0.35;
+}
+.pj-recording-actions svg {
+  width: 1rem;
+  height: 1rem;
+}
 .pj-panel {
   padding: 1.1rem;
   border: 1px solid var(--pj-line);
@@ -858,21 +1021,20 @@
   letter-spacing: 0.04em;
   text-transform: none;
 }
-.pj-exports {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  order: 3;
-  color: var(--pj-faint);
+.pj-export {
+  margin-top: 1rem;
 }
-/* The whole journey in one file is the main action; the single formats stay beside it. */
-.pj-download {
+.pj-export-summary {
+  flex: 1 1 100%;
+  margin: 0.2rem 0 0;
+  color: var(--pj-muted);
+  font-size: 0.76rem;
+}
+.pj-export-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.5rem;
-  order: 2;
-  margin-left: auto;
+  gap: 0.4rem;
 }
 .pj-stop-list {
   display: grid;
@@ -888,6 +1050,15 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   border-radius: var(--pj-radius);
+}
+.pj-stop-list li.pj-stop-day {
+  display: block;
+  padding: 0.7rem 0.5rem 0.25rem;
+  color: var(--pj-accent);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .pj-stop-list li:hover {
   background: var(--pj-bg-2);
@@ -955,6 +1126,10 @@
   font-size: 0.65rem;
   white-space: nowrap;
 }
+.pj-stop-tag[data-conflict="true"] {
+  border-color: #df9a5b88;
+  color: #f2b377;
+}
 .pj-stop-actions {
   display: flex;
   padding-right: 0.3rem;
@@ -991,6 +1166,54 @@
 }
 .pj-inspector .pj-panel-head .pj-label {
   order: 0;
+}
+.pj-placement-choice {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--pj-line);
+}
+.pj-placement-choice strong {
+  font-size: 0.82rem;
+}
+.pj-placement-choice p {
+  margin: 0.25rem 0 0.6rem;
+  color: var(--pj-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+.pj-placement-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.pj-placement-buttons [aria-pressed="true"] {
+  border-color: var(--pj-accent);
+  color: var(--pj-accent);
+}
+.pj-time-choice {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--pj-line);
+}
+.pj-time-choice strong {
+  font-size: 0.82rem;
+}
+.pj-time-choice p {
+  margin: 0.25rem 0 0.6rem;
+  color: var(--pj-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+.pj-time-choice input {
+  width: 8rem;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--pj-line);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-2);
+  color: var(--pj-ink);
+  font: inherit;
+  font-size: 0.75rem;
 }
 .pj-facts {
   display: grid;

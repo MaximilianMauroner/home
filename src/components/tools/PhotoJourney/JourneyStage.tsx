@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   formatCoordinates,
+  formatDayKeyRange,
   formatDateRange,
   formatDistance,
   journeySummary,
@@ -15,6 +16,7 @@ import {
   type TimelineState,
 } from "./timeline";
 import type { JourneyPhoto } from "./types";
+import type { Placement } from "./track";
 import { usePhotoPreload } from "./usePhotoPreload";
 
 const CARD_PHASES = new Set<JourneyPhase>(["overview", "intro", "day", "outro", "complete"]);
@@ -33,6 +35,7 @@ export default function JourneyStage({
   photos,
   stops,
   track,
+  placements,
   summary,
   activeIndex,
   state,
@@ -42,6 +45,7 @@ export default function JourneyStage({
   mapMode,
   kenBurns,
   title,
+  timezone = "UTC",
   speed,
   seekVersion,
   onTerrainState,
@@ -50,6 +54,7 @@ export default function JourneyStage({
   photos: JourneyPhoto[];
   stops: JourneyStop[];
   track?: Track;
+  placements?: readonly Placement[];
   summary: ReturnType<typeof journeySummary>;
   activeIndex: number;
   state: TimelineState;
@@ -59,6 +64,7 @@ export default function JourneyStage({
   mapMode: MapMode;
   kenBurns: boolean;
   title: string;
+  timezone?: string;
   speed: number;
   seekVersion: number;
   onTerrainState?: (state: { loading: boolean; failed: boolean }) => void;
@@ -73,6 +79,8 @@ export default function JourneyStage({
   const card = CARD_PHASES.has(state.phase);
   const traveling = state.phase === "approach";
   const expanded = !card && (reducedMotion || !traveling);
+  const hasMapData = summary.locatedCount > 0 || Boolean(track?.points.length);
+  const dayChange = Boolean(timeline.stops[activeIndex]?.dayLabel);
   usePhotoPreload(photos, activeIndex);
   useEffect(() => {
     const element = viewport.current;
@@ -135,7 +143,7 @@ export default function JourneyStage({
       ref={viewport}
       className="pj-viewport"
       data-hero={expanded ? "expanded" : "collapsed"}
-      data-map={summary.locatedCount ? "on" : "off"}
+      data-map={hasMapData ? "on" : "off"}
       data-card={card}
       data-ken-burns={kenBurns && !reducedMotion && state.phase === "hold"}
       data-playing={playing}
@@ -145,9 +153,11 @@ export default function JourneyStage({
         className="pj-map"
         role="region"
         aria-label={
-          summary.locatedCount
-            ? "Map of photo locations"
-            : "No photo locations available"
+          hasMapData
+            ? track?.points.length
+              ? "Map of recorded route and photo locations"
+              : "Map of photo locations"
+            : "No route or photo locations available"
         }
       >
         <JourneyMap
@@ -157,6 +167,7 @@ export default function JourneyStage({
           track={track}
           reducedMotion={reducedMotion}
           phase={state.phase}
+          dayChange={dayChange}
           approachDuration={state.approachDuration}
           mapMode={mapMode}
           playing={playing}
@@ -167,7 +178,7 @@ export default function JourneyStage({
           onTerrainState={onTerrainState}
           onEngineFailed={onEngineFailed}
         />
-        {!summary.locatedCount && (
+        {!hasMapData && (
           <div className="pj-map-empty">
             <strong>No GPS coordinates</strong>
             <span>The photos play as a slideshow.</span>
@@ -201,12 +212,20 @@ export default function JourneyStage({
         </div>
       )}
       {photo && !card && (
-        <Caption photo={photo} located={stop?.located ?? false} />
+        <Caption photo={photo} placement={placements?.[activeIndex]} located={stop?.located ?? false} />
       )}
       {photo && traveling && !reducedMotion && (
         <div className="pj-travel" aria-hidden="true">
           <span className="pj-label">Next stop</span>
-          <strong>{photo.metadata.place ?? photo.name}</strong>
+          <strong>{placements?.[activeIndex]?.conflict
+            ? placements[activeIndex]?.source === "photo"
+              ? "Photo GPS selected"
+              : placements[activeIndex]?.source === "track"
+                ? "Recorded position selected"
+                : "Choose a location"
+            : placements?.[activeIndex]?.source === "track"
+              ? (photo.metadata.place ?? "Recorded position")
+              : photo.metadata.place ?? photo.name}</strong>
           {legKm !== undefined && <span className="pj-travel-distance">{formatDistance(legKm)}</span>}
         </div>
       )}
@@ -215,6 +234,7 @@ export default function JourneyStage({
           phase={state.phase}
           dayLabel={state.dayLabel}
           title={title}
+          timezone={timezone}
           summary={summary}
         />
       )}
@@ -227,16 +247,33 @@ export default function JourneyStage({
   );
 }
 
-function Caption({ photo, located }: { photo: JourneyPhoto; located: boolean }) {
+function Caption({ photo, placement, located }: { photo: JourneyPhoto; placement?: Placement; located: boolean }) {
   const { metadata } = photo;
   const exposure = [metadata.focalLength, metadata.aperture, metadata.shutterSpeed, metadata.iso]
     .filter(Boolean)
     .join("  ");
-  const facts = [metadata.capturedAtLabel, metadata.camera, exposure].filter(Boolean);
-  const place = !located
-    ? "No GPS in this photo"
-    : (metadata.place ??
-      (metadata.coordinates && formatCoordinates(metadata.coordinates)));
+  const provenance = placement?.source === "track"
+    ? "Placed from recording"
+    : placement?.source === "photo"
+      ? "Photo GPS"
+      : placement?.source === "carried"
+        ? "Unassigned"
+        : undefined;
+  const unresolvedClock = Boolean(metadata.capturedAtWallClock && metadata.utcOffsetMinutes === undefined && placement?.instant === undefined);
+  const facts = [metadata.capturedAtLabel ? `${metadata.capturedAtLabel}${unresolvedClock ? " · time not resolved" : ""}` : undefined, metadata.camera, exposure, provenance].filter(Boolean);
+  const place = placement?.conflict && placement.source === "photo"
+    ? "Photo GPS selected · recording differs"
+    : placement?.conflict && placement.source === "track"
+      ? "Recorded position selected"
+      : placement?.conflict
+        ? "Location needs a choice"
+    : placement?.source === "track"
+      ? (metadata.place ?? "Recorded position")
+      : placement?.source === "carried"
+        ? "Previous position (not this photo)"
+        : !located
+          ? "No GPS in this photo"
+          : (metadata.place ?? (placement?.coordinates && formatCoordinates(placement.coordinates)));
   return (
     <div className="pj-caption" aria-hidden="true">
       <p className="pj-caption-place" data-located={located}>{place}</p>
@@ -256,11 +293,13 @@ function JourneyCard({
   phase,
   dayLabel,
   title,
+  timezone,
   summary,
 }: {
   phase: JourneyPhase;
   dayLabel?: string;
   title: string;
+  timezone: string;
   summary: ReturnType<typeof journeySummary>;
 }) {
   if (phase === "day")
@@ -271,7 +310,8 @@ function JourneyCard({
       </div>
     );
   const closing = phase === "outro" || phase === "complete";
-  const dates = formatDateRange(summary.startDate, summary.endDate);
+  const dates = formatDayKeyRange(summary.startDateKey, summary.endDateKey)
+    ?? formatDateRange(summary.startDate, summary.endDate, timezone);
   const altitude =
     summary.altitudeMin === undefined
       ? undefined
