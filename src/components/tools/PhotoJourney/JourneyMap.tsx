@@ -39,8 +39,12 @@ export const TERRAIN_DEM_TILES = [
   "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
 ];
 export const TERRAIN_EXAGGERATION = 1.4;
-/** The arrival tilt. Fixed: higher pitches over exaggerated terrain cause motion sickness. */
-export const TERRAIN_PITCH = 62;
+/** A steady north-up tilt gives local terrain depth without orbiting the route. */
+export const TERRAIN_PITCH = 45;
+
+export function journeyCameraPitch(mode: MapMode, globe: boolean, reducedMotion: boolean) {
+  return mode === "terrain" && !globe && !reducedMotion ? TERRAIN_PITCH : 0;
+}
 /** Legs longer than this arc on a globe instead of smearing across Mercator. */
 export const GLOBE_LEG_KM = 1500;
 
@@ -184,6 +188,7 @@ export function baseStyle(): StyleSpecification {
           'Terrain: <a href="https://registry.opendata.aws/terrain-tiles/">AWS Terrain Tiles</a> (3DEP, SRTM, GMTED)',
       },
       "route-completed": { type: "geojson", data: EMPTY_FEATURES },
+      "route-context": { type: "geojson", data: EMPTY_FEATURES },
       "route-current": { type: "geojson", data: EMPTY_FEATURES },
       "route-inferred": { type: "geojson", data: EMPTY_FEATURES },
       "route-tip": { type: "geojson", data: EMPTY_FEATURES },
@@ -235,6 +240,20 @@ export function baseStyle(): StyleSpecification {
           "hillshade-shadow-color": "#05090b",
           "hillshade-highlight-color": "#3a4d52",
         },
+      },
+      {
+        id: "route-context-halo",
+        type: "line",
+        source: "route-context",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#071014", "line-opacity": 0.65, "line-width": 6 },
+      },
+      {
+        id: "route-context",
+        type: "line",
+        source: "route-context",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#c2d0d5", "line-opacity": 0.7, "line-width": 2.5 },
       },
       {
         id: "route-completed-halo",
@@ -297,9 +316,9 @@ export function baseStyle(): StyleSpecification {
         type: "circle",
         source: "route-tip",
         paint: {
-          "circle-color": "#fff0bd",
-          "circle-radius": 6,
-          "circle-stroke-color": "#071014",
+          "circle-color": "#38bdf8",
+          "circle-radius": 8,
+          "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 3,
         },
       },
@@ -364,26 +383,18 @@ export function visibleRouteSegments(
   currentPrefix?: Coordinates[],
   checkpointEndIndex = activeIndex,
 ) {
+  const arrived = phase === "reveal" || phase === "hold" || phase === "departure";
+  const completedIndex = phase === "outro" || phase === "complete"
+    ? story.legs.length - 1
+    : arrived ? checkpointEndIndex : activeIndex - 1;
   const completed: Coordinates[][] = [];
-  const completedThrough = phase === "outro" || phase === "complete"
-    ? story.legs.length
-    : activeIndex;
-  for (let index = 1; index < completedThrough; index += 1) {
-    const leg = story.legs[index];
-    if (leg) completed.push(leg.drawable);
+  for (let index = 0; index <= completedIndex; index += 1) {
+    const progressLeg = story.progressLegs[index];
+    if (progressLeg) completed.push(progressLeg.drawable);
   }
   const active = story.legs[activeIndex];
-  if (!active || !currentEligible)
-    return { completed, current: [] as Coordinates[][] };
-  if (phase === "approach")
+  if (phase === "approach" && active && currentEligible)
     return { completed, current: [currentPrefix ?? recordedLegPrefix(active, currentProgress)] };
-  if (phase === "reveal" || phase === "hold" || phase === "departure") {
-    completed.push(active.drawable);
-    for (let index = activeIndex + 1; index <= checkpointEndIndex; index += 1) {
-      const internal = story.legs[index];
-      if (internal) completed.push(internal.drawable);
-    }
-  }
   return { completed, current: [] as Coordinates[][] };
 }
 
@@ -423,6 +434,7 @@ export default function JourneyMap({
   const mapRef = useRef<MapLibreMap>();
   const moduleRef = useRef<typeof import("maplibre-gl")>();
   const markersRef = useRef(new Map<string, MapLibreMarker>());
+  const positionMarkerRef = useRef<MapLibreMarker>();
   const completedRef = useRef<{ engine: number; segments: readonly (readonly Coordinates[])[] }>();
   const inferredCompletedRef = useRef<{ engine: number; key: string; stops: JourneyStop[] }>();
   const projectionRef = useRef<"mercator" | "globe">("mercator");
@@ -432,6 +444,7 @@ export default function JourneyMap({
   // reload sources, so effects gate on this instead of asking per run.
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [terrainRevision, setTerrainRevision] = useState(0);
   // Read at command time only: a resize must not restart a camera move.
   const frameRef = useRef(frame);
   frameRef.current = frame;
@@ -625,6 +638,32 @@ export default function JourneyMap({
     };
   }, [mode, ready, onTerrainState, engine]);
 
+  // New elevation tiles can correct the camera altitude after a paused jump. Refresh
+  // composition and DOM markers after those tiles render, even when playback is idle.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || mode !== "terrain") return;
+    let pending = false;
+    const refresh = () => {
+      pending = false;
+      for (const marker of markersRef.current.values()) marker.setLngLat(marker.getLngLat());
+      const position = positionMarkerRef.current;
+      if (position) position.setLngLat(position.getLngLat());
+      // Let an in-progress overview animation finish; tile arrivals must not restart it.
+      if (!map.isMoving()) setTerrainRevision((revision) => revision + 1);
+    };
+    const onSource = (event: { sourceId?: string; tile?: unknown }) => {
+      if (event.sourceId !== "dem" || !event.tile || pending) return;
+      pending = true;
+      map.once("render", refresh);
+    };
+    map.on("sourcedata", onSource);
+    return () => {
+      map.off("sourcedata", onSource);
+      map.off("render", refresh);
+    };
+  }, [mode, ready, engine]);
+
   // Static markers change with source data, never with the playback frame. The recording itself
   // is deliberately absent here: route geometry is revealed only by the playback overlays below.
   useEffect(() => {
@@ -661,7 +700,7 @@ export default function JourneyMap({
       wrapper.addEventListener("click", () => onCheckpointSelect?.(index, wrapper));
       markers.set(
         photo.id,
-        new module.Marker({ element: wrapper, anchor: "center" })
+        new module.Marker({ element: wrapper, anchor: "center", pitchAlignment: "viewport", rotationAlignment: "viewport", opacityWhenCovered: 0.65 })
           .setLngLat(lngLat(coordinates))
           .addTo(map),
       );
@@ -671,11 +710,51 @@ export default function JourneyMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photos, stops, track, routeStory, timeline, dayChangesKey, ready, engine, onCheckpointSelect]);
 
-  // Only the two small narrative overlays change with playback. The full recording stays in the
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource("route-context") as GeoJSONSource | undefined)?.setData(
+      routeStory ? routeData(routeStory.context) : EMPTY_FEATURES,
+    );
+  }, [routeStory, ready, engine]);
+
+  // A DOM marker keeps the position visible above photo badges, including while paused at a stop.
+  useEffect(() => {
+    const map = mapRef.current;
+    const module = moduleRef.current;
+    if (!map || !module || !ready) return;
+    const element = document.createElement("div");
+    element.className = "pj-current-position";
+    element.hidden = true;
+    const label = document.createElement("span");
+    label.textContent = "Current position";
+    element.append(label);
+    const marker = new module.Marker({ element, anchor: "center", pitchAlignment: "viewport", rotationAlignment: "viewport", opacityWhenCovered: 1 }).setLngLat([0, 0]).addTo(map);
+    positionMarkerRef.current = marker;
+    return () => {
+      marker.remove();
+      positionMarkerRef.current = undefined;
+    };
+  }, [ready, engine]);
+
+  // Only the small narrative overlays change with playback. The full recording stays in the
   // static context source, avoiding repeated work on recording-sized arrays.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    const showPosition = (position?: Coordinates) => {
+      const marker = positionMarkerRef.current;
+      if (marker) {
+        marker.getElement().hidden = !position;
+        if (position) marker.setLngLat(lngLat(position));
+      }
+      (map.getSource("route-tip") as GeoJSONSource | undefined)?.setData(position ? {
+        type: "FeatureCollection",
+        features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: lngLat(position) } }],
+      } : EMPTY_FEATURES);
+    };
+    const arrived = phase === "reveal" || phase === "hold" || phase === "departure";
+    const checkpointEndIndex = activeCheckpoint?.photoIndices.at(-1) ?? activeIndex;
     if (!routeStory) {
       if (completedRef.current?.engine !== engine || completedRef.current.segments.length) {
         completedRef.current = { engine, segments: [] };
@@ -701,11 +780,8 @@ export default function JourneyMap({
         ? [routePrefix([previous.coordinates, current.coordinates], currentLegProgress)]
         : [];
       (map.getSource("route-current") as GeoJSONSource | undefined)?.setData(routeData(traveling));
-      const tip = traveling[0]?.at(-1);
-      (map.getSource("route-tip") as GeoJSONSource | undefined)?.setData(tip ? {
-        type: "FeatureCollection",
-        features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: lngLat(tip) } }],
-      } : EMPTY_FEATURES);
+      const settled = stops[checkpointEndIndex];
+      showPosition(traveling[0]?.at(-1) ?? (arrived && settled?.located ? settled.coordinates : undefined));
       return;
     }
     const visible = visibleRouteSegments(
@@ -730,14 +806,15 @@ export default function JourneyMap({
       (map.getSource("route-completed") as GeoJSONSource | undefined)?.setData(routeData(visible.completed));
     }
     (map.getSource("route-current") as GeoJSONSource | undefined)?.setData(routeData(visible.current));
+    const placement = placements?.[checkpointEndIndex];
+    const settled = placement && !placement.ambiguous && !placement.choiceUnavailable
+      ? placement.source === "track" ? placement.coordinates : placement.trackCoordinates
+      : undefined;
     const tip = phase === "approach" && currentLegEligible
       ? activeRouteFrame?.tip
-      : undefined;
-    (map.getSource("route-tip") as GeoJSONSource | undefined)?.setData(tip ? {
-      type: "FeatureCollection",
-      features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: lngLat(tip) } }],
-    } : EMPTY_FEATURES);
-  }, [routeStory, activeRouteFrame, activeIndex, activeCheckpoint, phase, currentLegProgress, currentLegEligible, stops, track, timeline, dayChanges, dayChangesKey, ready, engine]);
+      : arrived ? settled : undefined;
+    showPosition(tip);
+  }, [routeStory, activeRouteFrame, activeIndex, activeCheckpoint, phase, currentLegProgress, currentLegEligible, placements, stops, track, timeline, dayChanges, dayChangesKey, ready, engine]);
 
   // Checkpoints begin as quiet dots, reveal their photo on arrival, and remain as visited stops.
   useEffect(() => {
@@ -885,6 +962,10 @@ export default function JourneyMap({
       ? overviewPoints()
       : [move?.from, move?.center].flatMap((point) => (point ? [point] : []));
     const globe = mode !== "offline" && legSpansGlobe(projectionPoints);
+    const pitch = journeyCameraPitch(mode, globe, reducedMotion);
+    const fit = (points: Coordinates[], maxZoom: number) => cameraFrameForPoints(
+      unwrapPoints(points), frameRef.current, 70, maxZoom, cameraPadding, pitch, map.getVerticalFieldOfView(),
+    );
     if (projectionRef.current !== (globe ? "globe" : "mercator")) {
       projectionRef.current = globe ? "globe" : "mercator";
       try {
@@ -897,16 +978,16 @@ export default function JourneyMap({
       // The opening and closing views frame the whole tour, which is wider than the photo stops.
       if (!projectionPoints.length) return;
       const maxOverviewZoom = mode === "offline" ? OFFLINE_MAX_ZOOM : stopZoom;
-      const view = cameraFrameForPoints(unwrapPoints(projectionPoints), frameRef.current, 70, maxOverviewZoom);
-      if (!playing || reducedMotion) map.jumpTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch: 0, padding: cameraPadding });
-      else map.easeTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch: 0, padding: cameraPadding, duration: approachAnimationDuration(remainingRef.current, speed) });
+      const view = fit(projectionPoints, maxOverviewZoom);
+      if (!playing || reducedMotion) map.jumpTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch, padding: cameraPadding });
+      else map.easeTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch, padding: cameraPadding, duration: approachAnimationDuration(remainingRef.current, speed) });
       return;
     }
     if (!move) return;
     // Reposition while the opaque day card covers the map. The first uncovered frame is already
     // at the next day's real first fix, so there is no invented overnight flight or visible snap.
     if (phase === "day") {
-      map.jumpTo({ center: lngLat(move.center), zoom: stopZoom, bearing: 0, pitch: 0, padding: cameraPadding });
+      map.jumpTo({ center: lngLat(move.center), zoom: stopZoom, bearing: 0, pitch, padding: cameraPadding });
       return;
     }
     // Missing fixes inherit the last camera position. Seeking still restores that position.
@@ -921,20 +1002,20 @@ export default function JourneyMap({
       longitude: nearestLongitude(move.center.longitude, map.getCenter().lng),
     };
     if (dayChange && phase === "approach") {
-      map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch: 0 });
+      map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch, padding: cameraPadding });
       return;
     }
     const recordedLegKnown = !track || Boolean(activeRouteFrame);
     const padding = cameraPadding;
     if (phase !== "approach") {
       const settled = activeRouteFrame?.window.length
-        ? cameraFrameForPoints(unwrapPoints(activeRouteFrame.window), frameRef.current, 70, mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM, padding)
+        ? fit([...activeRouteFrame.window, center], mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM)
         : { center: lngLat(center), zoom: stopZoom };
-      map.jumpTo({ center: settled.center, zoom: settled.zoom, bearing: 0, pitch: 0, padding });
+      map.jumpTo({ center: settled.center, zoom: settled.zoom, bearing: 0, pitch, padding });
       return;
     }
     if (reducedMotion || !move.from || !recordedLegKnown) {
-      map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch: 0, padding });
+      map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch, padding });
       return;
     }
     // Garmin/Strava style: ride the recorded line instead of flying straight at the photo.
@@ -946,35 +1027,35 @@ export default function JourneyMap({
     if (activeRouteFrame || inferredTip) {
       const tip = inferredTip ?? activeRouteFrame?.tip ?? move.from;
       const view = activeRouteFrame?.window.length
-        ? cameraFrameForPoints(unwrapPoints(activeRouteFrame.window), frameRef.current, 70, mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM, padding)
+        ? fit(activeRouteFrame.window, mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM)
         : undefined;
       const legZoom = inferredTip
-        ? cameraFrameForPoints(unwrapPoints([move.from, move.center]), frameRef.current, 70, stopZoom).zoom
+        ? fit([move.from, move.center], stopZoom).zoom
         : stopZoom;
       map.jumpTo({
         center: view?.center ?? lngLat({ latitude: tip.latitude, longitude: nearestLongitude(tip.longitude, map.getCenter().lng) }),
         zoom: view?.zoom ?? journeyTravelZoom(currentLegProgress, stopZoom, legZoom),
         bearing: 0,
-        pitch: 0,
+        pitch,
         padding,
       });
       return;
     }
-    const leg = cameraFrameForPoints(unwrapPoints([move.from, move.center]), frameRef.current, 70, stopZoom);
+    const leg = fit([move.from, move.center], stopZoom);
     if (!playing) {
-      map.jumpTo({ center: lngLat(center), zoom: leg.zoom, bearing: 0, pitch: 0, padding });
+      map.jumpTo({ center: lngLat(center), zoom: leg.zoom, bearing: 0, pitch, padding });
       return;
     }
     const continuing = previousState?.activeIndex === activeIndex &&
       previousState.seekVersion === seekVersion && previousState.phase === "approach";
     // Pull back once when a leg starts. Pause/resume and speed changes continue from the live
     // camera with only the remaining timeline duration; they never restart the whole leg.
-    if (!continuing) map.jumpTo({ center: map.getCenter(), zoom: leg.zoom, bearing: 0, pitch: 0 });
+    if (!continuing) map.jumpTo({ center: map.getCenter(), zoom: leg.zoom, bearing: 0, pitch });
     map.flyTo({
       center: lngLat(center),
       zoom: stopZoom,
       bearing: 0,
-      pitch: 0,
+      pitch,
       duration: approachAnimationDuration(remainingRef.current, speed),
     });
   }, [
@@ -995,6 +1076,7 @@ export default function JourneyMap({
     cameraPadding,
     followSuspended,
     mode,
+    terrainRevision,
     ready,
     engine,
   ]);
@@ -1012,8 +1094,9 @@ export default function JourneyMap({
 }
 
 /**
- * The engine's bounds maths against the full frame instead of the map element's current size.
- * During the hero swap the element is still an inset, and a padded inset has no room at all.
+ * Fits north-up Mercator bounds inside the uncovered stage. Perspective enlarges the
+ * near edge of tilted bounds, so reserve space for that edge as well as the flat footprint.
+ * The pixel margin also leaves breathing room for markers and terrain relief.
  */
 export function cameraFrameForPoints(
   points: Coordinates[],
@@ -1021,7 +1104,10 @@ export function cameraFrameForPoints(
   padding: number,
   maxZoom: number,
   edgePadding: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 },
+  pitch = 0,
+  verticalFieldOfView = 36.86989764584402,
 ) {
+  if (!points.length) return { center: [0, 0] as [number, number], zoom: 0 };
   const projected = points.map((point) => {
     const latitude = Math.max(-85.051129, Math.min(85.051129, point.latitude));
     const radians = latitude * Math.PI / 180;
@@ -1042,7 +1128,19 @@ export function cameraFrameForPoints(
   }
   const width = Math.max(1, frame.width - padding * 2 - edgePadding.left - edgePadding.right);
   const height = Math.max(1, frame.height - padding * 2 - edgePadding.top - edgePadding.bottom);
-  const scale = Math.min(width / Math.max(1 / 512, (maxX - minX) * 512), height / Math.max(1 / 512, (maxY - minY) * 512));
+  let scale = Math.min(width / Math.max(1 / 512, (maxX - minX) * 512), height / Math.max(1 / 512, (maxY - minY) * 512));
+  if (pitch > 0) {
+    const radians = Math.min(TERRAIN_PITCH, pitch) * Math.PI / 180;
+    const distance = Math.max(1, frame.height) / (2 * Math.tan(verticalFieldOfView * Math.PI / 360));
+    const halfX = (maxX - minX) * 256;
+    const halfY = (maxY - minY) * 256;
+    // At scale s, the near edge is halfY*s*sin(pitch) closer to the camera.
+    // Solve the perspective screen bounds for s without moving the live map to probe it.
+    const depth = halfY * Math.sin(radians);
+    const widthLimit = (width / 2) * distance / (halfX * distance + (width / 2) * depth);
+    const heightLimit = (height / 2) * distance / (halfY * Math.cos(radians) * distance + (height / 2) * depth);
+    scale = Math.min(scale, widthLimit, heightLimit);
+  }
   const fitted = Math.max(0, Math.min(maxZoom, Math.log2(scale)));
   const x = (minX + maxX) / 2;
   const y = (minY + maxY) / 2;

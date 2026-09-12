@@ -47,7 +47,7 @@ describe("Photo Journey recorded route presentation", () => {
     expect(visibleRouteSegments(story, 1, "hold", 1, true).completed).toHaveLength(1);
   });
 
-  test("never reveals untraveled recording context or its sample points", () => {
+  test("keeps the full GPX separate from traveled progress and omits sample dots", () => {
     const placements = [placement("a", 0, points[0]), placement("b", 2_000, points[2])];
     const story = buildRouteStory(disconnected, placements, [false, true]);
 
@@ -56,10 +56,13 @@ describe("Photo Journey recorded route presentation", () => {
       current: [],
     });
     expect(visibleRouteSegments(story, 1, "complete", 1, true).completed).toEqual([
-      story.legs[1]?.drawable,
+      story.progressLegs[1]?.drawable,
     ]);
     expect(baseStyle().layers.map((layer) => layer.id)).not.toContain("route-points");
-    expect(baseStyle().layers.map((layer) => layer.id)).not.toContain("route-context");
+    const layers = baseStyle().layers.map((layer) => layer.id);
+    expect(layers.indexOf("route-context")).toBeGreaterThan(-1);
+    expect(layers.indexOf("route-context")).toBeLessThan(layers.indexOf("route-completed"));
+    expect(story.context).toEqual([points.slice(0, 3).filter((_, index) => index !== 1), points.slice(3)]);
   });
 
   test("uses one route frame for the line tip and bounded camera window", () => {
@@ -69,6 +72,82 @@ describe("Photo Journey recorded route presentation", () => {
     expect(frame.tip).toEqual(frame.revealed.at(-1));
     expect(frame.window.length).toBeGreaterThan(1);
     expect(frame.travelledKm).toBeCloseTo(leg.distanceKm / 2);
+  });
+
+  test("marks the GPX prefix before the first photo as traveled", () => {
+    const placements = [placement("a", 2_000, points[2])];
+    const story = buildRouteStory(disconnected, placements, [false]);
+
+    expect(story.legs).toEqual([undefined]);
+    expect(story.progressLegs[0]?.drawable).toEqual(simplified(points.slice(0, 3)));
+    expect(visibleRouteSegments(story, 0, "hold", 1, false).completed).toEqual([
+      story.progressLegs[0]!.drawable,
+    ]);
+  });
+
+  test("recovers the selected sample when a checkpoint repeats the same coordinates", () => {
+    const repeated = [
+      { latitude: 48, longitude: 16, time: 0 },
+      { latitude: 48.01, longitude: 16.01, time: 1_000 },
+      { latitude: 48.01, longitude: 16.01, time: 3_000 },
+    ];
+    const selected = placement("pause", 2_000, repeated[1], {
+      gapSeconds: 1,
+      recordingSampleTime: 1_000,
+    });
+    const story = buildRouteStory({ points: repeated, segmentStarts: [0] }, [selected], [false]);
+
+    expect(story.progressLegs[0]?.points).toEqual(repeated.slice(0, 2));
+    expect(visibleRouteSegments(story, 0, "hold", 1, false).completed).toEqual([
+      story.progressLegs[0]!.drawable,
+    ]);
+  });
+
+  test("shows recorded progress within the first grouped checkpoint", () => {
+    const nearby = [points[0], { latitude: 48.0001, longitude: 16.0001, time: 2_000 }];
+    const placements = [placement("a", 0, nearby[0]), placement("b", 2_000, nearby[1])];
+    const story = buildRouteStory({ points: nearby, segmentStarts: [0] }, placements, [false, true]);
+
+    for (const phase of ["reveal", "hold", "departure"] as const) {
+      expect(visibleRouteSegments(story, 0, phase, 1, false, undefined, 1)).toEqual({
+        completed: [story.progressLegs[1]!.drawable],
+        current: [],
+      });
+    }
+    expect(visibleRouteSegments(story, 0, "approach", 0.5, false, undefined, 1)).toEqual({
+      completed: [],
+      current: [],
+    });
+  });
+
+  test("keeps a checkpoint's known progress when its incoming GPX leg is unavailable", () => {
+    const nearby = [points[0], { latitude: 48.0001, longitude: 16.0001, time: 2_000 }];
+    const placements = [
+      placement("a", -1, nearby[0], { gapSeconds: 0.001 }),
+      placement("b", 0, nearby[0]), // Two photos resolve to the same sample: no incoming movement.
+      placement("c", 2_000, nearby[1]),
+    ];
+    const story = buildRouteStory({ points: nearby, segmentStarts: [0] }, placements, [false, true, true]);
+    expect(story.legs[1]).toBeUndefined();
+    expect(story.legs[2]).toBeDefined();
+
+    for (const phase of ["reveal", "hold", "departure"] as const) {
+      expect(visibleRouteSegments(story, 1, phase, 1, true, undefined, 2).completed).toEqual([
+        story.progressLegs[2]!.drawable,
+      ]);
+    }
+    expect(visibleRouteSegments(story, 1, "complete", 1, true, undefined, 2).completed).toEqual([
+      story.progressLegs[2]!.drawable,
+    ]);
+  });
+
+  test("advances completed progress to a checkpoint even when its leg cannot animate", () => {
+    const placements = [placement("a", 0, points[0]), placement("b", 2_000, points[2])];
+    const story = buildRouteStory(disconnected, placements, [false, false]);
+
+    expect(story.legs[1]).toBeUndefined();
+    expect(story.progressLegs[1]?.points.at(-1)).toEqual(points[2]);
+    expect(visibleRouteSegments(story, 1, "hold", 1, false).completed.at(-1)?.at(-1)).toEqual(points[2]);
   });
 
   test("does not join disconnected days, reversed manual order, or untimed runs", () => {
@@ -108,3 +187,8 @@ describe("Photo Journey recorded route presentation", () => {
     expect(buildRouteStory({ points: [points[0]], segmentStarts: [0] }, [], []).context).toEqual([[points[0]]]);
   });
 });
+
+function simplified(points: Track["points"]) {
+  const track: Track = { points, segmentStarts: points.length ? [0] : [] };
+  return buildRouteStory(track, [], []).context[0];
+}

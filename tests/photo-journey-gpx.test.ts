@@ -336,6 +336,7 @@ describe("placing photos on the track", () => {
     expect(placement.source).toBe("track");
     expect(placement.coordinates).toEqual({ latitude: 46.47, longitude: 11.6021 });
     expect(placement.discrepancyM).toBeUndefined();
+    expect(placement.recordingSampleTime).toBe(Date.parse("2026-08-20T06:03:00Z"));
   });
 
   test("falls back to the photo, then to the position carried forward, outside coverage", () => {

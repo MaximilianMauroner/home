@@ -225,6 +225,11 @@ export async function readPhoto(
   }
 }
 
+/** A journey photo needs either a camera clock for track matching or its own GPS fix. */
+export function hasJourneyExif(metadata: Pick<PhotoMetadata, "capturedAtWallClock" | "coordinates">) {
+  return Boolean(metadata.capturedAtWallClock || metadata.coordinates);
+}
+
 export function revokePhoto(photo: JourneyPhoto) {
   URL.revokeObjectURL(photo.url);
   URL.revokeObjectURL(photo.thumbnailUrl);

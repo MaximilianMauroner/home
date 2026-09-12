@@ -18,6 +18,8 @@ export type RouteStory = {
   context: TrackPoint[][];
   /** Destination-indexed legs. Undefined means playback must not imply recorded movement. */
   legs: Array<RecordedLeg | undefined>;
+  /** Newly reached recording geometry at each checkpoint, independent of animation eligibility. */
+  progressLegs: Array<RecordedLeg | undefined>;
 };
 
 function rawSegments(track: Track) {
@@ -55,35 +57,41 @@ function isPlacementSample(point: TrackPoint, placement: Placement) {
     point.time !== undefined &&
     placement.instant !== undefined &&
     placement.gapSeconds !== undefined &&
+    (placement.recordingSampleTime === undefined || point.time === placement.recordingSampleTime) &&
     Math.abs(Math.abs(point.time - placement.instant) - placement.gapSeconds * 1000) < 0.5,
   );
 }
 
+type PlacementSample = { segmentIndex: number; pointIndex: number };
+
+function exactPlacementSample(
+  segments: readonly TrackPoint[][],
+  placement: Placement,
+): PlacementSample | undefined {
+  if (placement.ambiguous || placement.choiceUnavailable) return undefined;
+  const matches: PlacementSample[] = [];
+  segments.forEach((segment, segmentIndex) => {
+    segment.forEach((point, pointIndex) => {
+      if (isPlacementSample(point, placement)) matches.push({ segmentIndex, pointIndex });
+    });
+  });
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 function exactLeg(
   segments: readonly TrackPoint[][],
-  previous: Placement,
-  current: Placement,
+  start: PlacementSample | undefined,
+  end: PlacementSample | undefined,
 ): Pick<RecordedLeg, "points" | "segmentIndex"> | undefined {
-  const matches: Array<Pick<RecordedLeg, "points" | "segmentIndex">> = [];
-  segments.forEach((segment, segmentIndex) => {
-    const starts = segment.flatMap((point, index) => isPlacementSample(point, previous) ? [index] : []);
-    const ends = segment.flatMap((point, index) => isPlacementSample(point, current) ? [index] : []);
-    for (const start of starts) {
-      for (const end of ends) {
-        if (end <= start) continue;
-        const points = segment.slice(start, end + 1);
-        let valid = true;
-        for (let index = 0; index < points.length; index += 1) {
-          if (points[index].time === undefined || !Number.isFinite(points[index].time)) valid = false;
-          if (index > 0 && points[index].time! <= points[index - 1].time!) valid = false;
-        }
-        if (valid) matches.push({ points, segmentIndex });
-      }
-    }
-  });
-  // Duplicate points, overlapping sources, and multiple possible segments are not evidence for
-  // choosing one animated path. Their full geometry remains visible as static context.
-  return matches.length === 1 ? matches[0] : undefined;
+  if (!start || !end || start.segmentIndex !== end.segmentIndex || end.pointIndex <= start.pointIndex)
+    return undefined;
+  const points = segments[start.segmentIndex].slice(start.pointIndex, end.pointIndex + 1);
+  const valid = points.every((point, index) =>
+    point.time !== undefined &&
+    Number.isFinite(point.time) &&
+    (index === 0 || point.time! > points[index - 1].time!),
+  );
+  return valid ? { points, segmentIndex: start.segmentIndex } : undefined;
 }
 
 function prepareLeg(candidate: Pick<RecordedLeg, "points" | "segmentIndex">): RecordedLeg {
@@ -103,13 +111,25 @@ export function buildRouteStory(
   structuralEligibility: readonly boolean[] | undefined,
 ): RouteStory {
   const segments = rawSegments(track);
-  const legs = (placements ?? []).map((placement, index) => {
-    const previous = placements?.[index - 1];
-    if (!previous || !structuralEligibility?.[index]) return undefined;
-    const exact = exactLeg(segments, previous, placement);
+  const samples = (placements ?? []).map((placement) => exactPlacementSample(segments, placement));
+  const legs = (placements ?? []).map((_, index) => {
+    if (!placements?.[index - 1] || !structuralEligibility?.[index]) return undefined;
+    const exact = exactLeg(segments, samples[index - 1], samples[index]);
     return exact ? prepareLeg(exact) : undefined;
   });
-  return { context: trackSegments(track), legs };
+  const reachedBySegment = new Map<number, number>();
+  const progressLegs = samples.map((sample) => {
+    if (!sample) return undefined;
+    const previous = reachedBySegment.get(sample.segmentIndex) ?? -1;
+    if (sample.pointIndex <= previous) return undefined;
+    reachedBySegment.set(sample.segmentIndex, sample.pointIndex);
+    if (sample.pointIndex === 0) return undefined;
+    return prepareLeg({
+      segmentIndex: sample.segmentIndex,
+      points: segments[sample.segmentIndex].slice(Math.max(0, previous), sample.pointIndex + 1),
+    });
+  });
+  return { context: trackSegments(track), legs, progressLegs };
 }
 
 function normalizedLongitude(longitude: number) {

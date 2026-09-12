@@ -1,6 +1,6 @@
 import { Download, ImagePlus, LoaderCircle, Maximize2, Minimize2, Package, Pause, Play, Route, RotateCcw, SkipBack, SkipForward, Upload, Video, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { isValidUtcOffsetMinutes, parseOffsetMinutes, readPhoto, revokePhoto, sortPhotos } from "./metadata";
+import { hasJourneyExif, isValidUtcOffsetMinutes, parseOffsetMinutes, readPhoto, revokePhoto, sortPhotos } from "./metadata";
 import { acceptFiles, digestFile, expandJourneyArchives, filesEqual, isArchiveFile, MAX_GPX_BYTES, MAX_GPX_POINTS, MAX_GPX_TOTAL_BYTES } from "./ingestion";
 import { mergeTracks, parseGpx, trackStats } from "./gpx";
 import { buildBundle, buildScopedBundle, exportJourney, formatDistance, journeySummary, type ExportFormat } from "./journey-data";
@@ -428,7 +428,14 @@ export default function PhotoJourney() {
     for (const [index, file] of accepted.entries()) {
       if (!mounted.current) break;
       setImportProgress(`${index + 1} / ${accepted.length}`);
-      try { loaded.push(await readPhoto(file, nextImportOrder.current++)); }
+      try {
+        const photo = await readPhoto(file, nextImportOrder.current++);
+        if (hasJourneyExif(photo.metadata)) loaded.push(photo);
+        else {
+          revokePhoto(photo);
+          failures.push(`${file.name}: skipped because it has no EXIF capture time or GPS`);
+        }
+      }
       catch (error) { failures.push(`${file.name}: ${error instanceof Error ? error.message : "Could not read this image."}`); }
     }
     if (!mounted.current) { loaded.forEach(revokePhoto); importing.current = false; return; }
@@ -607,6 +614,9 @@ export default function PhotoJourney() {
         </div>
       </div>
       <div className="pj-notes">
+        {scopedTrack && !mapDead && <p className="pj-route-legend" aria-label="Map legend">
+          <span>GPX route</span><span className="pj-legend-traveled">Traveled</span><span className="pj-legend-position">Current position</span>
+        </p>}
         {selectedDay !== ALL_DAYS && !hasPhotos && scopedTrack
           ? <p className="pj-track-note"><Route size={14} aria-hidden="true" />No photos for this day; the recorded route is still available.</p>
           : stats ? <p className="pj-track-note"><Route size={14} aria-hidden="true" />{trackNote}</p>

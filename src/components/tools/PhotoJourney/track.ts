@@ -26,6 +26,8 @@ export type Placement = {
   recordingId?: string;
   /** Source part/segment identity; visits never group across a recorded discontinuity. */
   recordingSegmentId?: string;
+  /** Exact GPX sample selected for this photo, including when nearby samples share coordinates. */
+  recordingSampleTime?: number;
   /** Distance along the matched segment, used to distinguish a stop from a leave-and-return. */
   recordingDistanceKm?: number;
   /** Recording position kept alongside an original photo fix for an explicit choice. */
@@ -171,6 +173,7 @@ function resolve(
           offsetMinutes,
           recordingId: match.source.id,
           recordingSegmentId: `${match.found.trackIndex ?? 0}:${match.found.segmentIndex ?? 0}`,
+          recordingSampleTime: match.found.point.time,
           recordingDistanceKm: match.found.segmentDistanceKm,
           trackCoordinates: onTrack,
           conflict: true,
@@ -194,6 +197,7 @@ function resolve(
         offsetMinutes,
         recordingId: match.source.id,
         recordingSegmentId: `${match.found.trackIndex ?? 0}:${match.found.segmentIndex ?? 0}`,
+        recordingSampleTime: match.found.point.time,
         recordingDistanceKm: match.found.segmentDistanceKm,
         trackCoordinates: own ? onTrack : undefined,
         conflict: Boolean(own && discrepancyM !== undefined && discrepancyM > DISCREPANCY_LIMIT_M),

@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   extractMetadata,
+  hasJourneyExif,
   normalizeMetadata,
   sortPhotos,
 } from "../src/components/tools/PhotoJourney/metadata";
@@ -119,6 +120,12 @@ describe("Photo Journey metadata", () => {
     expect(result.capturedAt).toBeUndefined();
     expect(result.capturedAtWallClock).toBe("2024-01-01T14:02:03");
     expect(result.capturedAtLabel).toBe("2024-01-01 14:02:03");
+  });
+
+  test("excludes photos without a capture clock or GPS from a journey", () => {
+    expect(hasJourneyExif({})).toBe(false);
+    expect(hasJourneyExif({ capturedAtWallClock: "2026-08-19T12:34:56" })).toBe(true);
+    expect(hasJourneyExif({ coordinates: { latitude: 46.5, longitude: 11.6 } })).toBe(true);
   });
 });
 
