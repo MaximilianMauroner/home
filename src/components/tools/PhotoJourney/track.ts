@@ -24,6 +24,10 @@ export type Placement = {
   offsetMinutes?: number;
   /** Source recording for an unambiguous time match. */
   recordingId?: string;
+  /** Source part/segment identity; visits never group across a recorded discontinuity. */
+  recordingSegmentId?: string;
+  /** Distance along the matched segment, used to distinguish a stop from a leave-and-return. */
+  recordingDistanceKm?: number;
   /** Recording position kept alongside an original photo fix for an explicit choice. */
   trackCoordinates?: Coordinates;
   /** A source or GPS conflict needs a user decision. */
@@ -166,6 +170,8 @@ function resolve(
           instant,
           offsetMinutes,
           recordingId: match.source.id,
+          recordingSegmentId: `${match.found.trackIndex ?? 0}:${match.found.segmentIndex ?? 0}`,
+          recordingDistanceKm: match.found.segmentDistanceKm,
           trackCoordinates: onTrack,
           conflict: true,
           ambiguous: true,
@@ -187,6 +193,8 @@ function resolve(
         instant,
         offsetMinutes,
         recordingId: match.source.id,
+        recordingSegmentId: `${match.found.trackIndex ?? 0}:${match.found.segmentIndex ?? 0}`,
+        recordingDistanceKm: match.found.segmentDistanceKm,
         trackCoordinates: own ? onTrack : undefined,
         conflict: Boolean(own && discrepancyM !== undefined && discrepancyM > DISCREPANCY_LIMIT_M),
         ambiguous: match.ambiguous,

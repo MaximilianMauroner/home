@@ -283,7 +283,7 @@ describe("time lookup and simplification", () => {
 describe("placing photos on the track", () => {
   const track = parseGpx(CLIMB);
 
-  test("keeps the photo's own fix when it agrees with the track", () => {
+  test("uses the recorded position when a timed photo also has a nearby fix", () => {
     const [placement] = resolvePlacements(
       [
         photo("agree", {
@@ -294,9 +294,9 @@ describe("placing photos on the track", () => {
       ],
       track,
     );
-    expect(placement.source).toBe("photo");
+    expect(placement.source).toBe("track");
     expect(placement.discrepancyM).toBeLessThan(DISCREPANCY_LIMIT_M);
-    expect(placement.coordinates?.longitude).toBeCloseTo(11.60142, 5);
+    expect(placement.trackCoordinates).toEqual(placement.coordinates);
   });
 
   test("takes the track when the camera fix disagrees strongly", () => {
@@ -311,10 +311,10 @@ describe("placing photos on the track", () => {
       ],
       track,
     );
-    expect(placement.source).toBe("photo");
+    expect(placement.source).toBe("track");
     expect(placement.conflict).toBe(true);
     expect(placement.discrepancyM).toBeGreaterThan(700);
-    expect(placement.coordinates).toEqual({ latitude: 46.4772, longitude: 11.6014 });
+    expect(placement.coordinates).not.toEqual({ latitude: 46.4772, longitude: 11.6014 });
     const [chosen] = resolvePlacements(
       [photo("phone-drift", {
         capturedAt: wallClock("2026-08-20T06:02:00Z", 120),
@@ -322,11 +322,10 @@ describe("placing photos on the track", () => {
         coordinates: { latitude: 46.4772, longitude: 11.6014 },
       })],
       track,
-      { choices: { "phone-drift": "track" } },
+      { choices: { "phone-drift": "photo" } },
     );
-    expect(chosen.source).toBe("track");
-    expect(chosen.coordinates).toEqual({ latitude: 46.47, longitude: 11.6014 });
-    expect(chosen.elevation).toBe(1825);
+    expect(chosen.source).toBe("photo");
+    expect(chosen.coordinates).toEqual({ latitude: 46.4772, longitude: 11.6014 });
   });
 
   test("places a photo that carries no GPS at all", () => {
@@ -442,7 +441,7 @@ describe("clock handling", () => {
     const unresolved = resolvePlacements(photos, track);
     expect(unresolved.every((placement) => placement.source === "photo" && placement.instant === undefined)).toBe(true);
     const placements = resolvePlacements(photos, track, { offsetMinutes: 120 });
-    expect(placements.every((placement) => placement.source === "photo")).toBe(true);
+    expect(placements.every((placement) => placement.source === "track")).toBe(true);
     expect(placements.every((placement) => placement.instant !== undefined)).toBe(true);
   });
 
@@ -461,10 +460,10 @@ describe("clock handling", () => {
     ];
     const track = parseGpx(WANDER);
     const placements = resolvePlacements(photos, track, { offsetMinutes: 120 });
-    expect(placements[0]).toMatchObject({ source: "photo" });
-    expect(placements[1]).toMatchObject({ source: "photo", conflict: true });
+    expect(placements[0]).toMatchObject({ source: "track" });
+    expect(placements[1]).toMatchObject({ source: "track", conflict: true });
     expect(placements[1].discrepancyM).toBeGreaterThan(250);
-    expect(resolvePlacements(photos, track, { offsetMinutes: 120, choices: { "bad fix": "track" } })[1].source).toBe("track");
+    expect(resolvePlacements(photos, track, { offsetMinutes: 120, choices: { "bad fix": "photo" } })[1].source).toBe("photo");
   });
 
   test("still finds the three real quarter-hour zones", () => {

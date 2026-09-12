@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { visibleRouteSegments } from "../src/components/tools/PhotoJourney/JourneyMap";
-import { buildRouteStory, routePrefix } from "../src/components/tools/PhotoJourney/route-progress";
+import { baseStyle, visibleRouteSegments } from "../src/components/tools/PhotoJourney/JourneyMap";
+import { buildRouteStory, recordedLegFrame, routePrefix } from "../src/components/tools/PhotoJourney/route-progress";
 import { placementLegEligibility } from "../src/components/tools/PhotoJourney/timeline";
 import type { Track } from "../src/components/tools/PhotoJourney/gpx";
 import type { Placement } from "../src/components/tools/PhotoJourney/track";
@@ -45,6 +45,30 @@ describe("Photo Journey recorded route presentation", () => {
     expect(halfway.current[0][0]).toEqual(points[0]);
     expect(halfway.current[0].at(-1)).not.toEqual(points[2]);
     expect(visibleRouteSegments(story, 1, "hold", 1, true).completed).toHaveLength(1);
+  });
+
+  test("never reveals untraveled recording context or its sample points", () => {
+    const placements = [placement("a", 0, points[0]), placement("b", 2_000, points[2])];
+    const story = buildRouteStory(disconnected, placements, [false, true]);
+
+    expect(visibleRouteSegments(story, 0, "hold", 0, false)).toEqual({
+      completed: [],
+      current: [],
+    });
+    expect(visibleRouteSegments(story, 1, "complete", 1, true).completed).toEqual([
+      story.legs[1]?.drawable,
+    ]);
+    expect(baseStyle().layers.map((layer) => layer.id)).not.toContain("route-points");
+    expect(baseStyle().layers.map((layer) => layer.id)).not.toContain("route-context");
+  });
+
+  test("uses one route frame for the line tip and bounded camera window", () => {
+    const placements = [placement("a", 0, points[0]), placement("b", 2_000, points[2])];
+    const leg = buildRouteStory(disconnected, placements, [false, true]).legs[1]!;
+    const frame = recordedLegFrame(leg, 0.5, 0.05, 0.1);
+    expect(frame.tip).toEqual(frame.revealed.at(-1));
+    expect(frame.window.length).toBeGreaterThan(1);
+    expect(frame.travelledKm).toBeCloseTo(leg.distanceKm / 2);
   });
 
   test("does not join disconnected days, reversed manual order, or untimed runs", () => {

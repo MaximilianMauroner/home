@@ -59,6 +59,33 @@ describe("journey zip import", () => {
     expect(expanded.files.find((file) => file.name.endsWith(".jpg"))?.type).toBe("image/jpeg");
   });
 
+  test("inspects large journey archives instead of rejecting their container size", async () => {
+    const archive = await zipFile({ "IMG_001.jpg": "photo-bytes" });
+    Object.defineProperty(archive, "size", { value: 701 * 1024 * 1024 });
+
+    const { expanded, skipped } = await expandJourneyArchives([archive]);
+
+    expect(skipped).toEqual([]);
+    expect(expanded.files.map((file) => file.name)).toEqual(["IMG_001.jpg"]);
+  });
+
+  test("does not count ignored generated bundle copies toward the file limit", async () => {
+    const generated = Object.fromEntries(Array.from({ length: 501 }, (_, index) => [
+      `days/${index}.gpx`,
+      gpx(`<trk><trkseg>${point(1, 2)}</trkseg></trk>`),
+    ]));
+    const archive = await zipFile({
+      ...generated,
+      "journey.gpx": gpx(`<trk><trkseg>${point(1, 2)}</trkseg></trk>`),
+      "photos/01-IMG_001.jpg": "photo-bytes",
+    });
+
+    const { expanded, skipped } = await expandJourneyArchives([archive]);
+
+    expect(skipped).toEqual([]);
+    expect(expanded.files.map((file) => file.name).sort()).toEqual(["IMG_001.jpg", "journey.gpx"]);
+  });
+
   test("restores a simple bundle without duplicating the route", async () => {
     const photos = [photo("a", "2026:08:20 10:00:00")];
     const source = recording("walk", `<trk><trkseg>${point(1, 2, "2026-08-20T10:00:00Z")}${point(1, 2.1, "2026-08-20T10:01:00Z")}</trkseg></trk>`);

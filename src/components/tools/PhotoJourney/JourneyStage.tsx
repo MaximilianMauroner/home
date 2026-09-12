@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  formatCoordinates,
   formatDayKeyRange,
   formatDateRange,
   formatDistance,
   journeySummary,
 } from "./journey-data";
 import JourneyMap, { type MapMode } from "./JourneyMap";
+import PhotoCheckpointDrawer from "./PhotoCheckpointDrawer";
+import { drawerLayout } from "./drawer-layout";
 import type { Track } from "./gpx";
 import {
   distanceKm,
@@ -21,7 +22,6 @@ import { usePhotoPreload } from "./usePhotoPreload";
 
 const CARD_PHASES = new Set<JourneyPhase>(["overview", "intro", "day", "outro", "complete"]);
 const pad = (value: number) => String(value).padStart(2, "0");
-const clamp = (value: number) => Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
 /** Moving time from the track, compact enough for a stat tile: "24 min" or "8 h 24 min". */
 function formatMoving(totalSeconds: number) {
   const minutes = Math.round(totalSeconds / 60);
@@ -47,6 +47,9 @@ export default function JourneyStage({
   seekVersion,
   onTerrainState,
   onEngineFailed,
+  onPause,
+  onSelect,
+  onContinue,
 }: {
   photos: JourneyPhoto[];
   stops: JourneyStop[];
@@ -65,10 +68,17 @@ export default function JourneyStage({
   seekVersion: number;
   onTerrainState?: (state: { loading: boolean; failed: boolean }) => void;
   onEngineFailed?: () => void;
+  onPause: () => void;
+  onSelect: (index: number) => void;
+  onContinue: () => void;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1, height: 1 });
-  const [previewFailure, setPreviewFailure] = useState<string>();
+  const [manualCheckpoint, setManualCheckpoint] = useState<number>();
+  const [manualClosed, setManualClosed] = useState(false);
+  const [followSuspended, setFollowSuspended] = useState(false);
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
+  const manualTrigger = useRef<HTMLElement | null>(null);
   // The clock is the source of truth during playback. Keep the direct index fallback while the
   // timeline contract lands, and for the empty/initial state.
   const timelineIndex = photos[state.photoIndex] ? state.photoIndex : activeIndex;
@@ -79,21 +89,55 @@ export default function JourneyStage({
   const phase = state.phase;
   const departing = phase === "departure";
   const hasMapData = summary.locatedCount > 0 || Boolean(track?.points.length);
-  const dayChange = state.dayChange ?? Boolean(timeline.stops[timelineIndex]?.dayLabel);
+  const dayChange = state.dayChange;
   const preload = usePhotoPreload(photos, timelineIndex);
   const originalStatus = preload.statusFor(photo?.url);
-  const originalReady = originalStatus === "ready";
-  const handoff = card
-    ? 0
-    : reducedMotion
-      ? phase === "approach" || departing ? 0 : 1
-      : phase === "reveal"
-        ? clamp(state.phaseProgress)
-        : departing
-          ? 1 - clamp(state.phaseProgress)
-          : phase === "hold"
-            ? 1
-            : 0;
+  const checkpoint = timeline.stops[state.checkpointIndex];
+  const checkpointPhotos = checkpoint?.photoIndices.map((index) => photos[index]).filter(Boolean) ?? [];
+  const manualOpen = manualCheckpoint === state.checkpointIndex;
+  const drawerPresentationProgress = reducedMotion && phase !== "approach" && !card
+    ? 1
+    : departing ? 1 - state.phaseProgress : state.drawerProgress;
+  const checkpointPresentationProgress = reducedMotion && phase !== "approach" && !card
+    ? 1
+    : departing ? 1 - state.phaseProgress : state.checkpointProgress;
+  const effectiveDrawerProgress = manualOpen && manualClosed ? 0 : drawerPresentationProgress;
+  const layout = useMemo(
+    () => drawerLayout(size, effectiveDrawerProgress, drawerExpanded),
+    [size, effectiveDrawerProgress, drawerExpanded],
+  );
+  useEffect(() => {
+    if (playing) {
+      setManualCheckpoint(undefined);
+      setManualClosed(false);
+      setDrawerExpanded(false);
+    }
+  }, [playing]);
+  const suspendFollow = useCallback(() => {
+    setFollowSuspended(true);
+    onPause();
+  }, [onPause]);
+  const selectCheckpoint = useCallback((index: number, trigger?: HTMLElement) => {
+    manualTrigger.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    onSelect(index);
+    const selected = timeline.stops.find((entry) => entry.photoIndices.includes(index));
+    setManualCheckpoint(selected?.checkpointIndex);
+    setManualClosed(false);
+  }, [onSelect, timeline]);
+  const inspectCheckpoint = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) manualTrigger.current = document.activeElement;
+    onPause();
+    setManualCheckpoint(state.checkpointIndex);
+    setManualClosed(false);
+  }, [onPause, state.checkpointIndex]);
+  const closeManualDrawer = useCallback(() => {
+    onPause();
+    setManualClosed(true);
+    requestAnimationFrame(() => {
+      const fallback = viewport.current?.parentElement?.querySelector<HTMLElement>(".pj-play");
+      (manualTrigger.current?.isConnected ? manualTrigger.current : fallback)?.focus();
+    });
+  }, [onPause]);
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
@@ -133,7 +177,7 @@ export default function JourneyStage({
       >
         <JourneyMap
           photos={photos}
-          activeIndex={timelineIndex}
+          activeIndex={state.checkpointPhotoIndex}
           stops={stops}
           track={track}
           reducedMotion={reducedMotion}
@@ -143,8 +187,8 @@ export default function JourneyStage({
           phaseRemaining={state.phaseRemaining}
           currentLegProgress={state.currentLegProgress}
           currentLegEligible={state.currentLegEligible}
-          legEligibility={timeline.stops.map((entry) => entry.legEligible)}
-          dayChanges={timeline.stops.map((entry) => entry.dayChange)}
+          legEligibility={timeline.legEligibility}
+          dayChanges={timeline.dayChanges}
           placements={placements}
           mapMode={mapMode}
           playing={playing}
@@ -153,6 +197,12 @@ export default function JourneyStage({
           frame={size}
           onTerrainState={onTerrainState}
           onEngineFailed={onEngineFailed}
+          timeline={timeline}
+          cameraPadding={layout.padding}
+          checkpointProgress={checkpointPresentationProgress}
+          followSuspended={followSuspended}
+          onUserMove={suspendFollow}
+          onCheckpointSelect={selectCheckpoint}
         />
         {!hasMapData && (
           <div className="pj-map-empty">
@@ -161,59 +211,26 @@ export default function JourneyStage({
           </div>
         )}
       </div>
-      {photo && (
-        <div
-          className="pj-hero"
-          style={{
-            opacity: handoff,
-            visibility: handoff > 0 ? "visible" : "hidden",
-            // A dark tint of the photo's own colour fills the letterbox around mixed aspect ratios.
-            backgroundColor: photo.dominantColor
-              ? `color-mix(in oklch, ${photo.dominantColor} 26%, #05090b)`
-              : undefined,
-          }}
-        >
-          {previewFailure !== photo.id ? (
-            <img
-              key={`${photo.id}:preview`}
-              className="pj-hero-preview"
-              src={photo.thumbnailUrl}
-              // The preview is present for the whole stop, so it carries the name. Naming the
-              // original instead would move the accessible name on a decode race.
-              alt={photo.name}
-              onError={() => setPreviewFailure(photo.id)}
-            />
-          ) : (
-            <div className="pj-photo-fallback" role="img" aria-label={`${photo.name}; preview unavailable`}>
-              <span>Preview unavailable</span>
-            </div>
-          )}
-          {originalReady && (
-            <a
-              className="pj-hero-original-link"
-              href={photo.url}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`Open ${photo.name} at full resolution`}
-            >
-              <img className="pj-hero-img" src={photo.url} alt="" />
-            </a>
-          )}
-        </div>
-      )}
-      {/* Outside .pj-hero: that subtree is `visibility: hidden` for most of the timeline, and a
-          live region inside a hidden subtree is never announced. */}
-      {photo && originalStatus === "error" && (
-        <p className="pj-photo-status" role="status">Original image unavailable; showing preview.</p>
-      )}
-      {photo && !card && (
-        <Caption
-          photo={photo}
-          placement={placements?.[timelineIndex]}
-          located={stop?.located ?? false}
-          handoff={handoff}
-        />
-      )}
+      {photo && !card && (state.drawerProgress > 0 || reducedMotion && phase !== "approach") && <PhotoCheckpointDrawer
+        photos={checkpointPhotos}
+        activePhotoId={photo.id}
+        progress={drawerPresentationProgress}
+        imageProgress={reducedMotion ? 1 : state.imageProgress}
+        expanded={drawerExpanded}
+        width={layout.width}
+        height={layout.height}
+        manuallyOpened={manualOpen}
+        closed={manualOpen && manualClosed}
+        originalStatus={originalStatus}
+        placement={placements?.[timelineIndex]}
+        located={stop?.located ?? false}
+        onBrowse={(index) => onSelect(checkpoint!.photoIndices[index])}
+        onClose={closeManualDrawer}
+        onInteract={inspectCheckpoint}
+        onExpandedChange={setDrawerExpanded}
+      />}
+      {manualOpen && manualClosed && <button className="pj-continue-journey" onClick={() => { setManualCheckpoint(undefined); setManualClosed(false); setDrawerExpanded(false); setFollowSuspended(false); onContinue(); }}>Continue journey</button>}
+      {followSuspended && <button className="pj-resume-follow" onClick={() => setFollowSuspended(false)}>Resume follow</button>}
       {photo && traveling && !reducedMotion && (
         <div className="pj-travel" aria-hidden="true">
           <span className="pj-label">Next stop</span>
@@ -244,53 +261,6 @@ export default function JourneyStage({
         </div>
       )}
     </div>
-  );
-}
-
-function Caption({ photo, placement, located, handoff }: {
-  photo: JourneyPhoto;
-  placement?: Placement;
-  located: boolean;
-  handoff: number;
-}) {
-  const { metadata } = photo;
-  const exposure = [metadata.focalLength, metadata.aperture, metadata.shutterSpeed, metadata.iso]
-    .filter(Boolean)
-    .join("  ");
-  const provenance = placement?.source === "track"
-    ? "Placed from recording"
-    : placement?.source === "photo"
-      ? "Photo GPS"
-      : placement?.source === "carried"
-        ? "Unassigned"
-        : undefined;
-  const unresolvedClock = Boolean(metadata.capturedAtWallClock && metadata.utcOffsetMinutes === undefined && placement?.instant === undefined);
-  const facts = [metadata.capturedAtLabel ? `${metadata.capturedAtLabel}${unresolvedClock ? " · time not resolved" : ""}` : undefined, metadata.camera, exposure, provenance].filter(Boolean);
-  const place = placement?.conflict && placement.source === "photo"
-    ? "Photo GPS selected · recording differs"
-    : placement?.conflict && placement.source === "track"
-      ? "Recorded position selected"
-      : placement?.conflict
-        ? "Location needs a choice"
-    : placement?.source === "track"
-      ? (metadata.place ?? "Recorded position")
-      : placement?.source === "carried"
-        ? "Previous position (not this photo)"
-        : !located
-          ? "No GPS in this photo"
-          : (metadata.place ?? (placement?.coordinates && formatCoordinates(placement.coordinates)));
-  return (
-    <section className="pj-caption" style={{ opacity: handoff, visibility: handoff > 0 ? "visible" : "hidden" }}>
-      <p className="pj-caption-place" data-located={located}>{place}</p>
-      <h2>{photo.name}</h2>
-      {facts.length > 0 && (
-        <p className="pj-caption-facts">
-          {facts.map((fact) => (
-            <span key={fact}>{fact}</span>
-          ))}
-        </p>
-      )}
-    </section>
   );
 }
 

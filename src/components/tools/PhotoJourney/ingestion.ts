@@ -5,10 +5,9 @@ import type { JourneyPhoto } from './types';
 export const MAX_GPX_BYTES = 20 * 1024 * 1024;
 export const MAX_GPX_POINTS = 250_000;
 export const MAX_GPX_TOTAL_BYTES = 200 * 1024 * 1024;
-/** A bundle with photos is mostly STORE entries, so the archive is near the sum of its parts. */
-export const MAX_ARCHIVE_BYTES = 700 * 1024 * 1024;
-export const MAX_ARCHIVE_UNCOMPRESSED_BYTES = 700 * 1024 * 1024;
-export const MAX_ARCHIVE_ENTRIES = 500;
+/** Bound the data we actually materialize; exported ZIPs may also contain ignored generated copies. */
+export const MAX_ARCHIVE_UNCOMPRESSED_BYTES = 4 * 1024 * 1024 * 1024;
+export const MAX_ARCHIVE_ENTRIES = MAX_FILES + 500;
 
 export function isTrackFile(file: Pick<File, 'name' | 'type'>) {
   return /\.gpx$/i.test(file.name) || /gpx\+xml$/i.test(file.type);
@@ -67,8 +66,8 @@ export function acceptFiles(files: readonly File[], existing: readonly JourneyPh
     }
     let reason: string | undefined;
     if (!supportsPhoto(file)) reason = 'unsupported image format';
-    else if (existing.length + accepted.length >= MAX_FILES) reason = '100-photo limit';
-    else if (bytes + file.size > MAX_TOTAL_BYTES) reason = '500 MB total limit';
+    else if (existing.length + accepted.length >= MAX_FILES) reason = `${MAX_FILES}-photo limit`;
+    else if (bytes + file.size > MAX_TOTAL_BYTES) reason = '4 GB total limit';
     if (reason) skipped.push({ file, reason });
     else { accepted.push(file); bytes += file.size; }
   }
@@ -131,10 +130,6 @@ export async function expandJourneyArchives(archives: readonly File[]): Promise<
   let uncompressedBytes = 0;
 
   for (const archive of archives) {
-    if (archive.size > MAX_ARCHIVE_BYTES) {
-      skipped.push({ file: archive, reason: `ZIP exceeds the ${Math.round(MAX_ARCHIVE_BYTES / 1024 / 1024)} MB limit` });
-      continue;
-    }
     let zip: Awaited<ReturnType<typeof JSZip.loadAsync>>;
     try {
       // ArrayBuffer works in browsers and in Node tests, where JSZip cannot read Blob/File inputs.
@@ -144,21 +139,25 @@ export async function expandJourneyArchives(archives: readonly File[]): Promise<
       continue;
     }
     const entries = Object.values(zip.files).filter((entry) => !entry.dir);
-    if (entries.length > MAX_ARCHIVE_ENTRIES) {
-      skipped.push({ file: archive, reason: `ZIP exceeds the ${MAX_ARCHIVE_ENTRIES} file limit` });
-      continue;
-    }
     const candidates = entries.filter((entry) => !isIgnorableEntry(entry.name));
     const gpxPaths = candidates.filter((entry) => /\.gpx$/i.test(entry.name)).map((entry) => entry.name);
     const wantedGpx = selectJourneyGpx(gpxPaths);
+    const selected = candidates.filter((entry) => {
+      const isGpx = /\.gpx$/i.test(entry.name);
+      if (isGpx) return wantedGpx.has(entry.name);
+      const name = bundleEntryName(entry.name);
+      return supportsPhoto({ name, type: mimeForFilename(name) });
+    });
+    if (selected.length > MAX_ARCHIVE_ENTRIES) {
+      skipped.push({ file: archive, reason: `ZIP exceeds the ${MAX_ARCHIVE_ENTRIES} importable file limit` });
+      continue;
+    }
     let usable = 0;
 
-    for (const entry of candidates) {
+    for (const entry of selected) {
       const isGpx = /\.gpx$/i.test(entry.name);
-      if (isGpx && !wantedGpx.has(entry.name)) continue;
       const name = bundleEntryName(entry.name);
       const type = isGpx ? 'application/gpx+xml' : mimeForFilename(name);
-      if (!isGpx && !supportsPhoto({ name, type })) continue;
       try {
         const bytes = await entry.async('uint8array');
         uncompressedBytes += bytes.byteLength;

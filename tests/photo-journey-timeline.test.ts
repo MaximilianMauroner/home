@@ -109,16 +109,16 @@ describe("Photo Journey timeline", () => {
     photos[1].metadata.capturedAt = new Date("2024-03-14T12:00:50Z");
     photos[2].metadata.capturedAt = new Date("2024-03-15T12:00:00Z");
     const timeline = buildTimeline(photos);
-    expect(timeline.stops[1].burst).toBe(true);
-    expect(timeline.stops[1].approachDuration).toBe(0);
-    expect(timeline.stops[1].duration).toBeLessThan(timeline.stops[0].duration);
-    expect(timelineAt(timeline.stops[2].dayStart, timeline)).toMatchObject({
+    expect(timeline.stops).toHaveLength(2);
+    expect(timeline.stops[0].burst).toBe(true);
+    expect(timeline.stops[0].photoIndices).toEqual([0, 1]);
+    expect(timelineAt(timeline.stops[1].dayStart, timeline)).toMatchObject({
       phase: "day",
       dayChange: true,
-      phaseStart: timeline.stops[2].dayStart,
-      phaseEnd: timeline.stops[2].start,
+      phaseStart: timeline.stops[1].dayStart,
+      phaseEnd: timeline.stops[1].start,
     });
-    expect(timelineAt(timeline.stops[2].dayStart, timeline).dayLabel).toContain("Day 2");
+    expect(timelineAt(timeline.stops[1].dayStart, timeline).dayLabel).toContain("Day 2");
   });
   test("times legs by the real gap on the tour when shutter instants are known", () => {
     const pair = [photo(48, 16), photo(48.1, 16.1)];
@@ -134,8 +134,48 @@ describe("Photo Journey timeline", () => {
   test("uses resolved instants for nearby burst grouping", () => {
     const pair = [photo(48, 16), photo(48, 16)];
     const timeline = buildTimeline(pair, pair.map((entry) => entry.metadata.coordinates), [0, 30_000]);
-    expect(timeline.stops[1].burst).toBe(true);
-    expect(timeline.stops[1].approachDuration).toBe(0);
+    expect(timeline.stops).toHaveLength(1);
+    expect(timeline.stops[0].burst).toBe(true);
+    expect(timeline.stops[0].photoIndices).toEqual([0, 1]);
+    expect(timelineAt(timeline.stops[0].revealEnd + 1_250, timeline).photoIndex).toBe(1);
+  });
+  test("derives checkpoint, drawer, and image substages from the reveal clock", () => {
+    const timeline = buildTimeline([photo(48, 16)]);
+    const stop = timeline.stops[0];
+    expect(timelineAt(stop.revealStart + 100, timeline)).toMatchObject({ checkpointProgress: 0, drawerProgress: 0, imageProgress: 0 });
+    expect(timelineAt(stop.revealStart + 300, timeline).checkpointProgress).toBe(0.5);
+    expect(timelineAt(stop.revealStart + 575, timeline).drawerProgress).toBe(0.5);
+    expect(timelineAt(stop.revealStart + 850, timeline).imageProgress).toBe(0.5);
+  });
+  test("does not group bursts across recording or location boundaries", () => {
+    const pair = [photo(48, 16), photo(48, 16)];
+    const positions = pair.map((entry) => entry.metadata.coordinates);
+    expect(buildTimeline(pair, positions, [0, 30_000], { recordingIds: ["a", "b"] }).stops).toHaveLength(2);
+    expect(buildTimeline(pair, positions, [0, 30_000], { recordingIds: ["a", "a"], recordingSegmentIds: ["0:0", "0:1"] }).stops).toHaveLength(2);
+    expect(buildTimeline(pair, positions, [0, 30_000], { located: [true, false] }).stops).toHaveLength(2);
+    expect(buildTimeline(pair, positions, [0, 30_000], {
+      recordingIds: ["a", "a"], recordingSegmentIds: ["0:0", "0:0"], recordingDistancesKm: [0.1, 0.3],
+    }).stops).toHaveLength(2);
+  });
+  test("travels into a grouped visit and keeps its last image through departure", () => {
+    const photos = [photo(48, 16), photo(48.01, 16.01), photo(48.01, 16.01), photo(48.01, 16.01), photo(48.02, 16.02)];
+    const timeline = buildTimeline(
+      photos,
+      photos.map((entry) => entry.metadata.coordinates),
+      [0, 600_000, 610_000, 620_000, 1_200_000],
+      {
+        legEligibility: [false, true, true, true, true],
+        recordingIds: Array(5).fill("walk"),
+        recordingSegmentIds: Array(5).fill("0:0"),
+        located: Array(5).fill(true),
+      },
+    );
+    expect(timeline.stops.map((stop) => stop.photoIndices)).toEqual([[0], [1, 2, 3], [4]]);
+    expect(timeline.stops[1].approachDuration).toBeGreaterThan(0);
+    expect(timeline.legEligibility).toEqual([false, true, true, true, true]);
+    const grouped = timeline.stops[1];
+    expect(timelineAt(grouped.departureStart - 1, timeline).photoIndex).toBe(3);
+    expect(timelineAt(grouped.departureStart, timeline).photoIndex).toBe(3);
   });
   test("uses great-circle distances across the date line", () => {
     expect(

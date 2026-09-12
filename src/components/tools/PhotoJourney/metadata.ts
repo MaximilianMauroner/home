@@ -21,8 +21,8 @@ const EXIF_OPTIONS = {
 
 type ExifData = Record<string, unknown>;
 
-export const MAX_FILES = 100;
-export const MAX_TOTAL_BYTES = 500 * 1024 * 1024;
+export const MAX_FILES = 2_000;
+export const MAX_TOTAL_BYTES = 4 * 1024 * 1024 * 1024;
 
 function text(value: unknown) {
   if (typeof value === "string") return value.trim().slice(0, 160) || undefined;

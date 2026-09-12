@@ -180,3 +180,35 @@ export function recordedLegPrefix(leg: RecordedLeg, progress: number): TrackPoin
     interpolate(leg.drawable[low - 1], leg.drawable[low], (target - before) / (after - before)),
   ];
 }
+
+function pointAtDistance(leg: RecordedLeg, target: number) {
+  if (!leg.drawable.length) return undefined;
+  if (target <= 0) return leg.drawable[0];
+  if (target >= leg.distanceKm) return leg.drawable.at(-1);
+  let low = 1;
+  let high = leg.cumulativeKm.length - 1;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (leg.cumulativeKm[middle] < target) low = middle + 1;
+    else high = middle;
+  }
+  const before = leg.cumulativeKm[low - 1];
+  const after = leg.cumulativeKm[low];
+  return interpolate(leg.drawable[low - 1], leg.drawable[low], (target - before) / Math.max(Number.EPSILON, after - before));
+}
+
+/** One deterministic sample feeds the revealed line, moving marker, and route-window camera. */
+export function recordedLegFrame(leg: RecordedLeg, progress: number, behindKm = 0.25, aheadKm = 0.75) {
+  const travelledKm = Math.min(leg.distanceKm, Math.max(0, leg.distanceKm * progress));
+  const startKm = Math.max(0, travelledKm - behindKm);
+  const endKm = Math.min(leg.distanceKm, travelledKm + aheadKm);
+  const window = [pointAtDistance(leg, startKm)!];
+  leg.drawable.forEach((point, index) => {
+    const distance = leg.cumulativeKm[index];
+    if (distance > startKm && distance < endKm) window.push(point);
+  });
+  const end = pointAtDistance(leg, endKm);
+  if (end) window.push(end);
+  const revealed = recordedLegPrefix(leg, progress);
+  return { revealed, tip: revealed.at(-1), window, travelledKm };
+}
