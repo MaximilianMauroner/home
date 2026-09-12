@@ -248,7 +248,7 @@ function readme(photos: readonly JourneyPhoto[], options: BundleOptions) {
     options.title,
     '',
     `${photos.length} photos.`,
-    options.scopeLabel ? `Scope: ${options.scopeLabel}.` : '',
+    options.scopeLabel ? `Selected days: ${options.scopeLabel}.` : '',
     options.timezone ? `Trip timezone: ${options.timezone}.` : '',
     options.track ? `Route from your GPX: ${options.track.points.length} recorded points.` : 'Distance estimated from photo positions.',
     corrected ? `${corrected} photo${corrected === 1 ? '' : 's'} placed by timecode on the track rather than by the camera's own fix.` : '',

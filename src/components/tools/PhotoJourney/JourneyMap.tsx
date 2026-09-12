@@ -856,27 +856,37 @@ export default function JourneyMap({
       const elements = [...markersRef.current.values()].map((marker) => marker.getElement());
       elements.sort((a, b) => Number(b.classList.contains("pj-map-marker-active")) - Number(a.classList.contains("pj-map-marker-active")) ||
         Number(b.classList.contains("pj-map-marker-past")) - Number(a.classList.contains("pj-map-marker-past")));
-      const boxes = elements.map((element) => element.getBoundingClientRect());
+      const spacing = map.getZoom() < 11 ? 34 : 12;
+      const boxes = elements.map((element) => {
+        const box = element.getBoundingClientRect();
+        return { left: box.left - spacing, right: box.right + spacing, top: box.top - spacing, bottom: box.bottom + spacing };
+      });
       const suppressed = suppressedMarkerIndexes(boxes);
-      elements.forEach((element, index) =>
-        element.classList.toggle(
-          "pj-map-marker-suppressed",
-          suppressed.has(index) && !element.classList.contains("pj-map-marker-active"),
-        ),
-      );
+      elements.forEach((element, index) => {
+        const hidden = suppressed.has(index) && !element.classList.contains("pj-map-marker-active");
+        element.classList.toggle("pj-map-marker-suppressed", hidden);
+        element.tabIndex = hidden ? -1 : 0;
+        if (hidden) element.setAttribute("aria-hidden", "true");
+        else element.removeAttribute("aria-hidden");
+      });
     };
-    const frame = requestAnimationFrame(update);
-    const updateAfterUserMove = (event: unknown) => {
-      if (isUserMapMovement(event)) update();
+    // Refresh after programmatic camera moves too. Cap layout reads during playback.
+    let timer: number | undefined;
+    const schedule = () => {
+      if (timer !== undefined) return;
+      timer = window.setTimeout(() => { timer = undefined; update(); }, 160);
     };
-    map.on("dragend", updateAfterUserMove);
-    map.on("zoomend", updateAfterUserMove);
+    schedule();
+    map.on("move", schedule);
+    map.on("moveend", schedule);
+    map.on("resize", schedule);
     return () => {
-      cancelAnimationFrame(frame);
-      map.off("dragend", updateAfterUserMove);
-      map.off("zoomend", updateAfterUserMove);
+      if (timer !== undefined) window.clearTimeout(timer);
+      map.off("move", schedule);
+      map.off("moveend", schedule);
+      map.off("resize", schedule);
     };
-  }, [activeIndex, checkpointArrived, timeline, engine]);
+  }, [activeIndex, checkpointArrived, timeline, engine, terrainRevision]);
 
   useEffect(() => {
     const map = mapRef.current;

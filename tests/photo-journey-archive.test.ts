@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import JSZip from "jszip";
 
 import { buildBundle, buildScopedBundle } from "../src/components/tools/PhotoJourney/journey-data";
-import { expandJourneyArchives, isArchiveFile } from "../src/components/tools/PhotoJourney/ingestion";
+import { expandJourneyArchives, isArchiveFile, type ArchiveProgress } from "../src/components/tools/PhotoJourney/ingestion";
 import { parseGpx } from "../src/components/tools/PhotoJourney/gpx";
 import { normalizeMetadata } from "../src/components/tools/PhotoJourney/metadata";
 import { resolvePlacementsForRecordings } from "../src/components/tools/PhotoJourney/track";
@@ -41,6 +41,15 @@ async function zipFile(files: Record<string, string | Uint8Array>): Promise<File
 }
 
 describe("journey zip import", () => {
+  test("reports opening and completed extraction with file and byte counts across ZIPs", async () => {
+    const first = await zipFile({ "a.jpg": "abc", "b.jpg": "defg", "readme.txt": "ignored" });
+    const second = await zipFile({ "c.jpg": "hi" });
+    const progress: ArchiveProgress[] = [];
+    await expandJourneyArchives([first, second], (value) => progress.push(value));
+    expect(progress[0]).toMatchObject({ stage: "opening", archiveIndex: 1, archiveCount: 2 });
+    expect(progress.find((value) => value.archiveIndex === 1 && value.completed === 2)).toMatchObject({ total: 2, extractedBytes: 7 });
+    expect(progress.at(-1)).toMatchObject({ stage: "extracting", archiveIndex: 2, completed: 1, total: 1, extractedBytes: 9 });
+  });
   test("detects archives by name and type", () => {
     expect(isArchiveFile(new File([], "trip.zip"))).toBe(true);
     expect(isArchiveFile(new File([], "trip.ZIP", { type: "application/zip" }))).toBe(true);

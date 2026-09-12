@@ -1,4 +1,4 @@
-import { Download, ImagePlus, LoaderCircle, Maximize2, Minimize2, Package, Pause, Play, Route, RotateCcw, SkipBack, SkipForward, Upload, Video, X } from "lucide-react";
+import { Download, ImagePlus, LoaderCircle, Maximize2, Minimize2, Package, Pause, Pencil, Play, Route, RotateCcw, SkipBack, SkipForward, Upload, Video, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { hasJourneyExif, isValidUtcOffsetMinutes, parseOffsetMinutes, readPhoto, revokePhoto, sortPhotos } from "./metadata";
 import { acceptFiles, digestFile, expandJourneyArchives, filesEqual, isArchiveFile, MAX_GPX_BYTES, MAX_GPX_POINTS, MAX_GPX_TOTAL_BYTES } from "./ingestion";
@@ -7,6 +7,8 @@ import { buildBundle, buildScopedBundle, exportJourney, formatDistance, journeyS
 import { ALL_DAYS, dayLabel, deriveJourneyDays, filterTrackToDay, normalizeTimezone, photoDayKey, scopedPhotos, UNDATED_DAY, type DayScope } from "./days";
 import JourneyStage from "./JourneyStage";
 import Inspector from "./Inspector";
+import ReviewPanel from "./ReviewPanel";
+import { reviewItems, reviewCounts, type ReviewFilter } from "./review";
 import StopList from "./StopList";
 import RecordingList from "./RecordingList";
 import type { MapMode } from "./JourneyMap";
@@ -49,6 +51,7 @@ function Segmented<T extends string>({ label, value, options, disabled, onChange
 }
 
 function formatBytes(bytes: number) {
+  if (bytes === 0) return "0 bytes";
   if (bytes < 1e6) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`;
 }
@@ -107,7 +110,7 @@ function ExportPanel({
       <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => onExport("gpx")}><Download size={15} aria-hidden="true" />Download GPX</button>
       <button className="pj-pill" disabled={busy} onClick={() => onExport("geojson")}>GeoJSON</button>
       <button className="pj-pill" disabled={busy} onClick={() => onExport("json")}>Metadata JSON</button>
-      <button className="pj-pill" disabled={busy || packing} onClick={onBundle}><Package size={15} aria-hidden="true" />{packing ? "Packing…" : "Bundle this scope"}</button>
+      <button className="pj-pill" disabled={busy || packing} onClick={onBundle}><Package size={15} aria-hidden="true" />{packing ? "Packing…" : "Create journey ZIP"}</button>
       <button className="pj-pill" disabled={busy || !hasPhotos} onClick={onVideo}><Video size={15} aria-hidden="true" />{recordingVideo ? "Stop and save video" : "Export video"}</button>
       {hasPhotos && <label className="pj-pill pj-toggle" data-size="sm">
         <input type="checkbox" checked={includePhotos} onChange={(event) => onIncludePhotos(event.target.checked)} />
@@ -122,6 +125,11 @@ export default function PhotoJourney() {
   const [errors, setErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [importProgress, setImportProgress] = useState("");
+  const [importPercent, setImportPercent] = useState<number>();
+  const [editorSection, setEditorSection] = useState<"review" | "order" | "recordings" | "export">("review");
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("needs-review");
+  const [showAllRecordings, setShowAllRecordings] = useState(false);
+  const editorRef = useRef<HTMLDetailsElement>(null);
   const [order, setOrder] = useState<"capture" | "manual">("capture");
   const [title, setTitle] = useState("My photo journey");
   const [mapMode, setMapMode] = useState<MapMode>("terrain");
@@ -174,6 +182,9 @@ export default function PhotoJourney() {
   const stats = useMemo(() => (scopedTrack ? trackStats(scopedTrack) : undefined), [scopedTrack]);
   const summary = useMemo(() => journeySummary(visiblePhotos, visiblePlacements, stats, tripTimezone, scopedTrack), [visiblePhotos, visiblePlacements, stats, tripTimezone, scopedTrack]);
   const placed = useMemo(() => placementSummary(visiblePlacements), [visiblePlacements]);
+  const review = useMemo(() => reviewItems(visiblePhotos, visiblePlacements, placementChoices), [visiblePhotos, visiblePlacements, placementChoices]);
+  const reviewTotals = useMemo(() => reviewCounts(review), [review]);
+  const dayRecordings = useMemo(() => recordings.filter((recording) => selectedDay === ALL_DAYS || filterTrackToDay(recording.track, selectedDay, tripTimezone)?.points.length), [recordings, selectedDay, tripTimezone]);
   const overlappingIds = useMemo(() => overlappingRecordingIds(recordings), [recordings]);
   const photoBytes = useMemo(() => visiblePhotos.reduce((sum, photo) => sum + photo.file.size, 0), [visiblePhotos]);
   const trackNote = useMemo(() => {
@@ -184,7 +195,7 @@ export default function PhotoJourney() {
       overlappingIds.size ? "sum of included recordings; overlaps may be counted twice" : undefined,
       stats.ascentM >= 20 ? `${Math.round(stats.ascentM).toLocaleString("en")} m ascent` : undefined,
       placed.fromTrack ? `${placed.fromTrack} photo${plural(placed.fromTrack)} placed from a recording` : undefined,
-      placed.correctedCount ? `${placed.correctedCount} photo${plural(placed.correctedCount)} differ from camera GPS` : undefined,
+
     ].filter(Boolean).join(" · ");
   }, [stats, placed, overlappingIds]);
   const timelineDayKeys = useMemo(() => visiblePhotos.map((photo, index) => photoDayKey(photo, visiblePlacements[index], tripTimezone) ?? UNDATED_DAY), [visiblePhotos, visiblePlacements, tripTimezone]);
@@ -359,15 +370,28 @@ export default function PhotoJourney() {
     if (importing.current || !files.length) return;
     importing.current = true;
     setBusy(true);
+    setImportProgress("Preparing files…");
+    setImportPercent(undefined);
     pausePlayback();
     setErrors([]);
     const archives = files.filter(isArchiveFile);
     let flatFiles = files.filter((file) => !isArchiveFile(file));
     const failures: string[] = [];
     if (archives.length) {
-      setImportProgress(`Unpacking ${archives.length} ZIP${archives.length === 1 ? "" : "s"}…`);
+      setImportProgress(`Opening ${archives.length} ZIP${archives.length === 1 ? "" : "s"} (${formatBytes(archives.reduce((sum, file) => sum + file.size, 0))})…`);
       try {
-        const { expanded, skipped } = await expandJourneyArchives(archives);
+        const { expanded, skipped } = await expandJourneyArchives(archives, (progress) => {
+          if (!mounted.current) return;
+          const archiveLabel = `ZIP ${progress.archiveIndex} of ${progress.archiveCount}`;
+          if (progress.stage === "opening") {
+            setImportProgress(`Opening ${progress.archiveName} · ${archiveLabel}…`);
+            setImportPercent(undefined);
+          } else {
+            const percent = progress.total ? Math.round(progress.completed / progress.total * 100) : 0;
+            setImportProgress(`Unpacking ${archiveLabel}: ${progress.completed} / ${progress.total} files (${percent}%) · ${formatBytes(progress.extractedBytes)} extracted`);
+            setImportPercent(percent);
+          }
+        });
         flatFiles = [...flatFiles, ...expanded.files];
         for (const { file, reason } of skipped) failures.push(`${file.name}: ${reason}`);
         if (expanded.bundleTitle && photosRef.current.length === 0 && recordings.length === 0) {
@@ -421,13 +445,14 @@ export default function PhotoJourney() {
           failures.push(`${file.name}: ${error instanceof Error ? error.message : "could not be read"}`);
         }
       }
-      if (loadedRecordings.length) setRecordings((current) => [...current, ...loadedRecordings]);
+
     }
     const loaded: JourneyPhoto[] = [];
     // Decode one original at a time so a large folder does not exhaust memory.
     for (const [index, file] of accepted.entries()) {
       if (!mounted.current) break;
-      setImportProgress(`${index + 1} / ${accepted.length}`);
+      setImportProgress(`Reading ${index + 1} / ${accepted.length} photos`);
+      setImportPercent(Math.round(index / accepted.length * 100));
       try {
         const photo = await readPhoto(file, nextImportOrder.current++);
         if (hasJourneyExif(photo.metadata)) loaded.push(photo);
@@ -439,10 +464,12 @@ export default function PhotoJourney() {
       catch (error) { failures.push(`${file.name}: ${error instanceof Error ? error.message : "Could not read this image."}`); }
     }
     if (!mounted.current) { loaded.forEach(revokePhoto); importing.current = false; return; }
+    if (loadedRecordings.length) setRecordings((current) => [...current, ...loadedRecordings]);
     setPhotos((current) => order === "capture" ? sortPhotos([...current, ...loaded]) : [...current, ...loaded]);
     setErrors(failures);
     setBusy(false);
     setImportProgress("");
+    setImportPercent(undefined);
     importing.current = false;
     playback.seek(0);
   }
@@ -552,14 +579,24 @@ export default function PhotoJourney() {
         track,
         includePhotos,
       });
-      save(blob, "photo-journey-scopes.zip");
+      save(blob, `${downloadStem(title)}-all-days.zip`);
     } catch (error) {
-      setErrors([`The scope archive could not be built: ${error instanceof Error ? error.message : "unknown error"}`]);
+      setErrors([`The journey ZIP could not be built: ${error instanceof Error ? error.message : "unknown error"}`]);
     } finally {
       setPacking(false);
     }
   }, [title, tripTimezone, photos, placements, recordings, track, includePhotos]);
 
+  function openReview(filter: ReviewFilter) {
+    pausePlayback();
+    setReviewFilter(filter);
+    setEditorSection("review");
+    if (editorRef.current) {
+      editorRef.current.open = true;
+      editorRef.current.scrollIntoView({ block: "start", behavior: reducedMotion ? "auto" : "smooth" });
+      requestAnimationFrame(() => editorRef.current?.querySelector<HTMLElement>("[data-section='review']")?.focus({ preventScroll: true }));
+    }
+  }
   const hasJourney = photos.length > 0 || recordings.length > 0;
   return <div className="photo-journey" data-dragging={dragging}
     onDragOver={(event) => { if (event.dataTransfer.types.includes("Files")) { event.preventDefault(); setDragging(true); } }}
@@ -570,23 +607,26 @@ export default function PhotoJourney() {
     }} />
     {!hasJourney ? <section className="pj-upload" aria-busy={busy}>
       <div className="pj-upload-icon">{busy ? <LoaderCircle className="pj-spinner" size={22} aria-hidden="true" /> : <Upload size={22} aria-hidden="true" />}</div>
-      <h2 role={busy ? "status" : undefined}>{busy ? `Reading files ${importProgress}` : "Drop your photos, GPX, or journey ZIP here"}</h2>
+      <h2 role={busy ? "status" : undefined}>{busy ? importProgress : "Drop your photos, GPX, or journey ZIP here"}</h2>
+      {busy && <div className="pj-import-status"><progress aria-label="Import progress" max={100} value={importPercent} /><p>Large ZIPs can take several minutes to open. Keep this tab open; your journey summary appears when processing finishes.</p></div>}
       <p>JPEG, PNG, WebP, HEIC, GPX, or an exported journey ZIP. Add all days together, or add more later. Files stay in this tab; place names come from a bundled offline list.</p>
       <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}>{busy ? <LoaderCircle className="pj-spinner" size={16} aria-hidden="true" /> : <ImagePlus size={16} aria-hidden="true" />}{busy ? "Loading…" : "Add photos, GPX, or ZIP"}</button>
     </section> : <>
       <div className="pj-bar">
-        <input className="pj-title" aria-label="Journey title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} />
+        <label className="pj-title-field"><span><Pencil size={14} aria-hidden="true" />Journey title · edit</span><input className="pj-title" aria-label="Journey title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} /></label>
         <div className="pj-bar-actions">
           <label className="pj-day-select">
             <span>Show</span>
-            <select aria-label="Journey day" value={selectedDay} onChange={(event) => setSelectedDay(event.target.value)}>
+            <select aria-label="Journey day" value={selectedDay} onChange={(event) => { setSelectedDay(event.target.value); setShowAllRecordings(false); }}>
               <option value={ALL_DAYS}>All days</option>
               {days.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}{entry.photoIds.length ? ` · ${entry.photoIds.length} photo${entry.photoIds.length === 1 ? "" : "s"}` : " · recording only"}</option>)}
             </select>
           </label>
-          <button className="pj-pill pj-import-button" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />{busy ? `Reading ${importProgress}` : "Add photos, GPX, or ZIP"}</button>
+          <button className="pj-pill" onClick={() => void toggleFullscreen()}><Maximize2 size={16} aria-hidden="true" />Focus player</button>
+          <button className="pj-pill pj-import-button" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />{busy ? "Importing…" : "Add photos, GPX, or ZIP"}</button>
         </div>
       </div>
+      {busy && <div className="pj-import-status" role="status"><strong>{importProgress}</strong><progress aria-label="Import progress" max={100} value={importPercent} /><p>Import in progress. The player and totals show the previously imported files until these finish. Large ZIPs can take several minutes.</p></div>}
       <div className="pj-stage" ref={stageRef} data-recording={recordingVideo}>
         <JourneyStage photos={visiblePhotos} stops={stops} track={scopedTrack} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} state={playback.state}
           timeline={playback.timeline} playing={playback.playing}
@@ -634,7 +674,19 @@ export default function PhotoJourney() {
                   : <p>Terrain on. OpenStreetMap and elevation tiles reveal the areas shown.</p>}
         <p className="pj-keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> stops <kbd>F</kbd> fullscreen</p>
       </div>
-      <details className="pj-edit-journey">
+      <section className="pj-review-callout" aria-label="Journey review summary">
+        <div>
+          <strong>{reviewTotals["needs-review"] ? `${reviewTotals["needs-review"]} photos to review` : "Your journey is ready to explore"}</strong>
+          <p>Matching recordings supply positions by capture time. Small GPS differences are normal; differences over 60 m are flagged for review.</p>
+          {reviewTotals.conflicts > 0 && <p>If many photos are far from the recording, check the camera timezone before choosing a source. GPS drift and incorrect camera clocks can both cause differences.</p>}
+          {placed.correctedCount > 0 && <p>{placed.correctedCount} recording positions differ from camera GPS · largest difference {formatDistance(placed.worstCorrectionM / 1000)}. Neither source is guaranteed to be more accurate.</p>}
+        </div>
+        <div className="pj-bar-actions">
+          {reviewTotals.conflicts > 0 && <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => openReview("conflicts")}>Review {reviewTotals.conflicts} location conflict{reviewTotals.conflicts === 1 ? "" : "s"}</button>}
+          <button className="pj-pill" disabled={busy} onClick={() => openReview(reviewTotals["needs-review"] ? "needs-review" : "all")}>{reviewTotals["needs-review"] ? `Review all ${reviewTotals["needs-review"]} flagged photos` : "Browse photo details"}</button>
+        </div>
+      </section>
+      <details className="pj-edit-journey" ref={editorRef} onToggle={(event) => { if (event.currentTarget.open) pausePlayback(); }}>
         <summary className="pj-pill">Edit journey</summary>
         <div className="pj-edit-journey-content">
           <div className="pj-bar-actions">
@@ -643,23 +695,23 @@ export default function PhotoJourney() {
               <div className="pj-view-popover">
                 <Segmented label="Map" value={mapMode} onChange={setMapMode}
                   options={[{ value: "offline", label: "Offline" }, { value: "online", label: "OpenStreetMap" }, { value: "terrain", label: "Terrain" }]} />
-                <Segmented label="Order" value={order} disabled={busy} onChange={(value) => {
-                  setOrder(value); if (value === "capture") setPhotos(sortPhotos(photos, placements.map((placement) => placement.instant))); playback.seek(0);
-                }} options={[{ value: "capture", label: "By time" }, { value: "manual", label: "Manual" }]} />
               </div>
             </details>
-            <button className="pj-pill" data-active={editingOrder} disabled={busy} onClick={() => {
-              setEditingOrder((value) => !value);
-              if (!editingOrder) setOrder("manual");
-            }}>{editingOrder ? "Done editing" : "Edit order"}</button>
             <label className="pj-timezone">
               <span>Trip timezone</span>
               <input aria-label="Trip timezone" list="pj-timezones" value={tripTimezone} onChange={(event) => setTripTimezone(event.target.value)} onBlur={() => setTripTimezone((value) => normalizeTimezone(value))} placeholder="UTC" />
               <datalist id="pj-timezones"><option value="UTC" /><option value="Europe/Rome" /><option value="Europe/Berlin" /><option value="America/New_York" /><option value="America/Los_Angeles" /><option value="Asia/Tokyo" /></datalist>
             </label>
-            <button className="pj-pill" disabled={busy || packing} onClick={() => void downloadScopedBundle()}>Export trip scopes</button>
           </div>
+          <div className="pj-editor-sections" role="group" aria-label="Journey editor sections">
+            {([ ["review", "Review"], ["order", "Order"], ["recordings", "Recordings"], ["export", "Export"] ] as const).map(([section, label]) =>
+              <button key={section} className="pj-pill" data-section={section} aria-pressed={editorSection === section} aria-controls="pj-editor-panel" onClick={() => { pausePlayback(); setEditorSection(section); setEditingOrder(false); }}>{label}{section === "review" && reviewTotals["needs-review"] ? ` (${reviewTotals["needs-review"]})` : ""}</button>)}
+          </div>
+          <div id="pj-editor-panel" aria-busy={busy}>
+            <p className="pj-editor-selection">{dayLabel(days, selectedDay)} · {visiblePhotos.length} photos</p>
+            {editorSection === "review" && <>
           {visiblePhotos.some((photo) => photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined) && (
+        <details className="pj-clock-settings"><summary className="pj-pill">Camera clock settings</summary>
         <section className="pj-time-controls" aria-label="Photo clock settings">
           <div>
             <strong>Some camera clocks have no timezone</strong>
@@ -687,15 +739,37 @@ export default function PhotoJourney() {
             });
             setFallbackOffsetInput("");
           }}>Clear</button>}
-        </section>
+        </section></details>
           )}
-          <ExportPanel scopeLabel={dayLabel(days, selectedDay)} summary={summary} hasPhotos={hasPhotos} photoBytes={photoBytes} includePhotos={includePhotos} packing={packing} recordingVideo={recordingVideo} busy={busy}
-            onExport={download} onIncludePhotos={setIncludePhotos} onBundle={downloadBundle} onVideo={() => void exportVideo()} />
-          <div className="pj-workspace">
-          <RecordingList recordings={recordings} overlappingIds={overlappingIds} busy={busy} timezone={tripTimezone} onToggle={toggleRecording} onRemove={removeRecording} onDownload={downloadOriginal} />
-        {hasPhotos && <StopList photos={visiblePhotos} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} busy={busy} editingOrder={editingOrder} dayKeys={timelineDayKeys} dayLabels={timelineDayLabels}
-          onSelect={playback.select} onMove={movePhoto} canMove={canMovePhoto} onRemove={removePhoto} />}
-        <Inspector photo={activePhoto} placement={visiblePlacements[activeIndex]} index={activeIndex} recordings={recordings} choice={activePhoto ? placementChoices[activePhoto.id] : undefined} offsetMinutes={activePhoto ? offsetMinutesByPhoto[activePhoto.id] : undefined} onSetOffset={setPhotoOffset} onChoosePlacement={choosePlacement} />
+              <ReviewPanel key={selectedDay} items={review} filter={reviewFilter} onFilter={setReviewFilter} recordings={recordings} choices={placementChoices} offsets={offsetMinutesByPhoto} onChoose={choosePlacement} onSetOffset={setPhotoOffset} onRecordings={() => { setShowAllRecordings(true); setEditorSection("recordings"); }} />
+            </>}
+            {editorSection === "order" && <>
+              <div className="pj-bar-actions">
+                <Segmented label="Order" value={order} disabled={busy} onChange={(value) => {
+                  setOrder(value); setEditingOrder(value === "manual");
+                  if (value === "capture") setPhotos(sortPhotos(photos, placements.map((placement) => placement.instant)));
+                  playback.seek(0);
+                }} options={[{ value: "capture", label: "By time" }, { value: "manual", label: "Manual" }]} />
+                <button className="pj-pill" disabled={busy || !hasPhotos} onClick={() => { setEditingOrder(!editingOrder); if (!editingOrder) setOrder("manual"); }}>{editingOrder ? "Finish ordering" : "Enable manual ordering"}</button>
+              </div>
+              <p className="pj-editor-note">Manual ordering keeps your chosen sequence and appends new imports. Choose By time to sort by capture time again. Moves stay within the same day.</p>
+              <div className="pj-workspace">
+                {hasPhotos && <StopList photos={visiblePhotos} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} busy={busy} editingOrder={editingOrder} dayKeys={timelineDayKeys} dayLabels={timelineDayLabels}
+                  onSelect={playback.select} onMove={movePhoto} canMove={canMovePhoto} onRemove={removePhoto} />}
+                <Inspector photo={activePhoto} placement={visiblePlacements[activeIndex]} index={activeIndex} recordings={recordings} choice={activePhoto ? placementChoices[activePhoto.id] : undefined} offsetMinutes={activePhoto ? offsetMinutesByPhoto[activePhoto.id] : undefined} onSetOffset={setPhotoOffset} onChoosePlacement={choosePlacement} />
+              </div>
+            </>}
+            {editorSection === "recordings" && <>
+              {selectedDay !== ALL_DAYS && <label className="pj-pill pj-toggle"><input type="checkbox" checked={showAllRecordings} onChange={(event) => setShowAllRecordings(event.target.checked)} />Show all recordings ({recordings.length})</label>}
+              <p className="pj-editor-note">{showAllRecordings || selectedDay === ALL_DAYS ? "Showing recordings from the whole journey." : "Showing recordings with points on the selected day."} Dates and distances describe the original file. Including or excluding a recording affects the whole journey.</p>
+              <RecordingList recordings={showAllRecordings ? recordings : dayRecordings} overlappingIds={overlappingIds} busy={busy} timezone={tripTimezone} onToggle={toggleRecording} onRemove={removeRecording} onDownload={downloadOriginal} />
+              {!(showAllRecordings ? recordings : dayRecordings).length && <p className="pj-review-empty">No recordings for this selection.</p>}
+            </>}
+            {editorSection === "export" && <>
+              <ExportPanel scopeLabel={selectedDay === ALL_DAYS ? "Export all days" : `Export selected day · ${dayLabel(days, selectedDay)}`} summary={summary} hasPhotos={hasPhotos} photoBytes={photoBytes} includePhotos={includePhotos} packing={packing} recordingVideo={recordingVideo} busy={busy}
+                onExport={download} onIncludePhotos={setIncludePhotos} onBundle={downloadBundle} onVideo={() => void exportVideo()} />
+              <section className="pj-panel pj-export-all"><h3>Whole journey, organized by day</h3><p className="pj-editor-note">Create a ZIP with every day, original recordings, and metadata. The Include photos setting above also applies to this ZIP.</p><button className="pj-pill" disabled={busy || packing} onClick={() => void downloadScopedBundle()}>Create ZIP with all days</button></section>
+            </>}
           </div>
         </div>
       </details>

@@ -117,19 +117,34 @@ export type ExpandedArchive = {
   bundleTitle?: string;
 };
 
+export type ArchiveProgress = {
+  archiveName: string;
+  archiveIndex: number;
+  archiveCount: number;
+  stage: "opening" | "extracting";
+  completed: number;
+  total: number;
+  extractedBytes: number;
+};
+
 /**
  * Unpacks journey ZIP bundles (and plain zips of photos/GPX) into importable
  * files. Generated exports are skipped in favour of the original recordings;
  * `journey.json` supplies the title so a re-import keeps its name.
  */
-export async function expandJourneyArchives(archives: readonly File[]): Promise<{ expanded: ExpandedArchive; skipped: { file: File; reason: string }[] }> {
+export async function expandJourneyArchives(archives: readonly File[], onProgress?: (progress: ArchiveProgress) => void): Promise<{ expanded: ExpandedArchive; skipped: { file: File; reason: string }[] }> {
   const { default: JSZip } = await import('jszip');
   const files: File[] = [];
   const skipped: { file: File; reason: string }[] = [];
   let bundleTitle: string | undefined;
   let uncompressedBytes = 0;
 
-  for (const archive of archives) {
+  for (const [archiveIndex, archive] of archives.entries()) {
+    const report = (stage: ArchiveProgress["stage"], completed = 0, total = 0) => onProgress?.({
+      archiveName: archive.name, archiveIndex: archiveIndex + 1, archiveCount: archives.length,
+      stage, completed, total, extractedBytes: uncompressedBytes,
+    });
+    report("opening");
     let zip: Awaited<ReturnType<typeof JSZip.loadAsync>>;
     try {
       // ArrayBuffer works in browsers and in Node tests, where JSZip cannot read Blob/File inputs.
@@ -153,8 +168,9 @@ export async function expandJourneyArchives(archives: readonly File[]): Promise<
       continue;
     }
     let usable = 0;
+    report("extracting", 0, selected.length);
 
-    for (const entry of selected) {
+    for (const [index, entry] of selected.entries()) {
       const isGpx = /\.gpx$/i.test(entry.name);
       const name = bundleEntryName(entry.name);
       const type = isGpx ? 'application/gpx+xml' : mimeForFilename(name);
@@ -170,6 +186,7 @@ export async function expandJourneyArchives(archives: readonly File[]): Promise<
       } catch {
         skipped.push({ file: new File([], name), reason: `could not be read from ${archive.name}` });
       }
+      report("extracting", index + 1, selected.length);
     }
 
     if (!usable && !skipped.some((entry) => entry.file === archive)) {
