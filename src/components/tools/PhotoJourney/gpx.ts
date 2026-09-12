@@ -26,6 +26,8 @@ export type TimedPoint = {
   pointIndex: number;
   trackIndex?: number;
   segmentIndex?: number;
+  /** Distance traveled from this recorded segment's first point. */
+  segmentDistanceKm?: number;
   sourceId?: string;
 };
 
@@ -256,10 +258,13 @@ export function buildTimedIndex(track: Track, sourceId?: string): TimedIndex {
       const starts = part.segmentStarts.length ? part.segmentStarts : [0];
       const bounds = [...starts, part.points.length];
       for (let segmentIndex = 0; segmentIndex < starts.length; segmentIndex += 1) {
+        let segmentDistanceKm = 0;
         for (let localIndex = bounds[segmentIndex]; localIndex < bounds[segmentIndex + 1]; localIndex += 1) {
           const point = part.points[localIndex];
+          const previous = part.points[localIndex - 1];
+          if (previous && localIndex > bounds[segmentIndex]) segmentDistanceKm += distanceKm(previous, point);
           if (point.time === undefined || !Number.isFinite(point.time)) continue;
-          points.push({ point, pointIndex: offset + localIndex, trackIndex, segmentIndex, sourceId });
+          points.push({ point, pointIndex: offset + localIndex, trackIndex, segmentIndex, segmentDistanceKm, sourceId });
         }
       }
       offset += part.points.length;
@@ -268,10 +273,13 @@ export function buildTimedIndex(track: Track, sourceId?: string): TimedIndex {
     const starts = segmentStartsFor(track);
     const bounds = [...starts, track.points.length];
     for (let segmentIndex = 0; segmentIndex < starts.length; segmentIndex += 1) {
+      let segmentDistanceKm = 0;
       for (let pointIndex = bounds[segmentIndex]; pointIndex < bounds[segmentIndex + 1]; pointIndex += 1) {
         const point = track.points[pointIndex];
+        const previous = track.points[pointIndex - 1];
+        if (previous && pointIndex > bounds[segmentIndex]) segmentDistanceKm += distanceKm(previous, point);
         if (point.time === undefined || !Number.isFinite(point.time)) continue;
-        points.push({ point, pointIndex, segmentIndex, sourceId });
+        points.push({ point, pointIndex, segmentIndex, segmentDistanceKm, sourceId });
       }
     }
   }

@@ -1,7 +1,7 @@
-import { Download, ImagePlus, Maximize2, Minimize2, Package, Pause, Play, Route, RotateCcw, SkipBack, SkipForward, Upload, X } from "lucide-react";
+import { Download, ImagePlus, LoaderCircle, Maximize2, Minimize2, Package, Pause, Play, Route, RotateCcw, SkipBack, SkipForward, Upload, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isValidUtcOffsetMinutes, parseOffsetMinutes, readPhoto, revokePhoto, sortPhotos } from "./metadata";
-import { acceptFiles, digestFile, filesEqual, MAX_GPX_BYTES, MAX_GPX_POINTS, MAX_GPX_TOTAL_BYTES } from "./ingestion";
+import { acceptFiles, digestFile, expandJourneyArchives, filesEqual, isArchiveFile, MAX_GPX_BYTES, MAX_GPX_POINTS, MAX_GPX_TOTAL_BYTES } from "./ingestion";
 import { mergeTracks, parseGpx, trackStats } from "./gpx";
 import { buildBundle, buildScopedBundle, exportJourney, formatDistance, journeySummary, type ExportFormat } from "./journey-data";
 import { ALL_DAYS, dayLabel, deriveJourneyDays, filterTrackToDay, normalizeTimezone, photoDayKey, scopedPhotos, UNDATED_DAY, type DayScope } from "./days";
@@ -15,7 +15,7 @@ import { usePlayback, useReducedMotion } from "./usePlayback";
 import type { JourneyPhoto, JourneyRecording } from "./types";
 import "./photo-journey.css";
 
-const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,.gpx,application/gpx+xml";
+const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,.gpx,application/gpx+xml,.zip,application/zip,application/x-zip-compressed";
 function formatDuration(milliseconds: number) {
   const seconds = Math.round(milliseconds / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -60,10 +60,12 @@ function ExportPanel({
   photoBytes,
   includePhotos,
   packing,
+  recordingVideo,
   busy,
   onExport,
   onIncludePhotos,
   onBundle,
+  onVideo,
 }: {
   scopeLabel: string;
   summary: ReturnType<typeof journeySummary>;
@@ -71,10 +73,12 @@ function ExportPanel({
   photoBytes: number;
   includePhotos: boolean;
   packing: boolean;
+  recordingVideo: boolean;
   busy: boolean;
   onExport: (format: ExportFormat) => void;
   onIncludePhotos: (value: boolean) => void;
   onBundle: () => void;
+  onVideo: () => void;
 }) {
   return <section className="pj-panel pj-export" aria-label="Journey exports">
     <header className="pj-panel-head">
@@ -91,6 +95,7 @@ function ExportPanel({
       <button className="pj-pill" disabled={busy} onClick={() => onExport("geojson")}>GeoJSON</button>
       <button className="pj-pill" disabled={busy} onClick={() => onExport("json")}>Metadata JSON</button>
       <button className="pj-pill" disabled={busy || packing} onClick={onBundle}><Package size={15} aria-hidden="true" />{packing ? "Packing…" : "Bundle this scope"}</button>
+      <button className="pj-pill" disabled={busy || !hasPhotos} onClick={onVideo}><Video size={15} aria-hidden="true" />{recordingVideo ? "Stop and save video" : "Export video"}</button>
       {hasPhotos && <label className="pj-pill pj-toggle" data-size="sm">
         <input type="checkbox" checked={includePhotos} onChange={(event) => onIncludePhotos(event.target.checked)} />
         Include photos ({formatBytes(photoBytes)})
@@ -106,10 +111,9 @@ export default function PhotoJourney() {
   const [importProgress, setImportProgress] = useState("");
   const [order, setOrder] = useState<"capture" | "manual">("capture");
   const [title, setTitle] = useState("My photo journey");
-  const [mapMode, setMapMode] = useState<MapMode>("offline");
+  const [mapMode, setMapMode] = useState<MapMode>("terrain");
   const [terrain, setTerrain] = useState({ loading: false, failed: false });
   const [mapDead, setMapDead] = useState(false);
-  const [kenBurns, setKenBurns] = useState(false);
   const [editingOrder, setEditingOrder] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -124,7 +128,10 @@ export default function PhotoJourney() {
   const [placementChoices, setPlacementChoices] = useState<Record<string, PlacementChoice>>({});
   const [includePhotos, setIncludePhotos] = useState(false);
   const [packing, setPacking] = useState(false);
+  const [recordingVideo, setRecordingVideo] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
+  const recorderRef = useRef<MediaRecorder>();
+  const captureRef = useRef<MediaStream>();
   const inputRef = useRef<HTMLInputElement>(null);
   const photosRef = useRef(photos);
   const importing = useRef(false);
@@ -172,6 +179,15 @@ export default function PhotoJourney() {
   const activeIndex = playback.state.photoIndex;
   const activePhoto = visiblePhotos[activeIndex];
   const finished = playback.elapsed >= playback.total;
+  const stopVideoExport = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (recorder?.state === "recording") recorder.stop();
+    captureRef.current?.getTracks().forEach((captureTrack) => captureTrack.stop());
+  }, []);
+
+  useEffect(() => {
+    if (recordingVideo && finished) stopVideoExport();
+  }, [finished, recordingVideo, stopVideoExport]);
 
   useEffect(() => { photosRef.current = photos; }, [photos]);
   useEffect(() => {
@@ -214,6 +230,59 @@ export default function PhotoJourney() {
     } catch { setErrors(["Fullscreen is unavailable in this browser."]); }
   }
 
+  async function exportVideo() {
+    if (recordingVideo) {
+      stopVideoExport();
+      return;
+    }
+    if (!navigator.mediaDevices?.getDisplayMedia || typeof MediaRecorder === "undefined") {
+      setErrors(["Video export is unavailable in this browser."]);
+      return;
+    }
+    try {
+      playback.pause();
+      setErrors([]);
+      revealStage("start");
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 30 },
+        audio: false,
+        // Chromium uses these hints to put this tab first in the capture picker.
+        preferCurrentTab: true,
+        selfBrowserSurface: "include",
+      } as DisplayMediaStreamOptions);
+      const mimeType = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+        .find((type) => MediaRecorder.isTypeSupported(type));
+      const chunks: Blob[] = [];
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recorderRef.current = recorder;
+      captureRef.current = stream;
+      recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+      recorder.onstop = () => {
+        if (chunks.length) {
+          save(new Blob(chunks, { type: recorder.mimeType || "video/webm" }), `${downloadStem(title)}.webm`);
+        }
+        stream.getTracks().forEach((captureTrack) => captureTrack.stop());
+        recorderRef.current = undefined;
+        captureRef.current = undefined;
+        setRecordingVideo(false);
+        playback.pause();
+      };
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        if (recorder.state === "recording") recorder.stop();
+      }, { once: true });
+      recorder.start(1000);
+      setRecordingVideo(true);
+      playback.seek(0);
+      window.setTimeout(() => playback.toggle(), 150);
+    } catch (error) {
+      captureRef.current?.getTracks().forEach((captureTrack) => captureTrack.stop());
+      setRecordingVideo(false);
+      if ((error as DOMException)?.name !== "NotAllowedError") {
+        setErrors([`The video could not be recorded: ${error instanceof Error ? error.message : "unknown error"}`]);
+      }
+    }
+  }
+
   function onKey(event: KeyboardEvent) {
     const target = event.target;
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey ||
@@ -241,8 +310,24 @@ export default function PhotoJourney() {
     setBusy(true);
     playback.pause();
     setErrors([]);
-    const { accepted, tracks, skipped } = acceptFiles(files, photosRef.current);
-    const failures = skipped.map(({ file, reason }) => `${file.name}: ${reason}`);
+    const archives = files.filter(isArchiveFile);
+    let flatFiles = files.filter((file) => !isArchiveFile(file));
+    const failures: string[] = [];
+    if (archives.length) {
+      setImportProgress(`Unpacking ${archives.length} ZIP${archives.length === 1 ? "" : "s"}…`);
+      try {
+        const { expanded, skipped } = await expandJourneyArchives(archives);
+        flatFiles = [...flatFiles, ...expanded.files];
+        for (const { file, reason } of skipped) failures.push(`${file.name}: ${reason}`);
+        if (expanded.bundleTitle && photosRef.current.length === 0 && recordings.length === 0) {
+          setTitle(expanded.bundleTitle);
+        }
+      } catch {
+        for (const archive of archives) failures.push(`${archive.name}: could not be read as a ZIP`);
+      }
+    }
+    const { accepted, tracks, skipped } = acceptFiles(flatFiles, photosRef.current);
+    failures.push(...skipped.map(({ file, reason }) => `${file.name}: ${reason}`));
     const existingDigests = new Set(recordings.map((recording) => recording.digest));
     let recordingBytes = recordings.reduce((sum, recording) => sum + recording.file.size, 0);
     let recordingPoints = recordings.reduce((sum, recording) => sum + recording.track.points.length, 0);
@@ -425,38 +510,15 @@ export default function PhotoJourney() {
     <input ref={inputRef} type="file" accept={ACCEPT} multiple hidden onChange={(event) => {
       void addFiles([...(event.target.files ?? [])]); event.target.value = "";
     }} />
-    {!hasJourney ? <section className="pj-upload">
-      <div className="pj-upload-icon"><Upload size={22} /></div>
-      <h2>{busy ? `Reading files ${importProgress}` : "Drop your photos or GPX here"}</h2>
-      <p>JPEG, PNG, WebP, HEIC, or GPX. Add all days together, or add more later. Files stay in this tab; place names come from a bundled offline list.</p>
-      <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />Add photos or GPX</button>
+    {!hasJourney ? <section className="pj-upload" aria-busy={busy}>
+      <div className="pj-upload-icon">{busy ? <LoaderCircle className="pj-spinner" size={22} aria-hidden="true" /> : <Upload size={22} aria-hidden="true" />}</div>
+      <h2 role={busy ? "status" : undefined}>{busy ? `Reading files ${importProgress}` : "Drop your photos, GPX, or journey ZIP here"}</h2>
+      <p>JPEG, PNG, WebP, HEIC, GPX, or an exported journey ZIP. Add all days together, or add more later. Files stay in this tab; place names come from a bundled offline list.</p>
+      <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}>{busy ? <LoaderCircle className="pj-spinner" size={16} aria-hidden="true" /> : <ImagePlus size={16} aria-hidden="true" />}{busy ? "Loading…" : "Add photos, GPX, or ZIP"}</button>
     </section> : <>
       <div className="pj-bar">
         <input className="pj-title" aria-label="Journey title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} />
         <div className="pj-bar-actions">
-          <details className="pj-view-settings">
-            <summary className="pj-pill">View settings</summary>
-            <div className="pj-view-popover">
-              <Segmented label="Map" value={mapMode} onChange={setMapMode}
-                options={[{ value: "offline", label: "Offline" }, { value: "online", label: "OpenStreetMap" }, { value: "terrain", label: "Terrain" }]} />
-              <Segmented label="Order" value={order} disabled={busy} onChange={(value) => {
-                setOrder(value); if (value === "capture") setPhotos(sortPhotos(photos, placements.map((placement) => placement.instant))); playback.seek(0);
-              }} options={[{ value: "capture", label: "By time" }, { value: "manual", label: "Manual" }]} />
-              <label className="pj-pill pj-toggle" data-disabled={reducedMotion}>
-                <input type="checkbox" checked={kenBurns && !reducedMotion} disabled={reducedMotion} onChange={(event) => setKenBurns(event.target.checked)} />
-                Slow zoom
-              </label>
-            </div>
-          </details>
-          <button className="pj-pill" data-active={editingOrder} disabled={busy} onClick={() => {
-            setEditingOrder((value) => !value);
-            if (!editingOrder) setOrder("manual");
-          }}>{editingOrder ? "Done editing" : "Edit order"}</button>
-          <label className="pj-timezone">
-            <span>Trip timezone</span>
-            <input aria-label="Trip timezone" list="pj-timezones" value={tripTimezone} onChange={(event) => setTripTimezone(event.target.value)} onBlur={() => setTripTimezone((value) => normalizeTimezone(value))} placeholder="UTC" />
-            <datalist id="pj-timezones"><option value="UTC" /><option value="Europe/Rome" /><option value="Europe/Berlin" /><option value="America/New_York" /><option value="America/Los_Angeles" /><option value="Asia/Tokyo" /></datalist>
-          </label>
           <label className="pj-day-select">
             <span>Show</span>
             <select aria-label="Journey day" value={selectedDay} onChange={(event) => setSelectedDay(event.target.value)}>
@@ -464,15 +526,15 @@ export default function PhotoJourney() {
               {days.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}{entry.photoIds.length ? ` · ${entry.photoIds.length} photo${entry.photoIds.length === 1 ? "" : "s"}` : " · recording only"}</option>)}
             </select>
           </label>
-          <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />{busy ? `Reading ${importProgress}` : "Add photos or GPX"}</button>
-          <button className="pj-pill" disabled={busy || packing} onClick={() => void downloadScopedBundle()}>Export trip scopes</button>
+          <button className="pj-pill pj-import-button" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />{busy ? `Reading ${importProgress}` : "Add photos, GPX, or ZIP"}</button>
         </div>
       </div>
-      <div className="pj-stage" ref={stageRef}>
+      <div className="pj-stage" ref={stageRef} data-recording={recordingVideo}>
         <JourneyStage photos={visiblePhotos} stops={stops} track={scopedTrack} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} state={playback.state}
           timeline={playback.timeline} playing={playback.playing}
-          reducedMotion={reducedMotion} mapMode={mapMode} kenBurns={kenBurns} title={title} timezone={tripTimezone} speed={playback.speed} seekVersion={playback.seekVersion}
-          onTerrainState={setTerrain} onEngineFailed={() => setMapDead(true)} />
+          reducedMotion={reducedMotion} mapMode={mapMode} title={title} timezone={tripTimezone} speed={playback.speed} seekVersion={playback.seekVersion}
+          onTerrainState={setTerrain} onEngineFailed={() => setMapDead(true)} onPause={playback.pause}
+          onSelect={playback.select} onContinue={playback.toggle} />
         <div className="pj-controls">
           <div className="pj-transport">
             <button disabled={!hasPhotos || activeIndex === 0} onClick={() => playback.select(activeIndex - 1)} aria-label="Previous photo"><SkipBack /></button>
@@ -483,7 +545,7 @@ export default function PhotoJourney() {
           <div className="pj-scrub">
             <div className="pj-scrub-track" aria-hidden="true">
               <div className="pj-scrub-fill" style={{ transform: `scaleX(${playback.total ? playback.elapsed / playback.total : 0})` }} />
-              {playback.timeline.stops.map((stop) => <i key={stop.photoIndex} data-past={playback.elapsed >= stop.revealStart}
+              {playback.timeline.stops.map((stop) => <i key={stop.id} data-past={playback.elapsed >= stop.revealStart}
                 style={{ left: `${(stop.revealStart / playback.total) * 100}%` }} />)}
             </div>
             <input disabled={!hasPhotos} type="range" min={0} max={playback.total} value={playback.elapsed} onChange={(event) => playback.seek(Number(event.target.value))} aria-label="Journey progress" />
@@ -502,7 +564,7 @@ export default function PhotoJourney() {
         {mapDead
           ? <p>The 3D map is unavailable here. The journey still plays as a slideshow.</p>
           : mapMode === "offline"
-            ? <p>Offline map. No map requests leave this tab.</p>
+            ? <p>Offline map. No map requests leave this tab; the bundled outline has no street-level detail.</p>
             : mapMode === "online"
               ? <p>OpenStreetMap receives requests for the areas shown.</p>
               : terrain.failed
@@ -512,7 +574,32 @@ export default function PhotoJourney() {
                   : <p>Terrain on. OpenStreetMap and elevation tiles reveal the areas shown.</p>}
         <p className="pj-keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> stops <kbd>F</kbd> fullscreen</p>
       </div>
-      {visiblePhotos.some((photo) => photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined) && (
+      <details className="pj-edit-journey">
+        <summary className="pj-pill">Edit journey</summary>
+        <div className="pj-edit-journey-content">
+          <div className="pj-bar-actions">
+            <details className="pj-view-settings">
+              <summary className="pj-pill">View settings</summary>
+              <div className="pj-view-popover">
+                <Segmented label="Map" value={mapMode} onChange={setMapMode}
+                  options={[{ value: "offline", label: "Offline" }, { value: "online", label: "OpenStreetMap" }, { value: "terrain", label: "Terrain" }]} />
+                <Segmented label="Order" value={order} disabled={busy} onChange={(value) => {
+                  setOrder(value); if (value === "capture") setPhotos(sortPhotos(photos, placements.map((placement) => placement.instant))); playback.seek(0);
+                }} options={[{ value: "capture", label: "By time" }, { value: "manual", label: "Manual" }]} />
+              </div>
+            </details>
+            <button className="pj-pill" data-active={editingOrder} disabled={busy} onClick={() => {
+              setEditingOrder((value) => !value);
+              if (!editingOrder) setOrder("manual");
+            }}>{editingOrder ? "Done editing" : "Edit order"}</button>
+            <label className="pj-timezone">
+              <span>Trip timezone</span>
+              <input aria-label="Trip timezone" list="pj-timezones" value={tripTimezone} onChange={(event) => setTripTimezone(event.target.value)} onBlur={() => setTripTimezone((value) => normalizeTimezone(value))} placeholder="UTC" />
+              <datalist id="pj-timezones"><option value="UTC" /><option value="Europe/Rome" /><option value="Europe/Berlin" /><option value="America/New_York" /><option value="America/Los_Angeles" /><option value="Asia/Tokyo" /></datalist>
+            </label>
+            <button className="pj-pill" disabled={busy || packing} onClick={() => void downloadScopedBundle()}>Export trip scopes</button>
+          </div>
+          {visiblePhotos.some((photo) => photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined) && (
         <section className="pj-time-controls" aria-label="Photo clock settings">
           <div>
             <strong>Some camera clocks have no timezone</strong>
@@ -541,15 +628,17 @@ export default function PhotoJourney() {
             setFallbackOffsetInput("");
           }}>Clear</button>}
         </section>
-      )}
-      <ExportPanel scopeLabel={dayLabel(days, selectedDay)} summary={summary} hasPhotos={hasPhotos} photoBytes={photoBytes} includePhotos={includePhotos} packing={packing} busy={busy}
-        onExport={download} onIncludePhotos={setIncludePhotos} onBundle={downloadBundle} />
-      <div className="pj-workspace">
+          )}
+          <ExportPanel scopeLabel={dayLabel(days, selectedDay)} summary={summary} hasPhotos={hasPhotos} photoBytes={photoBytes} includePhotos={includePhotos} packing={packing} recordingVideo={recordingVideo} busy={busy}
+            onExport={download} onIncludePhotos={setIncludePhotos} onBundle={downloadBundle} onVideo={() => void exportVideo()} />
+          <div className="pj-workspace">
           <RecordingList recordings={recordings} overlappingIds={overlappingIds} busy={busy} timezone={tripTimezone} onToggle={toggleRecording} onRemove={removeRecording} onDownload={downloadOriginal} />
         {hasPhotos && <StopList photos={visiblePhotos} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} busy={busy} editingOrder={editingOrder} dayKeys={timelineDayKeys} dayLabels={timelineDayLabels}
           onSelect={playback.select} onMove={movePhoto} canMove={canMovePhoto} onRemove={removePhoto} />}
         <Inspector photo={activePhoto} placement={visiblePlacements[activeIndex]} index={activeIndex} recordings={recordings} choice={activePhoto ? placementChoices[activePhoto.id] : undefined} offsetMinutes={activePhoto ? offsetMinutesByPhoto[activePhoto.id] : undefined} onSetOffset={setPhotoOffset} onChoosePlacement={choosePlacement} />
-      </div>
+          </div>
+        </div>
+      </details>
     </>}
     {errors.length > 0 && <div className="pj-errors" role="status">
       <button onClick={() => setErrors([])} aria-label="Dismiss messages"><X size={14} /></button>

@@ -1,12 +1,22 @@
 import { describe, expect, test } from "vitest";
 
-import { approachAnimationDuration } from "../src/components/tools/PhotoJourney/JourneyMap";
+import { approachAnimationDuration, cameraFrameForPoints, isUserMapMovement } from "../src/components/tools/PhotoJourney/JourneyMap";
 import { trackStats, type Track } from "../src/components/tools/PhotoJourney/gpx";
 
 describe("Photo Journey map timing and recording budgets", () => {
   test("keeps timeline and MapLibre animation units in milliseconds", () => {
     expect(approachAnimationDuration(3_000, 1)).toBe(3_000);
     expect(approachAnimationDuration(3_000, 2)).toBe(1_500);
+  });
+
+  test("scales only the remaining phase time after a pause or speed change", () => {
+    const remainingTimelineMs = 1_800;
+    expect(approachAnimationDuration(remainingTimelineMs, 0.75)).toBe(2_400);
+    expect(approachAnimationDuration(remainingTimelineMs, 1)).toBe(1_800);
+    expect(approachAnimationDuration(remainingTimelineMs, 1.5)).toBe(1_200);
+    expect(approachAnimationDuration(remainingTimelineMs, 2)).toBe(900);
+    // Changing speed halfway through a leg uses what is left, never the original 3,000 ms.
+    expect(approachAnimationDuration(1_500, 2)).toBe(750);
   });
 
   test("handles recording-sized arrays without spread argument limits", () => {
@@ -16,5 +26,18 @@ describe("Photo Journey map timing and recording budgets", () => {
     expect(stats.pointCount).toBe(points.length);
     expect(stats.start?.valueOf()).toBe(0);
     expect(stats.end?.valueOf()).toBe((points.length - 1) * 1_000);
+  });
+
+  test("distinguishes programmatic camera updates from user movement", () => {
+    expect(isUserMapMovement({})).toBe(false);
+    expect(isUserMapMovement({ originalEvent: new Event("wheel") })).toBe(true);
+  });
+
+  test("derives camera composition from geometry, viewport, and drawer padding", () => {
+    const points = [{ latitude: 48, longitude: 16 }, { latitude: 48.005, longitude: 16.01 }];
+    const first = cameraFrameForPoints(points, { width: 1200, height: 700 }, 70, 18, { top: 0, right: 480, bottom: 0, left: 0 });
+    const second = cameraFrameForPoints(points, { width: 1200, height: 700 }, 70, 18, { top: 0, right: 480, bottom: 0, left: 0 });
+    expect(first).toEqual(second);
+    expect(first.zoom).toBeGreaterThan(10);
   });
 });

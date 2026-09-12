@@ -24,6 +24,10 @@ export type Placement = {
   offsetMinutes?: number;
   /** Source recording for an unambiguous time match. */
   recordingId?: string;
+  /** Source part/segment identity; visits never group across a recorded discontinuity. */
+  recordingSegmentId?: string;
+  /** Distance along the matched segment, used to distinguish a stop from a leave-and-return. */
+  recordingDistanceKm?: number;
   /** Recording position kept alongside an original photo fix for an explicit choice. */
   trackCoordinates?: Coordinates;
   /** A source or GPS conflict needs a user decision. */
@@ -45,6 +49,10 @@ export type PlacementOptions = {
 
 function isTrackChoice(choice: PlacementChoice | undefined) {
   return choice === "track" || (typeof choice === "object" && choice.source === "track");
+}
+
+function isPhotoChoice(choice: PlacementChoice | undefined) {
+  return choice === "photo";
 }
 
 type LookupSource = { id?: string; groups: TimedIndex["points"][] };
@@ -162,13 +170,17 @@ function resolve(
           instant,
           offsetMinutes,
           recordingId: match.source.id,
+          recordingSegmentId: `${match.found.trackIndex ?? 0}:${match.found.segmentIndex ?? 0}`,
+          recordingDistanceKm: match.found.segmentDistanceKm,
           trackCoordinates: onTrack,
           conflict: true,
           ambiguous: true,
           choiceUnavailable,
         };
       }
-      const useTrack = !own || isTrackChoice(choice);
+      // The shutter instant decides the position, like a Garmin/Strava flyover. A camera
+      // fix never wins on its own; it is only used when the viewer explicitly picks photo GPS.
+      const useTrack = !isPhotoChoice(choice) || !own;
       const coordinates = useTrack ? onTrack : own;
       carried = coordinates;
       return {
@@ -181,6 +193,8 @@ function resolve(
         instant,
         offsetMinutes,
         recordingId: match.source.id,
+        recordingSegmentId: `${match.found.trackIndex ?? 0}:${match.found.segmentIndex ?? 0}`,
+        recordingDistanceKm: match.found.segmentDistanceKm,
         trackCoordinates: own ? onTrack : undefined,
         conflict: Boolean(own && discrepancyM !== undefined && discrepancyM > DISCREPANCY_LIMIT_M),
         ambiguous: match.ambiguous,

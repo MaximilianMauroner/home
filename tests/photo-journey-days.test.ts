@@ -81,7 +81,7 @@ describe("journey day scope", () => {
     const source = recording("walk", `<trk><name>Morning</name><trkseg>${point(1, 2, "2026-08-20T10:00:00Z")}${point(1, 2.1, "2026-08-20T10:01:00Z")}</trkseg></trk>`);
     const placements = resolvePlacementsForRecordings(photos, [source], { offsetMinutes: 0 });
     const blob = await buildScopedBundle({ title: "Trip", timezone: "UTC", photos, placements, recordings: [source] });
-    const zip = await JSZip.loadAsync(blob);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const names = Object.keys(zip.files);
     expect(names).toEqual([
       "journey.gpx",
@@ -101,7 +101,7 @@ describe("journey day scope", () => {
     const undated = photo("undated");
     const placements = [{ photoId: undated.id, source: "none" as const }];
     const blob = await buildScopedBundle({ title: "Trip", timezone: "UTC", photos: [undated], placements, recordings: [] });
-    const zip = await JSZip.loadAsync(blob);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     expect(Object.keys(zip.files)).toContain("days/01-undated.gpx");
     expect(await zip.file("days/01-undated.gpx")!.async("string")).not.toContain("<wpt ");
   });
@@ -109,7 +109,7 @@ describe("journey day scope", () => {
   test("exports recording-only and undated scopes independently", async () => {
     const source = recording("multi", `<trk><trkseg>${point(1, 2, "2026-08-20T23:59:00Z")}${point(1, 2.1, "2026-08-21T00:01:00Z")}${point(1, 2.2)}</trkseg></trk>`);
     const blob = await buildScopedBundle({ title: "Trip", timezone: "UTC", photos: [], placements: [], recordings: [source], track: source.track });
-    const zip = await JSZip.loadAsync(blob);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const names = Object.keys(zip.files).filter((name) => name.endsWith(".gpx"));
     expect(names).toEqual([
       "journey.gpx",

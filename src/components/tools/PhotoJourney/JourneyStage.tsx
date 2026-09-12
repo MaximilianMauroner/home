@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  formatCoordinates,
   formatDayKeyRange,
   formatDateRange,
   formatDistance,
   journeySummary,
 } from "./journey-data";
 import JourneyMap, { type MapMode } from "./JourneyMap";
+import PhotoCheckpointDrawer from "./PhotoCheckpointDrawer";
+import { drawerLayout } from "./drawer-layout";
 import type { Track } from "./gpx";
 import {
   distanceKm,
@@ -20,10 +21,7 @@ import type { Placement } from "./track";
 import { usePhotoPreload } from "./usePhotoPreload";
 
 const CARD_PHASES = new Set<JourneyPhase>(["overview", "intro", "day", "outro", "complete"]);
-/** The photo's size while it waits on its pin. The frame keeps its own shape inside these bounds. */
-const TILE = { width: 76, height: 56 };
 const pad = (value: number) => String(value).padStart(2, "0");
-const clamp = (value: number) => Math.min(1, Math.max(0, value));
 /** Moving time from the track, compact enough for a stat tile: "24 min" or "8 h 24 min". */
 function formatMoving(totalSeconds: number) {
   const minutes = Math.round(totalSeconds / 60);
@@ -43,13 +41,15 @@ export default function JourneyStage({
   playing,
   reducedMotion,
   mapMode,
-  kenBurns,
   title,
   timezone = "UTC",
   speed,
   seekVersion,
   onTerrainState,
   onEngineFailed,
+  onPause,
+  onSelect,
+  onContinue,
 }: {
   photos: JourneyPhoto[];
   stops: JourneyStop[];
@@ -62,26 +62,82 @@ export default function JourneyStage({
   playing: boolean;
   reducedMotion: boolean;
   mapMode: MapMode;
-  kenBurns: boolean;
   title: string;
   timezone?: string;
   speed: number;
   seekVersion: number;
   onTerrainState?: (state: { loading: boolean; failed: boolean }) => void;
   onEngineFailed?: () => void;
+  onPause: () => void;
+  onSelect: (index: number) => void;
+  onContinue: () => void;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1, height: 1 });
-  const [marker, setMarker] = useState<{ x: number; y: number } | null>(null);
-  const photo = photos[activeIndex];
-  const stop = stops[activeIndex];
-  const burst = timeline.stops[activeIndex]?.burst ?? false;
+  const [manualCheckpoint, setManualCheckpoint] = useState<number>();
+  const [manualClosed, setManualClosed] = useState(false);
+  const [followSuspended, setFollowSuspended] = useState(false);
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
+  const manualTrigger = useRef<HTMLElement | null>(null);
+  // The clock is the source of truth during playback. Keep the direct index fallback while the
+  // timeline contract lands, and for the empty/initial state.
+  const timelineIndex = photos[state.photoIndex] ? state.photoIndex : activeIndex;
+  const photo = photos[timelineIndex];
+  const stop = stops[timelineIndex];
   const card = CARD_PHASES.has(state.phase);
   const traveling = state.phase === "approach";
-  const expanded = !card && (reducedMotion || !traveling);
+  const phase = state.phase;
+  const departing = phase === "departure";
   const hasMapData = summary.locatedCount > 0 || Boolean(track?.points.length);
-  const dayChange = Boolean(timeline.stops[activeIndex]?.dayLabel);
-  usePhotoPreload(photos, activeIndex);
+  const dayChange = state.dayChange;
+  const preload = usePhotoPreload(photos, timelineIndex);
+  const originalStatus = preload.statusFor(photo?.url);
+  const checkpoint = timeline.stops[state.checkpointIndex];
+  const checkpointPhotos = checkpoint?.photoIndices.map((index) => photos[index]).filter(Boolean) ?? [];
+  const manualOpen = manualCheckpoint === state.checkpointIndex;
+  const drawerPresentationProgress = reducedMotion && phase !== "approach" && !card
+    ? 1
+    : departing ? 1 - state.phaseProgress : state.drawerProgress;
+  const checkpointPresentationProgress = reducedMotion && phase !== "approach" && !card
+    ? 1
+    : departing ? 1 - state.phaseProgress : state.checkpointProgress;
+  const effectiveDrawerProgress = manualOpen && manualClosed ? 0 : drawerPresentationProgress;
+  const layout = useMemo(
+    () => drawerLayout(size, effectiveDrawerProgress, drawerExpanded),
+    [size, effectiveDrawerProgress, drawerExpanded],
+  );
+  useEffect(() => {
+    if (playing) {
+      setManualCheckpoint(undefined);
+      setManualClosed(false);
+      setDrawerExpanded(false);
+    }
+  }, [playing]);
+  const suspendFollow = useCallback(() => {
+    setFollowSuspended(true);
+    onPause();
+  }, [onPause]);
+  const selectCheckpoint = useCallback((index: number, trigger?: HTMLElement) => {
+    manualTrigger.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    onSelect(index);
+    const selected = timeline.stops.find((entry) => entry.photoIndices.includes(index));
+    setManualCheckpoint(selected?.checkpointIndex);
+    setManualClosed(false);
+  }, [onSelect, timeline]);
+  const inspectCheckpoint = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) manualTrigger.current = document.activeElement;
+    onPause();
+    setManualCheckpoint(state.checkpointIndex);
+    setManualClosed(false);
+  }, [onPause, state.checkpointIndex]);
+  const closeManualDrawer = useCallback(() => {
+    onPause();
+    setManualClosed(true);
+    requestAnimationFrame(() => {
+      const fallback = viewport.current?.parentElement?.querySelector<HTMLElement>(".pj-play");
+      (manualTrigger.current?.isConnected ? manualTrigger.current : fallback)?.focus();
+    });
+  }, [onPause]);
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
@@ -94,46 +150,7 @@ export default function JourneyStage({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const onMarkerPosition = useCallback(
-    (position: { x: number; y: number } | null) => {
-      // Keep the last full-map position while the inset is resized for the reveal.
-      if (state.phase !== "approach") return;
-      const box = viewport.current?.getBoundingClientRect();
-      // The map reports page coordinates; the hero is placed inside the stage.
-      setMarker(position && box ? { x: position.x - box.left, y: position.y - box.top } : null);
-    },
-    [state.phase],
-  );
-  // While the camera travels, the photo waits as a small tile on its map pin and grows from there.
-  // The whole move runs off the playback clock. A CSS transition cannot do this: the tile has to
-  // track the pin exactly while the map flies, and a transition retargeted every frame drags
-  // behind it. Growth is 0 on the pin and 1 filling the stage.
-  const measured = size.width > 1 && size.height > 1;
-  // A stop's index advances the moment its leg starts, so the photo mounted during the leg is
-  // already the next one. It has to stay a tile on its own pin for the whole leg: opening it, or
-  // folding it down from full size, shows the picture at a place it was not taken.
-  const growth = !measured || reducedMotion || card || !state.approachDuration
-    ? 1
-    : state.phase === "approach"
-      ? 0
-      : state.phase === "reveal"
-        ? clamp(state.phaseProgress)
-        : 1;
-  // One scale for both axes. Separate factors would squash the photo into the tile's shape and
-  // then unsquash it during the grow, which reads as the picture moving inside its own frame.
-  const tile = Math.min(TILE.width / size.width, TILE.height / size.height);
-  const eased = 1 - (1 - growth) ** 3;
-  const scale = tile + (1 - tile) * eased;
-  const pinX = marker?.x ?? size.width / 2;
-  const pinY = marker?.y ?? size.height / 2;
-  // The frame's centre travels from the pin to the middle of the stage as it grows.
-  const centerX = pinX + (size.width / 2 - pinX) * eased;
-  const centerY = pinY + (size.height / 2 - pinY) * eased;
-  const transform =
-    growth === 1
-      ? "none"
-      : `translate(${centerX - (size.width * scale) / 2}px, ${centerY - (size.height * scale) / 2}px) scale(${scale})`;
-  const previous = stops[activeIndex - 1]?.coordinates;
+  const previous = stops[timelineIndex - 1]?.coordinates;
   const legKm =
     traveling && previous && stop?.coordinates
       ? distanceKm(previous, stop.coordinates)
@@ -142,12 +159,10 @@ export default function JourneyStage({
     <div
       ref={viewport}
       className="pj-viewport"
-      data-hero={expanded ? "expanded" : "collapsed"}
       data-map={hasMapData ? "on" : "off"}
       data-card={card}
-      data-ken-burns={kenBurns && !reducedMotion && state.phase === "hold"}
       data-playing={playing}
-      data-burst={burst}
+      data-phase={phase}
     >
       <div
         className="pj-map"
@@ -162,21 +177,32 @@ export default function JourneyStage({
       >
         <JourneyMap
           photos={photos}
-          activeIndex={activeIndex}
+          activeIndex={state.checkpointPhotoIndex}
           stops={stops}
           track={track}
           reducedMotion={reducedMotion}
           phase={state.phase}
           dayChange={dayChange}
           approachDuration={state.approachDuration}
+          phaseRemaining={state.phaseRemaining}
+          currentLegProgress={state.currentLegProgress}
+          currentLegEligible={state.currentLegEligible}
+          legEligibility={timeline.legEligibility}
+          dayChanges={timeline.dayChanges}
+          placements={placements}
           mapMode={mapMode}
           playing={playing}
           speed={speed}
           seekVersion={seekVersion}
           frame={size}
-          onMarkerPosition={onMarkerPosition}
           onTerrainState={onTerrainState}
           onEngineFailed={onEngineFailed}
+          timeline={timeline}
+          cameraPadding={layout.padding}
+          checkpointProgress={checkpointPresentationProgress}
+          followSuspended={followSuspended}
+          onUserMove={suspendFollow}
+          onCheckpointSelect={selectCheckpoint}
         />
         {!hasMapData && (
           <div className="pj-map-empty">
@@ -185,45 +211,36 @@ export default function JourneyStage({
           </div>
         )}
       </div>
-      {photo && (
-        <div
-          className="pj-hero"
-          style={{
-            transform,
-            // A dark tint of the photo's own colour fills the letterbox around mixed aspect ratios.
-            backgroundColor: photo.dominantColor
-              ? `color-mix(in oklch, ${photo.dominantColor} 26%, #05090b)`
-              : undefined,
-          }}
-        >
-          {burst && !reducedMotion && photos[activeIndex - 1] && (
-            <img
-              className="pj-burst-previous"
-              src={photos[activeIndex - 1].thumbnailUrl}
-              alt=""
-            />
-          )}
-          <img
-            key={photo.id}
-            className="pj-hero-img"
-            src={photo.url}
-            alt={photo.name}
-          />
-        </div>
-      )}
-      {photo && !card && (
-        <Caption photo={photo} placement={placements?.[activeIndex]} located={stop?.located ?? false} />
-      )}
+      {photo && !card && (state.drawerProgress > 0 || reducedMotion && phase !== "approach") && <PhotoCheckpointDrawer
+        photos={checkpointPhotos}
+        activePhotoId={photo.id}
+        progress={drawerPresentationProgress}
+        imageProgress={reducedMotion ? 1 : state.imageProgress}
+        expanded={drawerExpanded}
+        width={layout.width}
+        height={layout.height}
+        manuallyOpened={manualOpen}
+        closed={manualOpen && manualClosed}
+        originalStatus={originalStatus}
+        placement={placements?.[timelineIndex]}
+        located={stop?.located ?? false}
+        onBrowse={(index) => onSelect(checkpoint!.photoIndices[index])}
+        onClose={closeManualDrawer}
+        onInteract={inspectCheckpoint}
+        onExpandedChange={setDrawerExpanded}
+      />}
+      {manualOpen && manualClosed && <button className="pj-continue-journey" onClick={() => { setManualCheckpoint(undefined); setManualClosed(false); setDrawerExpanded(false); setFollowSuspended(false); onContinue(); }}>Continue journey</button>}
+      {followSuspended && <button className="pj-resume-follow" onClick={() => setFollowSuspended(false)}>Resume follow</button>}
       {photo && traveling && !reducedMotion && (
         <div className="pj-travel" aria-hidden="true">
           <span className="pj-label">Next stop</span>
-          <strong>{placements?.[activeIndex]?.conflict
-            ? placements[activeIndex]?.source === "photo"
+          <strong>{placements?.[timelineIndex]?.conflict
+            ? placements[timelineIndex]?.source === "photo"
               ? "Photo GPS selected"
-              : placements[activeIndex]?.source === "track"
+              : placements[timelineIndex]?.source === "track"
                 ? "Recorded position selected"
                 : "Choose a location"
-            : placements?.[activeIndex]?.source === "track"
+            : placements?.[timelineIndex]?.source === "track"
               ? (photo.metadata.place ?? "Recorded position")
               : photo.metadata.place ?? photo.name}</strong>
           {legKm !== undefined && <span className="pj-travel-distance">{formatDistance(legKm)}</span>}
@@ -240,50 +257,8 @@ export default function JourneyStage({
       )}
       {photo && !card && (
         <div className="pj-counter" aria-hidden="true">
-          {pad(activeIndex + 1)} <span>/ {pad(photos.length)}</span>
+          {pad(timelineIndex + 1)} <span>/ {pad(photos.length)}</span>
         </div>
-      )}
-    </div>
-  );
-}
-
-function Caption({ photo, placement, located }: { photo: JourneyPhoto; placement?: Placement; located: boolean }) {
-  const { metadata } = photo;
-  const exposure = [metadata.focalLength, metadata.aperture, metadata.shutterSpeed, metadata.iso]
-    .filter(Boolean)
-    .join("  ");
-  const provenance = placement?.source === "track"
-    ? "Placed from recording"
-    : placement?.source === "photo"
-      ? "Photo GPS"
-      : placement?.source === "carried"
-        ? "Unassigned"
-        : undefined;
-  const unresolvedClock = Boolean(metadata.capturedAtWallClock && metadata.utcOffsetMinutes === undefined && placement?.instant === undefined);
-  const facts = [metadata.capturedAtLabel ? `${metadata.capturedAtLabel}${unresolvedClock ? " · time not resolved" : ""}` : undefined, metadata.camera, exposure, provenance].filter(Boolean);
-  const place = placement?.conflict && placement.source === "photo"
-    ? "Photo GPS selected · recording differs"
-    : placement?.conflict && placement.source === "track"
-      ? "Recorded position selected"
-      : placement?.conflict
-        ? "Location needs a choice"
-    : placement?.source === "track"
-      ? (metadata.place ?? "Recorded position")
-      : placement?.source === "carried"
-        ? "Previous position (not this photo)"
-        : !located
-          ? "No GPS in this photo"
-          : (metadata.place ?? (placement?.coordinates && formatCoordinates(placement.coordinates)));
-  return (
-    <div className="pj-caption" aria-hidden="true">
-      <p className="pj-caption-place" data-located={located}>{place}</p>
-      <h2>{photo.name}</h2>
-      {facts.length > 0 && (
-        <p className="pj-caption-facts">
-          {facts.map((fact) => (
-            <span key={fact}>{fact}</span>
-          ))}
-        </p>
       )}
     </div>
   );

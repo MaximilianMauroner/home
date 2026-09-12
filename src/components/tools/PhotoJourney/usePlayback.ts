@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { buildTimeline, timelineAt } from "./timeline";
+import { buildTimeline, photoHoldTime, placementLegEligibility, timelineAt } from "./timeline";
 import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
 
@@ -30,9 +30,20 @@ export function usePlayback(
     () => placements?.map((placement) => placement.instant),
     [placements],
   );
+  const legEligibility = useMemo(
+    () => placementLegEligibility(placements, dayOptions?.dayKeys),
+    [placements, dayOptions?.dayKeys],
+  );
   const timeline = useMemo(
-    () => buildTimeline(photos, positions, instants, dayOptions),
-    [photos, positions, instants, dayOptions?.dayKeys, dayOptions?.dayLabels],
+    () => buildTimeline(photos, positions, instants, {
+      ...dayOptions,
+      legEligibility,
+      recordingIds: placements?.map((placement) => placement.recordingId),
+      recordingSegmentIds: placements?.map((placement) => placement.recordingSegmentId),
+      recordingDistancesKm: placements?.map((placement) => placement.recordingDistanceKm),
+      located: placements?.map((placement) => placement.source === "photo" || placement.source === "track"),
+    }),
+    [photos, positions, instants, dayOptions?.dayKeys, dayOptions?.dayLabels, legEligibility, placements],
   );
   const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -68,7 +79,8 @@ export function usePlayback(
     // Keep the opening card on the first import. Later changes need a paused, visible stop so a
     // day filter, reorder, or removal never leaves the clock pointing at an old array position.
     if (!initial) {
-      setElapsed(timeline.stops[nextIndex]?.revealStart ?? 0);
+      const retainedStop = timeline.stops.find((stop) => stop.photoIndices.includes(nextIndex));
+      setElapsed(retainedStop ? photoHoldTime(retainedStop, nextIndex) : 0);
       setPlaying(false);
       setSeekVersion((version) => version + 1);
     }
@@ -118,13 +130,12 @@ export function usePlayback(
     setSeekVersion((version) => version + 1);
   }, [photos, timeline, total]);
   const select = useCallback((index: number) => {
-    const safeIndex = Math.min(timeline.stops.length - 1, Math.max(0, index));
-    const stop = timeline.stops[safeIndex];
+    const safeIndex = Math.min(photos.length - 1, Math.max(0, index));
+    const stop = timeline.stops.find((entry) => entry.photoIndices.includes(safeIndex));
     if (!stop) return;
     setActivePhotoId(photos[safeIndex]?.id);
-    // While playing, replay the leg into the stop. While paused, show the photo itself.
-    seek(playing ? stop.start : stop.revealStart, playing);
-  }, [photos, seek, timeline, playing]);
+    seek(photoHoldTime(stop, safeIndex));
+  }, [photos, seek, timeline]);
   const pause = useCallback(() => setPlaying(false), []);
   function toggle() {
     if (!photos.length) return;

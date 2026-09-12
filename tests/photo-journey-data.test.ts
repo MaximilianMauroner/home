@@ -20,12 +20,12 @@ describe('journey ingestion', () => {
     const bad = new File([], 'bad.txt', { type: 'text/plain' });
     const result = acceptFiles([huge, small, bad], []);
     expect(result.accepted).toEqual([small]);
-    expect(result.skipped.map((item) => item.reason)).toEqual(['500 MB total limit', 'unsupported image format']);
+    expect(result.skipped.map((item) => item.reason)).toEqual(['4 GB total limit', 'unsupported image format']);
   });
   test('reports count limits and accepts HEIC with no browser MIME', () => {
     const heic = new File([], 'phone.HEIC');
     expect(acceptFiles([heic], []).accepted).toEqual([heic]);
-    expect(acceptFiles([heic], Array.from({ length: 100 }, () => photo('old'))).skipped[0].reason).toBe('100-photo limit');
+    expect(acceptFiles([heic], Array.from({ length: 2_000 }, () => photo('old'))).skipped[0].reason).toBe('2000-photo limit');
   });
 });
 
