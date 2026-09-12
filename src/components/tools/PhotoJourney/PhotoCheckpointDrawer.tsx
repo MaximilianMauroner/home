@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, ExternalLink, Maximize2, Minimize2, X } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
 import type { PhotoPreloadStatus } from "./usePhotoPreload";
@@ -9,6 +9,7 @@ export default function PhotoCheckpointDrawer({
   activePhotoId,
   progress,
   imageProgress,
+  photoProgress = 1,
   expanded,
   width,
   height,
@@ -26,6 +27,7 @@ export default function PhotoCheckpointDrawer({
   activePhotoId?: string;
   progress: number;
   imageProgress: number;
+  photoProgress?: number;
   expanded: boolean;
   width: number;
   height: number;
@@ -66,11 +68,11 @@ export default function PhotoCheckpointDrawer({
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
   }, [manuallyOpened, closed, onClose]);
-  if (!photo || closed) return null;
-  const browse = (next: number) => {
+  const browse = useCallback((next: number) => {
     onInteract();
     onBrowse(Math.min(photos.length - 1, Math.max(0, next)));
-  };
+  }, [onInteract, onBrowse, photos.length]);
+  if (!photo || closed) return null;
   return (
     <aside
       ref={drawer}
@@ -95,9 +97,12 @@ export default function PhotoCheckpointDrawer({
         </div>
       </header>
       <div className="pj-drawer-viewer" style={{ "--pj-image-progress": imageProgress } as CSSProperties}>
+        {photoProgress < 1 && index > 0 && <img className="pj-drawer-previous" src={photos[index - 1].thumbnailUrl} alt="" aria-hidden="true" />}
+        <div className="pj-drawer-image" style={{ opacity: photoProgress }}>
         {previewFailed !== photo.id ? <img key={`${photo.id}:preview`} className="pj-drawer-preview" src={photo.thumbnailUrl} alt={photo.name} onError={() => setPreviewFailed(photo.id)} />
           : <div className="pj-photo-fallback" role="img" aria-label={`${photo.name}; preview unavailable`}><span>Preview unavailable</span></div>}
         {originalReady && !originalError && <img key={`${photo.id}:original`} className="pj-drawer-original" src={photo.url} alt="" onError={() => setOriginalFailed(photo.id)} />}
+        </div>
         {originalError && <p className="pj-photo-status" role="status">Original unavailable; showing preview.</p>}
         <a className="pj-full-resolution" href={photo.url} target="_blank" rel="noreferrer" onClick={onInteract}>
           <ExternalLink aria-hidden="true" /> Full resolution
@@ -107,11 +112,20 @@ export default function PhotoCheckpointDrawer({
         <p data-located={located}>{place}</p>
         <h2>{photo.name}</h2>
       </section>
-      <div className="pj-drawer-strip" role="group" aria-label="Photos at this checkpoint">
-        <button disabled={index === 0} onClick={() => browse(index - 1)} aria-label="Previous checkpoint photo"><ChevronLeft /></button>
-        {photos.map((entry, photoIndex) => <button key={entry.id} data-active={photoIndex === index} onClick={() => browse(photoIndex)} aria-label={`Show ${entry.name}`} aria-current={photoIndex === index ? "true" : undefined}><img src={entry.thumbnailUrl} alt="" /></button>)}
-        <button disabled={index === photos.length - 1} onClick={() => browse(index + 1)} aria-label="Next checkpoint photo"><ChevronRight /></button>
-      </div>
+      <CheckpointStrip photos={photos} index={index} browse={browse} />
     </aside>
   );
 }
+
+// A long burst must not reconcile hundreds of thumbnails on each animation frame.
+const CheckpointStrip = memo(function CheckpointStrip({ photos, index, browse }: {
+  photos: JourneyPhoto[];
+  index: number;
+  browse: (index: number) => void;
+}) {
+  return <div className="pj-drawer-strip" role="group" aria-label="Photos at this checkpoint">
+        <button disabled={index === 0} onClick={() => browse(index - 1)} aria-label="Previous checkpoint photo"><ChevronLeft /></button>
+        {photos.map((entry, photoIndex) => <button key={entry.id} data-active={photoIndex === index} onClick={() => browse(photoIndex)} aria-label={`Show ${entry.name}`} aria-current={photoIndex === index ? "true" : undefined}><img src={entry.thumbnailUrl} alt="" /></button>)}
+        <button disabled={index === photos.length - 1} onClick={() => browse(index + 1)} aria-label="Next checkpoint photo"><ChevronRight /></button>
+      </div>;
+});

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   formatDayKeyRange,
   formatDateRange,
@@ -8,6 +8,7 @@ import {
 import JourneyMap, { type MapMode } from "./JourneyMap";
 import PhotoCheckpointDrawer from "./PhotoCheckpointDrawer";
 import { drawerLayout } from "./drawer-layout";
+import { burstPhotoProgress, journeyMotion } from "./motion";
 import type { Track } from "./gpx";
 import {
   distanceKm,
@@ -47,6 +48,7 @@ export default function JourneyStage({
   seekVersion,
   onTerrainState,
   onEngineFailed,
+  onPlaybackReady,
   onPause,
   onSelect,
   onContinue,
@@ -68,6 +70,7 @@ export default function JourneyStage({
   seekVersion: number;
   onTerrainState?: (state: { loading: boolean; failed: boolean }) => void;
   onEngineFailed?: () => void;
+  onPlaybackReady?: (ready: boolean) => void;
   onPause: () => void;
   onSelect: (index: number) => void;
   onContinue: () => void;
@@ -87,20 +90,19 @@ export default function JourneyStage({
   const card = CARD_PHASES.has(state.phase);
   const traveling = state.phase === "approach";
   const phase = state.phase;
-  const departing = phase === "departure";
+  const motion = journeyMotion(state, reducedMotion);
   const hasMapData = summary.locatedCount > 0 || Boolean(track?.points.length);
   const dayChange = state.dayChange;
   const preload = usePhotoPreload(photos, timelineIndex);
   const originalStatus = preload.statusFor(photo?.url);
   const checkpoint = timeline.stops[state.checkpointIndex];
-  const checkpointPhotos = checkpoint?.photoIndices.map((index) => photos[index]).filter(Boolean) ?? [];
+  const checkpointPhotos = useMemo(
+    () => checkpoint?.photoIndices.map((index) => photos[index]).filter(Boolean) ?? [],
+    [checkpoint, photos],
+  );
   const manualOpen = manualCheckpoint === state.checkpointIndex;
-  const drawerPresentationProgress = reducedMotion && phase !== "approach" && !card
-    ? 1
-    : departing ? 1 - state.phaseProgress : state.drawerProgress;
-  const checkpointPresentationProgress = reducedMotion && phase !== "approach" && !card
-    ? 1
-    : departing ? 1 - state.phaseProgress : state.checkpointProgress;
+  const drawerPresentationProgress = motion.drawer;
+  const checkpointPresentationProgress = motion.checkpoint;
   const effectiveDrawerProgress = manualOpen && manualClosed ? 0 : drawerPresentationProgress;
   const layout = useMemo(
     () => drawerLayout(size, effectiveDrawerProgress, drawerExpanded),
@@ -130,6 +132,10 @@ export default function JourneyStage({
     setManualCheckpoint(state.checkpointIndex);
     setManualClosed(false);
   }, [onPause, state.checkpointIndex]);
+  const browseCheckpoint = useCallback((index: number) => {
+    const photoIndex = checkpoint?.photoIndices[index];
+    if (photoIndex !== undefined) onSelect(photoIndex);
+  }, [checkpoint, onSelect]);
   const closeManualDrawer = useCallback(() => {
     onPause();
     setManualClosed(true);
@@ -185,7 +191,7 @@ export default function JourneyStage({
           dayChange={dayChange}
           approachDuration={state.approachDuration}
           phaseRemaining={state.phaseRemaining}
-          currentLegProgress={state.currentLegProgress}
+          currentLegProgress={motion.leg}
           currentLegEligible={state.currentLegEligible}
           legEligibility={timeline.legEligibility}
           dayChanges={timeline.dayChanges}
@@ -197,6 +203,7 @@ export default function JourneyStage({
           frame={size}
           onTerrainState={onTerrainState}
           onEngineFailed={onEngineFailed}
+          onPlaybackReady={onPlaybackReady}
           timeline={timeline}
           cameraPadding={layout.padding}
           checkpointProgress={checkpointPresentationProgress}
@@ -211,11 +218,12 @@ export default function JourneyStage({
           </div>
         )}
       </div>
-      {photo && !card && (state.drawerProgress > 0 || reducedMotion && phase !== "approach") && <PhotoCheckpointDrawer
+      {photo && !card && drawerPresentationProgress > 0 && <PhotoCheckpointDrawer
         photos={checkpointPhotos}
         activePhotoId={photo.id}
         progress={drawerPresentationProgress}
-        imageProgress={reducedMotion ? 1 : state.imageProgress}
+        imageProgress={motion.image}
+        photoProgress={manualOpen ? 1 : burstPhotoProgress(state, checkpoint?.photoIndices.indexOf(timelineIndex) ?? 0, reducedMotion)}
         expanded={drawerExpanded}
         width={layout.width}
         height={layout.height}
@@ -224,7 +232,7 @@ export default function JourneyStage({
         originalStatus={originalStatus}
         placement={placements?.[timelineIndex]}
         located={stop?.located ?? false}
-        onBrowse={(index) => onSelect(checkpoint!.photoIndices[index])}
+        onBrowse={browseCheckpoint}
         onClose={closeManualDrawer}
         onInteract={inspectCheckpoint}
         onExpandedChange={setDrawerExpanded}
@@ -232,7 +240,7 @@ export default function JourneyStage({
       {manualOpen && manualClosed && <button className="pj-continue-journey" onClick={() => { setManualCheckpoint(undefined); setManualClosed(false); setDrawerExpanded(false); setFollowSuspended(false); onContinue(); }}>Continue journey</button>}
       {followSuspended && <button className="pj-resume-follow" onClick={() => setFollowSuspended(false)}>Resume follow</button>}
       {photo && traveling && !reducedMotion && (
-        <div className="pj-travel" aria-hidden="true">
+        <div className="pj-travel" aria-hidden="true" style={{ opacity: motion.travel, transform: `translateY(${(1 - motion.travel) * 6}px)` }}>
           <span className="pj-label">Next stop</span>
           <strong>{placements?.[timelineIndex]?.conflict
             ? placements[timelineIndex]?.source === "photo"
@@ -253,6 +261,8 @@ export default function JourneyStage({
           title={title}
           timezone={timezone}
           summary={summary}
+          progress={motion.card}
+          backdropProgress={motion.cardBackdrop}
         />
       )}
       {photo && !card && (
@@ -270,16 +280,20 @@ function JourneyCard({
   title,
   timezone,
   summary,
+  progress,
+  backdropProgress,
 }: {
   phase: JourneyPhase;
   dayLabel?: string;
   title: string;
   timezone: string;
   summary: ReturnType<typeof journeySummary>;
+  progress: number;
+  backdropProgress: number;
 }) {
   if (phase === "day")
     return (
-      <div className="pj-card" data-kind="day">
+      <div className="pj-card" data-kind="day" style={{ "--pj-card-progress": progress, "--pj-card-backdrop": backdropProgress } as CSSProperties}>
         <span className="pj-label">Next day</span>
         <h2>{dayLabel}</h2>
       </div>
@@ -295,7 +309,7 @@ function JourneyCard({
   // photo altitudes are the best estimate.
   const trackStats = summary.track;
   return (
-    <div className="pj-card" data-kind={closing ? "outro" : "intro"}>
+    <div className="pj-card" data-kind={closing ? "outro" : "intro"} style={{ "--pj-card-progress": progress, "--pj-card-backdrop": backdropProgress } as CSSProperties}>
       <span className="pj-label">{closing ? "Journey complete" : "Photo journey"}</span>
       <h2>{title.trim() || "A journey in photographs"}</h2>
       {dates && <p className="pj-card-dates">{dates}</p>}

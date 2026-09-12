@@ -7,6 +7,7 @@ import type {
 } from "maplibre-gl";
 
 import { trackSegments, type Track } from "./gpx";
+import { journeyTravelZoom } from "./motion";
 import {
   buildRouteStory,
   recordedLegFrame,
@@ -75,6 +76,7 @@ type JourneyMapProps = {
   onMarkerPosition?: (point: { x: number; y: number } | null) => void;
   onTerrainState?: (state: { loading: boolean; failed: boolean }) => void;
   onEngineFailed?: () => void;
+  onPlaybackReady?: (ready: boolean) => void;
   timeline: JourneyTimeline;
   cameraPadding: { top: number; right: number; bottom: number; left: number };
   checkpointProgress: number;
@@ -90,6 +92,44 @@ export function approachAnimationDuration(approachDuration: number, speed: numbe
 
 export function isUserMapMovement(event: unknown) {
   return Boolean((event as { originalEvent?: unknown } | undefined)?.originalEvent);
+}
+
+export type MarkerCollisionBox = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+/** Uses a small spatial grid so dense journeys do not compare every marker with every other marker. */
+export function suppressedMarkerIndexes(boxes: readonly MarkerCollisionBox[], cellSize = 64) {
+  const cells = new Map<string, number[]>();
+  const suppressed = new Set<number>();
+  const keysFor = (box: MarkerCollisionBox) => {
+    const keys: string[] = [];
+    const left = Math.floor(box.left / cellSize);
+    const right = Math.floor(box.right / cellSize);
+    const top = Math.floor(box.top / cellSize);
+    const bottom = Math.floor(box.bottom / cellSize);
+    for (let x = left; x <= right; x += 1) {
+      for (let y = top; y <= bottom; y += 1) keys.push(`${x}:${y}`);
+    }
+    return keys;
+  };
+  boxes.forEach((box, index) => {
+    const keys = keysFor(box);
+    const candidates = new Set(keys.flatMap((key) => cells.get(key) ?? []));
+    const overlaps = [...candidates].some((acceptedIndex) => {
+      const accepted = boxes[acceptedIndex];
+      return box.left < accepted.right && box.right > accepted.left && box.top < accepted.bottom && box.bottom > accepted.top;
+    });
+    if (overlaps) {
+      suppressed.add(index);
+      return;
+    }
+    keys.forEach((key) => cells.set(key, [...(cells.get(key) ?? []), index]));
+  });
+  return suppressed;
 }
 
 function lngLat({ latitude, longitude }: Coordinates): [number, number] {
@@ -370,6 +410,7 @@ export default function JourneyMap({
   onMarkerPosition,
   onTerrainState,
   onEngineFailed,
+  onPlaybackReady,
   timeline,
   cameraPadding,
   checkpointProgress,
@@ -383,6 +424,7 @@ export default function JourneyMap({
   const moduleRef = useRef<typeof import("maplibre-gl")>();
   const markersRef = useRef(new Map<string, MapLibreMarker>());
   const completedRef = useRef<{ engine: number; segments: readonly (readonly Coordinates[])[] }>();
+  const inferredCompletedRef = useRef<{ engine: number; key: string; stops: JourneyStop[] }>();
   const projectionRef = useRef<"mercator" | "globe">("mercator");
   // Bumped once the engine arrives, so every effect below runs again against the live map.
   const [engine, setEngine] = useState(0);
@@ -400,9 +442,17 @@ export default function JourneyMap({
     seekVersion: number;
     playing: boolean;
     phase: JourneyPhase;
+    speed: number;
+    mode: MapMode;
   }>();
-  const eligibilityKey = legEligibility?.map((eligible) => eligible ? "1" : "0").join("");
-  const dayChangesKey = dayChanges?.map((change) => change ? "1" : "0").join("");
+  const eligibilityKey = useMemo(
+    () => legEligibility?.map((eligible) => eligible ? "1" : "0").join(""),
+    [legEligibility],
+  );
+  const dayChangesKey = useMemo(
+    () => dayChanges?.map((change) => change ? "1" : "0").join(""),
+    [dayChanges],
+  );
   const routeStory = useMemo(
     () => track ? buildRouteStory(track, placements, legEligibility ? [...legEligibility] : undefined) : undefined,
     // Eligibility is scalar data frequently assembled at the JSX boundary; key it by value so
@@ -414,6 +464,11 @@ export default function JourneyMap({
     const leg = currentLegEligible ? routeStory?.legs[activeIndex] : undefined;
     return leg ? recordedLegFrame(leg, currentLegProgress) : undefined;
   }, [activeIndex, currentLegEligible, currentLegProgress, routeStory]);
+  const activeCheckpoint = useMemo(
+    () => timeline.stops.find((stop) => stop.photoIndices.includes(activeIndex)),
+    [activeIndex, timeline],
+  );
+  const checkpointArrived = phase === "reveal" || phase === "hold" || phase === "departure" || phase === "outro" || phase === "complete";
 
   // The engine loads behind the same wait that already decodes the photos: a dynamic import
   // keeps the ~272 KB gz of WebGL mapping out of the first paint.
@@ -429,6 +484,7 @@ export default function JourneyMap({
     let active = true;
     let map: MapLibreMap | undefined;
     let resize: ResizeObserver | undefined;
+    let styleTimer: number | undefined;
     // The worker is bundled as its own chunk; its URL is handed to the engine, which would
     // otherwise resolve a relative path that the bundler never emits.
     void Promise.all([
@@ -463,13 +519,27 @@ export default function JourneyMap({
         const box = containerRef.current;
         resize = new ResizeObserver(() => instance.resize());
         resize.observe(box);
-        // Layout calls below need the style in place; this bump re-runs them then.
-        instance.once("load", () => {
-          if (active) {
-            setReady(true);
-            setEngine((version) => version + 1);
-          }
-        });
+        // Playback needs the sources and layers installed, not every remote tile. Check the
+        // concrete resources as well as the event because an inline style may settle before a
+        // listener observes its final event.
+        let styleSettled = false;
+        const finishStyle = () => {
+          if (!active || styleSettled) return;
+          if (!instance.getSource("route-current") || !instance.getLayer("route-current")) return;
+          styleSettled = true;
+          instance.off("styledata", finishStyle);
+          if (styleTimer !== undefined) window.clearTimeout(styleTimer);
+          setFailed(false);
+          setReady(true);
+          setEngine((version) => version + 1);
+        };
+        instance.on("styledata", finishStyle);
+        finishStyle();
+        styleTimer = window.setTimeout(() => {
+          if (!active || styleSettled) return;
+          instance.off("styledata", finishStyle);
+          setFailed(true);
+        }, 5_000);
         setEngine((version) => version + 1);
       },
       () => {
@@ -480,6 +550,7 @@ export default function JourneyMap({
     );
     return () => {
       active = false;
+      if (styleTimer !== undefined) window.clearTimeout(styleTimer);
       resize?.disconnect();
       map?.remove();
       mapRef.current = undefined;
@@ -487,6 +558,11 @@ export default function JourneyMap({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    onPlaybackReady?.(ready || failed);
+    return () => onPlaybackReady?.(false);
+  }, [failed, onPlaybackReady, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -601,15 +677,23 @@ export default function JourneyMap({
     const map = mapRef.current;
     if (!map || !ready) return;
     if (!routeStory) {
-      completedRef.current = undefined;
-      (map.getSource("route-completed") as GeoJSONSource | undefined)?.setData(EMPTY_FEATURES);
+      if (completedRef.current?.engine !== engine || completedRef.current.segments.length) {
+        completedRef.current = { engine, segments: [] };
+        (map.getSource("route-completed") as GeoJSONSource | undefined)?.setData(EMPTY_FEATURES);
+      }
       const completedThrough = phase === "outro" || phase === "complete"
         ? stops.length
         : activeIndex + (phase === "reveal" || phase === "hold" || phase === "departure" ? 1 : 0);
-      const completed = track
-        ? []
-        : inferredRouteSegments(stops.slice(0, completedThrough), dayChanges?.slice(0, completedThrough));
-      (map.getSource("route-inferred") as GeoJSONSource | undefined)?.setData(routeData(completed));
+      const completedKey = `${completedThrough}:${dayChangesKey}`;
+      const previousInferred = inferredCompletedRef.current;
+      if (previousInferred?.engine !== engine || previousInferred?.key !== completedKey || previousInferred?.stops !== stops) {
+        const completed = inferredRouteSegments(
+          stops.slice(0, completedThrough),
+          dayChanges?.slice(0, completedThrough),
+        );
+        inferredCompletedRef.current = { engine, key: completedKey, stops };
+        (map.getSource("route-inferred") as GeoJSONSource | undefined)?.setData(routeData(completed));
+      }
       const previous = stops[activeIndex - 1];
       const current = stops[activeIndex];
       const traveling = !track && phase === "approach" && currentLegEligible &&
@@ -631,7 +715,7 @@ export default function JourneyMap({
       currentLegProgress,
       currentLegEligible,
       activeRouteFrame?.revealed,
-      timeline.stops.find((stop) => stop.photoIndex === activeIndex)?.photoIndices.at(-1),
+      activeCheckpoint?.photoIndices.at(-1),
     );
     // Completed legs are whole recorded slices that only change at a stop boundary, while this
     // effect runs on every playback frame. Re-serializing them per frame would ship the entire
@@ -653,27 +737,38 @@ export default function JourneyMap({
       type: "FeatureCollection",
       features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: lngLat(tip) } }],
     } : EMPTY_FEATURES);
-  }, [routeStory, activeRouteFrame, activeIndex, phase, currentLegProgress, currentLegEligible, stops, track, timeline, dayChangesKey, ready, engine]);
+  }, [routeStory, activeRouteFrame, activeIndex, activeCheckpoint, phase, currentLegProgress, currentLegEligible, stops, track, timeline, dayChanges, dayChangesKey, ready, engine]);
 
   // Checkpoints begin as quiet dots, reveal their photo on arrival, and remain as visited stops.
   useEffect(() => {
     const markers = markersRef.current;
-    const arrived = (phase === "reveal" && checkpointProgress > 0) || phase === "hold" || phase === "departure" || phase === "outro" || phase === "complete";
+    const activeCheckpointIndex = activeCheckpoint?.checkpointIndex;
     timeline.stops.forEach((checkpoint) => {
       const index = checkpoint.photoIndex;
       const photo = photos[index];
       const element = photo ? markers.get(photo.id)?.getElement() : undefined;
       if (!element) return;
-      const active = checkpoint.checkpointIndex === timeline.stops.find((entry) => entry.photoIndex === activeIndex)?.checkpointIndex && arrived;
+      const active = checkpoint.checkpointIndex === activeCheckpointIndex && checkpointArrived;
       element.classList.toggle("pj-map-marker-active", active);
       element.classList.toggle("pj-map-marker-selected", active && !playing);
       element.classList.toggle("pj-map-marker-past", index < activeIndex || active);
-      element.classList.toggle("pj-map-marker-future", index > activeIndex || (index === activeIndex && !arrived));
-      element.style.setProperty("--pj-checkpoint-progress", active && phase === "reveal" ? String(checkpointProgress) : active ? "1" : "0");
+      element.classList.toggle("pj-map-marker-future", index > activeIndex || (index === activeIndex && !checkpointArrived));
+      element.style.setProperty("--pj-checkpoint-progress", active ? "1" : "0");
       element.style.zIndex = active ? "3" : index < activeIndex ? "2" : "1";
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex, phase, checkpointProgress, photos, stops, track, routeStory, timeline, playing, dayChangesKey, ready, engine]);
+  }, [activeIndex, activeCheckpoint, checkpointArrived, photos, stops, track, routeStory, timeline, playing, dayChangesKey, ready, engine]);
+
+  // Reveal and departure animate only the active marker. Hundreds of inactive markers remain
+  // untouched while the timeline advances frame by frame.
+  useEffect(() => {
+    const photo = activeCheckpoint ? photos[activeCheckpoint.photoIndex] : undefined;
+    const element = photo ? markersRef.current.get(photo.id)?.getElement() : undefined;
+    if (!element) return;
+    const progress = phase === "reveal" || phase === "departure" ? checkpointProgress : 1;
+    element.style.setProperty("--pj-checkpoint-progress", String(progress));
+    element.dataset.departing = String(phase === "departure");
+  }, [activeCheckpoint, checkpointProgress, phase, photos]);
 
   // Marker collisions are presentation-only: underlying checkpoint visits and photo order stay
   // intact. The active checkpoint wins, then visited markers, then upcoming camera badges.
@@ -682,16 +777,16 @@ export default function JourneyMap({
     if (!map) return;
     const update = () => {
       const elements = [...markersRef.current.values()].map((marker) => marker.getElement());
-      elements.forEach((element) => element.classList.remove("pj-map-marker-suppressed"));
       elements.sort((a, b) => Number(b.classList.contains("pj-map-marker-active")) - Number(a.classList.contains("pj-map-marker-active")) ||
         Number(b.classList.contains("pj-map-marker-past")) - Number(a.classList.contains("pj-map-marker-past")));
-      const visible: DOMRect[] = [];
-      for (const element of elements) {
-        const box = element.getBoundingClientRect();
-        const overlaps = visible.some((accepted) => box.left < accepted.right && box.right > accepted.left && box.top < accepted.bottom && box.bottom > accepted.top);
-        if (overlaps && !element.classList.contains("pj-map-marker-active")) element.classList.add("pj-map-marker-suppressed");
-        else visible.push(box);
-      }
+      const boxes = elements.map((element) => element.getBoundingClientRect());
+      const suppressed = suppressedMarkerIndexes(boxes);
+      elements.forEach((element, index) =>
+        element.classList.toggle(
+          "pj-map-marker-suppressed",
+          suppressed.has(index) && !element.classList.contains("pj-map-marker-active"),
+        ),
+      );
     };
     const frame = requestAnimationFrame(update);
     const updateAfterUserMove = (event: unknown) => {
@@ -704,7 +799,7 @@ export default function JourneyMap({
       map.off("dragend", updateAfterUserMove);
       map.off("zoomend", updateAfterUserMove);
     };
-  }, [activeIndex, phase, timeline, engine]);
+  }, [activeIndex, checkpointArrived, timeline, engine]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -757,9 +852,16 @@ export default function JourneyMap({
     const map = mapRef.current;
     if (!map || !ready) return;
     if (followSuspended) return;
-    map.stop();
     const previousState = cameraStateRef.current;
-    cameraStateRef.current = { activeIndex, seekVersion, playing, phase };
+    const commandChanged = !previousState ||
+      previousState.activeIndex !== activeIndex ||
+      previousState.seekVersion !== seekVersion ||
+      previousState.playing !== playing ||
+      previousState.phase !== phase ||
+      previousState.speed !== speed ||
+      previousState.mode !== mode;
+    cameraStateRef.current = { activeIndex, seekVersion, playing, phase, speed, mode };
+    if (commandChanged) map.stop();
     if (
       !playing &&
       previousState?.playing &&
@@ -796,15 +898,15 @@ export default function JourneyMap({
       if (!projectionPoints.length) return;
       const maxOverviewZoom = mode === "offline" ? OFFLINE_MAX_ZOOM : stopZoom;
       const view = cameraFrameForPoints(unwrapPoints(projectionPoints), frameRef.current, 70, maxOverviewZoom);
-      if (!playing || reducedMotion) map.jumpTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch: 0 });
-      else map.easeTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch: 0, duration: approachAnimationDuration(remainingRef.current, speed) });
+      if (!playing || reducedMotion) map.jumpTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch: 0, padding: cameraPadding });
+      else map.easeTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch: 0, padding: cameraPadding, duration: approachAnimationDuration(remainingRef.current, speed) });
       return;
     }
     if (!move) return;
     // Reposition while the opaque day card covers the map. The first uncovered frame is already
     // at the next day's real first fix, so there is no invented overnight flight or visible snap.
     if (phase === "day") {
-      map.jumpTo({ center: lngLat(move.center), zoom: stopZoom, bearing: 0, pitch: 0 });
+      map.jumpTo({ center: lngLat(move.center), zoom: stopZoom, bearing: 0, pitch: 0, padding: cameraPadding });
       return;
     }
     // Missing fixes inherit the last camera position. Seeking still restores that position.
@@ -846,9 +948,12 @@ export default function JourneyMap({
       const view = activeRouteFrame?.window.length
         ? cameraFrameForPoints(unwrapPoints(activeRouteFrame.window), frameRef.current, 70, mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM, padding)
         : undefined;
+      const legZoom = inferredTip
+        ? cameraFrameForPoints(unwrapPoints([move.from, move.center]), frameRef.current, 70, stopZoom).zoom
+        : stopZoom;
       map.jumpTo({
         center: view?.center ?? lngLat({ latitude: tip.latitude, longitude: nearestLongitude(tip.longitude, map.getCenter().lng) }),
-        zoom: view?.zoom ?? (mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM),
+        zoom: view?.zoom ?? journeyTravelZoom(currentLegProgress, stopZoom, legZoom),
         bearing: 0,
         pitch: 0,
         padding,
@@ -886,6 +991,7 @@ export default function JourneyMap({
     seekVersion,
     approachDuration,
     currentLegEligible,
+    currentLegProgress,
     cameraPadding,
     followSuspended,
     mode,

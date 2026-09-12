@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { approachAnimationDuration, cameraFrameForPoints, isUserMapMovement } from "../src/components/tools/PhotoJourney/JourneyMap";
+import { approachAnimationDuration, cameraFrameForPoints, isUserMapMovement, suppressedMarkerIndexes } from "../src/components/tools/PhotoJourney/JourneyMap";
 import { trackStats, type Track } from "../src/components/tools/PhotoJourney/gpx";
 
 describe("Photo Journey map timing and recording budgets", () => {
@@ -39,5 +39,24 @@ describe("Photo Journey map timing and recording budgets", () => {
     const second = cameraFrameForPoints(points, { width: 1200, height: 700 }, 70, 18, { top: 0, right: 480, bottom: 0, left: 0 });
     expect(first).toEqual(second);
     expect(first.zoom).toBeGreaterThan(10);
+  });
+
+  test("suppresses colliding markers with priority order preserved", () => {
+    const boxes = [
+      { left: 0, top: 0, right: 40, bottom: 40 },
+      { left: 20, top: 20, right: 60, bottom: 60 },
+      { left: 200, top: 200, right: 240, bottom: 240 },
+    ];
+    expect([...suppressedMarkerIndexes(boxes)]).toEqual([1]);
+  });
+
+  test("handles a dense 400-marker collision pass", () => {
+    const boxes = Array.from({ length: 400 }, (_, index) => ({
+      left: (index % 20) * 50,
+      top: Math.floor(index / 20) * 50,
+      right: (index % 20) * 50 + 24,
+      bottom: Math.floor(index / 20) * 50 + 24,
+    }));
+    expect(suppressedMarkerIndexes(boxes).size).toBe(0);
   });
 });

@@ -50,4 +50,66 @@ describe("Photo Journey playback commands", () => {
     expect(playback.playing).toBe(false);
     expect(playback.state).toMatchObject({ photoIndex: 1, checkpointPhotoIndex: 1, phase: "hold" });
   });
+
+  test("keeps an opening at zero when the initial photo order settles", async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    let photos = [photo("1", "2026-01-01T10:10:00Z"), photo("0", "2026-01-01T10:00:00Z")];
+    let playback!: ReturnType<typeof usePlayback>;
+    function Harness() {
+      playback = usePlayback(photos);
+      return null;
+    }
+    const container = document.createElement("div");
+    document.body.append(container);
+    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    photos = [photos[1], photos[0]];
+    await act(async () => root!.render(createElement(Harness)));
+    expect(playback.elapsed).toBe(0);
+    expect(playback.state.phase).toBe("intro");
+  });
+
+  test("can restart playback explicitly from the opening", async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const photos = [photo("0", "2026-01-01T10:00:00Z"), photo("1", "2026-01-01T10:10:00Z")];
+    let playback!: ReturnType<typeof usePlayback>;
+    function Harness() {
+      playback = usePlayback(photos);
+      return null;
+    }
+    const container = document.createElement("div");
+    document.body.append(container);
+    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => playback.select(1));
+    expect(playback.elapsed).toBeGreaterThan(0);
+    await act(async () => playback.play(true));
+    expect(playback.elapsed).toBe(0);
+    expect(playback.playing).toBe(true);
+    expect(playback.state.phase).toBe("intro");
+  });
+
+  test("does not skip the opening after a delayed animation frame", async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    let now = 0;
+    let nextFrame: FrameRequestCallback | undefined;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      nextFrame = callback;
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const photos = [photo("0", "2026-01-01T10:00:00Z")];
+    let playback!: ReturnType<typeof usePlayback>;
+    function Harness() {
+      playback = usePlayback(photos);
+      return null;
+    }
+    const container = document.createElement("div");
+    document.body.append(container);
+    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => playback.play());
+    now = 5_000;
+    await act(async () => nextFrame?.(now));
+    expect(playback.elapsed).toBe(100);
+    expect(playback.state.phase).toBe("intro");
+  });
 });

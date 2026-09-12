@@ -1,5 +1,5 @@
 import { Download, ImagePlus, LoaderCircle, Maximize2, Minimize2, Package, Pause, Play, Route, RotateCcw, SkipBack, SkipForward, Upload, Video, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isValidUtcOffsetMinutes, parseOffsetMinutes, readPhoto, revokePhoto, sortPhotos } from "./metadata";
 import { acceptFiles, digestFile, expandJourneyArchives, filesEqual, isArchiveFile, MAX_GPX_BYTES, MAX_GPX_POINTS, MAX_GPX_TOTAL_BYTES } from "./ingestion";
 import { mergeTracks, parseGpx, trackStats } from "./gpx";
@@ -52,6 +52,19 @@ function formatBytes(bytes: number) {
   if (bytes < 1e6) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`;
 }
+
+const ScrubberTicks = memo(function ScrubberTicks({
+  stops,
+  completedThrough,
+  total,
+}: {
+  stops: ReturnType<typeof usePlayback>["timeline"]["stops"];
+  completedThrough: number;
+  total: number;
+}) {
+  return stops.map((stop) => <i key={stop.id} data-past={stop.photoIndex <= completedThrough}
+    style={{ left: `${(stop.revealStart / total) * 100}%` }} />);
+});
 
 function ExportPanel({
   scopeLabel,
@@ -129,6 +142,8 @@ export default function PhotoJourney() {
   const [includePhotos, setIncludePhotos] = useState(false);
   const [packing, setPacking] = useState(false);
   const [recordingVideo, setRecordingVideo] = useState(false);
+  const [stageReady, setStageReady] = useState(false);
+  const [waitingToPlay, setWaitingToPlay] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder>();
   const captureRef = useRef<MediaStream>();
@@ -138,6 +153,7 @@ export default function PhotoJourney() {
   const mounted = useRef(true);
   const nextImportOrder = useRef(0);
   const nextRecordingOrder = useRef(0);
+  const pendingStart = useRef<{ fromBeginning: boolean }>();
   const track = useMemo(() => {
     const included = recordings.filter((recording) => recording.included);
     return included.length ? mergeTracks(included.map((recording) => recording.track)) : undefined;
@@ -174,9 +190,13 @@ export default function PhotoJourney() {
   const timelineDayKeys = useMemo(() => visiblePhotos.map((photo, index) => photoDayKey(photo, visiblePlacements[index], tripTimezone) ?? UNDATED_DAY), [visiblePhotos, visiblePlacements, tripTimezone]);
   const timelineDayLabels = useMemo(() => timelineDayKeys.map((key) => key ? dayLabel(days, key) : undefined), [timelineDayKeys, days]);
   const playback = usePlayback(visiblePhotos, visiblePlacements, { dayKeys: timelineDayKeys, dayLabels: timelineDayLabels });
-  const selectPlayback = playback.select;
   const reducedMotion = useReducedMotion();
   const activeIndex = playback.state.photoIndex;
+  const completedThrough = playback.state.phase === "outro" || playback.state.phase === "complete"
+    ? visiblePhotos.length - 1
+    : playback.state.phase === "reveal" || playback.state.phase === "hold" || playback.state.phase === "departure"
+      ? playback.state.checkpointPhotoIndex
+      : playback.state.checkpointPhotoIndex - 1;
   const activePhoto = visiblePhotos[activeIndex];
   const finished = playback.elapsed >= playback.total;
   const stopVideoExport = useCallback(() => {
@@ -189,15 +209,43 @@ export default function PhotoJourney() {
     if (recordingVideo && finished) stopVideoExport();
   }, [finished, recordingVideo, stopVideoExport]);
 
+  const cancelPendingStart = useCallback(() => {
+    pendingStart.current = undefined;
+    setWaitingToPlay(false);
+  }, []);
+  const pausePlayback = useCallback(() => {
+    cancelPendingStart();
+    playback.pause();
+  }, [cancelPendingStart, playback.pause]);
+  const requestPlaybackStart = useCallback((fromBeginning = false) => {
+    if (stageReady) {
+      cancelPendingStart();
+      playback.play(fromBeginning);
+      return;
+    }
+    pendingStart.current = { fromBeginning };
+    setWaitingToPlay(true);
+  }, [cancelPendingStart, playback.play, stageReady]);
+  useEffect(() => {
+    const pending = pendingStart.current;
+    if (!stageReady || !pending) return;
+    pendingStart.current = undefined;
+    setWaitingToPlay(false);
+    playback.play(pending.fromBeginning);
+  }, [playback.play, stageReady]);
+
   useEffect(() => { photosRef.current = photos; }, [photos]);
   useEffect(() => {
     if (selectedDay !== ALL_DAYS && !days.some((entry) => entry.key === selectedDay)) setSelectedDay(ALL_DAYS);
   }, [days, selectedDay]);
   const previousDayRef = useRef<DayScope>(ALL_DAYS);
   useEffect(() => {
-    if (previousDayRef.current !== selectedDay && selectedDay !== ALL_DAYS && visiblePhotos.length) selectPlayback(0);
+    if (previousDayRef.current !== selectedDay && visiblePhotos.length) {
+      cancelPendingStart();
+      playback.restart();
+    }
     previousDayRef.current = selectedDay;
-  }, [selectPlayback, selectedDay, visiblePhotos.length]);
+  }, [cancelPendingStart, playback.restart, selectedDay, visiblePhotos.length]);
   useEffect(() => {
     if (order !== "capture" || photos.length < 2) return;
     const sorted = sortPhotos(photos, placements.map((placement) => placement.instant));
@@ -208,8 +256,12 @@ export default function PhotoJourney() {
     stageRef.current?.scrollIntoView({ block, behavior: reducedMotion ? "auto" : "smooth" });
   }
   function togglePlay() {
-    if (!playback.playing) revealStage("nearest");
-    playback.toggle();
+    if (playback.playing || waitingToPlay) {
+      pausePlayback();
+      return;
+    }
+    revealStage("nearest");
+    requestPlaybackStart(finished);
   }
   const hasPhotos = visiblePhotos.length > 0;
   useEffect(() => { if (hasPhotos) revealStage("start"); }, [hasPhotos]);
@@ -240,7 +292,7 @@ export default function PhotoJourney() {
       return;
     }
     try {
-      playback.pause();
+      pausePlayback();
       setErrors([]);
       revealStage("start");
       const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -265,15 +317,14 @@ export default function PhotoJourney() {
         recorderRef.current = undefined;
         captureRef.current = undefined;
         setRecordingVideo(false);
-        playback.pause();
+        pausePlayback();
       };
       stream.getVideoTracks()[0]?.addEventListener("ended", () => {
         if (recorder.state === "recording") recorder.stop();
       }, { once: true });
       recorder.start(1000);
       setRecordingVideo(true);
-      playback.seek(0);
-      window.setTimeout(() => playback.toggle(), 150);
+      requestPlaybackStart(true);
     } catch (error) {
       captureRef.current?.getTracks().forEach((captureTrack) => captureTrack.stop());
       setRecordingVideo(false);
@@ -308,7 +359,7 @@ export default function PhotoJourney() {
     if (importing.current || !files.length) return;
     importing.current = true;
     setBusy(true);
-    playback.pause();
+    pausePlayback();
     setErrors([]);
     const archives = files.filter(isArchiveFile);
     let flatFiles = files.filter((file) => !isArchiveFile(file));
@@ -533,20 +584,19 @@ export default function PhotoJourney() {
         <JourneyStage photos={visiblePhotos} stops={stops} track={scopedTrack} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} state={playback.state}
           timeline={playback.timeline} playing={playback.playing}
           reducedMotion={reducedMotion} mapMode={mapMode} title={title} timezone={tripTimezone} speed={playback.speed} seekVersion={playback.seekVersion}
-          onTerrainState={setTerrain} onEngineFailed={() => setMapDead(true)} onPause={playback.pause}
-          onSelect={playback.select} onContinue={playback.toggle} />
+          onTerrainState={setTerrain} onEngineFailed={() => setMapDead(true)} onPlaybackReady={setStageReady} onPause={pausePlayback}
+          onSelect={playback.select} onContinue={() => requestPlaybackStart()} />
         <div className="pj-controls">
           <div className="pj-transport">
             <button disabled={!hasPhotos || activeIndex === 0} onClick={() => playback.select(activeIndex - 1)} aria-label="Previous photo"><SkipBack /></button>
-            <button className="pj-play" disabled={!hasPhotos} onClick={togglePlay} aria-label={playback.playing ? "Pause journey" : finished ? "Replay journey" : "Play journey"}>
-              {finished ? <RotateCcw /> : playback.playing ? <Pause /> : <Play />}</button>
+            <button className="pj-play" disabled={!hasPhotos} onClick={togglePlay} aria-label={playback.playing || waitingToPlay ? "Pause journey" : finished ? "Replay journey" : "Play journey"}>
+              {waitingToPlay ? <LoaderCircle className="pj-spinner" /> : finished ? <RotateCcw /> : playback.playing ? <Pause /> : <Play />}</button>
             <button disabled={!hasPhotos || activeIndex >= visiblePhotos.length - 1} onClick={() => playback.select(activeIndex + 1)} aria-label="Next photo"><SkipForward /></button>
           </div>
           <div className="pj-scrub">
             <div className="pj-scrub-track" aria-hidden="true">
               <div className="pj-scrub-fill" style={{ transform: `scaleX(${playback.total ? playback.elapsed / playback.total : 0})` }} />
-              {playback.timeline.stops.map((stop) => <i key={stop.id} data-past={playback.elapsed >= stop.revealStart}
-                style={{ left: `${(stop.revealStart / playback.total) * 100}%` }} />)}
+              <ScrubberTicks stops={playback.timeline.stops} completedThrough={completedThrough} total={playback.total} />
             </div>
             <input disabled={!hasPhotos} type="range" min={0} max={playback.total} value={playback.elapsed} onChange={(event) => playback.seek(Number(event.target.value))} aria-label="Journey progress" />
           </div>

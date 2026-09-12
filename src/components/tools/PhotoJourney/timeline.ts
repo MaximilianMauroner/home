@@ -8,6 +8,7 @@ export const REVEAL_DURATION = 950;
 export const HOLD_DURATION = 3300;
 export const DEPARTURE_DURATION = 700;
 export const BURST_HOLD_DURATION = 1250;
+export const BURST_TRANSITION_DURATION = 260;
 
 export type JourneyPhase =
   | "overview"
@@ -241,7 +242,19 @@ export function timelineAt(elapsed: number, timeline: JourneyTimeline): Timeline
   const safe = Math.max(0, elapsed);
   if (safe < INTRO_DURATION)
     return stateFor(safe, timeline.stops[0], "intro", 0, INTRO_DURATION, { dayLabel: undefined, dayChange: false });
-  const stop = timeline.stops.find((entry) => safe < entry.end);
+  let low = 0;
+  let high = timeline.stops.length - 1;
+  let stop: TimelineStop | undefined;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    const candidate = timeline.stops[middle];
+    if (safe < candidate.end) {
+      stop = candidate;
+      high = middle - 1;
+    } else {
+      low = middle + 1;
+    }
+  }
   if (!stop) {
     const last = timeline.stops.at(-1)!;
     if (safe >= timeline.totalDuration)
@@ -274,7 +287,8 @@ export function timelineAt(elapsed: number, timeline: JourneyTimeline): Timeline
 
 export function photoHoldTime(stop: TimelineStop, photoIndex: number) {
   const offset = Math.max(0, stop.photoIndices.indexOf(photoIndex));
-  return Math.min(stop.departureStart - 1, stop.revealEnd + offset * BURST_HOLD_DURATION);
+  // Direct selection lands after the dissolve so a paused selection shows the chosen photo.
+  return Math.min(stop.departureStart - 1, stop.revealEnd + offset * BURST_HOLD_DURATION + (offset > 0 ? BURST_TRANSITION_DURATION : 0));
 }
 
 export type JourneyStop = {

@@ -64,7 +64,10 @@ export function usePlayback(
 
   // The active stop is an identity, not an array position. Filtering a day, changing order, or
   // removing a photo therefore keeps the same photo selected whenever it still exists.
-  const photoSignature = photos.map((photo) => photo.id).join("\u0000");
+  const photoSignature = useMemo(
+    () => photos.map((photo) => photo.id).join("\u0000"),
+    [photos],
+  );
   useEffect(() => {
     if (photoSignature === previousSignatureRef.current) return;
     const previousIds = previousIdsRef.current;
@@ -78,7 +81,8 @@ export function usePlayback(
     setActivePhotoId(nextId);
     // Keep the opening card on the first import. Later changes need a paused, visible stop so a
     // day filter, reorder, or removal never leaves the clock pointing at an old array position.
-    if (!initial) {
+    const stillAtOpening = elapsedRef.current === 0 && !playing;
+    if (!initial && !stillAtOpening) {
       const retainedStop = timeline.stops.find((stop) => stop.photoIndices.includes(nextIndex));
       setElapsed(retainedStop ? photoHoldTime(retainedStop, nextIndex) : 0);
       setPlaying(false);
@@ -86,7 +90,7 @@ export function usePlayback(
     }
     previousIdsRef.current = photos.map((photo) => photo.id);
     previousSignatureRef.current = photoSignature;
-  }, [photoSignature, photos, activePhotoId, timeline]);
+  }, [photoSignature, photos, activePhotoId, playing, timeline]);
 
   useEffect(() => {
     // Playback advances by timeline index; mirror that index back to the stable identity before
@@ -98,11 +102,15 @@ export function usePlayback(
 
   useEffect(() => {
     if (!playing) return;
-    const start = performance.now();
-    const offset = elapsedRef.current;
+    let previousFrame = performance.now();
     let frame: number;
     function tick(now: number) {
-      const next = Math.min(total, offset + (now - start) * speed);
+      // A delayed frame means the browser was busy or throttled. Advancing by the entire wall
+      // clock gap would skip the very animation the user was waiting to see.
+      const delta = Math.min(100, Math.max(0, now - previousFrame));
+      previousFrame = now;
+      const next = Math.min(total, elapsedRef.current + delta * speed);
+      elapsedRef.current = next;
       setElapsed(next);
       if (next >= total) setPlaying(false);
       else frame = requestAnimationFrame(tick);
@@ -137,15 +145,25 @@ export function usePlayback(
     seek(photoHoldTime(stop, safeIndex));
   }, [photos, seek, timeline]);
   const pause = useCallback(() => setPlaying(false), []);
-  function toggle() {
+  const play = useCallback((fromBeginning = false) => {
     if (!photos.length) return;
-    if (elapsed >= total) {
+    if (fromBeginning || elapsedRef.current >= total) {
       setElapsed(0);
       setActivePhotoId(photos[0]?.id);
       setSeekVersion((version) => version + 1);
     }
-    setPlaying((value) => !value);
-  }
+    setPlaying(true);
+  }, [photos, total]);
+  const restart = useCallback(() => {
+    setPlaying(false);
+    setElapsed(0);
+    setActivePhotoId(photos[0]?.id);
+    setSeekVersion((version) => version + 1);
+  }, [photos]);
+  const toggle = useCallback(() => {
+    if (playing) pause();
+    else play();
+  }, [pause, play, playing]);
   return { timeline, state, elapsed, total, playing, speed, seekVersion, activeIndex, activePhotoId, setSpeed,
-    pause, seek, select, toggle };
+    pause, play, restart, seek, select, toggle };
 }

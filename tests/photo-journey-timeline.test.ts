@@ -191,6 +191,17 @@ describe("Photo Journey timeline", () => {
     });
   });
 
+  test("locates a late stop in a 400-photo timeline", () => {
+    const photos = Array.from({ length: 400 }, (_, index) => photo(48 + index / 10_000, 16));
+    const timeline = buildTimeline(photos);
+    const late = timeline.stops[390];
+    expect(timelineAt(late.revealEnd, timeline)).toMatchObject({
+      photoIndex: 390,
+      checkpointIndex: 390,
+      phase: "hold",
+    });
+  });
+
   test("carries the last known position across photos without GPS", () => {
     const stops = stopsFor([
       photo(48.2, 16.37),
