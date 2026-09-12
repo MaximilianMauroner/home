@@ -134,6 +134,9 @@ importers:
       seedrandom:
         specifier: ^3.0.5
         version: 3.0.5
+      sharp:
+        specifier: 0.35.3
+        version: 0.35.3(@types/node@24.13.2)
       tailwind-merge:
         specifier: ^2.5.4
         version: 2.6.1
@@ -4439,8 +4442,7 @@ snapshots:
     dependencies:
       '@expressive-code/core': 0.44.1
 
-  '@img/colour@1.1.0':
-    optional: true
+  '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.35.3':
     optionalDependencies:
@@ -7211,8 +7213,7 @@ snapshots:
 
   semver@7.8.4: {}
 
-  semver@7.8.5:
-    optional: true
+  semver@7.8.5: {}
 
   set-cookie-parser@2.7.2: {}
 
@@ -7250,7 +7251,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.3
       '@img/sharp-win32-x64': 0.35.3
       '@types/node': 24.13.2
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:
