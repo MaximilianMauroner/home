@@ -36,7 +36,7 @@ function downloadStem(value: string) {
 
 function Segmented<T extends string>({ label, value, options, disabled, onChange }: {
   label: string;
-  value: T;
+  value?: T;
   options: ReadonlyArray<{ value: T; label: string }>;
   disabled?: boolean;
   onChange: (value: T) => void;
@@ -153,6 +153,7 @@ export default function PhotoJourney() {
   const [title, setTitle] = useState("My photo journey");
   const [mapMode, setMapMode] = useState<MapMode>("terrain");
   const [terrain, setTerrain] = useState({ loading: false, failed: false });
+  const [terrainFallback, setTerrainFallback] = useState(false);
   const [mapDead, setMapDead] = useState(false);
   const [editingOrder, setEditingOrder] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -219,7 +220,12 @@ export default function PhotoJourney() {
   }, [stats, placed, overlappingIds]);
   const timelineDayKeys = useMemo(() => visiblePhotos.map((photo, index) => photoDayKey(photo, visiblePlacements[index], tripTimezone) ?? UNDATED_DAY), [visiblePhotos, visiblePlacements, tripTimezone]);
   const timelineDayLabels = useMemo(() => timelineDayKeys.map((key) => key ? dayLabel(days, key) : undefined), [timelineDayKeys, days]);
-  const playback = usePlayback(visiblePhotos, visiblePlacements, { dayKeys: timelineDayKeys, dayLabels: timelineDayLabels });
+  const playback = usePlayback(
+    visiblePhotos,
+    visiblePlacements,
+    { dayKeys: timelineDayKeys, dayLabels: timelineDayLabels },
+    scopedTrack,
+  );
   const reducedMotion = useReducedMotion();
   const activeIndex = playback.state.photoIndex;
   const completedThrough = playback.state.phase === "outro" || playback.state.phase === "complete"
@@ -247,6 +253,16 @@ export default function PhotoJourney() {
     cancelPendingStart();
     playback.pause();
   }, [cancelPendingStart, playback.pause]);
+  const handleTerrainState = useCallback((state: { loading: boolean; failed: boolean }) => {
+    setTerrain(state);
+    if (!state.failed) return;
+    setTerrainFallback(true);
+    setMapMode((mode) => mode === "terrain" ? "online" : mode);
+  }, []);
+  const chooseMapMode = useCallback((mode: MapMode) => {
+    setTerrainFallback(false);
+    setMapMode(mode);
+  }, []);
   const requestPlaybackStart = useCallback((fromBeginning = false) => {
     if (stageReady) {
       cancelPendingStart();
@@ -657,10 +673,10 @@ export default function PhotoJourney() {
           </label>
           <span className="pj-stage-status">{playback.playing || waitingToPlay ? "Playing" : "Paused"} · {dayLabel(days, selectedDay)}</span>
         </div>
-        <JourneyStage photos={visiblePhotos} stops={stops} track={scopedTrack} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} state={playback.state}
+        <JourneyStage photos={visiblePhotos} stops={stops} track={scopedTrack} routeStory={playback.routeStory} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} state={playback.state}
           timeline={playback.timeline} playing={playback.playing}
           reducedMotion={reducedMotion} mapMode={mapMode} title={title} timezone={tripTimezone} speed={playback.speed} seekVersion={playback.seekVersion}
-          onTerrainState={setTerrain} onEngineFailed={() => setMapDead(true)} onPlaybackReady={setStageReady} onPause={pausePlayback}
+          onTerrainState={handleTerrainState} onEngineFailed={() => setMapDead(true)} onPlaybackReady={setStageReady} onPause={pausePlayback}
           onSelect={playback.select} onContinue={() => requestPlaybackStart()} />
         <div className="pj-controls">
           <div className="pj-transport">
@@ -675,7 +691,7 @@ export default function PhotoJourney() {
               <ScrubberTicks stops={playback.timeline.stops} completedThrough={completedThrough} total={playback.total} />
             </div>
             <ScrubberChapters stops={playback.timeline.stops} total={playback.total} onSeek={playback.seek} />
-            <input disabled={!hasPhotos} type="range" min={0} max={playback.total} value={playback.elapsed} onChange={(event) => playback.seek(Number(event.target.value))} aria-label="Replay time" aria-valuetext={`${formatDuration(playback.elapsed)} of ${formatDuration(playback.total)}`} />
+            <input disabled={!hasPhotos} type="range" min={0} max={playback.total} step={1000} value={playback.elapsed} onChange={(event) => playback.seek(Number(event.target.value))} aria-label="Replay time" aria-valuetext={`${formatDuration(playback.elapsed)} of ${formatDuration(playback.total)}`} />
           </div>
           <span className="pj-time">{formatDuration(playback.elapsed)} <span>/ {formatDuration(playback.total)}</span></span>
           <select className="pj-speed" disabled={!hasPhotos} value={playback.speed} onChange={(event) => playback.setSpeed(Number(event.target.value))} aria-label="Playback speed">
@@ -685,14 +701,16 @@ export default function PhotoJourney() {
       </div>
       <div className="pj-notes">
         {scopedTrack && !mapDead && <p className="pj-route-legend" aria-label="Map legend">
-          <span>GPX route</span><span className="pj-legend-traveled">Traveled</span><span className="pj-legend-position">Current position</span>
+          <span>GPX route</span><span className="pj-legend-traveled">Traveled</span>
         </p>}
         {selectedDay !== ALL_DAYS && !hasPhotos && scopedTrack
           ? <p className="pj-track-note"><Route size={14} aria-hidden="true" />No photos for this day; the recorded route is still available.</p>
           : stats ? <p className="pj-track-note"><Route size={14} aria-hidden="true" />{trackNote}</p>
           : <p>Add a <strong>.gpx</strong> file to follow the recorded route. A recording also provides the map when no photos have GPS.</p>}
         {mapDead
-          ? <p>The 3D map is unavailable here. The journey still plays as a slideshow.</p>
+          ? <p>The map is unavailable. Photos will continue as a slideshow.</p>
+          : terrainFallback
+            ? <p>Terrain could not load. Showing the flat OpenStreetMap map.</p>
           : mapMode === "offline"
             ? <p>Offline map. No map requests leave this tab; the bundled outline has no street-level detail.</p>
             : mapMode === "online"
@@ -723,7 +741,7 @@ export default function PhotoJourney() {
             <details className="pj-view-settings">
               <summary className="pj-pill">View settings</summary>
               <div className="pj-view-popover">
-                <Segmented label="Map" value={mapMode} onChange={setMapMode}
+                <Segmented label="Map" value={mapDead ? undefined : mapMode} disabled={mapDead} onChange={chooseMapMode}
                   options={[{ value: "offline", label: "Offline" }, { value: "online", label: "OpenStreetMap" }, { value: "terrain", label: "Terrain" }]} />
               </div>
             </details>

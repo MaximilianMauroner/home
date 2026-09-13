@@ -10,8 +10,8 @@ import PhotoCheckpointDrawer from "./PhotoCheckpointDrawer";
 import { drawerLayout } from "./drawer-layout";
 import { burstPhotoProgress, journeyMotion } from "./motion";
 import type { Track } from "./gpx";
+import type { RouteStory } from "./route-progress";
 import {
-  distanceKm,
   type JourneyPhase,
   type JourneyStop,
   type JourneyTimeline,
@@ -34,6 +34,7 @@ export default function JourneyStage({
   photos,
   stops,
   track,
+  routeStory,
   placements,
   summary,
   activeIndex,
@@ -56,6 +57,7 @@ export default function JourneyStage({
   photos: JourneyPhoto[];
   stops: JourneyStop[];
   track?: Track;
+  routeStory?: RouteStory;
   placements?: readonly Placement[];
   summary: ReturnType<typeof journeySummary>;
   activeIndex: number;
@@ -85,23 +87,38 @@ export default function JourneyStage({
   // The clock is the source of truth during playback. Keep the direct index fallback while the
   // timeline contract lands, and for the empty/initial state.
   const timelineIndex = photos[state.photoIndex] ? state.photoIndex : activeIndex;
-  const photo = photos[timelineIndex];
-  const stop = stops[timelineIndex];
   const card = CARD_PHASES.has(state.phase);
   const traveling = state.phase === "approach";
+  // Let the last memory remain over the map while the route continues toward the next one.
+  // The destination still owns the clock, route progress, and camera; only presentation lags.
+  const previousCheckpoint = traveling && !state.dayChange
+    ? timeline.stops[state.checkpointIndex - 1]
+    : undefined;
+  const transitionCheckpoint = !state.dayChange
+    ? timeline.stops[state.checkpointIndex - 1]
+    : undefined;
+  const presentationIndex = previousCheckpoint?.photoIndices.at(-1) ?? timelineIndex;
+  const transitionPhotoIndex = transitionCheckpoint?.photoIndices.at(-1);
+  const transitionPhoto = transitionPhotoIndex === undefined ? undefined : photos[transitionPhotoIndex];
+  const photo = photos[presentationIndex];
+  const stop = stops[presentationIndex];
   const phase = state.phase;
   const motion = journeyMotion(state, reducedMotion);
   const hasMapData = summary.locatedCount > 0 || Boolean(track?.points.length);
   const dayChange = state.dayChange;
-  const preload = usePhotoPreload(photos, timelineIndex);
+  const retainedPreloadIndex = state.phase === "reveal" && transitionPhotoIndex !== undefined
+    ? transitionPhotoIndex
+    : presentationIndex;
+  const preload = usePhotoPreload(photos, timelineIndex, retainedPreloadIndex);
   const originalStatus = preload.statusFor(photo?.url);
-  const checkpoint = timeline.stops[state.checkpointIndex];
+  const transitionOriginalStatus = preload.statusFor(transitionPhoto?.url);
+  const checkpoint = previousCheckpoint ?? timeline.stops[state.checkpointIndex];
   const checkpointPhotos = useMemo(
     () => checkpoint?.photoIndices.map((index) => photos[index]).filter(Boolean) ?? [],
     [checkpoint, photos],
   );
   const manualOpen = manualCheckpoint === state.checkpointIndex;
-  const drawerPresentationProgress = motion.drawer;
+  const drawerPresentationProgress = traveling ? Number(Boolean(previousCheckpoint)) : motion.drawer;
   const checkpointPresentationProgress = motion.checkpoint;
   const layout = useMemo(
     () => drawerLayout(size, drawerExpanded),
@@ -155,11 +172,6 @@ export default function JourneyStage({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const previous = stops[timelineIndex - 1]?.coordinates;
-  const legKm =
-    traveling && previous && stop?.coordinates
-      ? distanceKm(previous, stop.coordinates)
-      : undefined;
   return (
     <div
       ref={viewport}
@@ -185,6 +197,7 @@ export default function JourneyStage({
           activeIndex={state.checkpointPhotoIndex}
           stops={stops}
           track={track}
+          routeStory={routeStory}
           reducedMotion={reducedMotion}
           phase={state.phase}
           dayChange={dayChange}
@@ -192,7 +205,6 @@ export default function JourneyStage({
           phaseRemaining={state.phaseRemaining}
           currentLegProgress={motion.leg}
           currentLegEligible={state.currentLegEligible}
-          legEligibility={timeline.legEligibility}
           dayChanges={timeline.dayChanges}
           placements={placements}
           mapMode={mapMode}
@@ -221,15 +233,22 @@ export default function JourneyStage({
         photos={checkpointPhotos}
         activePhotoId={photo.id}
         progress={drawerPresentationProgress}
-        imageProgress={motion.image}
-        photoProgress={manualOpen ? 1 : burstPhotoProgress(state, checkpoint?.photoIndices.indexOf(timelineIndex) ?? 0, reducedMotion)}
+        imageProgress={state.phase === "reveal" && transitionPhoto ? 1 : motion.image}
+        photoProgress={manualOpen || traveling
+          ? 1
+          : state.phase === "reveal" && transitionPhoto
+            ? motion.photoTransition
+            : burstPhotoProgress(state, checkpoint?.photoIndices.indexOf(timelineIndex) ?? 0, reducedMotion)}
+        previousPhoto={state.phase === "reveal" ? transitionPhoto : undefined}
+        previousOriginalStatus={transitionOriginalStatus}
         expanded={drawerExpanded}
+        cinematic={playing}
         width={layout.width}
         height={layout.height}
         manuallyOpened={manualOpen}
         closed={manualOpen && manualClosed}
         originalStatus={originalStatus}
-        placement={placements?.[timelineIndex]}
+        placement={placements?.[presentationIndex]}
         located={stop?.located ?? false}
         onBrowse={browseCheckpoint}
         onClose={closeManualDrawer}
@@ -238,21 +257,6 @@ export default function JourneyStage({
       />}
       {manualOpen && manualClosed && <button className="pj-continue-journey" onClick={() => { setManualCheckpoint(undefined); setManualClosed(false); setDrawerExpanded(false); setFollowSuspended(false); onContinue(); }}>Continue journey</button>}
       {followSuspended && <button className="pj-resume-follow" onClick={() => setFollowSuspended(false)}>Resume follow</button>}
-      {photo && traveling && !reducedMotion && (
-        <div className="pj-travel" aria-hidden="true" style={{ opacity: motion.travel, transform: `translateY(${(1 - motion.travel) * 6}px)` }}>
-          <span className="pj-label">Next stop</span>
-          <strong>{placements?.[timelineIndex]?.conflict
-            ? placements[timelineIndex]?.source === "photo"
-              ? "Photo GPS selected"
-              : placements[timelineIndex]?.source === "track"
-                ? "Recorded position selected"
-                : "Choose a location"
-            : placements?.[timelineIndex]?.source === "track"
-              ? (photo.metadata.place ?? "Recorded position")
-              : photo.metadata.place ?? photo.name}</strong>
-          {legKm !== undefined && <span className="pj-travel-distance">{formatDistance(legKm)}</span>}
-        </div>
-      )}
       {card && (
         <JourneyCard
           phase={state.phase}
@@ -266,7 +270,7 @@ export default function JourneyStage({
       )}
       {photo && !card && (
         <div className="pj-counter" aria-hidden="true">
-          {pad(timelineIndex + 1)} <span>/ {pad(photos.length)}</span>
+          {pad(presentationIndex + 1)} <span>/ {pad(photos.length)}</span>
         </div>
       )}
     </div>

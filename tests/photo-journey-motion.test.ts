@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { burstPhotoProgress, journeyMotion, journeyTravelZoom, smoothProgress } from "../src/components/tools/PhotoJourney/motion";
-import { buildTimeline, BURST_HOLD_DURATION, photoHoldTime, timelineAt } from "../src/components/tools/PhotoJourney/timeline";
+import { buildTimeline, BURST_HOLD_DURATION, BURST_TRANSITION_DURATION, DEPARTURE_DURATION, photoHoldTime, timelineAt } from "../src/components/tools/PhotoJourney/timeline";
 import type { JourneyPhoto } from "../src/components/tools/PhotoJourney/types";
 
 const photos = Array.from({ length: 3 }, (_, index): JourneyPhoto => ({
@@ -12,17 +12,33 @@ const stop = timeline.stops[0];
 const motionAt = (elapsed: number, reduced = false) => journeyMotion(timelineAt(elapsed, timeline), reduced);
 
 describe("Photo Journey motion", () => {
-  test("overlaps the photo reveal with an eased drawer and settles before the hold", () => {
-    expect(motionAt(stop.revealStart)).toMatchObject({ drawer: 0, image: 0, checkpoint: 0 });
-    const overlap = motionAt(stop.revealStart + 600);
-    expect(overlap.drawer).toBeGreaterThan(0.8);
-    expect(overlap.drawer).toBeLessThan(1);
+  test("reveals the photo quickly and keeps it through departure", () => {
+    expect(motionAt(stop.revealStart)).toMatchObject({ drawer: 1, image: 0, photoTransition: 0, checkpoint: 0 });
+    const overlap = motionAt(stop.revealStart + 260);
+    expect(overlap.drawer).toBe(1);
     expect(overlap.image).toBeGreaterThan(0);
     expect(overlap.image).toBeLessThan(1);
+    expect(overlap.photoTransition).toBeGreaterThan(0);
+    expect(overlap.photoTransition).toBeLessThan(1);
     expect(motionAt(stop.revealEnd)).toMatchObject({ drawer: 1, image: 1, checkpoint: 1 });
     expect(motionAt(stop.departureStart)).toMatchObject({ drawer: 1, checkpoint: 1 });
-    expect(motionAt(stop.end - 0.01).drawer).toBeLessThan(0.00001);
+    expect(motionAt(stop.end - 0.01).drawer).toBe(1);
     expect(motionAt(stop.end).drawer).toBe(0);
+  });
+
+  test("keeps the previous photo over most of the next linear route leg", () => {
+    const base = timelineAt(stop.revealStart, timeline);
+    const sample = (progress: number) => journeyMotion({
+      ...base,
+      phase: "approach",
+      phaseProgress: progress,
+      currentLegProgress: progress,
+      phaseDuration: 1_000,
+      phaseRemaining: 1_000 * (1 - progress),
+    }, false);
+    expect(sample(0.5)).toMatchObject({ drawer: 1, image: 1, leg: 0.5 });
+    expect(sample(0.82).drawer).toBe(1);
+    expect(sample(0.95).drawer).toBe(1);
   });
 
   test("samples the same state after seeking backward and holds photos still", () => {
@@ -33,19 +49,19 @@ describe("Photo Journey motion", () => {
     expect(motionAt(stop.departureStart - 100)).toMatchObject({ drawer: 1, image: 1, checkpoint: 1 });
   });
 
-  test("crossfades only within a burst's first 260 ms, including backward seeks", () => {
+  test("crossfades only within a burst transition, including backward seeks", () => {
     const start = stop.revealEnd + BURST_HOLD_DURATION;
     const sample = (elapsed: number) => burstPhotoProgress(timelineAt(elapsed, timeline), 1, false);
     expect(sample(start)).toBeCloseTo(0);
-    expect(sample(start + 130)).toBeCloseTo(0.5);
-    expect(sample(start + 260)).toBe(1);
-    expect(sample(start + 130)).toBeCloseTo(0.5);
+    expect(sample(start + BURST_TRANSITION_DURATION / 2)).toBeCloseTo(0.5);
+    expect(sample(start + BURST_TRANSITION_DURATION)).toBe(1);
+    expect(sample(start + BURST_TRANSITION_DURATION / 2)).toBeCloseTo(0.5);
     expect(burstPhotoProgress(timelineAt(start, timeline), 1, true)).toBe(1);
   });
 
   test("reduced motion shows settled content immediately and no drawer on cards", () => {
     expect(motionAt(stop.revealStart, true)).toMatchObject({ drawer: 1, image: 1, checkpoint: 1 });
-    expect(motionAt(stop.departureStart + 350, true).drawer).toBe(1);
+    expect(motionAt(stop.departureStart + DEPARTURE_DURATION / 2, true).drawer).toBe(1);
     expect(motionAt(stop.end, true)).toMatchObject({ drawer: 0, card: 1 });
     expect(motionAt(stop.dayStart, true)).toMatchObject({ drawer: 0, card: 1 });
   });

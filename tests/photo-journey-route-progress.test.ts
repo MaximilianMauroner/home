@@ -16,6 +16,8 @@ function placement(
     photoId,
     instant,
     recordingId: "walk",
+    recordingSegmentId: "0:0",
+    recordingDistanceKm: instant / 1000,
     gapSeconds: 0,
     source: "photo",
     coordinates: { latitude: trackCoordinates.latitude + 0.01, longitude: trackCoordinates.longitude + 0.01 },
@@ -56,7 +58,7 @@ describe("Photo Journey recorded route presentation", () => {
       current: [],
     });
     expect(visibleRouteSegments(story, 1, "complete", 1, true).completed).toEqual([
-      story.progressLegs[1]?.drawable,
+      story.legs[1]?.drawable,
     ]);
     expect(baseStyle().layers.map((layer) => layer.id)).not.toContain("route-points");
     const layers = baseStyle().layers.map((layer) => layer.id);
@@ -74,14 +76,15 @@ describe("Photo Journey recorded route presentation", () => {
     expect(frame.travelledKm).toBeCloseTo(leg.distanceKm / 2);
   });
 
-  test("marks the GPX prefix before the first photo as traveled", () => {
+  test("animates the GPX prefix before the first photo from its recorded start", () => {
     const placements = [placement("a", 2_000, points[2])];
-    const story = buildRouteStory(disconnected, placements, [false]);
+    const story = buildRouteStory(disconnected, placements, [true]);
 
-    expect(story.legs).toEqual([undefined]);
-    expect(story.progressLegs[0]?.drawable).toEqual(simplified(points.slice(0, 3)));
-    expect(visibleRouteSegments(story, 0, "hold", 1, false).completed).toEqual([
-      story.progressLegs[0]!.drawable,
+    expect(story.legs[0]?.drawable).toEqual(simplified(points.slice(0, 3)));
+    expect(visibleRouteSegments(story, 0, "approach", 0, true).completed).toEqual([]);
+    expect(visibleRouteSegments(story, 0, "approach", 0.5, true).current[0].at(-1)).not.toEqual(points[2]);
+    expect(visibleRouteSegments(story, 0, "hold", 1, true).completed).toEqual([
+      story.legs[0]!.drawable,
     ]);
   });
 
@@ -95,11 +98,11 @@ describe("Photo Journey recorded route presentation", () => {
       gapSeconds: 1,
       recordingSampleTime: 1_000,
     });
-    const story = buildRouteStory({ points: repeated, segmentStarts: [0] }, [selected], [false]);
+    const story = buildRouteStory({ points: repeated, segmentStarts: [0] }, [selected], [true]);
 
-    expect(story.progressLegs[0]?.points).toEqual(repeated.slice(0, 2));
+    expect(story.legs[0]?.points).toEqual(repeated.slice(0, 2));
     expect(visibleRouteSegments(story, 0, "hold", 1, false).completed).toEqual([
-      story.progressLegs[0]!.drawable,
+      story.legs[0]!.drawable,
     ]);
   });
 
@@ -110,7 +113,7 @@ describe("Photo Journey recorded route presentation", () => {
 
     for (const phase of ["reveal", "hold", "departure"] as const) {
       expect(visibleRouteSegments(story, 0, phase, 1, false, undefined, 1)).toEqual({
-        completed: [story.progressLegs[1]!.drawable],
+        completed: [story.legs[1]!.drawable],
         current: [],
       });
     }
@@ -133,21 +136,20 @@ describe("Photo Journey recorded route presentation", () => {
 
     for (const phase of ["reveal", "hold", "departure"] as const) {
       expect(visibleRouteSegments(story, 1, phase, 1, true, undefined, 2).completed).toEqual([
-        story.progressLegs[2]!.drawable,
+        story.legs[2]!.drawable,
       ]);
     }
     expect(visibleRouteSegments(story, 1, "complete", 1, true, undefined, 2).completed).toEqual([
-      story.progressLegs[2]!.drawable,
+      story.legs[2]!.drawable,
     ]);
   });
 
-  test("advances completed progress to a checkpoint even when its leg cannot animate", () => {
+  test("does not mark an unavailable leg complete without animating it", () => {
     const placements = [placement("a", 0, points[0]), placement("b", 2_000, points[2])];
     const story = buildRouteStory(disconnected, placements, [false, false]);
 
     expect(story.legs[1]).toBeUndefined();
-    expect(story.progressLegs[1]?.points.at(-1)).toEqual(points[2]);
-    expect(visibleRouteSegments(story, 1, "hold", 1, false).completed.at(-1)?.at(-1)).toEqual(points[2]);
+    expect(visibleRouteSegments(story, 1, "hold", 1, false).completed).toEqual([]);
   });
 
   test("does not join disconnected days, reversed manual order, or untimed runs", () => {

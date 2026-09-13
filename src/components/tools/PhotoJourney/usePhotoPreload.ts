@@ -102,7 +102,7 @@ export class PhotoPreloadQueue {
   }
 }
 
-export function usePhotoPreload(photos: JourneyPhoto[], activeIndex: number) {
+export function usePhotoPreload(photos: JourneyPhoto[], activeIndex: number, retainedIndex = activeIndex) {
   const queueRef = useRef<PhotoPreloadQueue | null>(null);
   const [, update] = useState(0);
   if (!queueRef.current) queueRef.current = new PhotoPreloadQueue();
@@ -110,8 +110,12 @@ export function usePhotoPreload(photos: JourneyPhoto[], activeIndex: number) {
 
   useEffect(() => queue.subscribe(() => update((version) => version + 1)), [queue]);
   useEffect(() => {
-    queue.update(photos.slice(activeIndex, activeIndex + 2).map((photo) => photo.url));
-  }, [queue, photos, activeIndex]);
+    queue.update([
+      photos[retainedIndex]?.url,
+      photos[activeIndex]?.url,
+      photos[activeIndex + 1]?.url,
+    ].filter((url): url is string => Boolean(url)));
+  }, [queue, photos, activeIndex, retainedIndex]);
   useEffect(() => () => queue.clear(), [queue]);
 
   return queue;

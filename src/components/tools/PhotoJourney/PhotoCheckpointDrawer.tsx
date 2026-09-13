@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, ExternalLink, Maximize2, Minimize2, X } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { formatDistance } from "./journey-data";
 import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
 import type { PhotoPreloadStatus } from "./usePhotoPreload";
@@ -8,13 +9,33 @@ function captureLabel(photo: JourneyPhoto) {
   return photo.metadata.capturedAtLabel || "Photo at this stop";
 }
 
+export function checkpointReadout(photo: JourneyPhoto, placement?: Placement) {
+  const captured = photo.metadata.capturedAtLabel;
+  const parts = captured?.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)(.*)$/);
+  const elevation = placement?.elevation ?? photo.metadata.altitude;
+  return {
+    time: parts?.[2],
+    date: parts ? `${parts[1]}${parts[3]}` : undefined,
+    fallback: captureLabel(photo),
+    metrics: [
+      elevation === undefined ? undefined : { label: "Elevation", value: `${Math.round(elevation).toLocaleString("en")} m` },
+      placement?.recordingDistanceKm === undefined
+        ? undefined
+        : { label: "Trail distance", value: formatDistance(placement.recordingDistanceKm) },
+    ].filter((metric): metric is { label: string; value: string } => Boolean(metric)),
+  };
+}
+
 export default function PhotoCheckpointDrawer({
   photos,
   activePhotoId,
   progress,
   imageProgress,
   photoProgress = 1,
+  previousPhoto,
+  previousOriginalStatus = "idle",
   expanded,
+  cinematic,
   width,
   height,
   manuallyOpened,
@@ -32,7 +53,10 @@ export default function PhotoCheckpointDrawer({
   progress: number;
   imageProgress: number;
   photoProgress?: number;
+  previousPhoto?: JourneyPhoto;
+  previousOriginalStatus?: PhotoPreloadStatus;
   expanded: boolean;
+  cinematic: boolean;
   width: number;
   height: number;
   manuallyOpened: boolean;
@@ -53,14 +77,15 @@ export default function PhotoCheckpointDrawer({
   const originalReady = originalStatus === "ready";
   const originalError = originalStatus === "error" || originalFailed === photo?.id;
   const place = !located || placement?.source === "carried" || placement?.source === "none"
-    ? "Unlocated photo"
+    ? undefined
     : placement?.conflict && placement.source === "photo"
-      ? "Photo GPS selected · recording differs"
+      ? "Photo location"
       : placement?.conflict && placement.source === "track"
-        ? "Recorded position selected · photo GPS differs"
+        ? "Hike recording"
         : placement?.source === "track"
-          ? (photo?.metadata.place ?? "Recorded position")
-          : (photo?.metadata.place ?? "Photo GPS");
+          ? (photo?.metadata.place ?? "Hike recording")
+          : (photo?.metadata.place ?? "Photo location");
+  const readout = photo ? checkpointReadout(photo, placement) : undefined;
   useEffect(() => {
     if (manuallyOpened && !closed) drawer.current?.focus();
   }, [manuallyOpened, closed]);
@@ -83,6 +108,7 @@ export default function PhotoCheckpointDrawer({
       className="pj-checkpoint-drawer"
       data-expanded={expanded}
       data-manual={manuallyOpened}
+      data-cinematic={cinematic}
       aria-label={`${photos.length === 1 ? "Photo" : `${photos.length} photos`} at checkpoint`}
       tabIndex={manuallyOpened ? -1 : undefined}
       style={{
@@ -101,7 +127,14 @@ export default function PhotoCheckpointDrawer({
         </div>
       </header>
       <div className="pj-drawer-viewer" style={{ "--pj-image-progress": imageProgress } as CSSProperties}>
-        {photoProgress < 1 && index > 0 && <img className="pj-drawer-previous" src={photos[index - 1].thumbnailUrl} alt="" aria-hidden="true" />}
+        {photoProgress < 1 && (previousPhoto || index > 0) && <img
+          className="pj-drawer-previous"
+          src={previousPhoto && previousOriginalStatus === "ready"
+            ? previousPhoto.url
+            : (previousPhoto ?? photos[index - 1]).thumbnailUrl}
+          alt=""
+          aria-hidden="true"
+        />}
         <div className="pj-drawer-image" style={{ opacity: photoProgress }}>
         {previewFailed !== photo.id ? <img key={`${photo.id}:preview`} className="pj-drawer-preview" src={photo.thumbnailUrl} alt={photo.name} onError={() => setPreviewFailed(photo.id)} />
           : <div className="pj-photo-fallback" role="img" aria-label={`${photo.name}; preview unavailable`}><span>Preview unavailable</span></div>}
@@ -113,8 +146,15 @@ export default function PhotoCheckpointDrawer({
         </a>
       </div>
       <section className="pj-drawer-copy">
-        <p data-located={located}>{place}</p>
-        <h2>{captureLabel(photo)}</h2>
+        {place && <p data-source={placement?.source}>{place}</p>}
+        <h2>{readout?.time ?? readout?.fallback}</h2>
+        {readout?.date && <time className="pj-checkpoint-date">{readout.date}</time>}
+        {readout?.metrics.length ? <dl className="pj-checkpoint-metrics">
+          {readout.metrics.map((metric) => <div key={metric.label}>
+            <dt>{metric.label}</dt>
+            <dd>{metric.value}</dd>
+          </div>)}
+        </dl> : null}
         <details>
           <summary>Photo details</summary>
           <span>{photo.name}</span>

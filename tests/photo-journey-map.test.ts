@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { approachAnimationDuration, cameraFrameForPoints, isUserMapMovement, journeyCameraBearing, journeyCameraPitch, suppressedMarkerIndexes, TERRAIN_PITCH } from "../src/components/tools/PhotoJourney/JourneyMap";
+import { approachAnimationDuration, cameraFrameForPoints, interpolateJourneyBearing, interpolateJourneyCamera, isUserMapMovement, journeyCameraBearing, journeyCameraPitch, previousRecordedLeg, suppressedMarkerIndexes, TERRAIN_PITCH } from "../src/components/tools/PhotoJourney/JourneyMap";
+import type { RecordedLeg } from "../src/components/tools/PhotoJourney/route-progress";
 import { trackStats, type Track } from "../src/components/tools/PhotoJourney/gpx";
 
 describe("Photo Journey map timing and recording budgets", () => {
@@ -55,6 +56,35 @@ describe("Photo Journey map timing and recording budgets", () => {
     expect(journeyCameraBearing(eastbound, "online", false)).toBe(0);
     expect(journeyCameraBearing(eastbound, "terrain", true)).toBe(0);
     expect(journeyCameraBearing([eastbound[0]], "terrain", false)).toBe(0);
+  });
+
+  test("interpolates headings across the shortest deterministic turn", () => {
+    expect(interpolateJourneyBearing(170, -170, 0)).toBe(170);
+    expect(interpolateJourneyBearing(170, -170, 0.5)).toBe(180);
+    expect(interpolateJourneyBearing(170, -170, 1)).toBe(190);
+  });
+
+  test("blends camera center and zoom without crossing the long side of the globe", () => {
+    expect(interpolateJourneyCamera(
+      { center: [179, 10], zoom: 12 },
+      { center: [-179, 14], zoom: 14 },
+      0.5,
+    )).toEqual({ center: [180, 12], zoom: 13 });
+  });
+
+  test("does not rewind the camera across an unanimated route gap", () => {
+    const point = (longitude: number) => ({ latitude: 48, longitude, time: longitude * 1_000 });
+    const leg = (from: number, to: number): RecordedLeg => ({
+      points: [point(from), point(to)],
+      drawable: [point(from), point(to)],
+      cumulativeKm: [0, 1],
+      distanceKm: 1,
+      segmentIndex: 0,
+    });
+    const first = leg(0, 1);
+    const active = leg(1, 2);
+    expect(previousRecordedLeg([undefined, first, undefined, active], 3, active)).toBeUndefined();
+    expect(previousRecordedLeg([undefined, first, active], 2, active)).toBe(first);
   });
 
   test.each([

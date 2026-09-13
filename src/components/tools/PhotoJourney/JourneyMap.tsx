@@ -9,10 +9,10 @@ import type {
 import { trackSegments, type Track } from "./gpx";
 import { journeyTravelZoom } from "./motion";
 import {
-  buildRouteStory,
   recordedLegFrame,
   recordedLegPrefix,
   routePrefix,
+  type RecordedLeg,
   type RouteStory,
 } from "./route-progress";
 import {
@@ -61,6 +61,42 @@ export function journeyCameraBearing(points: readonly Coordinates[], mode: MapMo
   if (Math.abs(x) + Math.abs(y) < Number.EPSILON) return 0;
   return Math.atan2(y, x) / radians;
 }
+
+/** Interpolate across the shortest turn so seeking and playback produce the same heading. */
+export function interpolateJourneyBearing(from: number, to: number, progress: number) {
+  const delta = ((to - from + 540) % 360) - 180;
+  const t = Math.max(0, Math.min(1, progress));
+  const eased = t * t * (3 - 2 * t);
+  return from + delta * eased;
+}
+
+export function interpolateJourneyCamera(
+  from: { center: [number, number]; zoom: number },
+  to: { center: [number, number]; zoom: number },
+  progress: number,
+) {
+  const t = Math.max(0, Math.min(1, progress));
+  const eased = t * t * (3 - 2 * t);
+  const longitudeDelta = ((to.center[0] - from.center[0] + 540) % 360) - 180;
+  return {
+    center: [
+      from.center[0] + longitudeDelta * eased,
+      from.center[1] + (to.center[1] - from.center[1]) * eased,
+    ] as [number, number],
+    zoom: from.zoom + (to.zoom - from.zoom) * eased,
+  };
+}
+
+export function previousRecordedLeg(legs: readonly (RecordedLeg | undefined)[], activeIndex: number, activeLeg?: RecordedLeg) {
+  if (!activeLeg) return undefined;
+  const candidate = legs[activeIndex - 1];
+  const previousEnd = candidate?.points.at(-1);
+  const activeStart = activeLeg.points[0];
+  return candidate?.segmentIndex === activeLeg.segmentIndex && previousEnd && activeStart &&
+    previousEnd.latitude === activeStart.latitude && previousEnd.longitude === activeStart.longitude
+    ? candidate
+    : undefined;
+}
 /** Legs longer than this arc on a globe instead of smearing across Mercator. */
 export const GLOBE_LEG_KM = 1500;
 
@@ -73,6 +109,8 @@ type JourneyMapProps = {
   stops: JourneyStop[];
   /** The recorded tour, when one was loaded. It replaces the photo-to-photo route. */
   track?: Track;
+  /** Shared validated geometry used by both playback timing and map progress. */
+  routeStory?: RouteStory;
   phase: JourneyPhase;
   /** A chapter boundary must reposition instead of animating an unrecorded overnight leg. */
   dayChange?: boolean;
@@ -82,8 +120,6 @@ type JourneyMapProps = {
   /** Timeline-derived progress for the active recorded leg. */
   currentLegProgress?: number;
   currentLegEligible?: boolean;
-  /** Eligibility for all destination-indexed legs, including already completed stops. */
-  legEligibility?: readonly boolean[];
   dayChanges?: readonly boolean[];
   placements?: readonly Placement[];
   /** "offline" draws the bundled outline; "online" and "terrain" fetch OpenStreetMap tiles. */
@@ -269,7 +305,7 @@ export function baseStyle(): StyleSpecification {
         type: "line",
         source: "route-context",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#c2d0d5", "line-opacity": 0.7, "line-width": 2.5 },
+        paint: { "line-color": "#67b9de", "line-opacity": 0.78, "line-width": 2.5 },
       },
       {
         id: "route-completed-halo",
@@ -405,8 +441,8 @@ export function visibleRouteSegments(
     : arrived ? checkpointEndIndex : activeIndex - 1;
   const completed: Coordinates[][] = [];
   for (let index = 0; index <= completedIndex; index += 1) {
-    const progressLeg = story.progressLegs[index];
-    if (progressLeg) completed.push(progressLeg.drawable);
+    const leg = story.legs[index];
+    if (leg) completed.push(leg.drawable);
   }
   const active = story.legs[activeIndex];
   if (phase === "approach" && active && currentEligible)
@@ -420,13 +456,13 @@ export default function JourneyMap({
   reducedMotion,
   stops,
   track,
+  routeStory,
   phase,
   dayChange = false,
   approachDuration,
   phaseRemaining,
   currentLegProgress = 0,
   currentLegEligible = false,
-  legEligibility,
   dayChanges,
   placements,
   mapMode = "offline",
@@ -450,7 +486,7 @@ export default function JourneyMap({
   const mapRef = useRef<MapLibreMap>();
   const moduleRef = useRef<typeof import("maplibre-gl")>();
   const markersRef = useRef(new Map<string, MapLibreMarker>());
-  const positionMarkerRef = useRef<MapLibreMarker>();
+  const lastRoutePaintRef = useRef(0);
   const completedRef = useRef<{ engine: number; segments: readonly (readonly Coordinates[])[] }>();
   const inferredCompletedRef = useRef<{ engine: number; key: string; stops: JourneyStop[] }>();
   const projectionRef = useRef<"mercator" | "globe">("mercator");
@@ -474,20 +510,9 @@ export default function JourneyMap({
     speed: number;
     mode: MapMode;
   }>();
-  const eligibilityKey = useMemo(
-    () => legEligibility?.map((eligible) => eligible ? "1" : "0").join(""),
-    [legEligibility],
-  );
   const dayChangesKey = useMemo(
     () => dayChanges?.map((change) => change ? "1" : "0").join(""),
     [dayChanges],
-  );
-  const routeStory = useMemo(
-    () => track ? buildRouteStory(track, placements, legEligibility ? [...legEligibility] : undefined) : undefined,
-    // Eligibility is scalar data frequently assembled at the JSX boundary; key it by value so
-    // playback renders do not rebuild recording-sized route context or recreate markers.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [track, placements, eligibilityKey],
   );
   const activeRouteFrame = useMemo(() => {
     const leg = currentLegEligible ? routeStory?.legs[activeIndex] : undefined;
@@ -663,8 +688,6 @@ export default function JourneyMap({
     const refresh = () => {
       pending = false;
       for (const marker of markersRef.current.values()) marker.setLngLat(marker.getLngLat());
-      const position = positionMarkerRef.current;
-      if (position) position.setLngLat(position.getLngLat());
       // Let an in-progress overview animation finish; tile arrivals must not restart it.
       if (!map.isMoving()) setTerrainRevision((revision) => revision + 1);
     };
@@ -734,36 +757,17 @@ export default function JourneyMap({
     );
   }, [routeStory, ready, engine]);
 
-  // A DOM marker keeps the position visible above photo badges, including while paused at a stop.
-  useEffect(() => {
-    const map = mapRef.current;
-    const module = moduleRef.current;
-    if (!map || !module || !ready) return;
-    const element = document.createElement("div");
-    element.className = "pj-current-position";
-    element.hidden = true;
-    const label = document.createElement("span");
-    label.textContent = "Current position";
-    element.append(label);
-    const marker = new module.Marker({ element, anchor: "center", pitchAlignment: "viewport", rotationAlignment: "viewport", opacityWhenCovered: 1 }).setLngLat([0, 0]).addTo(map);
-    positionMarkerRef.current = marker;
-    return () => {
-      marker.remove();
-      positionMarkerRef.current = undefined;
-    };
-  }, [ready, engine]);
-
   // Only the small narrative overlays change with playback. The full recording stays in the
   // static context source, avoiding repeated work on recording-sized arrays.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    // GeoJSON updates cross a worker boundary and force the terrain scene to repaint. Keep the
+    // camera on the display clock, but cap route serialization at a visually continuous 30 Hz.
+    const now = performance.now();
+    if (playing && phase === "approach" && now - lastRoutePaintRef.current < 1000 / 30) return;
+    lastRoutePaintRef.current = now;
     const showPosition = (position?: Coordinates) => {
-      const marker = positionMarkerRef.current;
-      if (marker) {
-        marker.getElement().hidden = !position;
-        if (position) marker.setLngLat(lngLat(position));
-      }
       (map.getSource("route-tip") as GeoJSONSource | undefined)?.setData(position ? {
         type: "FeatureCollection",
         features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: lngLat(position) } }],
@@ -830,7 +834,7 @@ export default function JourneyMap({
       ? activeRouteFrame?.tip
       : arrived ? settled : undefined;
     showPosition(tip);
-  }, [routeStory, activeRouteFrame, activeIndex, activeCheckpoint, phase, currentLegProgress, currentLegEligible, placements, stops, track, timeline, dayChanges, dayChangesKey, ready, engine]);
+  }, [routeStory, activeRouteFrame, activeIndex, activeCheckpoint, phase, currentLegProgress, currentLegEligible, placements, stops, track, timeline, dayChanges, dayChangesKey, playing, ready, engine]);
 
   // Checkpoints begin as quiet dots, reveal their photo on arrival, and remain as visited stops.
   useEffect(() => {
@@ -846,6 +850,7 @@ export default function JourneyMap({
       element.classList.toggle("pj-map-marker-selected", active && !playing);
       element.classList.toggle("pj-map-marker-past", index < activeIndex || active);
       element.classList.toggle("pj-map-marker-future", index > activeIndex || (index === activeIndex && !checkpointArrived));
+      element.classList.toggle("pj-map-marker-playback-hidden", playing);
       element.style.setProperty("--pj-checkpoint-progress", active ? "1" : "0");
       element.style.zIndex = active ? "3" : index < activeIndex ? "2" : "1";
     });
@@ -1013,7 +1018,16 @@ export default function JourneyMap({
     // Reposition while the opaque day card covers the map. The first uncovered frame is already
     // at the next day's real first fix, so there is no invented overnight flight or visible snap.
     if (phase === "day") {
-      map.jumpTo({ center: lngLat(move.center), zoom: stopZoom, bearing: 0, pitch, padding: cameraPadding });
+      const entryLeg = currentLegEligible ? routeStory?.legs[activeIndex] : undefined;
+      const entryFrame = entryLeg ? recordedLegFrame(entryLeg, 0) : undefined;
+      const entryView = entryFrame?.window.length ? fit(entryFrame.window, mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM) : undefined;
+      map.jumpTo({
+        center: entryView?.center ?? lngLat(move.center),
+        zoom: entryView?.zoom ?? stopZoom,
+        bearing: entryLeg ? journeyCameraBearing(entryLeg.drawable, mode, reducedMotion) : 0,
+        pitch,
+        padding: cameraPadding,
+      });
       return;
     }
     // Missing fixes inherit the last camera position. Seeking still restores that position.
@@ -1027,50 +1041,75 @@ export default function JourneyMap({
       ...move.center,
       longitude: nearestLongitude(move.center.longitude, map.getCenter().lng),
     };
-    if (dayChange && phase === "approach") {
+    if (dayChange && phase === "approach" && !activeRouteFrame) {
       map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch, padding: cameraPadding });
       return;
     }
     const recordedLegKnown = !track || Boolean(activeRouteFrame);
     const padding = cameraPadding;
     const routeWindow = activeRouteFrame?.window ?? [];
-    const routeBearing = journeyCameraBearing(routeWindow, mode, reducedMotion);
+    const activeRecordedLeg = routeStory?.legs[activeIndex];
+    const activeLegPoints = activeRecordedLeg?.drawable ??
+      (move.from ? [move.from, move.center] : routeWindow);
+    const targetBearing = journeyCameraBearing(activeLegPoints, mode, reducedMotion);
+    const previousLeg = routeStory
+      ? previousRecordedLeg(routeStory.legs, activeIndex, activeRecordedLeg)
+      : undefined;
+    const previousBearing = previousLeg
+      ? journeyCameraBearing(previousLeg.drawable, mode, reducedMotion)
+      : targetBearing;
+    const cameraBlendFraction = Math.min(1, 700 / Math.max(1, approachDuration ?? 700));
+    const routeBearing = phase === "approach" && activeRecordedLeg && previousLeg && !dayChange
+      ? interpolateJourneyBearing(previousBearing, targetBearing, currentLegProgress / cameraBlendFraction)
+      : targetBearing;
     const followZoom = mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM;
     if (phase !== "approach") {
       const settled = routeWindow.length
         ? fit([...routeWindow, center], followZoom)
         : { center: lngLat(center), zoom: stopZoom };
-      map.jumpTo({ center: settled.center, zoom: routeWindow.length ? followZoom : settled.zoom, bearing: routeBearing, pitch, padding });
+      map.jumpTo({ center: settled.center, zoom: settled.zoom, bearing: routeBearing, pitch, padding });
       return;
     }
-    if (reducedMotion || !move.from || !recordedLegKnown) {
+    if (reducedMotion || (!move.from && !activeRouteFrame) || !recordedLegKnown) {
       map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch, padding });
       return;
     }
     // Garmin/Strava style: ride the recorded line instead of flying straight at the photo.
     // The follow effect below re-centers on every progress frame; here only set the zoom
     // and an initial position so there is no straight-line flight to fight it.
-    const inferredTip = !track
-      ? routePrefix([move.from, move.center], currentLegProgress).at(-1)
+    const inferredStart = move.from;
+    const inferredTip = !track && inferredStart
+      ? routePrefix([inferredStart, move.center], currentLegProgress).at(-1)
       : undefined;
     if (activeRouteFrame || inferredTip) {
-      const tip = inferredTip ?? activeRouteFrame?.tip ?? move.from;
-      const view = routeWindow.length
+      const tip = inferredTip ?? activeRouteFrame?.tip;
+      if (!tip) return;
+      let view = routeWindow.length
         ? fit(routeWindow, followZoom)
         : undefined;
-      const legZoom = inferredTip
-        ? fit([move.from, move.center], stopZoom).zoom
+      if (view && previousLeg && !dayChange) {
+        const previousWindow = recordedLegFrame(previousLeg, 1).window;
+        const previousView = fit(previousWindow, followZoom);
+        view = interpolateJourneyCamera(
+          previousView,
+          view,
+          currentLegProgress / cameraBlendFraction,
+        );
+      }
+      const legZoom = inferredTip && inferredStart
+        ? fit([inferredStart, move.center], stopZoom).zoom
         : stopZoom;
       map.jumpTo({
         center: view?.center ?? lngLat({ latitude: tip.latitude, longitude: nearestLongitude(tip.longitude, map.getCenter().lng) }),
-        zoom: view ? followZoom : journeyTravelZoom(currentLegProgress, stopZoom, legZoom),
+        zoom: view?.zoom ?? journeyTravelZoom(currentLegProgress, stopZoom, legZoom),
         bearing: routeBearing,
         pitch,
         padding,
       });
       return;
     }
-    const leg = fit([move.from, move.center], stopZoom);
+    if (!inferredStart) return;
+    const leg = fit([inferredStart, move.center], stopZoom);
     if (!playing) {
       map.jumpTo({ center: lngLat(center), zoom: leg.zoom, bearing: 0, pitch, padding });
       return;

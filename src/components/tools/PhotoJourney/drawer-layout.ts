@@ -20,8 +20,8 @@ export function drawerLayout(
       padding: { top: 0, right: 0, bottom: 0, left: 0 },
     };
   }
-  const width = Math.round(Math.min(expanded ? 860 : 430, frame.width * (expanded ? 0.68 : 0.32)));
-  const height = Math.round(Math.min(expanded ? frame.height - 32 : 480, frame.height * (expanded ? 0.9 : 0.62)));
+  const width = Math.round(Math.min(expanded ? 860 : 620, frame.width * (expanded ? 0.68 : 0.42)));
+  const height = Math.round(Math.min(expanded ? frame.height - 32 : 600, frame.height * (expanded ? 0.9 : 0.72)));
   return {
     mobile,
     width,

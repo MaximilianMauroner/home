@@ -5,8 +5,8 @@ describe("Photo Journey drawer layout", () => {
   test("floats a compact desktop photo without moving the map camera", () => {
     const open = drawerLayout({ width: 1200, height: 700 }, false);
     const expanded = drawerLayout({ width: 1200, height: 700 }, true);
-    expect(open.width).toBe(384);
-    expect(open.height).toBe(434);
+    expect(open.width).toBe(504);
+    expect(open.height).toBe(504);
     expect(open.padding.right).toBe(0);
     expect(expanded.padding.right).toBe(0);
     expect(expanded.width).toBeGreaterThan(open.width);

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import type { Track } from "./gpx";
+import { buildRouteStory } from "./route-progress";
 import { buildTimeline, photoHoldTime, placementLegEligibility, timelineAt } from "./timeline";
 import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
@@ -21,6 +23,7 @@ export function usePlayback(
     dayKeys?: ReadonlyArray<string | undefined>;
     dayLabels?: ReadonlyArray<string | undefined>;
   },
+  track?: Track,
 ) {
   const positions = useMemo(
     () => placements?.map((placement) => (placement.source === "photo" || placement.source === "track" ? placement.coordinates : undefined)),
@@ -30,9 +33,17 @@ export function usePlayback(
     () => placements?.map((placement) => placement.instant),
     [placements],
   );
-  const legEligibility = useMemo(
+  const structuralEligibility = useMemo(
     () => placementLegEligibility(placements, dayOptions?.dayKeys),
     [placements, dayOptions?.dayKeys],
+  );
+  const routeStory = useMemo(
+    () => track ? buildRouteStory(track, placements, structuralEligibility) : undefined,
+    [placements, structuralEligibility, track],
+  );
+  const legEligibility = useMemo(
+    () => routeStory ? routeStory.legs.map(Boolean) : structuralEligibility,
+    [routeStory, structuralEligibility],
   );
   const timeline = useMemo(
     () => buildTimeline(photos, positions, instants, {
@@ -41,9 +52,10 @@ export function usePlayback(
       recordingIds: placements?.map((placement) => placement.recordingId),
       recordingSegmentIds: placements?.map((placement) => placement.recordingSegmentId),
       recordingDistancesKm: placements?.map((placement) => placement.recordingDistanceKm),
+      recordedLegDistancesKm: routeStory?.legs.map((leg) => leg?.distanceKm),
       located: placements?.map((placement) => placement.source === "photo" || placement.source === "track"),
     }),
-    [photos, positions, instants, dayOptions?.dayKeys, dayOptions?.dayLabels, legEligibility, placements],
+    [photos, positions, instants, dayOptions?.dayKeys, dayOptions?.dayLabels, legEligibility, placements, routeStory],
   );
   const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -164,6 +176,6 @@ export function usePlayback(
     if (playing) pause();
     else play();
   }, [pause, play, playing]);
-  return { timeline, state, elapsed, total, playing, speed, seekVersion, activeIndex, activePhotoId, setSpeed,
+  return { timeline, routeStory, state, elapsed, total, playing, speed, seekVersion, activeIndex, activePhotoId, setSpeed,
     pause, play, restart, seek, select, toggle };
 }

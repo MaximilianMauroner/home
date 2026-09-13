@@ -2,13 +2,13 @@ import type { Placement } from "./track";
 import type { Coordinates, JourneyPhoto } from "./types";
 
 export const INTRO_DURATION = 2500;
-export const DAY_DURATION = 1500;
+export const DAY_DURATION = 1200;
 export const OUTRO_DURATION = 3000;
-export const REVEAL_DURATION = 950;
-export const HOLD_DURATION = 3300;
-export const DEPARTURE_DURATION = 700;
-export const BURST_HOLD_DURATION = 1250;
-export const BURST_TRANSITION_DURATION = 260;
+export const REVEAL_DURATION = 520;
+export const HOLD_DURATION = 2000;
+export const DEPARTURE_DURATION = 180;
+export const BURST_HOLD_DURATION = 900;
+export const BURST_TRANSITION_DURATION = 220;
 
 export type JourneyPhase =
   | "overview"
@@ -90,17 +90,29 @@ export function placementLegEligibility(
 ) {
   return placements?.map((placement, index) => {
     const previous = placements[index - 1];
-    if (!previous) return false;
     const hasRecordedSample = (entry: Placement) =>
       entry.source === "track" ? Boolean(entry.coordinates) : Boolean(entry.trackCoordinates);
-    if (!hasRecordedSample(placement) || !hasRecordedSample(previous)) return false;
-    if (!placement.recordingId || placement.recordingId !== previous.recordingId) return false;
-    if (placement.ambiguous || previous.ambiguous || placement.choiceUnavailable || previous.choiceUnavailable) return false;
-    if (placement.instant === undefined || previous.instant === undefined || placement.instant <= previous.instant) return false;
+    if (!hasRecordedSample(placement) || !placement.recordingId || !placement.recordingSegmentId) return false;
+    if (placement.ambiguous || placement.choiceUnavailable) return false;
     const day = dayKeys?.[index];
     const previousDay = dayKeys?.[index - 1];
+    if (previous && day && previousDay && day !== previousDay) return false;
+    const entry = !previous ||
+      placement.recordingId !== previous.recordingId ||
+      placement.recordingSegmentId !== previous.recordingSegmentId;
+    if (entry) return (placement.recordingDistanceKm ?? 0) > 0.001;
+    if (!hasRecordedSample(previous)) return false;
+    if (previous.ambiguous || previous.choiceUnavailable) return false;
+    if (placement.instant === undefined || previous.instant === undefined || placement.instant <= previous.instant) return false;
     return !day || !previousDay || day === previousDay;
   });
+}
+
+export function recordedApproachDuration(distanceKm: number, entry: boolean) {
+  if (distanceKm <= 0.001) return 0;
+  return entry
+    ? Math.min(18_000, Math.max(4_000, 4_000 + distanceKm * 1_800))
+    : Math.min(18_000, Math.max(1_200, 1_200 + distanceKm * 900));
 }
 
 /** Geometry order is never changed to enable timed playback. */
@@ -117,10 +129,25 @@ export function buildTimeline(
     recordingIds?: ReadonlyArray<string | undefined>;
     recordingSegmentIds?: ReadonlyArray<string | undefined>;
     recordingDistancesKm?: ReadonlyArray<number | undefined>;
+    /** Exact validated distance of each destination-indexed recorded leg. */
+    recordedLegDistancesKm?: ReadonlyArray<number | undefined>;
     located?: ReadonlyArray<boolean | undefined>;
   },
 ): JourneyTimeline {
   const positionOf = (index: number) => positions ? positions[index] : photos[index]?.metadata.coordinates;
+  const recordedLegDistances: Array<number | undefined> = options?.recordedLegDistancesKm
+    ? [...options.recordedLegDistancesKm]
+    : [];
+  const reachedBySegment = new Map<string, number>();
+  if (!options?.recordedLegDistancesKm) photos.forEach((_, index) => {
+    const segment = options?.recordingSegmentIds?.[index];
+    const distance = options?.recordingDistancesKm?.[index];
+    if (!segment || distance === undefined) return;
+    const reached = reachedBySegment.get(segment) ?? 0;
+    if (options?.legEligibility?.[index] && distance > reached)
+      recordedLegDistances[index] = distance - reached;
+    reachedBySegment.set(segment, Math.max(reached, distance));
+  });
   let offset = photos.length ? INTRO_DURATION : 0;
   let day = 0;
   let lastDay: string | undefined;
@@ -141,15 +168,21 @@ export function buildTimeline(
     const previousSegment = options?.recordingSegmentIds?.[previousIndex];
     const recordingDistance = options?.recordingDistancesKm?.[photoIndex];
     const previousRecordingDistance = options?.recordingDistancesKm?.[previousIndex];
+    const groupStartIndex = groups.at(-1)?.[0];
+    const groupStartRecordingDistance = groupStartIndex === undefined
+      ? undefined
+      : options?.recordingDistancesKm?.[groupStartIndex];
     const recordedPathStaysAtStop = recordingDistance === undefined || previousRecordingDistance === undefined ||
       Math.abs(recordingDistance - previousRecordingDistance) < 0.05;
+    const recordedBurstStaysAtStop = recordingDistance === undefined || groupStartRecordingDistance === undefined ||
+      Math.abs(recordingDistance - groupStartRecordingDistance) < 0.05;
     const canGroup = previousIndex >= 0 && own && previousPosition &&
       options?.located?.[photoIndex] !== false && options?.located?.[previousIndex] !== false &&
       instant !== undefined && previousInstant !== undefined && instant >= previousInstant &&
       Math.floor(instant / 60000) === Math.floor(previousInstant / 60000) &&
       distanceKm(own, previousPosition) < 0.05 &&
       (!day || !previousDay || day === previousDay) &&
-      recording === previousRecording && segment === previousSegment && recordedPathStaysAtStop;
+      recording === previousRecording && segment === previousSegment && recordedPathStaysAtStop && recordedBurstStaysAtStop;
     if (canGroup) groups.at(-1)!.push(photoIndex);
     else groups.push([photoIndex]);
   });
@@ -174,13 +207,21 @@ export function buildTimeline(
     const own = positionOf(photoIndex);
     const burst = photoIndices.length > 1;
     const distance = own && lastPosition ? distanceKm(lastPosition, own) : 0;
-    const distanceBased = !own || distance < 0.001
-      ? 0
-      : Math.min(3000, Math.max(600, 600 + Math.log10(1 + distance) * 650));
+    const recordedDistance = recordedLegDistances[photoIndex];
+    const hasRecordedContract = options?.legEligibility !== undefined;
+    const entry = Boolean(options?.legEligibility?.[photoIndex]) &&
+      (photoIndex === 0 || options?.recordingSegmentIds?.[photoIndex] !== options?.recordingSegmentIds?.[photoIndex - 1]);
+    const distanceBased = recordedDistance !== undefined
+      ? recordedApproachDuration(recordedDistance, entry)
+      : hasRecordedContract
+        ? 0
+        : !own || distance < 0.001
+          ? 0
+          : Math.min(3000, Math.max(600, 600 + Math.log10(1 + distance) * 650));
     const gapSeconds = instants?.[photoIndex] !== undefined && instants?.[photoIndex - 1] !== undefined
       ? (instants[photoIndex]! - instants[photoIndex - 1]!) / 1000
       : undefined;
-    const approachDuration = distanceBased > 0 && gapSeconds !== undefined && gapSeconds > 0
+    const approachDuration = recordedDistance === undefined && distanceBased > 0 && gapSeconds !== undefined && gapSeconds > 0
       ? Math.min(6000, Math.max(distanceBased, 600 + Math.log10(1 + gapSeconds / 60) * 1500))
       : distanceBased;
     if (own) lastPosition = own;
@@ -230,9 +271,9 @@ function stateFor(
     currentLegEligible: stop?.legEligible ?? false,
     checkpointPhotoIndex: stop?.photoIndex ?? 0,
     checkpointIndex: stop?.checkpointIndex ?? 0,
-    checkpointProgress: substage(200, 400),
-    drawerProgress: substage(400, 750),
-    imageProgress: substage(750, 950),
+    checkpointProgress: substage(REVEAL_DURATION * 0.1, REVEAL_DURATION * 0.4),
+    drawerProgress: substage(0, REVEAL_DURATION * 0.65),
+    imageProgress: substage(REVEAL_DURATION * 0.12, REVEAL_DURATION),
     ...overrides,
   };
 }
