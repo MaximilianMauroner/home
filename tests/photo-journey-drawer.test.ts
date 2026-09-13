@@ -40,6 +40,9 @@ describe("Photo checkpoint drawer", () => {
       }));
     });
     expect(container.textContent).toContain("Unlocated photo");
+    expect(container.textContent).toContain("Photo at this stop");
+    expect(container.textContent).toContain("Photo details");
+    expect(container.textContent).toContain(photo.name);
     expect(container.textContent).toContain("Original unavailable; showing preview.");
     expect(container.querySelector(".pj-drawer-preview")).not.toBeNull();
     expect(container.querySelector(".pj-drawer-original")).toBeNull();

@@ -87,6 +87,26 @@ describe("Photo Journey playback commands", () => {
     expect(playback.state.phase).toBe("intro");
   });
 
+  test("replays with one activation after a paused seek to the end", async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const photos = [photo("0", "2026-01-01T10:00:00Z"), photo("1", "2026-01-01T10:10:00Z")];
+    let playback!: ReturnType<typeof usePlayback>;
+    function Harness() {
+      playback = usePlayback(photos);
+      return null;
+    }
+    const container = document.createElement("div");
+    document.body.append(container);
+    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => playback.seek(playback.total));
+    expect(playback.state.phase).toBe("complete");
+    expect(playback.playing).toBe(false);
+    await act(async () => playback.toggle());
+    expect(playback.elapsed).toBe(0);
+    expect(playback.playing).toBe(true);
+    expect(playback.state.phase).toBe("intro");
+  });
+
   test("does not skip the opening after a delayed animation frame", async () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     let now = 0;

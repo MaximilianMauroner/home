@@ -69,6 +69,25 @@ const ScrubberTicks = memo(function ScrubberTicks({
     style={{ left: `${(stop.revealStart / total) * 100}%` }} />);
 });
 
+const ScrubberChapters = memo(function ScrubberChapters({
+  stops,
+  total,
+  onSeek,
+}: {
+  stops: ReturnType<typeof usePlayback>["timeline"]["stops"];
+  total: number;
+  onSeek: (elapsed: number) => void;
+}) {
+  return stops.filter((stop) => stop.dayLabel).map((stop) => <button
+    key={stop.id}
+    className="pj-scrub-chapter"
+    style={{ left: `${(stop.dayStart / total) * 100}%` }}
+    onClick={() => onSeek(stop.dayStart)}
+    aria-label={`Seek to ${stop.dayLabel}`}
+    title={`${stop.dayLabel} · ${formatDuration(stop.dayStart)}`}
+  />);
+});
+
 function ExportPanel({
   scopeLabel,
   summary,
@@ -628,6 +647,16 @@ export default function PhotoJourney() {
       </div>
       {busy && <div className="pj-import-status" role="status"><strong>{importProgress}</strong><progress aria-label="Import progress" max={100} value={importPercent} /><p>Import in progress. The player and totals show the previously imported files until these finish. Large ZIPs can take several minutes.</p></div>}
       <div className="pj-stage" ref={stageRef} data-recording={recordingVideo}>
+        <div className="pj-stage-context">
+          <label>
+            <span>Chapter</span>
+            <select aria-label="Player chapter" value={selectedDay} onChange={(event) => { setSelectedDay(event.target.value); setShowAllRecordings(false); }}>
+              <option value={ALL_DAYS}>All days · {formatDuration(playback.total)}</option>
+              {days.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}{entry.photoIds.length ? ` · ${entry.photoIds.length} photo${entry.photoIds.length === 1 ? "" : "s"}` : " · recording only"}</option>)}
+            </select>
+          </label>
+          <span className="pj-stage-status">{playback.playing || waitingToPlay ? "Playing" : "Paused"} · {dayLabel(days, selectedDay)}</span>
+        </div>
         <JourneyStage photos={visiblePhotos} stops={stops} track={scopedTrack} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} state={playback.state}
           timeline={playback.timeline} playing={playback.playing}
           reducedMotion={reducedMotion} mapMode={mapMode} title={title} timezone={tripTimezone} speed={playback.speed} seekVersion={playback.seekVersion}
@@ -645,7 +674,8 @@ export default function PhotoJourney() {
               <div className="pj-scrub-fill" style={{ transform: `scaleX(${playback.total ? playback.elapsed / playback.total : 0})` }} />
               <ScrubberTicks stops={playback.timeline.stops} completedThrough={completedThrough} total={playback.total} />
             </div>
-            <input disabled={!hasPhotos} type="range" min={0} max={playback.total} value={playback.elapsed} onChange={(event) => playback.seek(Number(event.target.value))} aria-label="Journey progress" />
+            <ScrubberChapters stops={playback.timeline.stops} total={playback.total} onSeek={playback.seek} />
+            <input disabled={!hasPhotos} type="range" min={0} max={playback.total} value={playback.elapsed} onChange={(event) => playback.seek(Number(event.target.value))} aria-label="Replay time" aria-valuetext={`${formatDuration(playback.elapsed)} of ${formatDuration(playback.total)}`} />
           </div>
           <span className="pj-time">{formatDuration(playback.elapsed)} <span>/ {formatDuration(playback.total)}</span></span>
           <select className="pj-speed" disabled={!hasPhotos} value={playback.speed} onChange={(event) => playback.setSpeed(Number(event.target.value))} aria-label="Playback speed">
@@ -672,7 +702,7 @@ export default function PhotoJourney() {
                 : terrain.loading
                   ? <p>Loading terrain… OpenStreetMap and elevation tiles reveal the areas shown.</p>
                   : <p>Terrain on. OpenStreetMap and elevation tiles reveal the areas shown.</p>}
-        <p className="pj-keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> stops <kbd>F</kbd> fullscreen</p>
+        <p className="pj-keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> photos <kbd>F</kbd> fullscreen</p>
       </div>
       <section className="pj-review-callout" aria-label="Journey review summary">
         <div>

@@ -4,6 +4,10 @@ import type { Placement } from "./track";
 import type { JourneyPhoto } from "./types";
 import type { PhotoPreloadStatus } from "./usePhotoPreload";
 
+function captureLabel(photo: JourneyPhoto) {
+  return photo.metadata.capturedAtLabel || "Photo at this stop";
+}
+
 export default function PhotoCheckpointDrawer({
   photos,
   activePhotoId,
@@ -110,7 +114,11 @@ export default function PhotoCheckpointDrawer({
       </div>
       <section className="pj-drawer-copy">
         <p data-located={located}>{place}</p>
-        <h2>{photo.name}</h2>
+        <h2>{captureLabel(photo)}</h2>
+        <details>
+          <summary>Photo details</summary>
+          <span>{photo.name}</span>
+        </details>
       </section>
       <CheckpointStrip photos={photos} index={index} browse={browse} />
     </aside>

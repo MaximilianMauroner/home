@@ -419,7 +419,7 @@
 /* The frame plus its controls fit in the window below the site's sticky header (about 4.6rem). */
 .pj-stage {
   display: grid;
-  grid-template-rows: clamp(18rem, calc(100svh - 11rem), 46rem) auto;
+  grid-template-rows: auto clamp(18rem, calc(100svh - 14rem), 46rem) auto;
   scroll-margin: 5.25rem 0 0.75rem;
   overflow: hidden;
   border: 1px solid var(--pj-line);
@@ -432,8 +432,12 @@
   height: 100vh;
   border: 0;
   border-radius: 0;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
+.pj-stage-context { display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.45rem .75rem;border-bottom:1px solid var(--pj-line);background:var(--pj-bg-1); }
+.pj-stage-context label { display:flex;align-items:center;gap:.5rem;color:var(--pj-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em; }
+.pj-stage-context select { max-width:min(22rem,55vw);height:2rem;padding:0 .65rem;border:1px solid var(--pj-line);border-radius:999px;background:var(--pj-bg-2);color:var(--pj-ink);font:inherit;text-transform:none;letter-spacing:0; }
+.pj-stage-status { color:var(--pj-soft);font-size:.75rem;white-space:nowrap; }
 .pj-viewport {
   position: relative;
   min-height: 0;
@@ -1017,6 +1021,7 @@
   appearance: none;
   cursor: pointer;
 }
+.pj-scrub-chapter { position:absolute!important;top:2px;z-index:2!important;width:12px!important;height:12px!important;margin-left:-6px!important;border:2px solid var(--pj-bg-1)!important;background:var(--pj-accent)!important; }
 .pj-scrub input::-webkit-slider-runnable-track {
   height: 4px;
   background: transparent;
@@ -1563,8 +1568,11 @@
 }
 @media (max-width: 640px) {
   .pj-stage {
-    grid-template-rows: clamp(16rem, calc(100svh - 10rem), 32rem) auto;
+    grid-template-rows: auto clamp(16rem, calc(100svh - 13rem), 32rem) auto;
   }
+  .pj-stage-context { padding:.4rem .5rem; }
+  .pj-stage-context label > span,.pj-stage-status { display:none; }
+  .pj-stage-context select { max-width:calc(100vw - 2rem); }
   .pj-counter {
     top: 0.75rem;
     right: 0.75rem;
