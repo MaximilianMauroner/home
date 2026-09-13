@@ -45,6 +45,22 @@ export const TERRAIN_PITCH = 45;
 export function journeyCameraPitch(mode: MapMode, globe: boolean, reducedMotion: boolean) {
   return mode === "terrain" && !globe && !reducedMotion ? TERRAIN_PITCH : 0;
 }
+
+/** Point the terrain camera along a broad route window instead of turning at every GPS sample. */
+export function journeyCameraBearing(points: readonly Coordinates[], mode: MapMode, reducedMotion: boolean) {
+  if (mode !== "terrain" || reducedMotion || points.length < 2) return 0;
+  const from = points[0];
+  const to = points.at(-1)!;
+  const radians = Math.PI / 180;
+  const deltaLongitude = (to.longitude - from.longitude) * radians;
+  const fromLatitude = from.latitude * radians;
+  const toLatitude = to.latitude * radians;
+  const y = Math.sin(deltaLongitude) * Math.cos(toLatitude);
+  const x = Math.cos(fromLatitude) * Math.sin(toLatitude) -
+    Math.sin(fromLatitude) * Math.cos(toLatitude) * Math.cos(deltaLongitude);
+  if (Math.abs(x) + Math.abs(y) < Number.EPSILON) return 0;
+  return Math.atan2(y, x) / radians;
+}
 /** Legs longer than this arc on a globe instead of smearing across Mercator. */
 export const GLOBE_LEG_KM = 1500;
 
@@ -1017,11 +1033,14 @@ export default function JourneyMap({
     }
     const recordedLegKnown = !track || Boolean(activeRouteFrame);
     const padding = cameraPadding;
+    const routeWindow = activeRouteFrame?.window ?? [];
+    const routeBearing = journeyCameraBearing(routeWindow, mode, reducedMotion);
+    const followZoom = mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM;
     if (phase !== "approach") {
-      const settled = activeRouteFrame?.window.length
-        ? fit([...activeRouteFrame.window, center], mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM)
+      const settled = routeWindow.length
+        ? fit([...routeWindow, center], followZoom)
         : { center: lngLat(center), zoom: stopZoom };
-      map.jumpTo({ center: settled.center, zoom: settled.zoom, bearing: 0, pitch, padding });
+      map.jumpTo({ center: settled.center, zoom: routeWindow.length ? followZoom : settled.zoom, bearing: routeBearing, pitch, padding });
       return;
     }
     if (reducedMotion || !move.from || !recordedLegKnown) {
@@ -1036,16 +1055,16 @@ export default function JourneyMap({
       : undefined;
     if (activeRouteFrame || inferredTip) {
       const tip = inferredTip ?? activeRouteFrame?.tip ?? move.from;
-      const view = activeRouteFrame?.window.length
-        ? fit(activeRouteFrame.window, mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM)
+      const view = routeWindow.length
+        ? fit(routeWindow, followZoom)
         : undefined;
       const legZoom = inferredTip
         ? fit([move.from, move.center], stopZoom).zoom
         : stopZoom;
       map.jumpTo({
         center: view?.center ?? lngLat({ latitude: tip.latitude, longitude: nearestLongitude(tip.longitude, map.getCenter().lng) }),
-        zoom: view?.zoom ?? journeyTravelZoom(currentLegProgress, stopZoom, legZoom),
-        bearing: 0,
+        zoom: view ? followZoom : journeyTravelZoom(currentLegProgress, stopZoom, legZoom),
+        bearing: routeBearing,
         pitch,
         padding,
       });

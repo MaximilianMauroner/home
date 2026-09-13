@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { approachAnimationDuration, cameraFrameForPoints, isUserMapMovement, journeyCameraPitch, suppressedMarkerIndexes, TERRAIN_PITCH } from "../src/components/tools/PhotoJourney/JourneyMap";
+import { approachAnimationDuration, cameraFrameForPoints, isUserMapMovement, journeyCameraBearing, journeyCameraPitch, suppressedMarkerIndexes, TERRAIN_PITCH } from "../src/components/tools/PhotoJourney/JourneyMap";
 import { trackStats, type Track } from "../src/components/tools/PhotoJourney/gpx";
 
 describe("Photo Journey map timing and recording budgets", () => {
@@ -47,6 +47,14 @@ describe("Photo Journey map timing and recording budgets", () => {
     expect(journeyCameraPitch("offline", false, false)).toBe(0);
     expect(journeyCameraPitch("terrain", true, false)).toBe(0);
     expect(journeyCameraPitch("terrain", false, true)).toBe(0);
+  });
+
+  test("faces terrain travel along the route while flat and reduced views stay north-up", () => {
+    const eastbound = [{ latitude: 48, longitude: 16 }, { latitude: 48, longitude: 16.01 }];
+    expect(journeyCameraBearing(eastbound, "terrain", false)).toBeCloseTo(90, 1);
+    expect(journeyCameraBearing(eastbound, "online", false)).toBe(0);
+    expect(journeyCameraBearing(eastbound, "terrain", true)).toBe(0);
+    expect(journeyCameraBearing([eastbound[0]], "terrain", false)).toBe(0);
   });
 
   test.each([

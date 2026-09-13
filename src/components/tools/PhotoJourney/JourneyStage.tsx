@@ -103,10 +103,9 @@ export default function JourneyStage({
   const manualOpen = manualCheckpoint === state.checkpointIndex;
   const drawerPresentationProgress = motion.drawer;
   const checkpointPresentationProgress = motion.checkpoint;
-  const effectiveDrawerProgress = manualOpen && manualClosed ? 0 : drawerPresentationProgress;
   const layout = useMemo(
-    () => drawerLayout(size, effectiveDrawerProgress, drawerExpanded),
-    [size, effectiveDrawerProgress, drawerExpanded],
+    () => drawerLayout(size, drawerExpanded),
+    [size, drawerExpanded],
   );
   useEffect(() => {
     if (playing) {
