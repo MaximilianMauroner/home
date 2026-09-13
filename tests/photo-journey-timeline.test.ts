@@ -54,9 +54,7 @@ describe("Photo Journey timeline", () => {
     expect(timelineAt(second.start, timeline).phase).toBe("approach");
     expect(timelineAt(second.revealStart, timeline).panelVisible).toBe(true);
     expect(timelineAt(second.end, timeline).phase).toBe("outro");
-    expect(timelineAt(timeline.totalDuration, timeline).phase).toBe(
-      "complete",
-    );
+    expect(timelineAt(timeline.totalDuration, timeline).phase).toBe("complete");
     expect(second.approachDuration).toBeGreaterThan(2000);
   });
   test("publishes exact phase boundaries for reveal, hold, departure, and ending", () => {
@@ -76,7 +74,10 @@ describe("Photo Journey timeline", () => {
       phaseEnd: stop.end,
       panelVisible: true,
     });
-    const middle = timelineAt(stop.departureStart + (stop.end - stop.departureStart) / 2, timeline);
+    const middle = timelineAt(
+      stop.departureStart + (stop.end - stop.departureStart) / 2,
+      timeline,
+    );
     expect(middle.phaseProgress).toBe(0.5);
     expect(middle.phaseRemaining).toBe(middle.phaseDuration / 2);
     expect(timelineAt(stop.end, timeline).phase).toBe("outro");
@@ -88,7 +89,11 @@ describe("Photo Journey timeline", () => {
   });
 
   test("only marks same-source, forward, within-day recording legs as structurally eligible", () => {
-    const placement = (photoId: string, instant: number, recordingId = "walk"): Placement => ({
+    const placement = (
+      photoId: string,
+      instant: number,
+      recordingId = "walk",
+    ): Placement => ({
       photoId,
       instant,
       recordingId,
@@ -100,19 +105,43 @@ describe("Photo Journey timeline", () => {
       trackCoordinates: { latitude: instant + 1, longitude: instant + 1 },
     });
     const forward = [placement("a", 1), placement("b", 2)];
-    expect(placementLegEligibility(forward, ["2025-03-14", "2025-03-14"])).toEqual([false, true]);
-    expect(placementLegEligibility(forward, ["2025-03-14", "2025-03-15"])).toEqual([false, false]);
-    expect(placementLegEligibility([forward[1], forward[0]], ["2025-03-14", "2025-03-14"])).toEqual([true, false]);
-    expect(placementLegEligibility([forward[0], placement("b", 2, "bike")], ["2025-03-14", "2025-03-14"])).toEqual([false, true]);
-    expect(placementLegEligibility([forward[0], placement("b", 2, "bike")], ["2025-03-14", "2025-03-15"])).toEqual([false, false]);
-    expect(placementLegEligibility([forward[0], { ...forward[1], ambiguous: true }], ["2025-03-14", "2025-03-14"])).toEqual([false, false]);
+    expect(
+      placementLegEligibility(forward, ["2025-03-14", "2025-03-14"]),
+    ).toEqual([false, true]);
+    expect(
+      placementLegEligibility(forward, ["2025-03-14", "2025-03-15"]),
+    ).toEqual([false, false]);
+    expect(
+      placementLegEligibility(
+        [forward[1], forward[0]],
+        ["2025-03-14", "2025-03-14"],
+      ),
+    ).toEqual([true, false]);
+    expect(
+      placementLegEligibility(
+        [forward[0], placement("b", 2, "bike")],
+        ["2025-03-14", "2025-03-14"],
+      ),
+    ).toEqual([false, true]);
+    expect(
+      placementLegEligibility(
+        [forward[0], placement("b", 2, "bike")],
+        ["2025-03-14", "2025-03-15"],
+      ),
+    ).toEqual([false, false]);
+    expect(
+      placementLegEligibility(
+        [forward[0], { ...forward[1], ambiguous: true }],
+        ["2025-03-14", "2025-03-14"],
+      ),
+    ).toEqual([false, false]);
   });
   test("uses actual recorded distance for calm entry and consistent leg timing", () => {
     expect(recordedApproachDuration(0, true)).toBe(0);
-    expect(recordedApproachDuration(2, true)).toBe(7_600);
-    expect(recordedApproachDuration(20, true)).toBe(18_000);
-    expect(recordedApproachDuration(2, false)).toBe(3_000);
-    expect(recordedApproachDuration(20, false)).toBe(18_000);
+    expect(recordedApproachDuration(2, true)).toBe(4_400);
+    expect(recordedApproachDuration(20, true)).toBe(8_000);
+    expect(recordedApproachDuration(2, false)).toBe(1_900);
+    expect(recordedApproachDuration(20, false)).toBe(6_000);
   });
   test("groups days and collapses same-minute nearby bursts", () => {
     const photos = [photo(48, 16), photo(48, 16), photo(49, 17)];
@@ -129,7 +158,9 @@ describe("Photo Journey timeline", () => {
       phaseStart: timeline.stops[1].dayStart,
       phaseEnd: timeline.stops[1].start,
     });
-    expect(timelineAt(timeline.stops[1].dayStart, timeline).dayLabel).toContain("Day 2");
+    expect(timelineAt(timeline.stops[1].dayStart, timeline).dayLabel).toContain(
+      "Day 2",
+    );
   });
   test("splits a moving burst before its hidden recorded progress accumulates", () => {
     const photos = [photo(48, 16), photo(48, 16), photo(48, 16)];
@@ -143,14 +174,19 @@ describe("Photo Journey timeline", () => {
         recordingDistancesKm: [0, 0.04, 0.08],
       },
     );
-    expect(timeline.stops.map((stop) => stop.photoIndices)).toEqual([[0, 1], [2]]);
+    expect(timeline.stops.map((stop) => stop.photoIndices)).toEqual([
+      [0, 1],
+      [2],
+    ]);
   });
   test("times legs by the real gap on the tour when shutter instants are known", () => {
     const pair = [photo(48, 16), photo(48.1, 16.1)];
     const positions = pair.map((entry) => entry.metadata.coordinates);
     const flat = buildTimeline(pair, positions);
     const twoHours = buildTimeline(pair, positions, [0, 2 * 3_600_000]);
-    expect(twoHours.stops[1].approachDuration).toBeGreaterThan(flat.stops[1].approachDuration);
+    expect(twoHours.stops[1].approachDuration).toBeGreaterThan(
+      flat.stops[1].approachDuration,
+    );
     const twoDays = buildTimeline(pair, positions, [0, 48 * 3_600_000]);
     expect(twoDays.stops[1].approachDuration).toBeLessThanOrEqual(6000);
     // Without instants the distance formula still rules.
@@ -158,32 +194,69 @@ describe("Photo Journey timeline", () => {
   });
   test("uses resolved instants for nearby burst grouping", () => {
     const pair = [photo(48, 16), photo(48, 16)];
-    const timeline = buildTimeline(pair, pair.map((entry) => entry.metadata.coordinates), [0, 30_000]);
+    const timeline = buildTimeline(
+      pair,
+      pair.map((entry) => entry.metadata.coordinates),
+      [0, 30_000],
+    );
     expect(timeline.stops).toHaveLength(1);
     expect(timeline.stops[0].burst).toBe(true);
     expect(timeline.stops[0].photoIndices).toEqual([0, 1]);
-    expect(timelineAt(timeline.stops[0].revealEnd + 1_250, timeline).photoIndex).toBe(1);
+    expect(
+      timelineAt(timeline.stops[0].revealEnd + 2_050, timeline).photoIndex,
+    ).toBe(1);
   });
   test("derives checkpoint, drawer, and image substages from the reveal clock", () => {
     const timeline = buildTimeline([photo(48, 16)]);
     const stop = timeline.stops[0];
-    expect(timelineAt(stop.revealStart, timeline)).toMatchObject({ checkpointProgress: 0, drawerProgress: 0, imageProgress: 0 });
-    expect(timelineAt(stop.revealStart + 130, timeline).checkpointProgress).toBe(0.5);
-    expect(timelineAt(stop.revealStart + 169, timeline).drawerProgress).toBe(0.5);
-    expect(timelineAt(stop.revealStart + 291.2, timeline).imageProgress).toBeCloseTo(0.5);
+    expect(timelineAt(stop.revealStart, timeline)).toMatchObject({
+      checkpointProgress: 0,
+      drawerProgress: 0,
+      imageProgress: 0,
+    });
+    expect(
+      timelineAt(stop.revealStart + 130, timeline).checkpointProgress,
+    ).toBe(0.5);
+    expect(timelineAt(stop.revealStart + 169, timeline).drawerProgress).toBe(
+      0.5,
+    );
+    expect(
+      timelineAt(stop.revealStart + 291.2, timeline).imageProgress,
+    ).toBeCloseTo(0.5);
   });
   test("does not group bursts across recording or location boundaries", () => {
     const pair = [photo(48, 16), photo(48, 16)];
     const positions = pair.map((entry) => entry.metadata.coordinates);
-    expect(buildTimeline(pair, positions, [0, 30_000], { recordingIds: ["a", "b"] }).stops).toHaveLength(2);
-    expect(buildTimeline(pair, positions, [0, 30_000], { recordingIds: ["a", "a"], recordingSegmentIds: ["0:0", "0:1"] }).stops).toHaveLength(2);
-    expect(buildTimeline(pair, positions, [0, 30_000], { located: [true, false] }).stops).toHaveLength(2);
-    expect(buildTimeline(pair, positions, [0, 30_000], {
-      recordingIds: ["a", "a"], recordingSegmentIds: ["0:0", "0:0"], recordingDistancesKm: [0.1, 0.3],
-    }).stops).toHaveLength(2);
+    expect(
+      buildTimeline(pair, positions, [0, 30_000], { recordingIds: ["a", "b"] })
+        .stops,
+    ).toHaveLength(2);
+    expect(
+      buildTimeline(pair, positions, [0, 30_000], {
+        recordingIds: ["a", "a"],
+        recordingSegmentIds: ["0:0", "0:1"],
+      }).stops,
+    ).toHaveLength(2);
+    expect(
+      buildTimeline(pair, positions, [0, 30_000], { located: [true, false] })
+        .stops,
+    ).toHaveLength(2);
+    expect(
+      buildTimeline(pair, positions, [0, 30_000], {
+        recordingIds: ["a", "a"],
+        recordingSegmentIds: ["0:0", "0:0"],
+        recordingDistancesKm: [0.1, 0.3],
+      }).stops,
+    ).toHaveLength(2);
   });
   test("travels into a grouped visit and keeps its last image through departure", () => {
-    const photos = [photo(48, 16), photo(48.01, 16.01), photo(48.01, 16.01), photo(48.01, 16.01), photo(48.02, 16.02)];
+    const photos = [
+      photo(48, 16),
+      photo(48.01, 16.01),
+      photo(48.01, 16.01),
+      photo(48.01, 16.01),
+      photo(48.02, 16.02),
+    ];
     const timeline = buildTimeline(
       photos,
       photos.map((entry) => entry.metadata.coordinates),
@@ -196,7 +269,11 @@ describe("Photo Journey timeline", () => {
         located: Array(5).fill(true),
       },
     );
-    expect(timeline.stops.map((stop) => stop.photoIndices)).toEqual([[0], [1, 2, 3], [4]]);
+    expect(timeline.stops.map((stop) => stop.photoIndices)).toEqual([
+      [0],
+      [1, 2, 3],
+      [4],
+    ]);
     expect(timeline.stops[1].approachDuration).toBeGreaterThan(0);
     expect(timeline.legEligibility).toEqual([false, true, true, true, true]);
     const grouped = timeline.stops[1];
@@ -218,7 +295,9 @@ describe("Photo Journey timeline", () => {
   });
 
   test("locates a late stop in a 400-photo timeline", () => {
-    const photos = Array.from({ length: 400 }, (_, index) => photo(48 + index / 10_000, 16));
+    const photos = Array.from({ length: 400 }, (_, index) =>
+      photo(48 + index / 10_000, 16),
+    );
     const timeline = buildTimeline(photos);
     const late = timeline.stops[390];
     expect(timelineAt(late.revealEnd, timeline)).toMatchObject({
@@ -229,11 +308,7 @@ describe("Photo Journey timeline", () => {
   });
 
   test("carries the last known position across photos without GPS", () => {
-    const stops = stopsFor([
-      photo(48.2, 16.37),
-      photo(),
-      photo(40.71, -74),
-    ]);
+    const stops = stopsFor([photo(48.2, 16.37), photo(), photo(40.71, -74)]);
     expect(stops[1]).toMatchObject({
       coordinates: { latitude: 48.2, longitude: 16.37 },
       located: false,
@@ -279,7 +354,9 @@ describe("Photo Journey timeline", () => {
   });
 
   test("skips photos without GPS when drawing the route", () => {
-    expect(locatedPoints(stopsFor([photo(1, 1), photo(), photo(2, 2)]))).toEqual([
+    expect(
+      locatedPoints(stopsFor([photo(1, 1), photo(), photo(2, 2)])),
+    ).toEqual([
       { latitude: 1, longitude: 1 },
       { latitude: 2, longitude: 2 },
     ]);
@@ -294,9 +371,17 @@ describe("Photo Journey timeline", () => {
       photo(4, 4),
       photo(5, 5),
     ]);
-    expect(inferredRouteSegments(stops, [false, false, false, false, false, true])).toEqual([
-      [{ latitude: 1, longitude: 1 }, { latitude: 2, longitude: 2 }],
-      [{ latitude: 3, longitude: 3 }, { latitude: 4, longitude: 4 }],
+    expect(
+      inferredRouteSegments(stops, [false, false, false, false, false, true]),
+    ).toEqual([
+      [
+        { latitude: 1, longitude: 1 },
+        { latitude: 2, longitude: 2 },
+      ],
+      [
+        { latitude: 3, longitude: 3 },
+        { latitude: 4, longitude: 4 },
+      ],
     ]);
   });
 

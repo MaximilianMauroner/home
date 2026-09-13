@@ -5,9 +5,9 @@ export const INTRO_DURATION = 2500;
 export const DAY_DURATION = 1200;
 export const OUTRO_DURATION = 3000;
 export const REVEAL_DURATION = 520;
-export const HOLD_DURATION = 2000;
+export const HOLD_DURATION = 3500;
 export const DEPARTURE_DURATION = 180;
-export const BURST_HOLD_DURATION = 900;
+export const BURST_HOLD_DURATION = 1800;
 export const BURST_TRANSITION_DURATION = 220;
 
 export type JourneyPhase =
@@ -91,19 +91,32 @@ export function placementLegEligibility(
   return placements?.map((placement, index) => {
     const previous = placements[index - 1];
     const hasRecordedSample = (entry: Placement) =>
-      entry.source === "track" ? Boolean(entry.coordinates) : Boolean(entry.trackCoordinates);
-    if (!hasRecordedSample(placement) || !placement.recordingId || !placement.recordingSegmentId) return false;
+      entry.source === "track"
+        ? Boolean(entry.coordinates)
+        : Boolean(entry.trackCoordinates);
+    if (
+      !hasRecordedSample(placement) ||
+      !placement.recordingId ||
+      !placement.recordingSegmentId
+    )
+      return false;
     if (placement.ambiguous || placement.choiceUnavailable) return false;
     const day = dayKeys?.[index];
     const previousDay = dayKeys?.[index - 1];
     if (previous && day && previousDay && day !== previousDay) return false;
-    const entry = !previous ||
+    const entry =
+      !previous ||
       placement.recordingId !== previous.recordingId ||
       placement.recordingSegmentId !== previous.recordingSegmentId;
     if (entry) return (placement.recordingDistanceKm ?? 0) > 0.001;
     if (!hasRecordedSample(previous)) return false;
     if (previous.ambiguous || previous.choiceUnavailable) return false;
-    if (placement.instant === undefined || previous.instant === undefined || placement.instant <= previous.instant) return false;
+    if (
+      placement.instant === undefined ||
+      previous.instant === undefined ||
+      placement.instant <= previous.instant
+    )
+      return false;
     return !day || !previousDay || day === previousDay;
   });
 }
@@ -111,8 +124,8 @@ export function placementLegEligibility(
 export function recordedApproachDuration(distanceKm: number, entry: boolean) {
   if (distanceKm <= 0.001) return 0;
   return entry
-    ? Math.min(18_000, Math.max(4_000, 4_000 + distanceKm * 1_800))
-    : Math.min(18_000, Math.max(1_200, 1_200 + distanceKm * 900));
+    ? Math.min(8_000, Math.max(3_000, 3_000 + distanceKm * 700))
+    : Math.min(6_000, Math.max(1_000, 1_000 + distanceKm * 450));
 }
 
 /** Geometry order is never changed to enable timed playback. */
@@ -134,20 +147,21 @@ export function buildTimeline(
     located?: ReadonlyArray<boolean | undefined>;
   },
 ): JourneyTimeline {
-  const positionOf = (index: number) => positions ? positions[index] : photos[index]?.metadata.coordinates;
-  const recordedLegDistances: Array<number | undefined> = options?.recordedLegDistancesKm
-    ? [...options.recordedLegDistancesKm]
-    : [];
+  const positionOf = (index: number) =>
+    positions ? positions[index] : photos[index]?.metadata.coordinates;
+  const recordedLegDistances: Array<number | undefined> =
+    options?.recordedLegDistancesKm ? [...options.recordedLegDistancesKm] : [];
   const reachedBySegment = new Map<string, number>();
-  if (!options?.recordedLegDistancesKm) photos.forEach((_, index) => {
-    const segment = options?.recordingSegmentIds?.[index];
-    const distance = options?.recordingDistancesKm?.[index];
-    if (!segment || distance === undefined) return;
-    const reached = reachedBySegment.get(segment) ?? 0;
-    if (options?.legEligibility?.[index] && distance > reached)
-      recordedLegDistances[index] = distance - reached;
-    reachedBySegment.set(segment, Math.max(reached, distance));
-  });
+  if (!options?.recordedLegDistancesKm)
+    photos.forEach((_, index) => {
+      const segment = options?.recordingSegmentIds?.[index];
+      const distance = options?.recordingDistancesKm?.[index];
+      if (!segment || distance === undefined) return;
+      const reached = reachedBySegment.get(segment) ?? 0;
+      if (options?.legEligibility?.[index] && distance > reached)
+        recordedLegDistances[index] = distance - reached;
+      reachedBySegment.set(segment, Math.max(reached, distance));
+    });
   let offset = photos.length ? INTRO_DURATION : 0;
   let day = 0;
   let lastDay: string | undefined;
@@ -158,8 +172,10 @@ export function buildTimeline(
     const own = positionOf(photoIndex);
     const previous = photos[previousIndex];
     const previousPosition = positionOf(previousIndex);
-    const instant = instants?.[photoIndex] ?? photo.metadata.capturedAt?.getTime();
-    const previousInstant = instants?.[previousIndex] ?? previous?.metadata.capturedAt?.getTime();
+    const instant =
+      instants?.[photoIndex] ?? photo.metadata.capturedAt?.getTime();
+    const previousInstant =
+      instants?.[previousIndex] ?? previous?.metadata.capturedAt?.getTime();
     const day = options?.dayKeys?.[photoIndex];
     const previousDay = options?.dayKeys?.[previousIndex];
     const recording = options?.recordingIds?.[photoIndex];
@@ -167,22 +183,37 @@ export function buildTimeline(
     const segment = options?.recordingSegmentIds?.[photoIndex];
     const previousSegment = options?.recordingSegmentIds?.[previousIndex];
     const recordingDistance = options?.recordingDistancesKm?.[photoIndex];
-    const previousRecordingDistance = options?.recordingDistancesKm?.[previousIndex];
+    const previousRecordingDistance =
+      options?.recordingDistancesKm?.[previousIndex];
     const groupStartIndex = groups.at(-1)?.[0];
-    const groupStartRecordingDistance = groupStartIndex === undefined
-      ? undefined
-      : options?.recordingDistancesKm?.[groupStartIndex];
-    const recordedPathStaysAtStop = recordingDistance === undefined || previousRecordingDistance === undefined ||
+    const groupStartRecordingDistance =
+      groupStartIndex === undefined
+        ? undefined
+        : options?.recordingDistancesKm?.[groupStartIndex];
+    const recordedPathStaysAtStop =
+      recordingDistance === undefined ||
+      previousRecordingDistance === undefined ||
       Math.abs(recordingDistance - previousRecordingDistance) < 0.05;
-    const recordedBurstStaysAtStop = recordingDistance === undefined || groupStartRecordingDistance === undefined ||
+    const recordedBurstStaysAtStop =
+      recordingDistance === undefined ||
+      groupStartRecordingDistance === undefined ||
       Math.abs(recordingDistance - groupStartRecordingDistance) < 0.05;
-    const canGroup = previousIndex >= 0 && own && previousPosition &&
-      options?.located?.[photoIndex] !== false && options?.located?.[previousIndex] !== false &&
-      instant !== undefined && previousInstant !== undefined && instant >= previousInstant &&
+    const canGroup =
+      previousIndex >= 0 &&
+      own &&
+      previousPosition &&
+      options?.located?.[photoIndex] !== false &&
+      options?.located?.[previousIndex] !== false &&
+      instant !== undefined &&
+      previousInstant !== undefined &&
+      instant >= previousInstant &&
       Math.floor(instant / 60000) === Math.floor(previousInstant / 60000) &&
       distanceKm(own, previousPosition) < 0.05 &&
       (!day || !previousDay || day === previousDay) &&
-      recording === previousRecording && segment === previousSegment && recordedPathStaysAtStop && recordedBurstStaysAtStop;
+      recording === previousRecording &&
+      segment === previousSegment &&
+      recordedPathStaysAtStop &&
+      recordedBurstStaysAtStop;
     if (canGroup) groups.at(-1)!.push(photoIndex);
     else groups.push([photoIndex]);
   });
@@ -191,7 +222,11 @@ export function buildTimeline(
     const photo = photos[photoIndex];
     const date = photo.metadata.capturedAt;
     const instant = instants?.[photoIndex] ?? date?.getTime();
-    const key = options?.dayKeys?.[photoIndex] ?? (instant === undefined ? undefined : new Date(instant).toISOString().slice(0, 10));
+    const key =
+      options?.dayKeys?.[photoIndex] ??
+      (instant === undefined
+        ? undefined
+        : new Date(instant).toISOString().slice(0, 10));
     let dayLabel: string | undefined;
     if (key && key !== lastDay) {
       day += 1;
@@ -209,40 +244,81 @@ export function buildTimeline(
     const distance = own && lastPosition ? distanceKm(lastPosition, own) : 0;
     const recordedDistance = recordedLegDistances[photoIndex];
     const hasRecordedContract = options?.legEligibility !== undefined;
-    const entry = Boolean(options?.legEligibility?.[photoIndex]) &&
-      (photoIndex === 0 || options?.recordingSegmentIds?.[photoIndex] !== options?.recordingSegmentIds?.[photoIndex - 1]);
-    const distanceBased = recordedDistance !== undefined
-      ? recordedApproachDuration(recordedDistance, entry)
-      : hasRecordedContract
-        ? 0
-        : !own || distance < 0.001
+    const entry =
+      Boolean(options?.legEligibility?.[photoIndex]) &&
+      (photoIndex === 0 ||
+        options?.recordingSegmentIds?.[photoIndex] !==
+          options?.recordingSegmentIds?.[photoIndex - 1]);
+    const distanceBased =
+      recordedDistance !== undefined
+        ? recordedApproachDuration(recordedDistance, entry)
+        : hasRecordedContract
           ? 0
-          : Math.min(3000, Math.max(600, 600 + Math.log10(1 + distance) * 650));
-    const gapSeconds = instants?.[photoIndex] !== undefined && instants?.[photoIndex - 1] !== undefined
-      ? (instants[photoIndex]! - instants[photoIndex - 1]!) / 1000
-      : undefined;
-    const approachDuration = recordedDistance === undefined && distanceBased > 0 && gapSeconds !== undefined && gapSeconds > 0
-      ? Math.min(6000, Math.max(distanceBased, 600 + Math.log10(1 + gapSeconds / 60) * 1500))
-      : distanceBased;
+          : !own || distance < 0.001
+            ? 0
+            : Math.min(
+                3000,
+                Math.max(600, 600 + Math.log10(1 + distance) * 650),
+              );
+    const gapSeconds =
+      instants?.[photoIndex] !== undefined &&
+      instants?.[photoIndex - 1] !== undefined
+        ? (instants[photoIndex]! - instants[photoIndex - 1]!) / 1000
+        : undefined;
+    const approachDuration =
+      recordedDistance === undefined &&
+      distanceBased > 0 &&
+      gapSeconds !== undefined &&
+      gapSeconds > 0
+        ? Math.min(
+            6000,
+            Math.max(
+              distanceBased,
+              600 + Math.log10(1 + gapSeconds / 60) * 1500,
+            ),
+          )
+        : distanceBased;
     if (own) lastPosition = own;
     const start = offset;
     const revealStart = start + approachDuration;
     const revealEnd = revealStart + REVEAL_DURATION;
-    const departureStart = revealEnd + HOLD_DURATION + (photoIndices.length - 1) * BURST_HOLD_DURATION;
+    const departureStart =
+      revealEnd +
+      HOLD_DURATION +
+      (photoIndices.length - 1) * BURST_HOLD_DURATION;
     const end = departureStart + DEPARTURE_DURATION;
     offset = end;
     return {
-      id: photoIndices.map((index) => photos[index].id).join("\u0000"), checkpointIndex,
-      photoIndex, photoIndices, start, duration: end - start, approachDuration, revealStart, revealEnd,
-      departureStart, end, dayStart, dayLabel, dayChange: Boolean(photoIndex > 0 && dayLabel),
-      legEligible: Boolean(options?.legEligibility?.[photoIndex]), burst,
+      id: photoIndices.map((index) => photos[index].id).join("\u0000"),
+      checkpointIndex,
+      photoIndex,
+      photoIndices,
+      start,
+      duration: end - start,
+      approachDuration,
+      revealStart,
+      revealEnd,
+      departureStart,
+      end,
+      dayStart,
+      dayLabel,
+      dayChange: Boolean(photoIndex > 0 && dayLabel),
+      legEligible: Boolean(options?.legEligibility?.[photoIndex]),
+      burst,
     };
   });
   return {
     stops,
     totalDuration: photos.length ? offset + OUTRO_DURATION : 0,
-    legEligibility: photos.map((_, index) => Boolean(options?.legEligibility?.[index])),
-    dayChanges: photos.map((_, index) => index > 0 && Boolean(options?.dayKeys?.[index]) && options?.dayKeys?.[index] !== options?.dayKeys?.[index - 1]),
+    legEligibility: photos.map((_, index) =>
+      Boolean(options?.legEligibility?.[index]),
+    ),
+    dayChanges: photos.map(
+      (_, index) =>
+        index > 0 &&
+        Boolean(options?.dayKeys?.[index]) &&
+        options?.dayKeys?.[index] !== options?.dayKeys?.[index - 1],
+    ),
   };
 }
 
@@ -256,16 +332,32 @@ function stateFor(
 ): TimelineState {
   const duration = Math.max(0, phaseEnd - phaseStart);
   const safe = Math.min(phaseEnd, Math.max(phaseStart, elapsed));
-  const progress = duration ? clamp((safe - phaseStart) / duration) : phase === "complete" ? 1 : 0;
-  const arrived = phase === "reveal" || phase === "hold" || phase === "departure" || phase === "outro" || phase === "complete";
+  const progress = duration
+    ? clamp((safe - phaseStart) / duration)
+    : phase === "complete"
+      ? 1
+      : 0;
+  const arrived =
+    phase === "reveal" ||
+    phase === "hold" ||
+    phase === "departure" ||
+    phase === "outro" ||
+    phase === "complete";
   const revealElapsed = Math.max(0, safe - (stop?.revealStart ?? safe));
-  const substage = (from: number, to: number) => clamp((revealElapsed - from) / (to - from));
+  const substage = (from: number, to: number) =>
+    clamp((revealElapsed - from) / (to - from));
   return {
     photoIndex: stop?.photoIndex ?? 0,
-    phase, phaseProgress: progress, phaseStart, phaseEnd, phaseDuration: duration,
+    phase,
+    phaseProgress: progress,
+    phaseStart,
+    phaseEnd,
+    phaseDuration: duration,
     phaseRemaining: Math.max(0, phaseEnd - safe),
-    panelVisible: phase === "reveal" || phase === "hold" || phase === "departure",
-    dayLabel: stop?.dayLabel, dayChange: stop?.dayChange ?? false,
+    panelVisible:
+      phase === "reveal" || phase === "hold" || phase === "departure",
+    dayLabel: stop?.dayLabel,
+    dayChange: stop?.dayChange ?? false,
     approachDuration: stop?.approachDuration ?? 0,
     currentLegProgress: phase === "approach" ? progress : arrived ? 1 : 0,
     currentLegEligible: stop?.legEligible ?? false,
@@ -278,11 +370,17 @@ function stateFor(
   };
 }
 
-export function timelineAt(elapsed: number, timeline: JourneyTimeline): TimelineState {
+export function timelineAt(
+  elapsed: number,
+  timeline: JourneyTimeline,
+): TimelineState {
   if (!timeline.stops.length) return stateFor(0, undefined, "overview", 0, 0);
   const safe = Math.max(0, elapsed);
   if (safe < INTRO_DURATION)
-    return stateFor(safe, timeline.stops[0], "intro", 0, INTRO_DURATION, { dayLabel: undefined, dayChange: false });
+    return stateFor(safe, timeline.stops[0], "intro", 0, INTRO_DURATION, {
+      dayLabel: undefined,
+      dayChange: false,
+    });
   let low = 0;
   let high = timeline.stops.length - 1;
   let stop: TimelineStop | undefined;
@@ -299,11 +397,22 @@ export function timelineAt(elapsed: number, timeline: JourneyTimeline): Timeline
   if (!stop) {
     const last = timeline.stops.at(-1)!;
     if (safe >= timeline.totalDuration)
-      return stateFor(timeline.totalDuration, last, "complete", timeline.totalDuration, timeline.totalDuration, { panelVisible: false });
-    return stateFor(safe, last, "outro", last.end, timeline.totalDuration, { panelVisible: false });
+      return stateFor(
+        timeline.totalDuration,
+        last,
+        "complete",
+        timeline.totalDuration,
+        timeline.totalDuration,
+        { panelVisible: false },
+      );
+    return stateFor(safe, last, "outro", last.end, timeline.totalDuration, {
+      panelVisible: false,
+    });
   }
   if (safe < stop.start)
-    return stateFor(safe, stop, "day", stop.dayStart, stop.start, { currentLegProgress: 0 });
+    return stateFor(safe, stop, "day", stop.dayStart, stop.start, {
+      currentLegProgress: 0,
+    });
   if (safe < stop.revealStart)
     return stateFor(safe, stop, "approach", stop.start, stop.revealStart);
   if (safe < stop.revealEnd)
@@ -329,7 +438,12 @@ export function timelineAt(elapsed: number, timeline: JourneyTimeline): Timeline
 export function photoHoldTime(stop: TimelineStop, photoIndex: number) {
   const offset = Math.max(0, stop.photoIndices.indexOf(photoIndex));
   // Direct selection lands after the dissolve so a paused selection shows the chosen photo.
-  return Math.min(stop.departureStart - 1, stop.revealEnd + offset * BURST_HOLD_DURATION + (offset > 0 ? BURST_TRANSITION_DURATION : 0));
+  return Math.min(
+    stop.departureStart - 1,
+    stop.revealEnd +
+      offset * BURST_HOLD_DURATION +
+      (offset > 0 ? BURST_TRANSITION_DURATION : 0),
+  );
 }
 
 export type JourneyStop = {
@@ -340,10 +454,16 @@ export type JourneyStop = {
 export type CameraMove = { center: Coordinates; from?: Coordinates };
 
 function samePlace(a: Coordinates, b: Coordinates) {
-  return Math.abs(a.latitude - b.latitude) < 1e-6 && Math.abs(a.longitude - b.longitude) < 1e-6;
+  return (
+    Math.abs(a.latitude - b.latitude) < 1e-6 &&
+    Math.abs(a.longitude - b.longitude) < 1e-6
+  );
 }
 
-export function cameraFor(stops: JourneyStop[], photoIndex: number): CameraMove | undefined {
+export function cameraFor(
+  stops: JourneyStop[],
+  photoIndex: number,
+): CameraMove | undefined {
   const center = stops[photoIndex]?.coordinates;
   if (!center) return undefined;
   const previous = stops[photoIndex - 1]?.coordinates;
@@ -359,10 +479,13 @@ export function routeSegments(points: Coordinates[]): Coordinates[][] {
     const previous = points[index - 1];
     const point = points[index];
     if (Math.abs(point.longitude - previous.longitude) > 180) {
-      const adjusted = point.longitude + (point.longitude < previous.longitude ? 360 : -360);
+      const adjusted =
+        point.longitude + (point.longitude < previous.longitude ? 360 : -360);
       const edge = adjusted > previous.longitude ? 180 : -180;
-      const fraction = (edge - previous.longitude) / (adjusted - previous.longitude);
-      const latitude = previous.latitude + fraction * (point.latitude - previous.latitude);
+      const fraction =
+        (edge - previous.longitude) / (adjusted - previous.longitude);
+      const latitude =
+        previous.latitude + fraction * (point.latitude - previous.latitude);
       segment.push({ latitude, longitude: edge });
       segments.push(segment);
       segment = [{ latitude, longitude: -edge }];
@@ -374,7 +497,9 @@ export function routeSegments(points: Coordinates[]): Coordinates[][] {
 }
 
 export function locatedPoints(stops: readonly JourneyStop[]): Coordinates[] {
-  return stops.flatMap((stop) => (stop.located && stop.coordinates ? [stop.coordinates] : []));
+  return stops.flatMap((stop) =>
+    stop.located && stop.coordinates ? [stop.coordinates] : [],
+  );
 }
 
 /** Dashed photo-only connections stop at unknown locations and selected-trip day boundaries. */

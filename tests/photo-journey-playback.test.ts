@@ -16,7 +16,14 @@ function photo(id: string, capturedAt: string): JourneyPhoto {
     thumbnailUrl: `blob:${id}:thumb`,
     name: id,
     importOrder: Number(id),
-    metadata: { capturedAt: new Date(capturedAt), modifiedAtLabel: "", dimensions: "1 × 1", fileSize: "1 B", fileType: "JPEG", details: [] },
+    metadata: {
+      capturedAt: new Date(capturedAt),
+      modifiedAtLabel: "",
+      dimensions: "1 × 1",
+      fileSize: "1 B",
+      fileType: "JPEG",
+      details: [],
+    },
   };
 }
 
@@ -30,31 +37,49 @@ describe("Photo Journey playback commands", () => {
 
   test("manual selection while playing lands paused in the requested photo hold", async () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-    const photos = [photo("0", "2026-01-01T10:00:00Z"), photo("1", "2026-01-01T10:10:00Z")];
+    const photos = [
+      photo("0", "2026-01-01T10:00:00Z"),
+      photo("1", "2026-01-01T10:10:00Z"),
+    ];
     const placements: Placement[] = photos.map((entry, index) => ({
       photoId: entry.id,
       source: "photo",
-      coordinates: { latitude: 48 + index * 0.01, longitude: 16 + index * 0.01 },
+      coordinates: {
+        latitude: 48 + index * 0.01,
+        longitude: 16 + index * 0.01,
+      },
       instant: entry.metadata.capturedAt!.getTime(),
     }));
     let playback!: ReturnType<typeof usePlayback>;
     function Harness() {
-      playback = usePlayback(photos, placements, { dayKeys: ["2026-01-01", "2026-01-01"] });
+      playback = usePlayback(photos, placements, {
+        dayKeys: ["2026-01-01", "2026-01-01"],
+      });
       return null;
     }
     const container = document.createElement("div");
     document.body.append(container);
-    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(createElement(Harness));
+    });
     await act(async () => playback.toggle());
     expect(playback.playing).toBe(true);
     await act(async () => playback.select(1));
     expect(playback.playing).toBe(false);
-    expect(playback.state).toMatchObject({ photoIndex: 1, checkpointPhotoIndex: 1, phase: "hold" });
+    expect(playback.state).toMatchObject({
+      photoIndex: 1,
+      checkpointPhotoIndex: 1,
+      phase: "hold",
+    });
   });
 
   test("keeps an opening at zero when the initial photo order settles", async () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-    let photos = [photo("1", "2026-01-01T10:10:00Z"), photo("0", "2026-01-01T10:00:00Z")];
+    let photos = [
+      photo("1", "2026-01-01T10:10:00Z"),
+      photo("0", "2026-01-01T10:00:00Z"),
+    ];
     let playback!: ReturnType<typeof usePlayback>;
     function Harness() {
       playback = usePlayback(photos);
@@ -62,7 +87,10 @@ describe("Photo Journey playback commands", () => {
     }
     const container = document.createElement("div");
     document.body.append(container);
-    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(createElement(Harness));
+    });
     photos = [photos[1], photos[0]];
     await act(async () => root!.render(createElement(Harness)));
     expect(playback.elapsed).toBe(0);
@@ -71,7 +99,10 @@ describe("Photo Journey playback commands", () => {
 
   test("can restart playback explicitly from the opening", async () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-    const photos = [photo("0", "2026-01-01T10:00:00Z"), photo("1", "2026-01-01T10:10:00Z")];
+    const photos = [
+      photo("0", "2026-01-01T10:00:00Z"),
+      photo("1", "2026-01-01T10:10:00Z"),
+    ];
     let playback!: ReturnType<typeof usePlayback>;
     function Harness() {
       playback = usePlayback(photos);
@@ -79,7 +110,10 @@ describe("Photo Journey playback commands", () => {
     }
     const container = document.createElement("div");
     document.body.append(container);
-    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(createElement(Harness));
+    });
     await act(async () => playback.select(1));
     expect(playback.elapsed).toBeGreaterThan(0);
     await act(async () => playback.play(true));
@@ -90,7 +124,10 @@ describe("Photo Journey playback commands", () => {
 
   test("replays with one activation after a paused seek to the end", async () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-    const photos = [photo("0", "2026-01-01T10:00:00Z"), photo("1", "2026-01-01T10:10:00Z")];
+    const photos = [
+      photo("0", "2026-01-01T10:00:00Z"),
+      photo("1", "2026-01-01T10:10:00Z"),
+    ];
     let playback!: ReturnType<typeof usePlayback>;
     function Harness() {
       playback = usePlayback(photos);
@@ -98,7 +135,10 @@ describe("Photo Journey playback commands", () => {
     }
     const container = document.createElement("div");
     document.body.append(container);
-    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(createElement(Harness));
+    });
     await act(async () => playback.seek(playback.total));
     expect(playback.state.phase).toBe("complete");
     expect(playback.playing).toBe(false);
@@ -126,7 +166,10 @@ describe("Photo Journey playback commands", () => {
     }
     const container = document.createElement("div");
     document.body.append(container);
-    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(createElement(Harness));
+    });
     await act(async () => playback.play());
     now = 5_000;
     await act(async () => nextFrame?.(now));
@@ -145,29 +188,41 @@ describe("Photo Journey playback commands", () => {
       ],
       segmentStarts: [0],
     };
-    const placements: Placement[] = [{
-      photoId: "0",
-      source: "photo",
-      coordinates: { latitude: 48.04, longitude: 16.04 },
-      trackCoordinates: track.points[2],
-      instant: 2_000,
-      gapSeconds: 0,
-      recordingId: "walk",
-      recordingSegmentId: "walk:0",
-      recordingDistanceKm: 6,
-    }];
+    const placements: Placement[] = [
+      {
+        photoId: "0",
+        source: "photo",
+        coordinates: { latitude: 48.04, longitude: 16.04 },
+        trackCoordinates: track.points[2],
+        instant: 2_000,
+        gapSeconds: 0,
+        recordingId: "walk",
+        recordingSegmentId: "walk:0",
+        recordingDistanceKm: 6,
+      },
+    ];
     let playback!: ReturnType<typeof usePlayback>;
     function Harness() {
-      playback = usePlayback(photos, placements, { dayKeys: ["1970-01-01"] }, track);
+      playback = usePlayback(
+        photos,
+        placements,
+        { dayKeys: ["1970-01-01"] },
+        track,
+      );
       return null;
     }
     const container = document.createElement("div");
     document.body.append(container);
-    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(createElement(Harness));
+    });
 
     expect(playback.routeStory?.legs[0]).toBeDefined();
     expect(playback.timeline.legEligibility).toEqual([true]);
-    expect(playback.timeline.stops[0].approachDuration).toBeGreaterThanOrEqual(4_000);
+    expect(playback.timeline.stops[0].approachDuration).toBeGreaterThanOrEqual(
+      3_000,
+    );
   });
 
   test("does not reserve playback time for an invalid recorded slice", async () => {
@@ -181,25 +236,35 @@ describe("Photo Journey playback commands", () => {
       ],
       segmentStarts: [0],
     };
-    const placements: Placement[] = [{
-      photoId: "0",
-      source: "photo",
-      coordinates: { latitude: 48.04, longitude: 16.04 },
-      trackCoordinates: track.points[2],
-      instant: 2_000,
-      gapSeconds: 0,
-      recordingId: "walk",
-      recordingSegmentId: "walk:0",
-      recordingDistanceKm: 6,
-    }];
+    const placements: Placement[] = [
+      {
+        photoId: "0",
+        source: "photo",
+        coordinates: { latitude: 48.04, longitude: 16.04 },
+        trackCoordinates: track.points[2],
+        instant: 2_000,
+        gapSeconds: 0,
+        recordingId: "walk",
+        recordingSegmentId: "walk:0",
+        recordingDistanceKm: 6,
+      },
+    ];
     let playback!: ReturnType<typeof usePlayback>;
     function Harness() {
-      playback = usePlayback(photos, placements, { dayKeys: ["1970-01-01"] }, track);
+      playback = usePlayback(
+        photos,
+        placements,
+        { dayKeys: ["1970-01-01"] },
+        track,
+      );
       return null;
     }
     const container = document.createElement("div");
     document.body.append(container);
-    await act(async () => { root = createRoot(container); root.render(createElement(Harness)); });
+    await act(async () => {
+      root = createRoot(container);
+      root.render(createElement(Harness));
+    });
 
     expect(playback.routeStory?.legs[0]).toBeUndefined();
     expect(playback.timeline.legEligibility).toEqual([false]);

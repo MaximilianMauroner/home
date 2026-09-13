@@ -1,10 +1,65 @@
-import { Download, ImagePlus, LoaderCircle, Maximize2, Minimize2, Package, Pause, Pencil, Play, Route, RotateCcw, SkipBack, SkipForward, Upload, Video, X } from "lucide-react";
+import {
+  Download,
+  ImagePlus,
+  LoaderCircle,
+  Maximize2,
+  Minimize2,
+  Package,
+  Pause,
+  Pencil,
+  Play,
+  Route,
+  RotateCcw,
+  SkipBack,
+  SkipForward,
+  Upload,
+  Video,
+  X,
+} from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { hasJourneyExif, isValidUtcOffsetMinutes, parseOffsetMinutes, readPhoto, revokePhoto, sortPhotos } from "./metadata";
-import { acceptFiles, digestFile, expandJourneyArchives, filesEqual, isArchiveFile, MAX_GPX_BYTES, MAX_GPX_POINTS, MAX_GPX_TOTAL_BYTES } from "./ingestion";
+import {
+  hasJourneyExif,
+  isValidUtcOffsetMinutes,
+  parseOffsetMinutes,
+  readPhoto,
+  revokePhoto,
+  sortPhotos,
+} from "./metadata";
+import {
+  acceptFiles,
+  digestFile,
+  expandJourneyArchives,
+  filesEqual,
+  isArchiveFile,
+  MAX_GPX_BYTES,
+  MAX_GPX_POINTS,
+  MAX_GPX_TOTAL_BYTES,
+} from "./ingestion";
 import { mergeTracks, parseGpx, trackStats } from "./gpx";
-import { buildBundle, buildScopedBundle, exportJourney, formatDistance, journeySummary, type ExportFormat } from "./journey-data";
-import { ALL_DAYS, dayLabel, deriveJourneyDays, filterTrackToDay, normalizeTimezone, photoDayKey, scopedPhotos, UNDATED_DAY, type DayScope } from "./days";
+import {
+  buildBundle,
+  buildScopedBundle,
+  exportJourney,
+  formatDistance,
+  journeySummary,
+  type ExportFormat,
+} from "./journey-data";
+import {
+  createProjectManifest,
+  restoreProjectManifest,
+  type PhotoJourneyProjectManifest,
+} from "./project-file";
+import {
+  ALL_DAYS,
+  dayLabel,
+  deriveJourneyDays,
+  filterTrackToDay,
+  normalizeTimezone,
+  photoDayKey,
+  scopedPhotos,
+  UNDATED_DAY,
+  type DayScope,
+} from "./days";
 import JourneyStage from "./JourneyStage";
 import Inspector from "./Inspector";
 import ReviewPanel from "./ReviewPanel";
@@ -12,12 +67,19 @@ import { reviewItems, reviewCounts, type ReviewFilter } from "./review";
 import StopList from "./StopList";
 import RecordingList from "./RecordingList";
 import type { MapMode } from "./JourneyMap";
-import { journeyStops, overlappingRecordingIds, placementSummary, resolvePlacementsForRecordings, type PlacementChoice } from "./track";
+import {
+  journeyStops,
+  overlappingRecordingIds,
+  placementSummary,
+  resolvePlacementsForRecordings,
+  type PlacementChoice,
+} from "./track";
 import { usePlayback, useReducedMotion } from "./usePlayback";
 import type { JourneyPhoto, JourneyRecording } from "./types";
 import "./photo-journey.css";
 
-const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,.gpx,application/gpx+xml,.zip,application/zip,application/x-zip-compressed";
+const ACCEPT =
+  "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,.gpx,application/gpx+xml,.zip,application/zip,application/x-zip-compressed";
 function formatDuration(milliseconds: number) {
   const seconds = Math.round(milliseconds / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -31,29 +93,68 @@ function save(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function downloadStem(value: string) {
-  return value.trim().replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "") || "photo-journey";
+  return (
+    value
+      .trim()
+      .replace(/[^a-z0-9._-]+/gi, "-")
+      .replace(/^-+|-+$/g, "") || "photo-journey"
+  );
 }
 
-function Segmented<T extends string>({ label, value, options, disabled, onChange }: {
+function ImportProgress({ value }: { value?: number }) {
+  const progress = value === undefined ? 0.08 : Math.max(0, Math.min(1, value / 100));
+  return (
+    <div
+      className="pj-progress"
+      role="progressbar"
+      aria-label="Import progress"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={value}
+      data-indeterminate={value === undefined}
+    >
+      <span style={{ transform: `scaleX(${progress})` }} />
+    </div>
+  );
+}
+
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  disabled,
+  onChange,
+}: {
   label: string;
   value?: T;
   options: ReadonlyArray<{ value: T; label: string }>;
   disabled?: boolean;
   onChange: (value: T) => void;
 }) {
-  return <fieldset className="pj-segmented" disabled={disabled}>
-    <legend>{label}</legend>
-    {options.map((option) => <label key={option.value}>
-      <input type="radio" name={`pj-${label}`} checked={value === option.value} onChange={() => onChange(option.value)} />
-      <span>{option.label}</span>
-    </label>)}
-  </fieldset>;
+  return (
+    <fieldset className="pj-segmented" disabled={disabled}>
+      <legend>{label}</legend>
+      {options.map((option) => (
+        <label key={option.value}>
+          <input
+            type="radio"
+            name={`pj-${label}`}
+            checked={value === option.value}
+            onChange={() => onChange(option.value)}
+          />
+          <span>{option.label}</span>
+        </label>
+      ))}
+    </fieldset>
+  );
 }
 
 function formatBytes(bytes: number) {
   if (bytes === 0) return "0 bytes";
   if (bytes < 1e6) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`;
+  return bytes >= 1e9
+    ? `${(bytes / 1e9).toFixed(1)} GB`
+    : `${Math.round(bytes / 1e6)} MB`;
 }
 
 const ScrubberTicks = memo(function ScrubberTicks({
@@ -65,8 +166,13 @@ const ScrubberTicks = memo(function ScrubberTicks({
   completedThrough: number;
   total: number;
 }) {
-  return stops.map((stop) => <i key={stop.id} data-past={stop.photoIndex <= completedThrough}
-    style={{ left: `${(stop.revealStart / total) * 100}%` }} />);
+  return stops.map((stop) => (
+    <i
+      key={stop.id}
+      data-past={stop.photoIndex <= completedThrough}
+      style={{ left: `${(stop.revealStart / total) * 100}%` }}
+    />
+  ));
 });
 
 const ScrubberChapters = memo(function ScrubberChapters({
@@ -78,14 +184,18 @@ const ScrubberChapters = memo(function ScrubberChapters({
   total: number;
   onSeek: (elapsed: number) => void;
 }) {
-  return stops.filter((stop) => stop.dayLabel).map((stop) => <button
-    key={stop.id}
-    className="pj-scrub-chapter"
-    style={{ left: `${(stop.dayStart / total) * 100}%` }}
-    onClick={() => onSeek(stop.dayStart)}
-    aria-label={`Seek to ${stop.dayLabel}`}
-    title={`${stop.dayLabel} · ${formatDuration(stop.dayStart)}`}
-  />);
+  return stops
+    .filter((stop) => stop.dayLabel)
+    .map((stop) => (
+      <button
+        key={stop.id}
+        className="pj-scrub-chapter"
+        style={{ left: `${(stop.dayStart / total) * 100}%` }}
+        onClick={() => onSeek(stop.dayStart)}
+        aria-label={`Seek to ${stop.dayLabel}`}
+        title={`${stop.dayLabel} · ${formatDuration(stop.dayStart)}`}
+      />
+    ));
 });
 
 function ExportPanel({
@@ -115,28 +225,75 @@ function ExportPanel({
   onBundle: () => void;
   onVideo: () => void;
 }) {
-  return <section className="pj-panel pj-export" aria-label="Journey exports">
-    <header className="pj-panel-head">
-      <span className="pj-label">Export</span>
-      <h2>{scopeLabel}</h2>
-      <p className="pj-export-summary">
-        {summary.locatedCount} photo waypoint{summary.locatedCount === 1 ? "" : "s"}
-        {summary.track ? ` · ${summary.track.pointCount.toLocaleString("en")} recorded points` : ""}
-        {summary.unlocatedCount ? ` · ${summary.unlocatedCount} photo${summary.unlocatedCount === 1 ? "" : "s"} without a position omitted` : ""}
-      </p>
-    </header>
-    <div className="pj-export-actions">
-      <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => onExport("gpx")}><Download size={15} aria-hidden="true" />Download GPX</button>
-      <button className="pj-pill" disabled={busy} onClick={() => onExport("geojson")}>GeoJSON</button>
-      <button className="pj-pill" disabled={busy} onClick={() => onExport("json")}>Metadata JSON</button>
-      <button className="pj-pill" disabled={busy || packing} onClick={onBundle}><Package size={15} aria-hidden="true" />{packing ? "Packing…" : "Create journey ZIP"}</button>
-      <button className="pj-pill" disabled={busy || !hasPhotos} onClick={onVideo}><Video size={15} aria-hidden="true" />{recordingVideo ? "Stop and save video" : "Export video"}</button>
-      {hasPhotos && <label className="pj-pill pj-toggle" data-size="sm">
-        <input type="checkbox" checked={includePhotos} onChange={(event) => onIncludePhotos(event.target.checked)} />
-        Include photos ({formatBytes(photoBytes)})
-      </label>}
-    </div>
-  </section>;
+  return (
+    <section className="pj-panel pj-export" aria-label="Journey exports">
+      <header className="pj-panel-head">
+        <span className="pj-label">Export</span>
+        <h2>{scopeLabel}</h2>
+        <p className="pj-export-summary">
+          {summary.locatedCount} photo waypoint
+          {summary.locatedCount === 1 ? "" : "s"}
+          {summary.track
+            ? ` · ${summary.track.pointCount.toLocaleString("en")} recorded points`
+            : ""}
+          {summary.unlocatedCount
+            ? ` · ${summary.unlocatedCount} photo${summary.unlocatedCount === 1 ? "" : "s"} without a position omitted`
+            : ""}
+        </p>
+      </header>
+      <div className="pj-export-actions">
+        <button
+          className="pj-pill"
+          data-tone="accent"
+          disabled={busy}
+          onClick={() => onExport("gpx")}
+        >
+          <Download size={15} aria-hidden="true" />
+          Download GPX
+        </button>
+        <button
+          className="pj-pill"
+          disabled={busy}
+          onClick={() => onExport("geojson")}
+        >
+          GeoJSON
+        </button>
+        <button
+          className="pj-pill"
+          disabled={busy}
+          onClick={() => onExport("json")}
+        >
+          Metadata JSON
+        </button>
+        <button
+          className="pj-pill"
+          disabled={busy || packing}
+          onClick={onBundle}
+        >
+          <Package size={15} aria-hidden="true" />
+          {packing ? "Packing…" : "Create journey ZIP"}
+        </button>
+        <button
+          className="pj-pill"
+          disabled={busy || !hasPhotos}
+          onClick={onVideo}
+        >
+          <Video size={15} aria-hidden="true" />
+          {recordingVideo ? "Stop and save recording" : "Record playback"}
+        </button>
+        {hasPhotos && (
+          <label className="pj-pill pj-toggle" data-size="sm">
+            <input
+              type="checkbox"
+              checked={includePhotos}
+              onChange={(event) => onIncludePhotos(event.target.checked)}
+            />
+            Include photos ({formatBytes(photoBytes)})
+          </label>
+        )}
+      </div>
+    </section>
+  );
 }
 
 export default function PhotoJourney() {
@@ -145,8 +302,11 @@ export default function PhotoJourney() {
   const [busy, setBusy] = useState(false);
   const [importProgress, setImportProgress] = useState("");
   const [importPercent, setImportPercent] = useState<number>();
-  const [editorSection, setEditorSection] = useState<"review" | "order" | "recordings" | "export">("review");
-  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("needs-review");
+  const [editorSection, setEditorSection] = useState<
+    "review" | "order" | "recordings" | "export"
+  >("review");
+  const [reviewFilter, setReviewFilter] =
+    useState<ReviewFilter>("needs-review");
   const [showAllRecordings, setShowAllRecordings] = useState(false);
   const editorRef = useRef<HTMLDetailsElement>(null);
   const [order, setOrder] = useState<"capture" | "manual">("capture");
@@ -160,15 +320,23 @@ export default function PhotoJourney() {
   const [dragging, setDragging] = useState(false);
   const [recordings, setRecordings] = useState<JourneyRecording[]>([]);
   const [tripTimezone, setTripTimezone] = useState(() => {
-    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; }
-    catch { return "UTC"; }
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      return "UTC";
+    }
   });
   const [selectedDay, setSelectedDay] = useState<DayScope>(ALL_DAYS);
-  const [offsetMinutesByPhoto, setOffsetMinutesByPhoto] = useState<Record<string, number>>({});
+  const [offsetMinutesByPhoto, setOffsetMinutesByPhoto] = useState<
+    Record<string, number>
+  >({});
   const [fallbackOffsetInput, setFallbackOffsetInput] = useState("");
-  const [placementChoices, setPlacementChoices] = useState<Record<string, PlacementChoice>>({});
+  const [placementChoices, setPlacementChoices] = useState<
+    Record<string, PlacementChoice>
+  >({});
   const [includePhotos, setIncludePhotos] = useState(false);
   const [packing, setPacking] = useState(false);
+  const [savingProject, setSavingProject] = useState(false);
   const [recordingVideo, setRecordingVideo] = useState(false);
   const [stageReady, setStageReady] = useState(false);
   const [waitingToPlay, setWaitingToPlay] = useState(false);
@@ -177,6 +345,7 @@ export default function PhotoJourney() {
   const captureRef = useRef<MediaStream>();
   const inputRef = useRef<HTMLInputElement>(null);
   const photosRef = useRef(photos);
+  const recordingsRef = useRef(recordings);
   const importing = useRef(false);
   const mounted = useRef(true);
   const nextImportOrder = useRef(0);
@@ -184,42 +353,115 @@ export default function PhotoJourney() {
   const pendingStart = useRef<{ fromBeginning: boolean }>();
   const track = useMemo(() => {
     const included = recordings.filter((recording) => recording.included);
-    return included.length ? mergeTracks(included.map((recording) => recording.track)) : undefined;
+    return included.length
+      ? mergeTracks(included.map((recording) => recording.track))
+      : undefined;
   }, [recordings]);
   const placements = useMemo(
-    () => resolvePlacementsForRecordings(photos, recordings, {
-      offsetMinutesByPhoto,
-      choices: placementChoices,
-    }),
+    () =>
+      resolvePlacementsForRecordings(photos, recordings, {
+        offsetMinutesByPhoto,
+        choices: placementChoices,
+      }),
     [photos, recordings, offsetMinutesByPhoto, placementChoices],
   );
-  const days = useMemo(() => deriveJourneyDays(photos, placements, recordings, tripTimezone), [photos, placements, recordings, tripTimezone]);
-  const scopedEntries = useMemo(() => scopedPhotos(photos, placements, selectedDay, tripTimezone), [photos, placements, selectedDay, tripTimezone]);
-  const visiblePhotos = useMemo(() => scopedEntries.map((entry) => entry.photo), [scopedEntries]);
-  const visiblePlacements = useMemo(() => scopedEntries.map((entry) => entry.placement), [scopedEntries]);
-  const scopedTrack = useMemo(() => filterTrackToDay(track, selectedDay, tripTimezone), [track, selectedDay, tripTimezone]);
-  const stops = useMemo(() => journeyStops(visiblePlacements), [visiblePlacements]);
-  const stats = useMemo(() => (scopedTrack ? trackStats(scopedTrack) : undefined), [scopedTrack]);
-  const summary = useMemo(() => journeySummary(visiblePhotos, visiblePlacements, stats, tripTimezone, scopedTrack), [visiblePhotos, visiblePlacements, stats, tripTimezone, scopedTrack]);
-  const placed = useMemo(() => placementSummary(visiblePlacements), [visiblePlacements]);
-  const review = useMemo(() => reviewItems(visiblePhotos, visiblePlacements, placementChoices), [visiblePhotos, visiblePlacements, placementChoices]);
+  const days = useMemo(
+    () => deriveJourneyDays(photos, placements, recordings, tripTimezone),
+    [photos, placements, recordings, tripTimezone],
+  );
+  const scopedEntries = useMemo(
+    () => scopedPhotos(photos, placements, selectedDay, tripTimezone),
+    [photos, placements, selectedDay, tripTimezone],
+  );
+  const visiblePhotos = useMemo(
+    () => scopedEntries.map((entry) => entry.photo),
+    [scopedEntries],
+  );
+  const visiblePlacements = useMemo(
+    () => scopedEntries.map((entry) => entry.placement),
+    [scopedEntries],
+  );
+  const scopedTrack = useMemo(
+    () => filterTrackToDay(track, selectedDay, tripTimezone),
+    [track, selectedDay, tripTimezone],
+  );
+  const stops = useMemo(
+    () => journeyStops(visiblePlacements),
+    [visiblePlacements],
+  );
+  const stats = useMemo(
+    () => (scopedTrack ? trackStats(scopedTrack) : undefined),
+    [scopedTrack],
+  );
+  const summary = useMemo(
+    () =>
+      journeySummary(
+        visiblePhotos,
+        visiblePlacements,
+        stats,
+        tripTimezone,
+        scopedTrack,
+      ),
+    [visiblePhotos, visiblePlacements, stats, tripTimezone, scopedTrack],
+  );
+  const placed = useMemo(
+    () => placementSummary(visiblePlacements),
+    [visiblePlacements],
+  );
+  const review = useMemo(
+    () => reviewItems(visiblePhotos, visiblePlacements, placementChoices),
+    [visiblePhotos, visiblePlacements, placementChoices],
+  );
   const reviewTotals = useMemo(() => reviewCounts(review), [review]);
-  const dayRecordings = useMemo(() => recordings.filter((recording) => selectedDay === ALL_DAYS || filterTrackToDay(recording.track, selectedDay, tripTimezone)?.points.length), [recordings, selectedDay, tripTimezone]);
-  const overlappingIds = useMemo(() => overlappingRecordingIds(recordings), [recordings]);
-  const photoBytes = useMemo(() => visiblePhotos.reduce((sum, photo) => sum + photo.file.size, 0), [visiblePhotos]);
+  const dayRecordings = useMemo(
+    () =>
+      recordings.filter(
+        (recording) =>
+          selectedDay === ALL_DAYS ||
+          filterTrackToDay(recording.track, selectedDay, tripTimezone)?.points
+            .length,
+      ),
+    [recordings, selectedDay, tripTimezone],
+  );
+  const overlappingIds = useMemo(
+    () => overlappingRecordingIds(recordings),
+    [recordings],
+  );
+  const photoBytes = useMemo(
+    () => visiblePhotos.reduce((sum, photo) => sum + photo.file.size, 0),
+    [visiblePhotos],
+  );
   const trackNote = useMemo(() => {
     if (!stats) return undefined;
     const plural = (count: number) => (count === 1 ? "" : "s");
     return [
       `${formatDistance(stats.distanceKm)} recorded`,
-      overlappingIds.size ? "sum of included recordings; overlaps may be counted twice" : undefined,
-      stats.ascentM >= 20 ? `${Math.round(stats.ascentM).toLocaleString("en")} m ascent` : undefined,
-      placed.fromTrack ? `${placed.fromTrack} photo${plural(placed.fromTrack)} placed from a recording` : undefined,
-
-    ].filter(Boolean).join(" · ");
+      overlappingIds.size
+        ? "sum of included recordings; overlaps may be counted twice"
+        : undefined,
+      stats.ascentM >= 20
+        ? `${Math.round(stats.ascentM).toLocaleString("en")} m ascent`
+        : undefined,
+      placed.fromTrack
+        ? `${placed.fromTrack} photo${plural(placed.fromTrack)} placed from a recording`
+        : undefined,
+    ]
+      .filter(Boolean)
+      .join(" · ");
   }, [stats, placed, overlappingIds]);
-  const timelineDayKeys = useMemo(() => visiblePhotos.map((photo, index) => photoDayKey(photo, visiblePlacements[index], tripTimezone) ?? UNDATED_DAY), [visiblePhotos, visiblePlacements, tripTimezone]);
-  const timelineDayLabels = useMemo(() => timelineDayKeys.map((key) => key ? dayLabel(days, key) : undefined), [timelineDayKeys, days]);
+  const timelineDayKeys = useMemo(
+    () =>
+      visiblePhotos.map(
+        (photo, index) =>
+          photoDayKey(photo, visiblePlacements[index], tripTimezone) ??
+          UNDATED_DAY,
+      ),
+    [visiblePhotos, visiblePlacements, tripTimezone],
+  );
+  const timelineDayLabels = useMemo(
+    () => timelineDayKeys.map((key) => (key ? dayLabel(days, key) : undefined)),
+    [timelineDayKeys, days],
+  );
   const playback = usePlayback(
     visiblePhotos,
     visiblePlacements,
@@ -228,17 +470,22 @@ export default function PhotoJourney() {
   );
   const reducedMotion = useReducedMotion();
   const activeIndex = playback.state.photoIndex;
-  const completedThrough = playback.state.phase === "outro" || playback.state.phase === "complete"
-    ? visiblePhotos.length - 1
-    : playback.state.phase === "reveal" || playback.state.phase === "hold" || playback.state.phase === "departure"
-      ? playback.state.checkpointPhotoIndex
-      : playback.state.checkpointPhotoIndex - 1;
+  const completedThrough =
+    playback.state.phase === "outro" || playback.state.phase === "complete"
+      ? visiblePhotos.length - 1
+      : playback.state.phase === "reveal" ||
+          playback.state.phase === "hold" ||
+          playback.state.phase === "departure"
+        ? playback.state.checkpointPhotoIndex
+        : playback.state.checkpointPhotoIndex - 1;
   const activePhoto = visiblePhotos[activeIndex];
   const finished = playback.elapsed >= playback.total;
   const stopVideoExport = useCallback(() => {
     const recorder = recorderRef.current;
     if (recorder?.state === "recording") recorder.stop();
-    captureRef.current?.getTracks().forEach((captureTrack) => captureTrack.stop());
+    captureRef.current
+      ?.getTracks()
+      .forEach((captureTrack) => captureTrack.stop());
   }, []);
 
   useEffect(() => {
@@ -253,25 +500,31 @@ export default function PhotoJourney() {
     cancelPendingStart();
     playback.pause();
   }, [cancelPendingStart, playback.pause]);
-  const handleTerrainState = useCallback((state: { loading: boolean; failed: boolean }) => {
-    setTerrain(state);
-    if (!state.failed) return;
-    setTerrainFallback(true);
-    setMapMode((mode) => mode === "terrain" ? "online" : mode);
-  }, []);
+  const handleTerrainState = useCallback(
+    (state: { loading: boolean; failed: boolean }) => {
+      setTerrain(state);
+      if (!state.failed) return;
+      setTerrainFallback(true);
+      setMapMode((mode) => (mode === "terrain" ? "online" : mode));
+    },
+    [],
+  );
   const chooseMapMode = useCallback((mode: MapMode) => {
     setTerrainFallback(false);
     setMapMode(mode);
   }, []);
-  const requestPlaybackStart = useCallback((fromBeginning = false) => {
-    if (stageReady) {
-      cancelPendingStart();
-      playback.play(fromBeginning);
-      return;
-    }
-    pendingStart.current = { fromBeginning };
-    setWaitingToPlay(true);
-  }, [cancelPendingStart, playback.play, stageReady]);
+  const requestPlaybackStart = useCallback(
+    (fromBeginning = false) => {
+      if (stageReady) {
+        cancelPendingStart();
+        playback.play(fromBeginning);
+        return;
+      }
+      pendingStart.current = { fromBeginning };
+      setWaitingToPlay(true);
+    },
+    [cancelPendingStart, playback.play, stageReady],
+  );
   useEffect(() => {
     const pending = pendingStart.current;
     if (!stageReady || !pending) return;
@@ -280,9 +533,18 @@ export default function PhotoJourney() {
     playback.play(pending.fromBeginning);
   }, [playback.play, stageReady]);
 
-  useEffect(() => { photosRef.current = photos; }, [photos]);
   useEffect(() => {
-    if (selectedDay !== ALL_DAYS && !days.some((entry) => entry.key === selectedDay)) setSelectedDay(ALL_DAYS);
+    photosRef.current = photos;
+  }, [photos]);
+  useEffect(() => {
+    recordingsRef.current = recordings;
+  }, [recordings]);
+  useEffect(() => {
+    if (
+      selectedDay !== ALL_DAYS &&
+      !days.some((entry) => entry.key === selectedDay)
+    )
+      setSelectedDay(ALL_DAYS);
   }, [days, selectedDay]);
   const previousDayRef = useRef<DayScope>(ALL_DAYS);
   useEffect(() => {
@@ -294,12 +556,19 @@ export default function PhotoJourney() {
   }, [cancelPendingStart, playback.restart, selectedDay, visiblePhotos.length]);
   useEffect(() => {
     if (order !== "capture" || photos.length < 2) return;
-    const sorted = sortPhotos(photos, placements.map((placement) => placement.instant));
-    if (sorted.some((photo, index) => photo.id !== photos[index]?.id)) setPhotos(sorted);
+    const sorted = sortPhotos(
+      photos,
+      placements.map((placement) => placement.instant),
+    );
+    if (sorted.some((photo, index) => photo.id !== photos[index]?.id))
+      setPhotos(sorted);
   }, [order, photos, placements]);
   // The stage is sized to the window, so bringing it into view shows the whole frame and controls.
   function revealStage(block: ScrollLogicalPosition) {
-    stageRef.current?.scrollIntoView({ block, behavior: reducedMotion ? "auto" : "smooth" });
+    stageRef.current?.scrollIntoView({
+      block,
+      behavior: reducedMotion ? "auto" : "smooth",
+    });
   }
   function togglePlay() {
     if (playback.playing || waitingToPlay) {
@@ -310,22 +579,31 @@ export default function PhotoJourney() {
     requestPlaybackStart(finished);
   }
   const hasPhotos = visiblePhotos.length > 0;
-  useEffect(() => { if (hasPhotos) revealStage("start"); }, [hasPhotos]);
+  useEffect(() => {
+    if (hasPhotos) revealStage("start");
+  }, [hasPhotos]);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; photosRef.current.forEach(revokePhoto); };
+    return () => {
+      mounted.current = false;
+      photosRef.current.forEach(revokePhoto);
+    };
   }, []);
   useEffect(() => {
-    const update = () => setFullscreen(document.fullscreenElement === stageRef.current);
+    const update = () =>
+      setFullscreen(document.fullscreenElement === stageRef.current);
     document.addEventListener("fullscreenchange", update);
     return () => document.removeEventListener("fullscreenchange", update);
   }, []);
 
   async function toggleFullscreen() {
     try {
-      if (document.fullscreenElement === stageRef.current) await document.exitFullscreen();
+      if (document.fullscreenElement === stageRef.current)
+        await document.exitFullscreen();
       else await stageRef.current?.requestFullscreen();
-    } catch { setErrors(["Fullscreen is unavailable in this browser."]); }
+    } catch {
+      setErrors(["Fullscreen is unavailable in this browser."]);
+    }
   }
 
   async function exportVideo() {
@@ -333,7 +611,10 @@ export default function PhotoJourney() {
       stopVideoExport();
       return;
     }
-    if (!navigator.mediaDevices?.getDisplayMedia || typeof MediaRecorder === "undefined") {
+    if (
+      !navigator.mediaDevices?.getDisplayMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
       setErrors(["Video export is unavailable in this browser."]);
       return;
     }
@@ -348,16 +629,27 @@ export default function PhotoJourney() {
         preferCurrentTab: true,
         selfBrowserSurface: "include",
       } as DisplayMediaStreamOptions);
-      const mimeType = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
-        .find((type) => MediaRecorder.isTypeSupported(type));
+      const mimeType = [
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm",
+      ].find((type) => MediaRecorder.isTypeSupported(type));
       const chunks: Blob[] = [];
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType } : undefined,
+      );
       recorderRef.current = recorder;
       captureRef.current = stream;
-      recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) chunks.push(event.data);
+      };
       recorder.onstop = () => {
         if (chunks.length) {
-          save(new Blob(chunks, { type: recorder.mimeType || "video/webm" }), `${downloadStem(title)}.webm`);
+          save(
+            new Blob(chunks, { type: recorder.mimeType || "video/webm" }),
+            `${downloadStem(title)}.webm`,
+          );
         }
         stream.getTracks().forEach((captureTrack) => captureTrack.stop());
         recorderRef.current = undefined;
@@ -365,31 +657,55 @@ export default function PhotoJourney() {
         setRecordingVideo(false);
         pausePlayback();
       };
-      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
-        if (recorder.state === "recording") recorder.stop();
-      }, { once: true });
+      stream.getVideoTracks()[0]?.addEventListener(
+        "ended",
+        () => {
+          if (recorder.state === "recording") recorder.stop();
+        },
+        { once: true },
+      );
       recorder.start(1000);
       setRecordingVideo(true);
       requestPlaybackStart(true);
     } catch (error) {
-      captureRef.current?.getTracks().forEach((captureTrack) => captureTrack.stop());
+      captureRef.current
+        ?.getTracks()
+        .forEach((captureTrack) => captureTrack.stop());
       setRecordingVideo(false);
       if ((error as DOMException)?.name !== "NotAllowedError") {
-        setErrors([`The video could not be recorded: ${error instanceof Error ? error.message : "unknown error"}`]);
+        setErrors([
+          `The video could not be recorded: ${error instanceof Error ? error.message : "unknown error"}`,
+        ]);
       }
     }
   }
 
   function onKey(event: KeyboardEvent) {
     const target = event.target;
-    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey ||
-      (target instanceof HTMLElement && (target.isContentEditable || target.closest("input,textarea,select,button,a")))) return;
+    if (
+      event.defaultPrevented ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      (target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.closest("input,textarea,select,button,a")))
+    )
+      return;
     if (!hasPhotos) return;
-    if (event.code === "Space") { event.preventDefault(); togglePlay(); }
-    else if (event.key === "ArrowLeft") { event.preventDefault(); playback.select(activeIndex - 1); }
-    else if (event.key === "ArrowRight") { event.preventDefault(); playback.select(activeIndex + 1); }
-    else if (event.key.toLowerCase() === "f") { event.preventDefault(); void toggleFullscreen(); }
-    else if (event.key === "Escape" && fullscreen) void toggleFullscreen();
+    if (event.code === "Space") {
+      event.preventDefault();
+      togglePlay();
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      playback.select(activeIndex - 1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      playback.select(activeIndex + 1);
+    } else if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      void toggleFullscreen();
+    } else if (event.key === "Escape" && fullscreen) void toggleFullscreen();
   }
   // The clock renders this component on every frame, so the listener is bound once and
   // reads the current handler instead of being replaced sixty times a second.
@@ -411,58 +727,123 @@ export default function PhotoJourney() {
     setErrors([]);
     const archives = files.filter(isArchiveFile);
     let flatFiles = files.filter((file) => !isArchiveFile(file));
+    let importedProject: PhotoJourneyProjectManifest | undefined;
     const failures: string[] = [];
     if (archives.length) {
-      setImportProgress(`Opening ${archives.length} ZIP${archives.length === 1 ? "" : "s"} (${formatBytes(archives.reduce((sum, file) => sum + file.size, 0))})…`);
+      setImportProgress(
+        `Opening ${archives.length} ZIP${archives.length === 1 ? "" : "s"} (${formatBytes(archives.reduce((sum, file) => sum + file.size, 0))})…`,
+      );
       try {
-        const { expanded, skipped } = await expandJourneyArchives(archives, (progress) => {
-          if (!mounted.current) return;
-          const archiveLabel = `ZIP ${progress.archiveIndex} of ${progress.archiveCount}`;
-          if (progress.stage === "opening") {
-            setImportProgress(`Opening ${progress.archiveName} · ${archiveLabel}…`);
-            setImportPercent(undefined);
-          } else {
-            const percent = progress.total ? Math.round(progress.completed / progress.total * 100) : 0;
-            setImportProgress(`Unpacking ${archiveLabel}: ${progress.completed} / ${progress.total} files (${percent}%) · ${formatBytes(progress.extractedBytes)} extracted`);
-            setImportPercent(percent);
-          }
-        });
+        const { expanded, skipped } = await expandJourneyArchives(
+          archives,
+          (progress) => {
+            if (!mounted.current) return;
+            const archiveLabel = `ZIP ${progress.archiveIndex} of ${progress.archiveCount}`;
+            if (progress.stage === "opening") {
+              setImportProgress(
+                `Opening ${progress.archiveName} · ${archiveLabel}…`,
+              );
+              setImportPercent(undefined);
+            } else {
+              const percent = progress.total
+                ? Math.round((progress.completed / progress.total) * 100)
+                : 0;
+              setImportProgress(
+                `Unpacking ${archiveLabel}: ${progress.completed} / ${progress.total} files (${percent}%) · ${formatBytes(progress.extractedBytes)} extracted`,
+              );
+              setImportPercent(percent);
+            }
+          },
+        );
         flatFiles = [...flatFiles, ...expanded.files];
-        for (const { file, reason } of skipped) failures.push(`${file.name}: ${reason}`);
-        if (expanded.bundleTitle && photosRef.current.length === 0 && recordings.length === 0) {
+        importedProject = expanded.projectManifest;
+        for (const { file, reason } of skipped)
+          failures.push(`${file.name}: ${reason}`);
+        if (
+          expanded.bundleTitle &&
+          photosRef.current.length === 0 &&
+          recordingsRef.current.length === 0
+        ) {
           setTitle(expanded.bundleTitle);
         }
       } catch {
-        for (const archive of archives) failures.push(`${archive.name}: could not be read as a ZIP`);
+        for (const archive of archives)
+          failures.push(`${archive.name}: could not be read as a ZIP`);
       }
     }
-    const { accepted, tracks, skipped } = acceptFiles(flatFiles, photosRef.current);
-    failures.push(...skipped.map(({ file, reason }) => `${file.name}: ${reason}`));
-    const existingDigests = new Set(recordings.map((recording) => recording.digest));
-    let recordingBytes = recordings.reduce((sum, recording) => sum + recording.file.size, 0);
-    let recordingPoints = recordings.reduce((sum, recording) => sum + recording.track.points.length, 0);
+    const { accepted, tracks, skipped } = acceptFiles(
+      flatFiles,
+      photosRef.current,
+    );
+    failures.push(
+      ...skipped.map(({ file, reason }) => `${file.name}: ${reason}`),
+    );
+    const currentRecordings = recordingsRef.current;
+    const existingDigests = new Set(
+      currentRecordings.map((recording) => recording.digest),
+    );
+    let recordingBytes = currentRecordings.reduce(
+      (sum, recording) => sum + recording.file.size,
+      0,
+    );
+    let recordingPoints = currentRecordings.reduce(
+      (sum, recording) => sum + recording.track.points.length,
+      0,
+    );
     const loadedRecordings: JourneyRecording[] = [];
     if (tracks.length) {
       for (const file of tracks) {
-        if (file.size > MAX_GPX_BYTES) { failures.push(`${file.name}: GPX exceeds the ${Math.round(MAX_GPX_BYTES / 1024 / 1024)} MB limit`); continue; }
-        if (recordingBytes + file.size > MAX_GPX_TOTAL_BYTES) { failures.push(`${file.name}: GPX sources exceed the ${Math.round(MAX_GPX_TOTAL_BYTES / 1024 / 1024)} MB total limit`); continue; }
+        if (file.size > MAX_GPX_BYTES) {
+          failures.push(
+            `${file.name}: GPX exceeds the ${Math.round(MAX_GPX_BYTES / 1024 / 1024)} MB limit`,
+          );
+          continue;
+        }
+        if (recordingBytes + file.size > MAX_GPX_TOTAL_BYTES) {
+          failures.push(
+            `${file.name}: GPX sources exceed the ${Math.round(MAX_GPX_TOTAL_BYTES / 1024 / 1024)} MB total limit`,
+          );
+          continue;
+        }
         try {
           const digest = await digestFile(file);
           if (existingDigests.has(digest)) {
-            const possibleDuplicates = [...recordings, ...loadedRecordings].filter((recording) => recording.digest === digest);
+            const possibleDuplicates = [
+              ...currentRecordings,
+              ...loadedRecordings,
+            ].filter((recording) => recording.digest === digest);
             let duplicate = false;
             for (const recording of possibleDuplicates) {
-              if (await filesEqual(file, recording.file)) { duplicate = true; break; }
+              if (await filesEqual(file, recording.file)) {
+                duplicate = true;
+                break;
+              }
             }
-            if (duplicate) { failures.push(`${file.name}: this GPX is already imported`); continue; }
+            if (duplicate) {
+              failures.push(`${file.name}: this GPX is already imported`);
+              continue;
+            }
           }
           const parsed = parseGpx(await file.text());
-          if (recordingPoints + parsed.points.length > MAX_GPX_POINTS) { failures.push(`${file.name}: recordings exceed the ${MAX_GPX_POINTS.toLocaleString("en")} point limit`); continue; }
+          if (recordingPoints + parsed.points.length > MAX_GPX_POINTS) {
+            failures.push(
+              `${file.name}: recordings exceed the ${MAX_GPX_POINTS.toLocaleString("en")} point limit`,
+            );
+            continue;
+          }
           const importOrder = nextRecordingOrder.current++;
           const warnings: string[] = [];
-          if (parsed.parts && parsed.parts.length > 1) warnings.push(`${parsed.parts.length} recorded tracks in this file`);
-          const untimed = parsed.points.length - parsed.points.filter((point) => point.time !== undefined).length;
-          if (untimed) warnings.push(`${untimed.toLocaleString("en")} point${untimed === 1 ? "" : "s"} have no time and stay under Undated`);
+          if (parsed.parts && parsed.parts.length > 1)
+            warnings.push(
+              `${parsed.parts.length} recorded tracks in this file`,
+            );
+          const untimed =
+            parsed.points.length -
+            parsed.points.filter((point) => point.time !== undefined).length;
+          if (untimed)
+            warnings.push(
+              `${untimed.toLocaleString("en")} point${untimed === 1 ? "" : "s"} have no time and stay under Undated`,
+            );
           loadedRecordings.push({
             id: `gpx-${digest.slice(0, 16)}-${importOrder}`,
             file,
@@ -477,30 +858,74 @@ export default function PhotoJourney() {
           recordingBytes += file.size;
           recordingPoints += parsed.points.length;
         } catch (error) {
-          failures.push(`${file.name}: ${error instanceof Error ? error.message : "could not be read"}`);
+          failures.push(
+            `${file.name}: ${error instanceof Error ? error.message : "could not be read"}`,
+          );
         }
       }
-
     }
     const loaded: JourneyPhoto[] = [];
     // Decode one original at a time so a large folder does not exhaust memory.
     for (const [index, file] of accepted.entries()) {
       if (!mounted.current) break;
       setImportProgress(`Reading ${index + 1} / ${accepted.length} photos`);
-      setImportPercent(Math.round(index / accepted.length * 100));
+      setImportPercent(Math.round((index / accepted.length) * 100));
       try {
         const photo = await readPhoto(file, nextImportOrder.current++);
         if (hasJourneyExif(photo.metadata)) loaded.push(photo);
         else {
           revokePhoto(photo);
-          failures.push(`${file.name}: skipped because it has no EXIF capture time or GPS`);
+          failures.push(
+            `${file.name}: skipped because it has no EXIF capture time or GPS`,
+          );
+        }
+      } catch (error) {
+        failures.push(
+          `${file.name}: ${error instanceof Error ? error.message : "Could not read this image."}`,
+        );
+      }
+    }
+    if (!mounted.current) {
+      loaded.forEach(revokePhoto);
+      importing.current = false;
+      return;
+    }
+    const currentPhotos = photosRef.current;
+    let nextRecordings = [...currentRecordings, ...loadedRecordings];
+    const restoringFreshProject = Boolean(
+      importedProject && !currentPhotos.length && !currentRecordings.length,
+    );
+    let nextPhotos =
+      !restoringFreshProject && order === "capture"
+        ? sortPhotos([...currentPhotos, ...loaded])
+        : [...currentPhotos, ...loaded];
+    if (importedProject) {
+      if (currentPhotos.length || currentRecordings.length) {
+        failures.push(
+          "Project settings were not restored because another journey is already open. The files were added normally.",
+        );
+      } else {
+        const restored = restoreProjectManifest(
+          importedProject,
+          nextPhotos,
+          nextRecordings,
+        );
+        nextPhotos = restored.photos;
+        nextRecordings = restored.recordings;
+        setTitle(restored.title);
+        setTripTimezone(restored.timezone);
+        setOrder(restored.order);
+        setOffsetMinutesByPhoto(restored.offsetMinutesByPhoto);
+        setPlacementChoices(restored.recordingChoices);
+        if (restored.unmatchedPhotoCount || restored.unmatchedRecordingCount) {
+          failures.push(
+            `Project opened with ${restored.unmatchedPhotoCount} missing photo${restored.unmatchedPhotoCount === 1 ? "" : "s"} and ${restored.unmatchedRecordingCount} missing recording${restored.unmatchedRecordingCount === 1 ? "" : "s"}.`,
+          );
         }
       }
-      catch (error) { failures.push(`${file.name}: ${error instanceof Error ? error.message : "Could not read this image."}`); }
     }
-    if (!mounted.current) { loaded.forEach(revokePhoto); importing.current = false; return; }
-    if (loadedRecordings.length) setRecordings((current) => [...current, ...loadedRecordings]);
-    setPhotos((current) => order === "capture" ? sortPhotos([...current, ...loaded]) : [...current, ...loaded]);
+    setRecordings(nextRecordings);
+    setPhotos(nextPhotos);
     setErrors(failures);
     setBusy(false);
     setImportProgress("");
@@ -510,98 +935,205 @@ export default function PhotoJourney() {
   }
 
   const { seek } = playback;
-  const removePhoto = useCallback((id: string) => {
-    const removed = photos.find((photo) => photo.id === id);
-    if (removed) revokePhoto(removed);
-    setPhotos(photos.filter((photo) => photo.id !== id));
-    seek(0);
-  }, [photos, seek]);
-  const toggleRecording = useCallback((id: string) => {
-    setRecordings((current) => current.map((recording) => recording.id === id ? { ...recording, included: !recording.included } : recording));
-    setPlacementChoices((current) => {
-      const affected = new Set(placements.filter((placement) => placement.recordingId === id).map((placement) => placement.photoId));
-      return Object.fromEntries(Object.entries(current).filter(([photoId, choice]) => {
-        const boundToRemoved = typeof choice === "object" && choice.source === "track" && choice.recordingId === id;
-        return !boundToRemoved && (choice !== "track" || !affected.has(photoId));
-      }));
-    });
-    seek(0);
-  }, [placements, seek]);
-  const removeRecording = useCallback((id: string) => {
-    setRecordings((current) => current.filter((recording) => recording.id !== id));
-    setPlacementChoices((current) => {
-      const affected = new Set(placements.filter((placement) => placement.recordingId === id).map((placement) => placement.photoId));
-      return Object.fromEntries(Object.entries(current).filter(([photoId, choice]) => {
-        const boundToRemoved = typeof choice === "object" && choice.source === "track" && choice.recordingId === id;
-        return !boundToRemoved && (choice !== "track" || !affected.has(photoId));
-      }));
-    });
-    seek(0);
-  }, [placements, seek]);
-  const choosePlacement = useCallback((photoId: string, choice: PlacementChoice | undefined) => {
-    setPlacementChoices((current) => {
-      const next = { ...current };
-      if (choice) next[photoId] = choice;
-      else delete next[photoId];
-      return next;
-    });
-    seek(0);
-  }, [seek]);
-  const setPhotoOffset = useCallback((photoId: string, minutes: number | undefined) => {
-    if (minutes !== undefined && !isValidUtcOffsetMinutes(minutes)) return;
-    setOffsetMinutesByPhoto((current) => {
-      const next = { ...current };
-      if (minutes === undefined) delete next[photoId];
-      else next[photoId] = minutes;
-      return next;
-    });
-    seek(0);
-  }, [seek]);
+  const removePhoto = useCallback(
+    (id: string) => {
+      const removed = photos.find((photo) => photo.id === id);
+      if (removed) revokePhoto(removed);
+      setPhotos(photos.filter((photo) => photo.id !== id));
+      seek(0);
+    },
+    [photos, seek],
+  );
+  const toggleRecording = useCallback(
+    (id: string) => {
+      setRecordings((current) =>
+        current.map((recording) =>
+          recording.id === id
+            ? { ...recording, included: !recording.included }
+            : recording,
+        ),
+      );
+      setPlacementChoices((current) => {
+        const affected = new Set(
+          placements
+            .filter((placement) => placement.recordingId === id)
+            .map((placement) => placement.photoId),
+        );
+        return Object.fromEntries(
+          Object.entries(current).filter(([photoId, choice]) => {
+            const boundToRemoved =
+              typeof choice === "object" &&
+              choice.source === "track" &&
+              choice.recordingId === id;
+            return (
+              !boundToRemoved && (choice !== "track" || !affected.has(photoId))
+            );
+          }),
+        );
+      });
+      seek(0);
+    },
+    [placements, seek],
+  );
+  const removeRecording = useCallback(
+    (id: string) => {
+      setRecordings((current) =>
+        current.filter((recording) => recording.id !== id),
+      );
+      setPlacementChoices((current) => {
+        const affected = new Set(
+          placements
+            .filter((placement) => placement.recordingId === id)
+            .map((placement) => placement.photoId),
+        );
+        return Object.fromEntries(
+          Object.entries(current).filter(([photoId, choice]) => {
+            const boundToRemoved =
+              typeof choice === "object" &&
+              choice.source === "track" &&
+              choice.recordingId === id;
+            return (
+              !boundToRemoved && (choice !== "track" || !affected.has(photoId))
+            );
+          }),
+        );
+      });
+      seek(0);
+    },
+    [placements, seek],
+  );
+  const choosePlacement = useCallback(
+    (photoId: string, choice: PlacementChoice | undefined) => {
+      setPlacementChoices((current) => {
+        const next = { ...current };
+        if (choice) next[photoId] = choice;
+        else delete next[photoId];
+        return next;
+      });
+      seek(0);
+    },
+    [seek],
+  );
+  const setPhotoOffset = useCallback(
+    (photoId: string, minutes: number | undefined) => {
+      if (minutes !== undefined && !isValidUtcOffsetMinutes(minutes)) return;
+      setOffsetMinutesByPhoto((current) => {
+        const next = { ...current };
+        if (minutes === undefined) delete next[photoId];
+        else next[photoId] = minutes;
+        return next;
+      });
+      seek(0);
+    },
+    [seek],
+  );
   const downloadOriginal = useCallback((recording: JourneyRecording) => {
     save(recording.file, recording.file.name);
   }, []);
-  const movePhoto = useCallback((index: number, direction: -1 | 1) => {
-    const photo = visiblePhotos[index];
-    const targetPhoto = visiblePhotos[index + direction];
-    const sourceIndex = photo ? photos.findIndex((entry) => entry.id === photo.id) : -1;
-    if (sourceIndex < 0 || !targetPhoto) return;
-    const day = photoDayKey(photo, visiblePlacements[index], tripTimezone) ?? UNDATED_DAY;
-    const positions = photos.flatMap((entry, entryIndex) =>
-      (photoDayKey(entry, placements[entryIndex], tripTimezone) ?? UNDATED_DAY) === day ? [entryIndex] : [],
-    );
-    const dayIndex = positions.indexOf(sourceIndex);
-    const target = positions[dayIndex + direction];
-    if (dayIndex < 0 || target === undefined) return;
-    const next = [...photos];
-    [next[sourceIndex], next[target]] = [next[target], next[sourceIndex]];
-    setPhotos(next);
-    setOrder("manual");
-    seek(0);
-  }, [photos, placements, seek, tripTimezone, visiblePhotos, visiblePlacements]);
-  const canMovePhoto = useCallback((index: number, direction: -1 | 1) => {
-    if (!editingOrder) return false;
-    const targetPhoto = visiblePhotos[index + direction];
-    if (!targetPhoto) return false;
-    const currentDay = photoDayKey(visiblePhotos[index], visiblePlacements[index], tripTimezone);
-    const targetDay = photoDayKey(targetPhoto, visiblePlacements[index + direction], tripTimezone);
-    return currentDay === targetDay;
-  }, [editingOrder, tripTimezone, visiblePhotos, visiblePlacements]);
-  const download = useCallback((format: ExportFormat) => {
-    const result = exportJourney(visiblePhotos, format, title, visiblePlacements, scopedTrack, tripTimezone);
-    const suffix = selectedDay === ALL_DAYS ? "journey" : selectedDay;
-    save(new Blob([result.content], { type: result.mime }), `${downloadStem(title)}-${suffix}.${result.extension}`);
-  }, [title, scopedTrack, selectedDay, visiblePhotos, visiblePlacements, tripTimezone]);
+  const movePhoto = useCallback(
+    (index: number, direction: -1 | 1) => {
+      const photo = visiblePhotos[index];
+      const targetPhoto = visiblePhotos[index + direction];
+      const sourceIndex = photo
+        ? photos.findIndex((entry) => entry.id === photo.id)
+        : -1;
+      if (sourceIndex < 0 || !targetPhoto) return;
+      const day =
+        photoDayKey(photo, visiblePlacements[index], tripTimezone) ??
+        UNDATED_DAY;
+      const positions = photos.flatMap((entry, entryIndex) =>
+        (photoDayKey(entry, placements[entryIndex], tripTimezone) ??
+          UNDATED_DAY) === day
+          ? [entryIndex]
+          : [],
+      );
+      const dayIndex = positions.indexOf(sourceIndex);
+      const target = positions[dayIndex + direction];
+      if (dayIndex < 0 || target === undefined) return;
+      const next = [...photos];
+      [next[sourceIndex], next[target]] = [next[target], next[sourceIndex]];
+      setPhotos(next);
+      setOrder("manual");
+      seek(0);
+    },
+    [photos, placements, seek, tripTimezone, visiblePhotos, visiblePlacements],
+  );
+  const canMovePhoto = useCallback(
+    (index: number, direction: -1 | 1) => {
+      if (!editingOrder) return false;
+      const targetPhoto = visiblePhotos[index + direction];
+      if (!targetPhoto) return false;
+      const currentDay = photoDayKey(
+        visiblePhotos[index],
+        visiblePlacements[index],
+        tripTimezone,
+      );
+      const targetDay = photoDayKey(
+        targetPhoto,
+        visiblePlacements[index + direction],
+        tripTimezone,
+      );
+      return currentDay === targetDay;
+    },
+    [editingOrder, tripTimezone, visiblePhotos, visiblePlacements],
+  );
+  const download = useCallback(
+    (format: ExportFormat) => {
+      const result = exportJourney(
+        visiblePhotos,
+        format,
+        title,
+        visiblePlacements,
+        scopedTrack,
+        tripTimezone,
+      );
+      const suffix = selectedDay === ALL_DAYS ? "journey" : selectedDay;
+      save(
+        new Blob([result.content], { type: result.mime }),
+        `${downloadStem(title)}-${suffix}.${result.extension}`,
+      );
+    },
+    [
+      title,
+      scopedTrack,
+      selectedDay,
+      visiblePhotos,
+      visiblePlacements,
+      tripTimezone,
+    ],
+  );
   const downloadBundle = useCallback(async () => {
     setPacking(true);
     try {
-      const blob = await buildBundle(visiblePhotos, { title, includePhotos, track: scopedTrack, placements: visiblePlacements, timezone: tripTimezone, scopeLabel: dayLabel(days, selectedDay) });
-      save(blob, `${downloadStem(title)}-${selectedDay === ALL_DAYS ? "journey" : selectedDay}.zip`);
+      const blob = await buildBundle(visiblePhotos, {
+        title,
+        includePhotos,
+        track: scopedTrack,
+        placements: visiblePlacements,
+        timezone: tripTimezone,
+        scopeLabel: dayLabel(days, selectedDay),
+      });
+      save(
+        blob,
+        `${downloadStem(title)}-${selectedDay === ALL_DAYS ? "journey" : selectedDay}.zip`,
+      );
     } catch (error) {
-      setErrors([`The download could not be built: ${error instanceof Error ? error.message : "unknown error"}`]);
+      setErrors([
+        `The download could not be built: ${error instanceof Error ? error.message : "unknown error"}`,
+      ]);
     } finally {
       setPacking(false);
     }
-  }, [title, selectedDay, includePhotos, scopedTrack, visiblePhotos, visiblePlacements, tripTimezone, days]);
+  }, [
+    title,
+    selectedDay,
+    includePhotos,
+    scopedTrack,
+    visiblePhotos,
+    visiblePlacements,
+    tripTimezone,
+    days,
+  ]);
   const downloadScopedBundle = useCallback(async () => {
     setPacking(true);
     try {
@@ -616,215 +1148,890 @@ export default function PhotoJourney() {
       });
       save(blob, `${downloadStem(title)}-all-days.zip`);
     } catch (error) {
-      setErrors([`The journey ZIP could not be built: ${error instanceof Error ? error.message : "unknown error"}`]);
+      setErrors([
+        `The journey ZIP could not be built: ${error instanceof Error ? error.message : "unknown error"}`,
+      ]);
     } finally {
       setPacking(false);
     }
-  }, [title, tripTimezone, photos, placements, recordings, track, includePhotos]);
+  }, [
+    title,
+    tripTimezone,
+    photos,
+    placements,
+    recordings,
+    track,
+    includePhotos,
+  ]);
+
+  const saveProject = useCallback(async () => {
+    setSavingProject(true);
+    try {
+      const projectManifest = createProjectManifest({
+        title,
+        timezone: tripTimezone,
+        order,
+        photos,
+        recordings,
+        offsetMinutesByPhoto,
+        recordingChoices: placementChoices,
+      });
+      const blob = await buildScopedBundle({
+        title,
+        timezone: tripTimezone,
+        photos,
+        placements,
+        recordings,
+        track,
+        includePhotos: true,
+        projectManifest,
+      });
+      save(blob, `${downloadStem(title)}-project.zip`);
+    } catch (error) {
+      setErrors([
+        `The project could not be saved: ${error instanceof Error ? error.message : "unknown error"}`,
+      ]);
+    } finally {
+      setSavingProject(false);
+    }
+  }, [
+    title,
+    tripTimezone,
+    order,
+    photos,
+    recordings,
+    offsetMinutesByPhoto,
+    placementChoices,
+    placements,
+    track,
+  ]);
+
+  function openEditor(section: typeof editorSection) {
+    pausePlayback();
+    setEditorSection(section);
+    if (!editorRef.current) return;
+    editorRef.current.open = true;
+    editorRef.current.scrollIntoView({
+      block: "start",
+      behavior: reducedMotion ? "auto" : "smooth",
+    });
+    requestAnimationFrame(() =>
+      editorRef.current
+        ?.querySelector<HTMLElement>(`[data-section='${section}']`)
+        ?.focus({ preventScroll: true }),
+    );
+  }
 
   function openReview(filter: ReviewFilter) {
-    pausePlayback();
     setReviewFilter(filter);
-    setEditorSection("review");
-    if (editorRef.current) {
-      editorRef.current.open = true;
-      editorRef.current.scrollIntoView({ block: "start", behavior: reducedMotion ? "auto" : "smooth" });
-      requestAnimationFrame(() => editorRef.current?.querySelector<HTMLElement>("[data-section='review']")?.focus({ preventScroll: true }));
-    }
+    openEditor("review");
   }
   const hasJourney = photos.length > 0 || recordings.length > 0;
-  return <div className="photo-journey" data-dragging={dragging}
-    onDragOver={(event) => { if (event.dataTransfer.types.includes("Files")) { event.preventDefault(); setDragging(true); } }}
-    onDragLeave={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }}
-    onDrop={(event) => { event.preventDefault(); setDragging(false); void addFiles([...event.dataTransfer.files]); }}>
-    <input ref={inputRef} type="file" accept={ACCEPT} multiple hidden onChange={(event) => {
-      void addFiles([...(event.target.files ?? [])]); event.target.value = "";
-    }} />
-    {!hasJourney ? <section className="pj-upload" aria-busy={busy}>
-      <div className="pj-upload-icon">{busy ? <LoaderCircle className="pj-spinner" size={22} aria-hidden="true" /> : <Upload size={22} aria-hidden="true" />}</div>
-      <h2 role={busy ? "status" : undefined}>{busy ? importProgress : "Drop your photos, GPX, or journey ZIP here"}</h2>
-      {busy && <div className="pj-import-status"><progress aria-label="Import progress" max={100} value={importPercent} /><p>Large ZIPs can take several minutes to open. Keep this tab open; your journey summary appears when processing finishes.</p></div>}
-      <p>JPEG, PNG, WebP, HEIC, GPX, or an exported journey ZIP. Add all days together, or add more later. Files stay in this tab; place names come from a bundled offline list.</p>
-      <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}>{busy ? <LoaderCircle className="pj-spinner" size={16} aria-hidden="true" /> : <ImagePlus size={16} aria-hidden="true" />}{busy ? "Loading…" : "Add photos, GPX, or ZIP"}</button>
-    </section> : <>
-      <div className="pj-bar">
-        <label className="pj-title-field"><span><Pencil size={14} aria-hidden="true" />Journey title · edit</span><input className="pj-title" aria-label="Journey title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} /></label>
-        <div className="pj-bar-actions">
-          <label className="pj-day-select">
-            <span>Show</span>
-            <select aria-label="Journey day" value={selectedDay} onChange={(event) => { setSelectedDay(event.target.value); setShowAllRecordings(false); }}>
-              <option value={ALL_DAYS}>All days</option>
-              {days.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}{entry.photoIds.length ? ` · ${entry.photoIds.length} photo${entry.photoIds.length === 1 ? "" : "s"}` : " · recording only"}</option>)}
-            </select>
-          </label>
-          <button className="pj-pill" onClick={() => void toggleFullscreen()}><Maximize2 size={16} aria-hidden="true" />Focus player</button>
-          <button className="pj-pill pj-import-button" data-tone="accent" disabled={busy} onClick={() => inputRef.current?.click()}><ImagePlus size={16} />{busy ? "Importing…" : "Add photos, GPX, or ZIP"}</button>
-        </div>
-      </div>
-      {busy && <div className="pj-import-status" role="status"><strong>{importProgress}</strong><progress aria-label="Import progress" max={100} value={importPercent} /><p>Import in progress. The player and totals show the previously imported files until these finish. Large ZIPs can take several minutes.</p></div>}
-      <div className="pj-stage" ref={stageRef} data-recording={recordingVideo}>
-        <div className="pj-stage-context">
-          <label>
-            <span>Chapter</span>
-            <select aria-label="Player chapter" value={selectedDay} onChange={(event) => { setSelectedDay(event.target.value); setShowAllRecordings(false); }}>
-              <option value={ALL_DAYS}>All days · {formatDuration(playback.total)}</option>
-              {days.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}{entry.photoIds.length ? ` · ${entry.photoIds.length} photo${entry.photoIds.length === 1 ? "" : "s"}` : " · recording only"}</option>)}
-            </select>
-          </label>
-          <span className="pj-stage-status">{playback.playing || waitingToPlay ? "Playing" : "Paused"} · {dayLabel(days, selectedDay)}</span>
-        </div>
-        <JourneyStage photos={visiblePhotos} stops={stops} track={scopedTrack} routeStory={playback.routeStory} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} state={playback.state}
-          timeline={playback.timeline} playing={playback.playing}
-          reducedMotion={reducedMotion} mapMode={mapMode} title={title} timezone={tripTimezone} speed={playback.speed} seekVersion={playback.seekVersion}
-          onTerrainState={handleTerrainState} onEngineFailed={() => setMapDead(true)} onPlaybackReady={setStageReady} onPause={pausePlayback}
-          onSelect={playback.select} onContinue={() => requestPlaybackStart()} />
-        <div className="pj-controls">
-          <div className="pj-transport">
-            <button disabled={!hasPhotos || activeIndex === 0} onClick={() => playback.select(activeIndex - 1)} aria-label="Previous photo"><SkipBack /></button>
-            <button className="pj-play" disabled={!hasPhotos} onClick={togglePlay} aria-label={playback.playing || waitingToPlay ? "Pause journey" : finished ? "Replay journey" : "Play journey"}>
-              {waitingToPlay ? <LoaderCircle className="pj-spinner" /> : finished ? <RotateCcw /> : playback.playing ? <Pause /> : <Play />}</button>
-            <button disabled={!hasPhotos || activeIndex >= visiblePhotos.length - 1} onClick={() => playback.select(activeIndex + 1)} aria-label="Next photo"><SkipForward /></button>
+  return (
+    <div
+      className="photo-journey"
+      data-dragging={dragging}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes("Files")) {
+          event.preventDefault();
+          setDragging(true);
+        }
+      }}
+      onDragLeave={(event) => {
+        if (
+          !event.relatedTarget ||
+          !event.currentTarget.contains(event.relatedTarget as Node)
+        )
+          setDragging(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        void addFiles([...event.dataTransfer.files]);
+      }}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPT}
+        multiple
+        hidden
+        onChange={(event) => {
+          void addFiles([...(event.target.files ?? [])]);
+          event.target.value = "";
+        }}
+      />
+      {!hasJourney ? (
+        <section className="pj-upload" aria-busy={busy}>
+          <div className="pj-upload-icon">
+            {busy ? (
+              <LoaderCircle
+                className="pj-spinner"
+                size={22}
+                aria-hidden="true"
+              />
+            ) : (
+              <Upload size={22} aria-hidden="true" />
+            )}
           </div>
-          <div className="pj-scrub">
-            <div className="pj-scrub-track" aria-hidden="true">
-              <div className="pj-scrub-fill" style={{ transform: `scaleX(${playback.total ? playback.elapsed / playback.total : 0})` }} />
-              <ScrubberTicks stops={playback.timeline.stops} completedThrough={completedThrough} total={playback.total} />
+          <h2
+            className="pj-import-message"
+            role={busy ? "status" : undefined}
+            title={busy ? importProgress : undefined}
+          >
+            {busy
+              ? importProgress
+              : "Drop your photos, GPX, or journey ZIP here"}
+          </h2>
+          {busy && (
+            <div className="pj-import-status">
+              <ImportProgress value={importPercent} />
+              <p>
+                Large ZIPs can take several minutes to open. Keep this tab open;
+                your journey summary appears when processing finishes.
+              </p>
             </div>
-            <ScrubberChapters stops={playback.timeline.stops} total={playback.total} onSeek={playback.seek} />
-            <input disabled={!hasPhotos} type="range" min={0} max={playback.total} step={1000} value={playback.elapsed} onChange={(event) => playback.seek(Number(event.target.value))} aria-label="Replay time" aria-valuetext={`${formatDuration(playback.elapsed)} of ${formatDuration(playback.total)}`} />
-          </div>
-          <span className="pj-time">{formatDuration(playback.elapsed)} <span>/ {formatDuration(playback.total)}</span></span>
-          <select className="pj-speed" disabled={!hasPhotos} value={playback.speed} onChange={(event) => playback.setSpeed(Number(event.target.value))} aria-label="Playback speed">
-            <option value={0.75}>0.75×</option><option value={1}>1×</option><option value={1.5}>1.5×</option><option value={2}>2×</option></select>
-          <button onClick={() => void toggleFullscreen()} aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}>{fullscreen ? <Minimize2 /> : <Maximize2 />}</button>
-        </div>
-      </div>
-      <div className="pj-notes">
-        {scopedTrack && !mapDead && <p className="pj-route-legend" aria-label="Map legend">
-          <span>GPX route</span><span className="pj-legend-traveled">Traveled</span>
-        </p>}
-        {selectedDay !== ALL_DAYS && !hasPhotos && scopedTrack
-          ? <p className="pj-track-note"><Route size={14} aria-hidden="true" />No photos for this day; the recorded route is still available.</p>
-          : stats ? <p className="pj-track-note"><Route size={14} aria-hidden="true" />{trackNote}</p>
-          : <p>Add a <strong>.gpx</strong> file to follow the recorded route. A recording also provides the map when no photos have GPS.</p>}
-        {mapDead
-          ? <p>The map is unavailable. Photos will continue as a slideshow.</p>
-          : terrainFallback
-            ? <p>Terrain could not load. Showing the flat OpenStreetMap map.</p>
-          : mapMode === "offline"
-            ? <p>Offline map. No map requests leave this tab; the bundled outline has no street-level detail.</p>
-            : mapMode === "online"
-              ? <p>OpenStreetMap receives requests for the areas shown.</p>
-              : terrain.failed
-                ? <p>Terrain tiles failed to load, so the map stays flat. Tile requests still reveal the areas shown.</p>
-                : terrain.loading
-                  ? <p>Loading terrain… OpenStreetMap and elevation tiles reveal the areas shown.</p>
-                  : <p>Terrain on. OpenStreetMap and elevation tiles reveal the areas shown.</p>}
-        <p className="pj-keys"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> photos <kbd>F</kbd> fullscreen</p>
-      </div>
-      <section className="pj-review-callout" aria-label="Journey review summary">
-        <div>
-          <strong>{reviewTotals["needs-review"] ? `${reviewTotals["needs-review"]} photos to review` : "Your journey is ready to explore"}</strong>
-          <p>Matching recordings supply positions by capture time. Small GPS differences are normal; differences over 60 m are flagged for review.</p>
-          {reviewTotals.conflicts > 0 && <p>If many photos are far from the recording, check the camera timezone before choosing a source. GPS drift and incorrect camera clocks can both cause differences.</p>}
-          {placed.correctedCount > 0 && <p>{placed.correctedCount} recording positions differ from camera GPS · largest difference {formatDistance(placed.worstCorrectionM / 1000)}. Neither source is guaranteed to be more accurate.</p>}
-        </div>
-        <div className="pj-bar-actions">
-          {reviewTotals.conflicts > 0 && <button className="pj-pill" data-tone="accent" disabled={busy} onClick={() => openReview("conflicts")}>Review {reviewTotals.conflicts} location conflict{reviewTotals.conflicts === 1 ? "" : "s"}</button>}
-          <button className="pj-pill" disabled={busy} onClick={() => openReview(reviewTotals["needs-review"] ? "needs-review" : "all")}>{reviewTotals["needs-review"] ? `Review all ${reviewTotals["needs-review"]} flagged photos` : "Browse photo details"}</button>
-        </div>
-      </section>
-      <details className="pj-edit-journey" ref={editorRef} onToggle={(event) => { if (event.currentTarget.open) pausePlayback(); }}>
-        <summary className="pj-pill">Edit journey</summary>
-        <div className="pj-edit-journey-content">
-          <div className="pj-bar-actions">
-            <details className="pj-view-settings">
-              <summary className="pj-pill">View settings</summary>
-              <div className="pj-view-popover">
-                <Segmented label="Map" value={mapDead ? undefined : mapMode} disabled={mapDead} onChange={chooseMapMode}
-                  options={[{ value: "offline", label: "Offline" }, { value: "online", label: "OpenStreetMap" }, { value: "terrain", label: "Terrain" }]} />
-              </div>
-            </details>
-            <label className="pj-timezone">
-              <span>Trip timezone</span>
-              <input aria-label="Trip timezone" list="pj-timezones" value={tripTimezone} onChange={(event) => setTripTimezone(event.target.value)} onBlur={() => setTripTimezone((value) => normalizeTimezone(value))} placeholder="UTC" />
-              <datalist id="pj-timezones"><option value="UTC" /><option value="Europe/Rome" /><option value="Europe/Berlin" /><option value="America/New_York" /><option value="America/Los_Angeles" /><option value="Asia/Tokyo" /></datalist>
-            </label>
-          </div>
-          <div className="pj-editor-sections" role="group" aria-label="Journey editor sections">
-            {([ ["review", "Review"], ["order", "Order"], ["recordings", "Recordings"], ["export", "Export"] ] as const).map(([section, label]) =>
-              <button key={section} className="pj-pill" data-section={section} aria-pressed={editorSection === section} aria-controls="pj-editor-panel" onClick={() => { pausePlayback(); setEditorSection(section); setEditingOrder(false); }}>{label}{section === "review" && reviewTotals["needs-review"] ? ` (${reviewTotals["needs-review"]})` : ""}</button>)}
-          </div>
-          <div id="pj-editor-panel" aria-busy={busy}>
-            <p className="pj-editor-selection">{dayLabel(days, selectedDay)} · {visiblePhotos.length} photos</p>
-            {editorSection === "review" && <>
-          {visiblePhotos.some((photo) => photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined) && (
-        <details className="pj-clock-settings"><summary className="pj-pill">Camera clock settings</summary>
-        <section className="pj-time-controls" aria-label="Photo clock settings">
-          <div>
-            <strong>Some camera clocks have no timezone</strong>
-            <p>Choose an offset only if you know what the camera used. This applies to untagged photos and can be cleared.</p>
-          </div>
-          <label>
-            <span>UTC offset, minutes east</span>
-            <input type="number" min={-720} max={840} step={15} value={fallbackOffsetInput} placeholder="e.g. 120" onChange={(event) => setFallbackOffsetInput(event.target.value)} aria-invalid={Boolean(fallbackOffsetInput && parseOffsetMinutes(fallbackOffsetInput) === undefined)} />
-          </label>
-          <button className="pj-pill" data-tone="accent" disabled={parseOffsetMinutes(fallbackOffsetInput) === undefined} onClick={() => {
-            const value = parseOffsetMinutes(fallbackOffsetInput);
-            if (value !== undefined) {
-              setOffsetMinutesByPhoto((current) => {
-                const next = { ...current };
-                for (const photo of visiblePhotos) if (photo.metadata.utcOffsetMinutes === undefined && photo.metadata.capturedAtWallClock) next[photo.id] = value;
-                return next;
-              });
-            }
-          }}>Apply</button>
-          {visiblePhotos.some((photo) => offsetMinutesByPhoto[photo.id] !== undefined) && <button className="pj-pill" onClick={() => {
-            setOffsetMinutesByPhoto((current) => {
-              const next = { ...current };
-              for (const photo of visiblePhotos) delete next[photo.id];
-              return next;
-            });
-            setFallbackOffsetInput("");
-          }}>Clear</button>}
-        </section></details>
           )}
-              <ReviewPanel key={selectedDay} items={review} filter={reviewFilter} onFilter={setReviewFilter} recordings={recordings} choices={placementChoices} offsets={offsetMinutesByPhoto} onChoose={choosePlacement} onSetOffset={setPhotoOffset} onRecordings={() => { setShowAllRecordings(true); setEditorSection("recordings"); }} />
-            </>}
-            {editorSection === "order" && <>
-              <div className="pj-bar-actions">
-                <Segmented label="Order" value={order} disabled={busy} onChange={(value) => {
-                  setOrder(value); setEditingOrder(value === "manual");
-                  if (value === "capture") setPhotos(sortPhotos(photos, placements.map((placement) => placement.instant)));
-                  playback.seek(0);
-                }} options={[{ value: "capture", label: "By time" }, { value: "manual", label: "Manual" }]} />
-                <button className="pj-pill" disabled={busy || !hasPhotos} onClick={() => { setEditingOrder(!editingOrder); if (!editingOrder) setOrder("manual"); }}>{editingOrder ? "Finish ordering" : "Enable manual ordering"}</button>
-              </div>
-              <p className="pj-editor-note">Manual ordering keeps your chosen sequence and appends new imports. Choose By time to sort by capture time again. Moves stay within the same day.</p>
-              <div className="pj-workspace">
-                {hasPhotos && <StopList photos={visiblePhotos} placements={visiblePlacements} summary={summary} activeIndex={activeIndex} busy={busy} editingOrder={editingOrder} dayKeys={timelineDayKeys} dayLabels={timelineDayLabels}
-                  onSelect={playback.select} onMove={movePhoto} canMove={canMovePhoto} onRemove={removePhoto} />}
-                <Inspector photo={activePhoto} placement={visiblePlacements[activeIndex]} index={activeIndex} recordings={recordings} choice={activePhoto ? placementChoices[activePhoto.id] : undefined} offsetMinutes={activePhoto ? offsetMinutesByPhoto[activePhoto.id] : undefined} onSetOffset={setPhotoOffset} onChoosePlacement={choosePlacement} />
-              </div>
-            </>}
-            {editorSection === "recordings" && <>
-              {selectedDay !== ALL_DAYS && <label className="pj-pill pj-toggle"><input type="checkbox" checked={showAllRecordings} onChange={(event) => setShowAllRecordings(event.target.checked)} />Show all recordings ({recordings.length})</label>}
-              <p className="pj-editor-note">{showAllRecordings || selectedDay === ALL_DAYS ? "Showing recordings from the whole journey." : "Showing recordings with points on the selected day."} Dates and distances describe the original file. Including or excluding a recording affects the whole journey.</p>
-              <RecordingList recordings={showAllRecordings ? recordings : dayRecordings} overlappingIds={overlappingIds} busy={busy} timezone={tripTimezone} onToggle={toggleRecording} onRemove={removeRecording} onDownload={downloadOriginal} />
-              {!(showAllRecordings ? recordings : dayRecordings).length && <p className="pj-review-empty">No recordings for this selection.</p>}
-            </>}
-            {editorSection === "export" && <>
-              <ExportPanel scopeLabel={selectedDay === ALL_DAYS ? "Export all days" : `Export selected day · ${dayLabel(days, selectedDay)}`} summary={summary} hasPhotos={hasPhotos} photoBytes={photoBytes} includePhotos={includePhotos} packing={packing} recordingVideo={recordingVideo} busy={busy}
-                onExport={download} onIncludePhotos={setIncludePhotos} onBundle={downloadBundle} onVideo={() => void exportVideo()} />
-              <section className="pj-panel pj-export-all"><h3>Whole journey, organized by day</h3><p className="pj-editor-note">Create a ZIP with every day, original recordings, and metadata. The Include photos setting above also applies to this ZIP.</p><button className="pj-pill" disabled={busy || packing} onClick={() => void downloadScopedBundle()}>Create ZIP with all days</button></section>
-            </>}
+          <p>
+            JPEG, PNG, WebP, HEIC, GPX, or an exported journey ZIP. Add all days
+            together, or add more later. Files stay in this tab; place names
+            come from a bundled offline list.
+          </p>
+          <button
+            className="pj-pill"
+            data-tone="accent"
+            disabled={busy}
+            onClick={() => inputRef.current?.click()}
+          >
+            {busy ? (
+              <LoaderCircle
+                className="pj-spinner"
+                size={16}
+                aria-hidden="true"
+              />
+            ) : (
+              <ImagePlus size={16} aria-hidden="true" />
+            )}
+            {busy ? "Loading…" : "Add photos, GPX, or ZIP"}
+          </button>
+        </section>
+      ) : (
+        <>
+          <div className="pj-bar">
+            <label className="pj-title-field">
+              <span>
+                <Pencil size={14} aria-hidden="true" />
+                Journey title · edit
+              </span>
+              <input
+                className="pj-title"
+                aria-label="Journey title"
+                value={title}
+                maxLength={120}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </label>
+            <div className="pj-bar-actions">
+              <button
+                className="pj-pill"
+                disabled={busy || savingProject}
+                onClick={() => void saveProject()}
+              >
+                <Package size={16} aria-hidden="true" />
+                {savingProject ? "Saving project…" : "Save project"}
+              </button>
+              <button
+                className="pj-pill"
+                disabled={busy}
+                onClick={() => openEditor("export")}
+              >
+                <Download size={16} aria-hidden="true" />
+                Export
+              </button>
+              <button
+                className="pj-pill"
+                onClick={() => void toggleFullscreen()}
+              >
+                <Maximize2 size={16} aria-hidden="true" />
+                Focus player
+              </button>
+              <button
+                className="pj-pill pj-import-button"
+                disabled={busy}
+                onClick={() => inputRef.current?.click()}
+              >
+                <ImagePlus size={16} />
+                {busy ? "Importing…" : "Add photos, GPX, or ZIP"}
+              </button>
+              <button
+                className="pj-pill"
+                data-tone="accent"
+                disabled={busy || !hasPhotos}
+                onClick={togglePlay}
+              >
+                {playback.playing || waitingToPlay ? (
+                  <Pause size={16} aria-hidden="true" />
+                ) : (
+                  <Play size={16} aria-hidden="true" />
+                )}
+                {playback.playing || waitingToPlay
+                  ? "Pause"
+                  : finished
+                    ? "Replay journey"
+                    : "Play journey"}
+              </button>
+            </div>
           </div>
+          {busy && (
+            <div className="pj-import-status" role="status">
+              <strong className="pj-import-message" title={importProgress}>
+                {importProgress}
+              </strong>
+              <ImportProgress value={importPercent} />
+              <p>
+                Import in progress. The player and totals show the previously
+                imported files until these finish. Large ZIPs can take several
+                minutes.
+              </p>
+            </div>
+          )}
+          <div
+            className="pj-stage"
+            ref={stageRef}
+            data-recording={recordingVideo}
+          >
+            <div className="pj-stage-context">
+              <label>
+                <span>Chapter</span>
+                <select
+                  aria-label="Player chapter"
+                  value={selectedDay}
+                  onChange={(event) => {
+                    setSelectedDay(event.target.value);
+                    setShowAllRecordings(false);
+                  }}
+                >
+                  <option value={ALL_DAYS}>
+                    All days · {formatDuration(playback.total)}
+                  </option>
+                  {days.map((entry) => (
+                    <option key={entry.key} value={entry.key}>
+                      {entry.label}
+                      {entry.photoIds.length
+                        ? ` · ${entry.photoIds.length} photo${entry.photoIds.length === 1 ? "" : "s"}`
+                        : " · recording only"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Map</span>
+                <select
+                  aria-label="Map style"
+                  value={mapMode}
+                  disabled={mapDead}
+                  onChange={(event) =>
+                    chooseMapMode(event.target.value as MapMode)
+                  }
+                >
+                  <option value="offline">Offline</option>
+                  <option value="online">OpenStreetMap</option>
+                  <option value="terrain">Terrain</option>
+                </select>
+              </label>
+              <span className="pj-stage-status">
+                {playback.playing || waitingToPlay ? "Playing" : "Paused"} ·{" "}
+                {dayLabel(days, selectedDay)}
+              </span>
+            </div>
+            <JourneyStage
+              photos={visiblePhotos}
+              stops={stops}
+              track={scopedTrack}
+              routeStory={playback.routeStory}
+              placements={visiblePlacements}
+              summary={summary}
+              activeIndex={activeIndex}
+              state={playback.state}
+              timeline={playback.timeline}
+              playing={playback.playing}
+              reducedMotion={reducedMotion}
+              mapMode={mapMode}
+              title={title}
+              timezone={tripTimezone}
+              speed={playback.speed}
+              seekVersion={playback.seekVersion}
+              onTerrainState={handleTerrainState}
+              onEngineFailed={() => setMapDead(true)}
+              onPlaybackReady={setStageReady}
+              onPause={pausePlayback}
+              onSelect={playback.select}
+              onContinue={() => requestPlaybackStart()}
+            />
+            <div className="pj-controls">
+              <div className="pj-transport">
+                <button
+                  disabled={!hasPhotos || activeIndex === 0}
+                  onClick={() => playback.select(activeIndex - 1)}
+                  aria-label="Previous photo"
+                >
+                  <SkipBack />
+                </button>
+                <button
+                  className="pj-play"
+                  disabled={!hasPhotos}
+                  onClick={togglePlay}
+                  aria-label={
+                    playback.playing || waitingToPlay
+                      ? "Pause journey"
+                      : finished
+                        ? "Replay journey"
+                        : "Play journey"
+                  }
+                >
+                  {waitingToPlay ? (
+                    <LoaderCircle className="pj-spinner" />
+                  ) : finished ? (
+                    <RotateCcw />
+                  ) : playback.playing ? (
+                    <Pause />
+                  ) : (
+                    <Play />
+                  )}
+                </button>
+                <button
+                  disabled={
+                    !hasPhotos || activeIndex >= visiblePhotos.length - 1
+                  }
+                  onClick={() => playback.select(activeIndex + 1)}
+                  aria-label="Next photo"
+                >
+                  <SkipForward />
+                </button>
+              </div>
+              <div className="pj-scrub">
+                <div className="pj-scrub-track" aria-hidden="true">
+                  <div
+                    className="pj-scrub-fill"
+                    style={{
+                      transform: `scaleX(${playback.total ? playback.elapsed / playback.total : 0})`,
+                    }}
+                  />
+                  <ScrubberTicks
+                    stops={playback.timeline.stops}
+                    completedThrough={completedThrough}
+                    total={playback.total}
+                  />
+                </div>
+                <ScrubberChapters
+                  stops={playback.timeline.stops}
+                  total={playback.total}
+                  onSeek={playback.seek}
+                />
+                <input
+                  disabled={!hasPhotos}
+                  type="range"
+                  min={0}
+                  max={playback.total}
+                  step={1000}
+                  value={playback.elapsed}
+                  onChange={(event) =>
+                    playback.seek(Number(event.target.value))
+                  }
+                  aria-label="Replay time"
+                  aria-valuetext={`${formatDuration(playback.elapsed)} of ${formatDuration(playback.total)}`}
+                />
+              </div>
+              <span className="pj-time">
+                {formatDuration(playback.elapsed)}{" "}
+                <span>/ {formatDuration(playback.total)}</span>
+              </span>
+              <select
+                className="pj-speed"
+                disabled={!hasPhotos}
+                value={playback.speed}
+                onChange={(event) =>
+                  playback.setSpeed(Number(event.target.value))
+                }
+                aria-label="Playback speed"
+              >
+                <option value={0.75}>0.75×</option>
+                <option value={1}>1×</option>
+                <option value={1.5}>1.5×</option>
+                <option value={2}>2×</option>
+              </select>
+              <button
+                onClick={() => void toggleFullscreen()}
+                aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              >
+                {fullscreen ? <Minimize2 /> : <Maximize2 />}
+              </button>
+            </div>
+          </div>
+          <div className="pj-notes">
+            {scopedTrack && !mapDead && (
+              <p className="pj-route-legend" aria-label="Map legend">
+                <span>GPX route</span>
+                <span className="pj-legend-traveled">Traveled</span>
+              </p>
+            )}
+            {selectedDay !== ALL_DAYS && !hasPhotos && scopedTrack ? (
+              <p className="pj-track-note">
+                <Route size={14} aria-hidden="true" />
+                No photos for this day; the recorded route is still available.
+              </p>
+            ) : stats ? (
+              <p className="pj-track-note">
+                <Route size={14} aria-hidden="true" />
+                {trackNote}
+              </p>
+            ) : (
+              <p>
+                Add a <strong>.gpx</strong> file to follow the recorded route. A
+                recording also provides the map when no photos have GPS.
+              </p>
+            )}
+            {mapDead ? (
+              <p>
+                The map is unavailable. Photos will continue as a slideshow.
+              </p>
+            ) : terrainFallback ? (
+              <p>Terrain could not load. Showing the flat OpenStreetMap map.</p>
+            ) : mapMode === "offline" ? (
+              <p>
+                Offline map. No map requests leave this tab; the bundled outline
+                has no street-level detail.
+              </p>
+            ) : mapMode === "online" ? (
+              <p>OpenStreetMap receives requests for the areas shown.</p>
+            ) : terrain.failed ? (
+              <p>
+                Terrain tiles failed to load, so the map stays flat. Tile
+                requests still reveal the areas shown.
+              </p>
+            ) : terrain.loading ? (
+              <p>
+                Loading terrain… OpenStreetMap and elevation tiles reveal the
+                areas shown.
+              </p>
+            ) : (
+              <p>
+                Terrain on. OpenStreetMap and elevation tiles reveal the areas
+                shown.
+              </p>
+            )}
+            <p className="pj-keys">
+              <kbd>Space</kbd> play <kbd>←</kbd>
+              <kbd>→</kbd> photos <kbd>F</kbd> fullscreen
+            </p>
+          </div>
+          <section
+            className="pj-review-callout"
+            aria-label="Journey review summary"
+          >
+            <div>
+              <strong>
+                {reviewTotals["needs-review"]
+                  ? `${reviewTotals["needs-review"]} photos need attention`
+                  : "Your journey is ready to explore"}
+              </strong>
+              <p>
+                Matching recordings place photos on the GPX line by capture
+                time. Camera GPS is diagnostic only and never moves a matched
+                photo away from the recording.
+              </p>
+              {reviewTotals.conflicts > 0 && (
+                <p>
+                  Choose which recording applies where GPX files overlap. If
+                  matches look wrong, check the camera clock offset.
+                </p>
+              )}
+              {placed.correctedCount > 0 && (
+                <p>
+                  {placed.correctedCount} recording positions differ from camera
+                  GPS · largest difference{" "}
+                  {formatDistance(placed.worstCorrectionM / 1000)}. The GPX
+                  remains authoritative.
+                </p>
+              )}
+            </div>
+            <div className="pj-bar-actions">
+              {reviewTotals.conflicts > 0 && (
+                <button
+                  className="pj-pill"
+                  data-tone="accent"
+                  disabled={busy}
+                  onClick={() => openReview("conflicts")}
+                >
+                  Review {reviewTotals.conflicts} recording conflict
+                  {reviewTotals.conflicts === 1 ? "" : "s"}
+                </button>
+              )}
+              <button
+                className="pj-pill"
+                disabled={busy}
+                onClick={() =>
+                  openReview(
+                    reviewTotals["needs-review"] ? "needs-review" : "all",
+                  )
+                }
+              >
+                {reviewTotals["needs-review"]
+                  ? `Review all ${reviewTotals["needs-review"]} flagged photos`
+                  : "Browse photo details"}
+              </button>
+            </div>
+          </section>
+          <details
+            className="pj-edit-journey"
+            ref={editorRef}
+            onToggle={(event) => {
+              if (event.currentTarget.open) pausePlayback();
+            }}
+          >
+            <summary className="pj-pill">Edit journey</summary>
+            <div className="pj-edit-journey-content">
+              <div className="pj-bar-actions">
+                <label className="pj-timezone">
+                  <span>Trip timezone</span>
+                  <input
+                    aria-label="Trip timezone"
+                    list="pj-timezones"
+                    value={tripTimezone}
+                    onChange={(event) => setTripTimezone(event.target.value)}
+                    onBlur={() =>
+                      setTripTimezone((value) => normalizeTimezone(value))
+                    }
+                    placeholder="UTC"
+                  />
+                  <datalist id="pj-timezones">
+                    <option value="UTC" />
+                    <option value="Europe/Rome" />
+                    <option value="Europe/Berlin" />
+                    <option value="America/New_York" />
+                    <option value="America/Los_Angeles" />
+                    <option value="Asia/Tokyo" />
+                  </datalist>
+                </label>
+              </div>
+              <div
+                className="pj-editor-sections"
+                role="group"
+                aria-label="Journey editor sections"
+              >
+                {(
+                  [
+                    ["review", "Review"],
+                    ["order", "Order"],
+                    ["recordings", "Recordings"],
+                    ["export", "Export"],
+                  ] as const
+                ).map(([section, label]) => (
+                  <button
+                    key={section}
+                    className="pj-pill"
+                    data-section={section}
+                    aria-pressed={editorSection === section}
+                    aria-controls="pj-editor-panel"
+                    onClick={() => {
+                      pausePlayback();
+                      setEditorSection(section);
+                      setEditingOrder(false);
+                    }}
+                  >
+                    {label}
+                    {section === "review" && reviewTotals["needs-review"]
+                      ? ` (${reviewTotals["needs-review"]})`
+                      : ""}
+                  </button>
+                ))}
+              </div>
+              <div id="pj-editor-panel" aria-busy={busy}>
+                <p className="pj-editor-selection">
+                  {dayLabel(days, selectedDay)} · {visiblePhotos.length} photos
+                </p>
+                {editorSection === "review" && (
+                  <>
+                    {visiblePhotos.some(
+                      (photo) =>
+                        photo.metadata.capturedAtWallClock &&
+                        photo.metadata.utcOffsetMinutes === undefined,
+                    ) && (
+                      <details className="pj-clock-settings">
+                        <summary className="pj-pill">
+                          Camera clock settings
+                        </summary>
+                        <section
+                          className="pj-time-controls"
+                          aria-label="Photo clock settings"
+                        >
+                          <div>
+                            <strong>Some camera clocks have no timezone</strong>
+                            <p>
+                              Choose an offset only if you know what the camera
+                              used. This applies to untagged photos and can be
+                              cleared.
+                            </p>
+                          </div>
+                          <label>
+                            <span>UTC offset, minutes east</span>
+                            <input
+                              type="number"
+                              min={-720}
+                              max={840}
+                              step={15}
+                              value={fallbackOffsetInput}
+                              placeholder="e.g. 120"
+                              onChange={(event) =>
+                                setFallbackOffsetInput(event.target.value)
+                              }
+                              aria-invalid={Boolean(
+                                fallbackOffsetInput &&
+                                parseOffsetMinutes(fallbackOffsetInput) ===
+                                  undefined,
+                              )}
+                            />
+                          </label>
+                          <button
+                            className="pj-pill"
+                            data-tone="accent"
+                            disabled={
+                              parseOffsetMinutes(fallbackOffsetInput) ===
+                              undefined
+                            }
+                            onClick={() => {
+                              const value =
+                                parseOffsetMinutes(fallbackOffsetInput);
+                              if (value !== undefined) {
+                                setOffsetMinutesByPhoto((current) => {
+                                  const next = { ...current };
+                                  for (const photo of visiblePhotos)
+                                    if (
+                                      photo.metadata.utcOffsetMinutes ===
+                                        undefined &&
+                                      photo.metadata.capturedAtWallClock
+                                    )
+                                      next[photo.id] = value;
+                                  return next;
+                                });
+                              }
+                            }}
+                          >
+                            Apply
+                          </button>
+                          {visiblePhotos.some(
+                            (photo) =>
+                              offsetMinutesByPhoto[photo.id] !== undefined,
+                          ) && (
+                            <button
+                              className="pj-pill"
+                              onClick={() => {
+                                setOffsetMinutesByPhoto((current) => {
+                                  const next = { ...current };
+                                  for (const photo of visiblePhotos)
+                                    delete next[photo.id];
+                                  return next;
+                                });
+                                setFallbackOffsetInput("");
+                              }}
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </section>
+                      </details>
+                    )}
+                    <ReviewPanel
+                      key={selectedDay}
+                      items={review}
+                      filter={reviewFilter}
+                      onFilter={setReviewFilter}
+                      recordings={recordings}
+                      choices={placementChoices}
+                      offsets={offsetMinutesByPhoto}
+                      onChoose={choosePlacement}
+                      onSetOffset={setPhotoOffset}
+                      onRecordings={() => {
+                        setShowAllRecordings(true);
+                        setEditorSection("recordings");
+                      }}
+                    />
+                  </>
+                )}
+                {editorSection === "order" && (
+                  <>
+                    <div className="pj-bar-actions">
+                      <Segmented
+                        label="Order"
+                        value={order}
+                        disabled={busy}
+                        onChange={(value) => {
+                          setOrder(value);
+                          setEditingOrder(value === "manual");
+                          if (value === "capture")
+                            setPhotos(
+                              sortPhotos(
+                                photos,
+                                placements.map(
+                                  (placement) => placement.instant,
+                                ),
+                              ),
+                            );
+                          playback.seek(0);
+                        }}
+                        options={[
+                          { value: "capture", label: "By time" },
+                          { value: "manual", label: "Manual" },
+                        ]}
+                      />
+                      <button
+                        className="pj-pill"
+                        disabled={busy || !hasPhotos}
+                        onClick={() => {
+                          setEditingOrder(!editingOrder);
+                          if (!editingOrder) setOrder("manual");
+                        }}
+                      >
+                        {editingOrder
+                          ? "Finish ordering"
+                          : "Enable manual ordering"}
+                      </button>
+                    </div>
+                    <p className="pj-editor-note">
+                      Manual ordering keeps your chosen sequence and appends new
+                      imports. Choose By time to sort by capture time again.
+                      Moves stay within the same day.
+                    </p>
+                    <div className="pj-workspace">
+                      {hasPhotos && (
+                        <StopList
+                          photos={visiblePhotos}
+                          placements={visiblePlacements}
+                          summary={summary}
+                          activeIndex={activeIndex}
+                          busy={busy}
+                          editingOrder={editingOrder}
+                          dayKeys={timelineDayKeys}
+                          dayLabels={timelineDayLabels}
+                          onSelect={playback.select}
+                          onMove={movePhoto}
+                          canMove={canMovePhoto}
+                          onRemove={removePhoto}
+                        />
+                      )}
+                      <Inspector
+                        photo={activePhoto}
+                        placement={visiblePlacements[activeIndex]}
+                        index={activeIndex}
+                        recordings={recordings}
+                        choice={
+                          activePhoto
+                            ? placementChoices[activePhoto.id]
+                            : undefined
+                        }
+                        offsetMinutes={
+                          activePhoto
+                            ? offsetMinutesByPhoto[activePhoto.id]
+                            : undefined
+                        }
+                        onSetOffset={setPhotoOffset}
+                        onChoosePlacement={choosePlacement}
+                      />
+                    </div>
+                  </>
+                )}
+                {editorSection === "recordings" && (
+                  <>
+                    {selectedDay !== ALL_DAYS && (
+                      <label className="pj-pill pj-toggle">
+                        <input
+                          type="checkbox"
+                          checked={showAllRecordings}
+                          onChange={(event) =>
+                            setShowAllRecordings(event.target.checked)
+                          }
+                        />
+                        Show all recordings ({recordings.length})
+                      </label>
+                    )}
+                    <p className="pj-editor-note">
+                      {showAllRecordings || selectedDay === ALL_DAYS
+                        ? "Showing recordings from the whole journey."
+                        : "Showing recordings with points on the selected day."}{" "}
+                      Dates and distances describe the original file. Including
+                      or excluding a recording affects the whole journey.
+                    </p>
+                    <RecordingList
+                      recordings={
+                        showAllRecordings ? recordings : dayRecordings
+                      }
+                      overlappingIds={overlappingIds}
+                      busy={busy}
+                      timezone={tripTimezone}
+                      onToggle={toggleRecording}
+                      onRemove={removeRecording}
+                      onDownload={downloadOriginal}
+                    />
+                    {!(showAllRecordings ? recordings : dayRecordings)
+                      .length && (
+                      <p className="pj-review-empty">
+                        No recordings for this selection.
+                      </p>
+                    )}
+                  </>
+                )}
+                {editorSection === "export" && (
+                  <>
+                    <ExportPanel
+                      scopeLabel={
+                        selectedDay === ALL_DAYS
+                          ? "Export all days"
+                          : `Export selected day · ${dayLabel(days, selectedDay)}`
+                      }
+                      summary={summary}
+                      hasPhotos={hasPhotos}
+                      photoBytes={photoBytes}
+                      includePhotos={includePhotos}
+                      packing={packing}
+                      recordingVideo={recordingVideo}
+                      busy={busy}
+                      onExport={download}
+                      onIncludePhotos={setIncludePhotos}
+                      onBundle={downloadBundle}
+                      onVideo={() => void exportVideo()}
+                    />
+                    <section className="pj-panel pj-export-all">
+                      <h3>Whole journey, organized by day</h3>
+                      <p className="pj-editor-note">
+                        Create a ZIP with every day, original recordings, and
+                        metadata. The Include photos setting above also applies
+                        to this ZIP.
+                      </p>
+                      <button
+                        className="pj-pill"
+                        disabled={busy || packing}
+                        onClick={() => void downloadScopedBundle()}
+                      >
+                        Create ZIP with all days
+                      </button>
+                    </section>
+                  </>
+                )}
+              </div>
+            </div>
+          </details>
+        </>
+      )}
+      {errors.length > 0 && (
+        <div className="pj-errors" role="status">
+          <button onClick={() => setErrors([])} aria-label="Dismiss messages">
+            <X size={14} />
+          </button>
+          {errors.map((error, index) => (
+            <p key={index}>{error}</p>
+          ))}
         </div>
-      </details>
-    </>}
-    {errors.length > 0 && <div className="pj-errors" role="status">
-      <button onClick={() => setErrors([])} aria-label="Dismiss messages"><X size={14} /></button>
-      {errors.map((error, index) => <p key={index}>{error}</p>)}
-    </div>}
-  </div>;
+      )}
+    </div>
+  );
 }

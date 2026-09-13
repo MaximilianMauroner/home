@@ -12,7 +12,11 @@ import {
   trackStats,
 } from "../src/components/tools/PhotoJourney/gpx";
 import { exportJourney } from "../src/components/tools/PhotoJourney/journey-data";
-import { isValidUtcOffsetMinutes, parseOffsetMinutes, parseUtcOffset } from "../src/components/tools/PhotoJourney/metadata";
+import {
+  isValidUtcOffsetMinutes,
+  parseOffsetMinutes,
+  parseUtcOffset,
+} from "../src/components/tools/PhotoJourney/metadata";
 import {
   DISCREPANCY_LIMIT_M,
   overlappingRecordingIds,
@@ -21,7 +25,10 @@ import {
   resolvePlacements,
   resolvePlacementsForRecordings,
 } from "../src/components/tools/PhotoJourney/track";
-import type { JourneyPhoto, JourneyRecording } from "../src/components/tools/PhotoJourney/types";
+import type {
+  JourneyPhoto,
+  JourneyRecording,
+} from "../src/components/tools/PhotoJourney/types";
 
 // parseGpx uses the browser parser and the suite runs in node. Fixtures are parsed while the
 // describe blocks are collected, so this has to happen at import time rather than in beforeAll.
@@ -52,12 +59,20 @@ const CLIMB = gpx(
 const WANDER = gpx(
   `<trk><trkseg>` +
     Array.from({ length: 13 }, (_, step) =>
-      trkpt(46.47, Number((11.6 + step * 0.01).toFixed(4)), 1800, `2026-08-20T0${6 + Math.floor(step / 6)}:${String((step * 10) % 60).padStart(2, "0")}:00Z`),
+      trkpt(
+        46.47,
+        Number((11.6 + step * 0.01).toFixed(4)),
+        1800,
+        `2026-08-20T0${6 + Math.floor(step / 6)}:${String((step * 10) % 60).padStart(2, "0")}:00Z`,
+      ),
     ).join("") +
     `</trkseg></trk>`,
 );
 
-function photo(id: string, options: Partial<JourneyPhoto["metadata"]> = {}): JourneyPhoto {
+function photo(
+  id: string,
+  options: Partial<JourneyPhoto["metadata"]> = {},
+): JourneyPhoto {
   return {
     id,
     name: id,
@@ -95,7 +110,11 @@ describe("GPX parsing", () => {
     const track = parseGpx(CLIMB);
     expect(track.name).toBe("Rosengarten");
     expect(track.points).toHaveLength(5);
-    expect(track.points[0]).toMatchObject({ latitude: 46.47, longitude: 11.6, elevation: 1800 });
+    expect(track.points[0]).toMatchObject({
+      latitude: 46.47,
+      longitude: 11.6,
+      elevation: 1800,
+    });
     expect(track.points[4].time).toBe(Date.parse("2026-08-20T06:04:00Z"));
   });
 
@@ -115,13 +134,19 @@ describe("GPX parsing", () => {
   });
 
   test("does not treat a timezone-less GPX clock as a false instant", () => {
-    const track = parseGpx(gpx(`<trk><trkseg><trkpt lat="1" lon="2"><time>2026-08-20T06:00:00</time></trkpt><trkpt lat="1" lon="2.1"><time>2026-08-20T06:01:00Z</time></trkpt></trkseg></trk>`));
+    const track = parseGpx(
+      gpx(
+        `<trk><trkseg><trkpt lat="1" lon="2"><time>2026-08-20T06:00:00</time></trkpt><trkpt lat="1" lon="2.1"><time>2026-08-20T06:01:00Z</time></trkpt></trkseg></trk>`,
+      ),
+    );
     expect(track.points[0].time).toBeUndefined();
     expect(track.points[1].time).toBe(Date.parse("2026-08-20T06:01:00Z"));
   });
 
   test("rejects a file with no track points", () => {
-    expect(() => parseGpx(gpx("<trk><trkseg></trkseg></trk>"))).toThrow(/no track points/i);
+    expect(() => parseGpx(gpx("<trk><trkseg></trkseg></trk>"))).toThrow(
+      /no track points/i,
+    );
     expect(() => parseGpx("not xml at all <")).toThrow();
   });
 
@@ -141,8 +166,14 @@ describe("GPX parsing", () => {
   });
 
   test("keeps a boundary when merging legacy tracks without explicit starts", () => {
-    const first = { points: [{ latitude: 1, longitude: 2, elevation: 100 }], segmentStarts: [] };
-    const second = { points: [{ latitude: 3, longitude: 4, elevation: 200 }], segmentStarts: [] };
+    const first = {
+      points: [{ latitude: 1, longitude: 2, elevation: 100 }],
+      segmentStarts: [],
+    };
+    const second = {
+      points: [{ latitude: 3, longitude: 4, elevation: 200 }],
+      segmentStarts: [],
+    };
     const merged = mergeTracks([first, second]);
     expect(merged.segmentStarts).toEqual([0, 1]);
     expect(trackStats(merged).distanceKm).toBe(0);
@@ -150,58 +181,185 @@ describe("GPX parsing", () => {
   });
 
   test("retains every source track for an export", () => {
-    const track = parseGpx(gpx(
-      `<trk><name>Morning</name><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>` +
-      `<trk><name>Evening</name><trkseg>${trkpt(3, 4, 0, "2026-08-20T18:00:00Z")}</trkseg></trk>`,
-    ));
-    expect(track.parts?.map((part) => part.name)).toEqual(["Morning", "Evening"]);
+    const track = parseGpx(
+      gpx(
+        `<trk><name>Morning</name><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>` +
+          `<trk><name>Evening</name><trkseg>${trkpt(3, 4, 0, "2026-08-20T18:00:00Z")}</trkseg></trk>`,
+      ),
+    );
+    expect(track.parts?.map((part) => part.name)).toEqual([
+      "Morning",
+      "Evening",
+    ]);
     const output = buildGpx("Two tracks", track, []);
     expect(output.match(/<trk>/g)).toHaveLength(2);
     expect(output).toContain("<name>Morning</name>");
     expect(output).toContain("<name>Evening</name>");
   });
 
-  test("keeps overlapping recordings source-aware and marks a tie", () => {
-    const first = parseGpx(gpx(`<trk><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`));
-    const second = parseGpx(gpx(`<trk><trkseg>${trkpt(1.01, 2.01, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`));
+  test("keeps overlapping recordings unresolved until a recording is selected", () => {
+    const first = parseGpx(
+      gpx(
+        `<trk><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`,
+      ),
+    );
+    const second = parseGpx(
+      gpx(
+        `<trk><trkseg>${trkpt(1.01, 2.01, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`,
+      ),
+    );
     const recordings: JourneyRecording[] = [
-      { id: "first", file: new File([], "first.gpx"), name: "first", digest: "first", track: first, importOrder: 0, included: true, warnings: [] },
-      { id: "second", file: new File([], "second.gpx"), name: "second", digest: "second", track: second, importOrder: 1, included: true, warnings: [] },
+      {
+        id: "first",
+        file: new File([], "first.gpx"),
+        name: "first",
+        digest: "first",
+        track: first,
+        importOrder: 0,
+        included: true,
+        warnings: [],
+      },
+      {
+        id: "second",
+        file: new File([], "second.gpx"),
+        name: "second",
+        digest: "second",
+        track: second,
+        importOrder: 1,
+        included: true,
+        warnings: [],
+      },
     ];
-    const placements = resolvePlacementsForRecordings([photo("tie", { capturedAt: wallClock("2026-08-20T06:00:00Z", 0), utcOffsetMinutes: 0 })], recordings);
-    expect(placements[0]).toMatchObject({ source: "none", conflict: true, ambiguous: true, recordingId: "first" });
-    expect(resolvePlacementsForRecordings([photo("tie", { capturedAt: wallClock("2026-08-20T06:00:00Z", 0), utcOffsetMinutes: 0 })], recordings, { choices: { tie: "track" } })[0].source).toBe("track");
+    const tiedPhoto = photo("tie", {
+      capturedAt: wallClock("2026-08-20T06:00:00Z", 0),
+      utcOffsetMinutes: 0,
+      coordinates: { latitude: 9, longitude: 9 },
+    });
+    const placements = resolvePlacementsForRecordings([tiedPhoto], recordings);
+    expect(placements[0]).toMatchObject({
+      source: "none",
+      conflict: true,
+      ambiguous: true,
+      recordingId: "first",
+    });
+    expect(placements[0].coordinates).toBeUndefined();
+    expect(
+      resolvePlacementsForRecordings([tiedPhoto], recordings, {
+        choices: { tie: "track" },
+      })[0].source,
+    ).toBe("none");
+    expect(
+      resolvePlacementsForRecordings([tiedPhoto], recordings, {
+        choices: { tie: { source: "track", recordingId: "second" } },
+      })[0],
+    ).toMatchObject({
+      source: "track",
+      recordingId: "second",
+      coordinates: { latitude: 1.01, longitude: 2.01 },
+    });
   });
 
   test("keeps an explicit recording choice bound to its source", () => {
-    const first = parseGpx(gpx(`<trk><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`));
-    const second = parseGpx(gpx(`<trk><trkseg>${trkpt(3, 4, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`));
+    const first = parseGpx(
+      gpx(
+        `<trk><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`,
+      ),
+    );
+    const second = parseGpx(
+      gpx(
+        `<trk><trkseg>${trkpt(3, 4, 0, "2026-08-20T06:00:00Z")}</trkseg></trk>`,
+      ),
+    );
     const recordings: JourneyRecording[] = [
-      { id: "first", file: new File([], "first.gpx"), name: "first", digest: "first", track: first, importOrder: 0, included: true, warnings: [] },
-      { id: "second", file: new File([], "second.gpx"), name: "second", digest: "second", track: second, importOrder: 1, included: true, warnings: [] },
+      {
+        id: "first",
+        file: new File([], "first.gpx"),
+        name: "first",
+        digest: "first",
+        track: first,
+        importOrder: 0,
+        included: true,
+        warnings: [],
+      },
+      {
+        id: "second",
+        file: new File([], "second.gpx"),
+        name: "second",
+        digest: "second",
+        track: second,
+        importOrder: 1,
+        included: true,
+        warnings: [],
+      },
     ];
     const selected = resolvePlacementsForRecordings(
-      [photo("bound", { capturedAt: wallClock("2026-08-20T06:00:00Z", 0), utcOffsetMinutes: 0 })],
+      [
+        photo("bound", {
+          capturedAt: wallClock("2026-08-20T06:00:00Z", 0),
+          utcOffsetMinutes: 0,
+        }),
+      ],
       recordings,
       { choices: { bound: { source: "track", recordingId: "second" } } },
     )[0];
-    expect(selected).toMatchObject({ source: "track", recordingId: "second", coordinates: { latitude: 3, longitude: 4 } });
+    expect(selected).toMatchObject({
+      source: "track",
+      recordingId: "second",
+      coordinates: { latitude: 3, longitude: 4 },
+    });
     const unavailable = resolvePlacementsForRecordings(
-      [photo("bound", { capturedAt: wallClock("2026-08-20T06:00:00Z", 0), utcOffsetMinutes: 0 })],
+      [
+        photo("bound", {
+          capturedAt: wallClock("2026-08-20T06:00:00Z", 0),
+          utcOffsetMinutes: 0,
+        }),
+      ],
       [recordings[0]],
       { choices: { bound: { source: "track", recordingId: "second" } } },
     )[0];
-    expect(unavailable).toMatchObject({ source: "none", choiceUnavailable: true });
+    expect(unavailable).toMatchObject({
+      source: "none",
+      choiceUnavailable: true,
+    });
   });
 
   test("derives overlap warnings from included recordings", () => {
-    const first = parseGpx(gpx(`<trk><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}${trkpt(1, 2.1, 0, "2026-08-20T07:00:00Z")}</trkseg></trk>`));
-    const second = parseGpx(gpx(`<trk><trkseg>${trkpt(2, 3, 0, "2026-08-20T06:30:00Z")}${trkpt(2, 3.1, 0, "2026-08-20T07:30:00Z")}</trkseg></trk>`));
+    const first = parseGpx(
+      gpx(
+        `<trk><trkseg>${trkpt(1, 2, 0, "2026-08-20T06:00:00Z")}${trkpt(1, 2.1, 0, "2026-08-20T07:00:00Z")}</trkseg></trk>`,
+      ),
+    );
+    const second = parseGpx(
+      gpx(
+        `<trk><trkseg>${trkpt(2, 3, 0, "2026-08-20T06:30:00Z")}${trkpt(2, 3.1, 0, "2026-08-20T07:30:00Z")}</trkseg></trk>`,
+      ),
+    );
     const recordings: JourneyRecording[] = [
-      { id: "first", file: new File([], "first.gpx"), name: "first", digest: "first", track: first, importOrder: 0, included: true, warnings: [] },
-      { id: "second", file: new File([], "second.gpx"), name: "second", digest: "second", track: second, importOrder: 1, included: true, warnings: [] },
+      {
+        id: "first",
+        file: new File([], "first.gpx"),
+        name: "first",
+        digest: "first",
+        track: first,
+        importOrder: 0,
+        included: true,
+        warnings: [],
+      },
+      {
+        id: "second",
+        file: new File([], "second.gpx"),
+        name: "second",
+        digest: "second",
+        track: second,
+        importOrder: 1,
+        included: true,
+        warnings: [],
+      },
     ];
-    expect([...overlappingRecordingIds(recordings)]).toEqual(["first", "second"]);
+    expect([...overlappingRecordingIds(recordings)]).toEqual([
+      "first",
+      "second",
+    ]);
     recordings[1].included = false;
     expect([...overlappingRecordingIds(recordings)]).toEqual([]);
   });
@@ -314,32 +472,47 @@ describe("placing photos on the track", () => {
     expect(placement.source).toBe("track");
     expect(placement.conflict).toBe(true);
     expect(placement.discrepancyM).toBeGreaterThan(700);
-    expect(placement.coordinates).not.toEqual({ latitude: 46.4772, longitude: 11.6014 });
+    expect(placement.coordinates).not.toEqual({
+      latitude: 46.4772,
+      longitude: 11.6014,
+    });
     const [chosen] = resolvePlacements(
-      [photo("phone-drift", {
-        capturedAt: wallClock("2026-08-20T06:02:00Z", 120),
-        utcOffsetMinutes: 120,
-        coordinates: { latitude: 46.4772, longitude: 11.6014 },
-      })],
+      [
+        photo("phone-drift", {
+          capturedAt: wallClock("2026-08-20T06:02:00Z", 120),
+          utcOffsetMinutes: 120,
+          coordinates: { latitude: 46.4772, longitude: 11.6014 },
+        }),
+      ],
       track,
       { choices: { "phone-drift": "photo" } },
     );
-    expect(chosen.source).toBe("photo");
-    expect(chosen.coordinates).toEqual({ latitude: 46.4772, longitude: 11.6014 });
+    expect(chosen.source).toBe("track");
+    expect(chosen.coordinates).toEqual(placement.coordinates);
   });
 
   test("places a photo that carries no GPS at all", () => {
     const [placement] = resolvePlacements(
-      [photo("no-gps", { capturedAt: wallClock("2026-08-20T06:03:00Z", 120), utcOffsetMinutes: 120 })],
+      [
+        photo("no-gps", {
+          capturedAt: wallClock("2026-08-20T06:03:00Z", 120),
+          utcOffsetMinutes: 120,
+        }),
+      ],
       track,
     );
     expect(placement.source).toBe("track");
-    expect(placement.coordinates).toEqual({ latitude: 46.47, longitude: 11.6021 });
+    expect(placement.coordinates).toEqual({
+      latitude: 46.47,
+      longitude: 11.6021,
+    });
     expect(placement.discrepancyM).toBeUndefined();
-    expect(placement.recordingSampleTime).toBe(Date.parse("2026-08-20T06:03:00Z"));
+    expect(placement.recordingSampleTime).toBe(
+      Date.parse("2026-08-20T06:03:00Z"),
+    );
   });
 
-  test("falls back to the photo, then to the position carried forward, outside coverage", () => {
+  test("never uses camera GPS as route truth while a GPX is included", () => {
     const placements = resolvePlacements(
       [
         photo("before", {
@@ -347,16 +520,30 @@ describe("placing photos on the track", () => {
           utcOffsetMinutes: 120,
           coordinates: { latitude: 46.4, longitude: 11.5 },
         }),
+        photo("matched", {
+          capturedAt: wallClock("2026-08-20T06:02:00Z", 120),
+          utcOffsetMinutes: 120,
+        }),
         photo("after-no-gps", {
           capturedAt: wallClock("2026-08-20T09:00:00Z", 120),
           utcOffsetMinutes: 120,
+          coordinates: { latitude: 47, longitude: 12 },
         }),
       ],
       track,
     );
-    expect(placements[0].source).toBe("photo");
-    expect(placements[1].source).toBe("carried");
-    expect(placements[1].coordinates).toEqual({ latitude: 46.4, longitude: 11.5 });
+    expect(placements[0]).toMatchObject({
+      source: "none",
+      coordinates: undefined,
+    });
+    expect(placements[1]).toMatchObject({
+      source: "track",
+      coordinates: { latitude: 46.47, longitude: 11.6014 },
+    });
+    expect(placements[2]).toMatchObject({
+      source: "carried",
+      coordinates: placements[1].coordinates,
+    });
   });
 
   test("reports nothing to place when there is neither time nor position", () => {
@@ -370,14 +557,53 @@ describe("placing photos on the track", () => {
       photo("a", { coordinates: { latitude: 1, longitude: 2 } }),
       photo("b"),
     ]);
-    expect(placements.map((placement) => placement.source)).toEqual(["photo", "carried"]);
+    expect(placements.map((placement) => placement.source)).toEqual([
+      "photo",
+      "carried",
+    ]);
+  });
+
+  test("uses photo GPS when every recording is excluded", () => {
+    const recordings: JourneyRecording[] = [
+      {
+        id: "excluded",
+        file: new File([], "excluded.gpx"),
+        name: "excluded",
+        digest: "excluded",
+        track,
+        importOrder: 0,
+        included: false,
+        warnings: [],
+      },
+    ];
+    const placements = resolvePlacementsForRecordings(
+      [photo("a", { coordinates: { latitude: 1, longitude: 2 } }), photo("b")],
+      recordings,
+    );
+    expect(placements.map((placement) => placement.source)).toEqual([
+      "photo",
+      "carried",
+    ]);
   });
 
   test("summarizes what the track corrected", () => {
     const summary = placementSummary([
-      { photoId: "1", source: "track", discrepancyM: 800, coordinates: { latitude: 0, longitude: 0 } },
-      { photoId: "2", source: "track", coordinates: { latitude: 0, longitude: 0 } },
-      { photoId: "3", source: "photo", coordinates: { latitude: 0, longitude: 0 } },
+      {
+        photoId: "1",
+        source: "track",
+        discrepancyM: 800,
+        coordinates: { latitude: 0, longitude: 0 },
+      },
+      {
+        photoId: "2",
+        source: "track",
+        coordinates: { latitude: 0, longitude: 0 },
+      },
+      {
+        photoId: "3",
+        source: "photo",
+        coordinates: { latitude: 0, longitude: 0 },
+      },
       { photoId: "4", source: "none" },
     ]);
     expect(summary).toEqual({
@@ -415,17 +641,25 @@ describe("clock handling", () => {
 
   test("ignores an invalid metadata offset and accepts a valid fallback", () => {
     const captured = wallClock("2026-08-20T06:02:00Z", 120);
-    expect(photoInstant({ capturedAt: captured, utcOffsetMinutes: 900 } as never, 120)).toBe(
-      Date.parse("2026-08-20T06:02:00Z"),
-    );
-    expect(photoInstant({ capturedAt: captured, utcOffsetMinutes: 900 } as never, 900)).toBeUndefined();
+    expect(
+      photoInstant(
+        { capturedAt: captured, utcOffsetMinutes: 900 } as never,
+        120,
+      ),
+    ).toBe(Date.parse("2026-08-20T06:02:00Z"));
+    expect(
+      photoInstant(
+        { capturedAt: captured, utcOffsetMinutes: 900 } as never,
+        900,
+      ),
+    ).toBeUndefined();
   });
 
   test("recovers the shutter instant from wall-clock time and an offset", () => {
     const captured = wallClock("2026-08-20T06:02:00Z", 120);
-    expect(photoInstant({ capturedAt: captured, utcOffsetMinutes: 120 } as never)).toBe(
-      Date.parse("2026-08-20T06:02:00Z"),
-    );
+    expect(
+      photoInstant({ capturedAt: captured, utcOffsetMinutes: 120 } as never),
+    ).toBe(Date.parse("2026-08-20T06:02:00Z"));
   });
 
   test("leaves an untagged camera clock unresolved until an explicit offset is supplied", () => {
@@ -440,10 +674,19 @@ describe("clock handling", () => {
       }),
     ];
     const unresolved = resolvePlacements(photos, track);
-    expect(unresolved.every((placement) => placement.source === "photo" && placement.instant === undefined)).toBe(true);
+    expect(
+      unresolved.every(
+        (placement) =>
+          placement.source === "none" && placement.instant === undefined,
+      ),
+    ).toBe(true);
     const placements = resolvePlacements(photos, track, { offsetMinutes: 120 });
-    expect(placements.every((placement) => placement.source === "track")).toBe(true);
-    expect(placements.every((placement) => placement.instant !== undefined)).toBe(true);
+    expect(placements.every((placement) => placement.source === "track")).toBe(
+      true,
+    );
+    expect(
+      placements.every((placement) => placement.instant !== undefined),
+    ).toBe(true);
   });
 
   test("does not slide the clock to split the difference with a bad fix", () => {
@@ -464,7 +707,12 @@ describe("clock handling", () => {
     expect(placements[0]).toMatchObject({ source: "track" });
     expect(placements[1]).toMatchObject({ source: "track", conflict: true });
     expect(placements[1].discrepancyM).toBeGreaterThan(250);
-    expect(resolvePlacements(photos, track, { offsetMinutes: 120, choices: { "bad fix": "photo" } })[1].source).toBe("photo");
+    expect(
+      resolvePlacements(photos, track, {
+        offsetMinutes: 120,
+        choices: { "bad fix": "photo" },
+      })[1].source,
+    ).toBe("track");
   });
 
   test("still finds the three real quarter-hour zones", () => {
@@ -474,7 +722,10 @@ describe("clock handling", () => {
         coordinates: { latitude: 46.47, longitude: 11.63 },
       }),
     ];
-    expect(resolvePlacements(photos, parseGpx(WANDER), { offsetMinutes: 345 })[0].instant).toBe(Date.parse("2026-08-20T06:30:00Z"));
+    expect(
+      resolvePlacements(photos, parseGpx(WANDER), { offsetMinutes: 345 })[0]
+        .instant,
+    ).toBe(Date.parse("2026-08-20T06:30:00Z"));
   });
 
   test("prefers a stated offset over inference", () => {
@@ -485,7 +736,9 @@ describe("clock handling", () => {
         coordinates: { latitude: 46.47, longitude: 11.6007 },
       }),
     ];
-    expect(resolvePlacements(photos, track)[0].instant).toBe(Date.parse("2026-08-20T06:01:00Z"));
+    expect(resolvePlacements(photos, track)[0].instant).toBe(
+      Date.parse("2026-08-20T06:01:00Z"),
+    );
   });
 });
 
@@ -520,7 +773,14 @@ describe("writing GPX back out", () => {
   });
 
   test("omits non-finite source timestamps instead of producing invalid XML", () => {
-    const output = buildGpx("Finite", { points: [{ latitude: 1, longitude: 2, time: Number.NaN }], segmentStarts: [0] }, []);
+    const output = buildGpx(
+      "Finite",
+      {
+        points: [{ latitude: 1, longitude: 2, time: Number.NaN }],
+        segmentStarts: [0],
+      },
+      [],
+    );
     expect(output).not.toContain("<time>");
     expect(() => parseGpx(output)).not.toThrow();
   });
@@ -542,12 +802,19 @@ describe("writing GPX back out", () => {
   });
 
   test("omits an unresolved wall clock from a photo-only waypoint", () => {
-    const photos = [photo("unknown", {
-      capturedAt: wallClock("2026-08-20T06:02:00Z", 120),
-      capturedAtWallClock: "2026-08-20T08:02:00",
-      coordinates: { latitude: 46.47, longitude: 11.6014 },
-    })];
-    const output = exportJourney(photos, "gpx", "Unknown", resolvePlacements(photos));
+    const photos = [
+      photo("unknown", {
+        capturedAt: wallClock("2026-08-20T06:02:00Z", 120),
+        capturedAtWallClock: "2026-08-20T08:02:00",
+        coordinates: { latitude: 46.47, longitude: 11.6014 },
+      }),
+    ];
+    const output = exportJourney(
+      photos,
+      "gpx",
+      "Unknown",
+      resolvePlacements(photos),
+    );
     expect(output.content).toContain('<wpt lat="46.47" lon="11.6014">');
     expect(output.content).not.toContain("<time>");
   });

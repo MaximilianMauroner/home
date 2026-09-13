@@ -39,7 +39,8 @@ function StopList({
     <section className="pj-panel pj-stops" aria-label="Journey order">
       <header className="pj-panel-head">
         <span className="pj-label">
-          {summary.photoCount} photos · {summary.locatedCount} located · {formatDistance(summary.distanceKm)}
+          {summary.photoCount} photos · {summary.locatedCount} located ·{" "}
+          {formatDistance(summary.distanceKm)}
         </span>
         <h2>Stops</h2>
       </header>
@@ -48,60 +49,91 @@ function StopList({
           const placement = placements[index];
           const dayKey = dayKeys[index];
           const previousDayKey = dayKeys[index - 1];
-          const located = placement ? placement.source === "photo" || placement.source === "track" : Boolean(photo.metadata.coordinates);
-          const place = placement?.conflict && placement.source === "photo"
-            ? "Photo GPS selected · recording differs"
-            : placement?.conflict && placement.source === "track"
-              ? "Recorded position selected"
-              : placement?.conflict
-                ? "Needs a location choice"
+          const located = placement
+            ? placement.source === "photo" || placement.source === "track"
+            : Boolean(photo.metadata.coordinates);
+          const place = placement?.ambiguous
+            ? "Choose a recording"
             : placement?.source === "track"
-              ? "On the recording"
+              ? "Matched to recording"
               : placement?.source === "carried"
                 ? "Previous position · not this photo"
-                : photo.metadata.place ?? (located ? "Located" : "No GPS");
+                : summary.track
+                  ? "Not matched to recording"
+                  : (photo.metadata.place ?? (located ? "Located" : "No GPS"));
           return (
-          <Fragment key={photo.id}>
-            {dayKey && dayKey !== previousDayKey && <li className="pj-stop-day"><span role="heading" aria-level={3}>{dayLabels[index] ?? dayKey}</span></li>}
-          <li data-selected={index === activeIndex}>
-            <button
-              className="pj-stop"
-              aria-current={index === activeIndex ? "step" : undefined}
-              onClick={() => onSelect(index)}
-            >
-              <img src={photo.thumbnailUrl} alt="" loading="lazy" />
-              <span className="pj-stop-index">{String(index + 1).padStart(2, "0")}</span>
-              <span className="pj-stop-text">
-                <strong>{photo.name}</strong>
-                <small data-located={located}>
-                  {place}
-                  {photo.metadata.capturedAtLabel ? ` · ${photo.metadata.capturedAtLabel}${photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined && placement?.instant === undefined ? " · time not resolved" : ""}` : ""}
-                </small>
-              </span>
-              {placement?.conflict && (
-                <span className="pj-stop-tag" data-conflict="true">{placement.ambiguous ? "overlap" : "review"}</span>
+            <Fragment key={photo.id}>
+              {dayKey && dayKey !== previousDayKey && (
+                <li className="pj-stop-day">
+                  <span role="heading" aria-level={3}>
+                    {dayLabels[index] ?? dayKey}
+                  </span>
+                </li>
               )}
-              {placement?.source === "track" && !placement.conflict && (
-                <span className="pj-stop-tag" title={placement.discrepancyM === undefined
-                  ? "This photo has no GPS. The track places it by its timecode."
-                  : `The camera's own fix was ${Math.round(placement.discrepancyM).toLocaleString("en")} m away, so the track places it by its timecode.`}>
-                  by time
-                </span>
-              )}
-            </button>
-            <div className="pj-stop-actions">
-              <button disabled={busy || !editingOrder || !canMove(index, -1)} onClick={() => onMove(index, -1)} aria-label={`Move ${photo.name} earlier`}>
-                <ChevronUp />
-              </button>
-              <button disabled={busy || !editingOrder || !canMove(index, 1)} onClick={() => onMove(index, 1)} aria-label={`Move ${photo.name} later`}>
-                <ChevronDown />
-              </button>
-              <button disabled={busy} onClick={() => onRemove(photo.id)} aria-label={`Remove ${photo.name}`}>
-                <Trash2 />
-              </button>
-            </div>
-          </li>
-          </Fragment>
+              <li data-selected={index === activeIndex}>
+                <button
+                  className="pj-stop"
+                  aria-current={index === activeIndex ? "step" : undefined}
+                  onClick={() => onSelect(index)}
+                >
+                  <img src={photo.thumbnailUrl} alt="" loading="lazy" />
+                  <span className="pj-stop-index">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className="pj-stop-text">
+                    <strong>{photo.name}</strong>
+                    <small data-located={located}>
+                      {place}
+                      {photo.metadata.capturedAtLabel
+                        ? ` · ${photo.metadata.capturedAtLabel}${photo.metadata.capturedAtWallClock && photo.metadata.utcOffsetMinutes === undefined && placement?.instant === undefined ? " · time not resolved" : ""}`
+                        : ""}
+                    </small>
+                  </span>
+                  {(placement?.ambiguous || placement?.choiceUnavailable) && (
+                    <span className="pj-stop-tag" data-conflict="true">
+                      {placement.ambiguous ? "overlap" : "review"}
+                    </span>
+                  )}
+                  {placement?.source === "track" &&
+                    !placement.ambiguous &&
+                    !placement.choiceUnavailable && (
+                      <span
+                        className="pj-stop-tag"
+                        title={
+                          placement.discrepancyM === undefined
+                            ? "The recording places this photo by its capture time."
+                            : `Matched to the recording by capture time. The camera GPS differs by ${Math.round(placement.discrepancyM).toLocaleString("en")} m.`
+                        }
+                      >
+                        GPX
+                      </span>
+                    )}
+                </button>
+                <div className="pj-stop-actions">
+                  <button
+                    disabled={busy || !editingOrder || !canMove(index, -1)}
+                    onClick={() => onMove(index, -1)}
+                    aria-label={`Move ${photo.name} earlier`}
+                  >
+                    <ChevronUp />
+                  </button>
+                  <button
+                    disabled={busy || !editingOrder || !canMove(index, 1)}
+                    onClick={() => onMove(index, 1)}
+                    aria-label={`Move ${photo.name} later`}
+                  >
+                    <ChevronDown />
+                  </button>
+                  <button
+                    disabled={busy}
+                    onClick={() => onRemove(photo.id)}
+                    aria-label={`Remove ${photo.name}`}
+                  >
+                    <Trash2 />
+                  </button>
+                </div>
+              </li>
+            </Fragment>
           );
         })}
       </ol>
