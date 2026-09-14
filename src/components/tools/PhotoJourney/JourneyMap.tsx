@@ -126,6 +126,15 @@ export function previousRecordedLeg(
     ? candidate
     : undefined;
 }
+
+/** Keep an unmatched photo anchored to the last verified recording point without calling it a match. */
+export function routeTipForPlacement(placement?: Placement) {
+  if (!placement || placement.ambiguous || placement.choiceUnavailable)
+    return undefined;
+  if (placement.source === "track") return placement.coordinates;
+  if (placement.source === "carried") return placement.coordinates;
+  return placement.trackCoordinates;
+}
 /** Legs longer than this arc on a globe instead of smearing across Mercator. */
 export const GLOBE_LEG_KM = 1500;
 
@@ -433,7 +442,12 @@ export function baseStyle(): StyleSpecification {
         type: "circle",
         source: "route-tip",
         paint: {
-          "circle-color": "#38bdf8",
+          "circle-color": [
+            "case",
+            ["boolean", ["get", "carried"], false],
+            "#f2d487",
+            "#38bdf8",
+          ],
           "circle-radius": 8,
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 3,
@@ -907,7 +921,7 @@ export default function JourneyMap({
     } else {
       routePaintRef.current.nextAt = 0;
     }
-    const showPosition = (position?: Coordinates) => {
+    const showPosition = (position?: Coordinates, carried = false) => {
       (map.getSource("route-tip") as GeoJSONSource | undefined)?.setData(
         position
           ? {
@@ -915,7 +929,7 @@ export default function JourneyMap({
               features: [
                 {
                   type: "Feature",
-                  properties: {},
+                  properties: { carried },
                   geometry: { type: "Point", coordinates: lngLat(position) },
                 },
               ],
@@ -1019,19 +1033,15 @@ export default function JourneyMap({
       routeData(visible.current),
     );
     const placement = placements?.[checkpointEndIndex];
-    const settled =
-      placement && !placement.ambiguous && !placement.choiceUnavailable
-        ? placement.source === "track"
-          ? placement.coordinates
-          : placement.trackCoordinates
-        : undefined;
+    const settled = routeTipForPlacement(placement);
+    const carried = placement?.source === "carried";
     const tip =
       phase === "approach" && currentLegEligible
         ? activeRouteFrame?.tip
         : arrived
           ? settled
           : undefined;
-    showPosition(tip);
+    showPosition(tip, Boolean(arrived && settled && carried));
   }, [
     routeStory,
     activeRouteFrame,

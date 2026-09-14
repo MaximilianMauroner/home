@@ -5,15 +5,36 @@ import {
   VIDEO_HEIGHT,
   VIDEO_OUTPUT_RESOLUTIONS,
   VIDEO_WIDTH,
+  videoResolutionAttempts,
 } from "../src/components/tools/PhotoJourney/video-export";
 import type { Track } from "../src/components/tools/PhotoJourney/gpx";
 
 describe("Photo Journey MP4 layout", () => {
-  test("prefers 4K and never falls below 1080p", () => {
+  test("defaults to portable 1080p and keeps 4K optional", () => {
     expect(VIDEO_OUTPUT_RESOLUTIONS).toEqual([
-      { width: 3840, height: 2160, label: "4K" },
       { width: 1920, height: 1080, label: "1080p" },
+      { width: 3840, height: 2160, label: "4K" },
     ]);
+    expect(videoResolutionAttempts().map((entry) => entry.label)).toEqual([
+      "1080p",
+    ]);
+    expect(videoResolutionAttempts("4K").map((entry) => entry.label)).toEqual([
+      "4K",
+      "1080p",
+    ]);
+  });
+
+  test("finds bounds for recording-sized tracks without argument spreading", () => {
+    const points = Array.from({ length: 200_000 }, (_, index) => ({
+      latitude: 40 + index / 1_000_000,
+      longitude: 10 + index / 1_000_000,
+    }));
+    expect(videoBounds({ points, segmentStarts: [0] }, [])).toEqual({
+      minLatitude: 40,
+      maxLatitude: 40.199999,
+      minLongitude: 10,
+      maxLongitude: 10.199999,
+    });
   });
 
   test("keeps an antimeridian route compact", () => {
@@ -29,7 +50,7 @@ describe("Photo Journey MP4 layout", () => {
     expect(bounds.maxLongitude - bounds.minLongitude).toBe(2);
     for (const point of track.points) {
       const projected = projectVideoPoint(point, bounds);
-      expect(projected.x).toBeGreaterThan(VIDEO_WIDTH * 0.6);
+      expect(projected.x).toBeGreaterThan(VIDEO_WIDTH * 0.5);
       expect(projected.x).toBeLessThan(VIDEO_WIDTH);
       expect(projected.y).toBeGreaterThan(0);
       expect(projected.y).toBeLessThan(VIDEO_HEIGHT);

@@ -7,7 +7,7 @@ import {
   Quality,
 } from "mediabunny";
 import { trackSegments, trackStats, type Track, type TrackPoint } from "./gpx";
-import { journeyMotion } from "./motion";
+import { burstPhotoProgress, journeyMotion } from "./motion";
 import { recordedLegFrame, type RouteStory } from "./route-progress";
 import {
   timelineAt,
@@ -21,10 +21,12 @@ export const VIDEO_WIDTH = 1280;
 export const VIDEO_HEIGHT = 720;
 export const VIDEO_FRAME_RATE = 30;
 export const VIDEO_OUTPUT_RESOLUTIONS = [
-  { width: 3840, height: 2160, label: "4K" },
   { width: 1920, height: 1080, label: "1080p" },
+  { width: 3840, height: 2160, label: "4K" },
 ] as const;
-const PHOTO_WIDTH = 768;
+export type VideoResolutionLabel =
+  (typeof VIDEO_OUTPUT_RESOLUTIONS)[number]["label"];
+const PHOTO_WIDTH = VIDEO_WIDTH / 2;
 const INFO_HEIGHT = 82;
 const MAP_LEFT = PHOTO_WIDTH;
 
@@ -36,6 +38,7 @@ export type JourneyVideoOptions = {
   timeline: JourneyTimeline;
   track?: Track;
   routeStory?: RouteStory;
+  resolution?: VideoResolutionLabel;
   signal?: AbortSignal;
   onProgress?: (progress: number) => void;
 };
@@ -71,6 +74,8 @@ function abortError() {
   return new DOMException("MP4 export canceled", "AbortError");
 }
 
+class PhotoExportError extends Error {}
+
 function checkAbort(signal?: AbortSignal) {
   if (signal?.aborted) throw abortError();
 }
@@ -101,15 +106,22 @@ export function videoBounds(
   const points = route.length ? route : positioned;
   if (!points.length) return undefined;
   const reference = points[0].longitude;
-  const longitudes = points.map((point) =>
-    unwrapLongitude(point.longitude, reference),
-  );
-  const latitudes = points.map((point) => point.latitude);
+  let minLatitude = Number.POSITIVE_INFINITY;
+  let maxLatitude = Number.NEGATIVE_INFINITY;
+  let minLongitude = Number.POSITIVE_INFINITY;
+  let maxLongitude = Number.NEGATIVE_INFINITY;
+  for (const point of points) {
+    const longitude = unwrapLongitude(point.longitude, reference);
+    minLatitude = Math.min(minLatitude, point.latitude);
+    maxLatitude = Math.max(maxLatitude, point.latitude);
+    minLongitude = Math.min(minLongitude, longitude);
+    maxLongitude = Math.max(maxLongitude, longitude);
+  }
   return {
-    minLatitude: Math.min(...latitudes),
-    maxLatitude: Math.max(...latitudes),
-    minLongitude: Math.min(...longitudes),
-    maxLongitude: Math.max(...longitudes),
+    minLatitude,
+    maxLatitude,
+    minLongitude,
+    maxLongitude,
   };
 }
 
@@ -324,17 +336,26 @@ function drawCard(
   context.fillText(subtitle, 96, 395, VIDEO_WIDTH - 192);
 }
 
-async function bitmapFor(photo: JourneyPhoto, cache: Map<string, ImageBitmap>) {
+async function bitmapFor(
+  photo: JourneyPhoto,
+  cache: Map<string, ImageBitmap>,
+  signal?: AbortSignal,
+) {
   const cached = cache.get(photo.id);
   if (cached) return cached;
-  const response = await fetch(photo.url);
-  if (!response.ok)
-    throw new Error(`Could not read ${photo.name} for MP4 export.`);
-  const bitmap = await createImageBitmap(await response.blob(), {
-    imageOrientation: "from-image",
-  });
-  cache.set(photo.id, bitmap);
-  return bitmap;
+  try {
+    const response = await fetch(photo.url, { signal });
+    if (!response.ok) throw new Error();
+    const bitmap = await createImageBitmap(await response.blob(), {
+      imageOrientation: "from-image",
+    });
+    checkAbort(signal);
+    cache.set(photo.id, bitmap);
+    return bitmap;
+  } catch (error) {
+    if ((error as DOMException)?.name === "AbortError") throw error;
+    throw new PhotoExportError(`Could not read ${photo.name} for MP4 export.`);
+  }
 }
 
 function trimBitmapCache(cache: Map<string, ImageBitmap>, keepId: string) {
@@ -372,7 +393,7 @@ function drawPhotoPanel(
   progress: number,
 ) {
   context.save();
-  context.globalAlpha = Math.min(1, progress * 1.8);
+  context.globalAlpha *= Math.min(1, progress * 1.8);
   context.translate((progress - 1) * PHOTO_WIDTH, 0);
   context.beginPath();
   context.rect(0, 0, PHOTO_WIDTH, VIDEO_HEIGHT);
@@ -389,31 +410,31 @@ function drawPhotoPanel(
   context.restore();
 }
 
-async function supportedOutput(format: Mp4OutputFormat, quality: Quality) {
-  for (const resolution of VIDEO_OUTPUT_RESOLUTIONS) {
-    const codec = await getFirstEncodableVideoCodec(
-      format.getSupportedVideoCodecs(),
-      {
-        width: resolution.width,
-        height: resolution.height,
-        quality,
-      },
-    );
-    if (codec) return { codec, resolution };
-  }
-  return undefined;
+async function supportedOutput(
+  format: Mp4OutputFormat,
+  quality: Quality,
+  resolution: (typeof VIDEO_OUTPUT_RESOLUTIONS)[number],
+) {
+  if (!format.getSupportedVideoCodecs().includes("avc")) return undefined;
+  const codec = await getFirstEncodableVideoCodec(["avc"], {
+    width: resolution.width,
+    height: resolution.height,
+    quality,
+  });
+  return codec ? { codec, resolution } : undefined;
 }
 
-export async function renderJourneyMp4(options: JourneyVideoOptions) {
-  if (!options.photos.length)
-    throw new Error("Add at least one photo before exporting MP4.");
+async function renderAtResolution(
+  options: JourneyVideoOptions,
+  resolution: (typeof VIDEO_OUTPUT_RESOLUTIONS)[number],
+) {
   checkAbort(options.signal);
   const format = new Mp4OutputFormat({ fastStart: "in-memory" });
   const quality = new Quality("high");
-  const supported = await supportedOutput(format, quality);
+  const supported = await supportedOutput(format, quality, resolution);
   if (!supported)
     throw new Error(
-      "This browser cannot encode a 1080p MP4 video. Use a current Chrome, Edge, or Safari release.",
+      `This browser cannot encode ${resolution.label} H.264 video.`,
     );
   checkAbort(options.signal);
   const canvas = document.createElement("canvas");
@@ -437,6 +458,7 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
   const bounds = videoBounds(options.track, options.placements);
   const bitmaps = new Map<string, ImageBitmap>();
   const totalSeconds = options.timeline.totalDuration / 1000;
+  const stats = options.track ? trackStats(options.track) : undefined;
   const frameDuration = 1 / VIDEO_FRAME_RATE;
   const frameCount = Math.max(1, Math.ceil(totalSeconds * VIDEO_FRAME_RATE));
   let started = false;
@@ -449,7 +471,6 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
       const seconds = Math.min(totalSeconds, frame * frameDuration);
       const state = timelineAt(seconds * 1000, options.timeline);
       if (state.phase === "intro") {
-        const stats = options.track ? trackStats(options.track) : undefined;
         drawCard(
           context,
           options.title,
@@ -475,8 +496,11 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
       } else {
         const photoIndex = photoIndexForState(state, options.timeline);
         const photo = options.photos[photoIndex] ?? options.photos[0];
-        const bitmap = await bitmapFor(photo, bitmaps);
+        const bitmap = await bitmapFor(photo, bitmaps, options.signal);
         const panelProgress = journeyMotion(state, false).panel;
+        const stop = options.timeline.stops[state.checkpointIndex];
+        const photoOffset = stop?.photoIndices.indexOf(photoIndex) ?? 0;
+        const photoProgress = burstPhotoProgress(state, photoOffset, false);
         const mapArea = composedMapArea(panelProgress);
         // The surface remains full-frame. Only the route composition shifts toward the visible
         // map area while the photo overlays it, matching the stable live MapLibre canvas.
@@ -488,6 +512,26 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
           mapArea,
         );
         drawRouteLabel(context, mapArea);
+        if (photoProgress < 1 && photoIndex > 0) {
+          const previous = options.photos[photoIndex - 1];
+          const previousBitmap = await bitmapFor(
+            previous,
+            bitmaps,
+            options.signal,
+          );
+          drawPhotoPanel(
+            context,
+            previousBitmap,
+            previous,
+            options.placements[photoIndex - 1],
+            photoIndex - 1,
+            options.photos.length,
+            options.timezone,
+            panelProgress,
+          );
+        }
+        context.save();
+        context.globalAlpha = photoProgress;
         drawPhotoPanel(
           context,
           bitmap,
@@ -498,12 +542,16 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
           options.timezone,
           panelProgress,
         );
+        context.restore();
         trimBitmapCache(bitmaps, photo.id);
       }
       await source.add(seconds, frameDuration, {
         keyFrame: frame % (VIDEO_FRAME_RATE * 2) === 0,
       });
-      const progress = Math.round(((frame + 1) / frameCount) * 100);
+      const progress = Math.min(
+        99,
+        Math.round(((frame + 1) / frameCount) * 99),
+      );
       if (progress !== reported) {
         reported = progress;
         options.onProgress?.(progress);
@@ -512,6 +560,7 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
     checkAbort(options.signal);
     await output.finalize();
     if (!target.buffer) throw new Error("The MP4 encoder produced no output.");
+    options.onProgress?.(100);
     return new Blob([target.buffer], { type: "video/mp4" });
   } catch (error) {
     if (started && output.state !== "finalized" && output.state !== "canceled")
@@ -519,5 +568,42 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
     throw error;
   } finally {
     for (const bitmap of bitmaps.values()) bitmap.close();
+    canvas.width = 1;
+    canvas.height = 1;
   }
+}
+
+export async function renderJourneyMp4(options: JourneyVideoOptions) {
+  if (!options.photos.length)
+    throw new Error("Add at least one photo before exporting MP4.");
+  const attempts = videoResolutionAttempts(options.resolution);
+  let failure: unknown;
+  for (const resolution of attempts) {
+    try {
+      options.onProgress?.(0);
+      return await renderAtResolution(options, resolution);
+    } catch (error) {
+      if (
+        (error as DOMException)?.name === "AbortError" ||
+        error instanceof PhotoExportError
+      )
+        throw error;
+      failure = error;
+    }
+  }
+  throw new Error(
+    `This browser could not create a 1080p H.264 MP4. ${failure instanceof Error ? failure.message : "Use a current Chrome, Edge, or Safari release."}`,
+  );
+}
+
+export function videoResolutionAttempts(
+  requested: VideoResolutionLabel = "1080p",
+) {
+  const preferred =
+    VIDEO_OUTPUT_RESOLUTIONS.find(
+      (resolution) => resolution.label === requested,
+    ) ?? VIDEO_OUTPUT_RESOLUTIONS[0];
+  return preferred.label === "4K"
+    ? [preferred, VIDEO_OUTPUT_RESOLUTIONS[0]]
+    : [preferred];
 }

@@ -10,6 +10,7 @@ import {
   journeyCameraBearing,
   journeyCameraPitch,
   previousRecordedLeg,
+  routeTipForPlacement,
   suppressedMarkerIndexes,
   TERRAIN_PITCH,
 } from "../src/components/tools/PhotoJourney/JourneyMap";
@@ -150,6 +151,32 @@ describe("Photo Journey map timing and recording budgets", () => {
     expect(previousRecordedLeg([undefined, first, active], 2, active)).toBe(
       first,
     );
+  });
+
+  test("marks the last verified trail point when a photo is not matched", () => {
+    const point = { latitude: 48, longitude: 16 };
+    expect(
+      routeTipForPlacement({
+        photoId: "matched",
+        source: "track",
+        coordinates: point,
+      }),
+    ).toEqual(point);
+    expect(
+      routeTipForPlacement({
+        photoId: "unmatched",
+        source: "carried",
+        coordinates: point,
+      }),
+    ).toEqual(point);
+    expect(
+      routeTipForPlacement({
+        photoId: "ambiguous",
+        source: "carried",
+        coordinates: point,
+        ambiguous: true,
+      }),
+    ).toBeUndefined();
   });
 
   test.each([

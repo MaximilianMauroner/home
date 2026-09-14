@@ -35,7 +35,7 @@ const CARD_PHASES = new Set<JourneyPhase>([
   "outro",
   "complete",
 ]);
-const DESKTOP_PHOTO_SHARE = 0.6;
+const DESKTOP_PHOTO_SHARE = 0.5;
 const pad = (value: number) => String(value).padStart(2, "0");
 /** Moving time from the track, compact enough for a stat tile: "24 min" or "8 h 24 min". */
 function formatMoving(totalSeconds: number) {

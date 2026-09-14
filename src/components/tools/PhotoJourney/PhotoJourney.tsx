@@ -76,6 +76,7 @@ import {
 } from "./track";
 import { usePlayback, useReducedMotion } from "./usePlayback";
 import type { JourneyPhoto, JourneyRecording } from "./types";
+import type { VideoResolutionLabel } from "./video-export";
 import "./photo-journey.css";
 
 const ACCEPT =
@@ -101,14 +102,14 @@ function downloadStem(value: string) {
   );
 }
 
-function ImportProgress({ value }: { value?: number }) {
+function Progress({ value, label }: { value?: number; label: string }) {
   const progress =
     value === undefined ? 0.08 : Math.max(0, Math.min(1, value / 100));
   return (
     <div
       className="pj-progress"
       role="progressbar"
-      aria-label="Import progress"
+      aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={value}
@@ -208,11 +209,13 @@ function ExportPanel({
   packing,
   exportingVideo,
   videoExportProgress,
+  videoResolution,
   busy,
   onExport,
   onIncludePhotos,
   onBundle,
   onVideo,
+  onVideoResolution,
 }: {
   scopeLabel: string;
   summary: ReturnType<typeof journeySummary>;
@@ -222,11 +225,13 @@ function ExportPanel({
   packing: boolean;
   exportingVideo: boolean;
   videoExportProgress?: number;
+  videoResolution: VideoResolutionLabel;
   busy: boolean;
   onExport: (format: ExportFormat) => void;
   onIncludePhotos: (value: boolean) => void;
   onBundle: () => void;
   onVideo: () => void;
+  onVideoResolution: (value: VideoResolutionLabel) => void;
 }) {
   return (
     <section className="pj-panel pj-export" aria-label="Journey exports">
@@ -244,63 +249,104 @@ function ExportPanel({
             : ""}
         </p>
       </header>
-      <div className="pj-export-actions">
-        <button
-          className="pj-pill"
-          data-tone="accent"
-          disabled={busy}
-          onClick={() => onExport("gpx")}
-        >
-          <Download size={15} aria-hidden="true" />
-          Download GPX
-        </button>
-        <button
-          className="pj-pill"
-          disabled={busy}
-          onClick={() => onExport("geojson")}
-        >
-          GeoJSON
-        </button>
-        <button
-          className="pj-pill"
-          disabled={busy}
-          onClick={() => onExport("json")}
-        >
-          Metadata JSON
-        </button>
-        <button
-          className="pj-pill"
-          disabled={busy || packing}
-          onClick={onBundle}
-        >
-          <Package size={15} aria-hidden="true" />
-          {packing ? "Packing…" : "Create journey ZIP"}
-        </button>
-        <button
-          className="pj-pill"
-          disabled={busy || !hasPhotos}
-          onClick={onVideo}
-        >
-          <Video size={15} aria-hidden="true" />
-          {exportingVideo
-            ? `Cancel MP4 export${videoExportProgress === undefined ? "" : ` · ${videoExportProgress}%`}`
-            : "Export MP4 · 4K"}
-        </button>
-        {hasPhotos && (
-          <label className="pj-pill pj-toggle" data-size="sm">
-            <input
-              type="checkbox"
-              checked={includePhotos}
-              onChange={(event) => onIncludePhotos(event.target.checked)}
+      <div className="pj-export-grid">
+        <section className="pj-export-group" data-kind="video">
+          <h3>Video</h3>
+          <div className="pj-export-actions">
+            <Segmented
+              label="Resolution"
+              value={videoResolution}
+              options={[
+                { value: "1080p", label: "1080p" },
+                { value: "4K", label: "4K" },
+              ]}
+              disabled={exportingVideo}
+              onChange={onVideoResolution}
             />
-            Include photos ({formatBytes(photoBytes)})
-          </label>
-        )}
+            <button
+              className="pj-pill pj-video-export-button"
+              data-tone="accent"
+              disabled={busy || !hasPhotos}
+              onClick={onVideo}
+            >
+              <Video size={15} aria-hidden="true" />
+              {exportingVideo ? "Cancel MP4" : "Export MP4"}
+            </button>
+          </div>
+          {exportingVideo && (
+            <div className="pj-video-progress" aria-live="polite">
+              <Progress
+                value={videoExportProgress}
+                label="MP4 export progress"
+              />
+              <span>
+                {videoExportProgress === undefined
+                  ? "Preparing…"
+                  : videoExportProgress >= 99
+                    ? "Finalizing…"
+                    : `Rendering ${videoExportProgress}%`}
+              </span>
+            </div>
+          )}
+          <p>
+            1080p uses widely supported H.264. 4K automatically retries at 1080p
+            if the browser cannot finish it. Video renders from your photos and
+            route; it never records your screen.
+          </p>
+        </section>
+        <section className="pj-export-group">
+          <h3>Route data</h3>
+          <div className="pj-export-actions">
+            <button
+              className="pj-pill"
+              disabled={busy || exportingVideo}
+              onClick={() => onExport("gpx")}
+            >
+              <Download size={15} aria-hidden="true" />
+              GPX
+            </button>
+            <button
+              className="pj-pill"
+              disabled={busy || exportingVideo}
+              onClick={() => onExport("geojson")}
+            >
+              GeoJSON
+            </button>
+            <button
+              className="pj-pill"
+              disabled={busy || exportingVideo}
+              onClick={() => onExport("json")}
+            >
+              Metadata JSON
+            </button>
+          </div>
+        </section>
+        <section className="pj-export-group">
+          <h3>Journey file</h3>
+          <div className="pj-export-actions">
+            <button
+              className="pj-pill"
+              disabled={busy || packing || exportingVideo}
+              onClick={onBundle}
+            >
+              <Package size={15} aria-hidden="true" />
+              {packing ? "Packing…" : "Create ZIP"}
+            </button>
+            {hasPhotos && (
+              <label className="pj-pill pj-toggle" data-size="sm">
+                <input
+                  type="checkbox"
+                  checked={includePhotos}
+                  disabled={exportingVideo}
+                  onChange={(event) => onIncludePhotos(event.target.checked)}
+                />
+                Include photos ({formatBytes(photoBytes)})
+              </label>
+            )}
+          </div>
+        </section>
       </div>
-      <p className="pj-editor-note">
-        MP4 export prefers 4K and falls back to 1080p when needed. It renders
-        locally and does not share or record your screen.
-      </p>
+      <p className="pj-editor-note">Exports stay in this browser tab.</p>
     </section>
   );
 }
@@ -348,6 +394,8 @@ export default function PhotoJourney() {
   const [savingProject, setSavingProject] = useState(false);
   const [exportingVideo, setExportingVideo] = useState(false);
   const [videoExportProgress, setVideoExportProgress] = useState<number>();
+  const [videoResolution, setVideoResolution] =
+    useState<VideoResolutionLabel>("1080p");
   const [stageReady, setStageReady] = useState(false);
   const [waitingToPlay, setWaitingToPlay] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -625,6 +673,7 @@ export default function PhotoJourney() {
         timeline: playback.timeline,
         track: scopedTrack,
         routeStory: playback.routeStory,
+        resolution: videoResolution,
         signal: abort.signal,
         onProgress: setVideoExportProgress,
       });
@@ -1247,7 +1296,7 @@ export default function PhotoJourney() {
           </h2>
           {busy && (
             <div className="pj-import-status">
-              <ImportProgress value={importPercent} />
+              <Progress value={importPercent} label="Import progress" />
               <p>
                 Large ZIPs can take several minutes to open. Keep this tab open;
                 your journey summary appears when processing finishes.
@@ -1283,7 +1332,7 @@ export default function PhotoJourney() {
             <label className="pj-title-field">
               <span>
                 <Pencil size={14} aria-hidden="true" />
-                Journey title · edit
+                Journey title
               </span>
               <input
                 className="pj-title"
@@ -1296,7 +1345,7 @@ export default function PhotoJourney() {
             <div className="pj-bar-actions">
               <button
                 className="pj-pill"
-                disabled={busy || savingProject}
+                disabled={busy || savingProject || exportingVideo}
                 onClick={() => void saveProject()}
               >
                 <Package size={16} aria-hidden="true" />
@@ -1311,36 +1360,12 @@ export default function PhotoJourney() {
                 Export
               </button>
               <button
-                className="pj-pill"
-                onClick={() => void toggleFullscreen()}
-              >
-                <Maximize2 size={16} aria-hidden="true" />
-                Focus player
-              </button>
-              <button
                 className="pj-pill pj-import-button"
-                disabled={busy}
+                disabled={busy || exportingVideo}
                 onClick={() => inputRef.current?.click()}
               >
                 <ImagePlus size={16} />
                 {busy ? "Importing…" : "Add photos, GPX, or ZIP"}
-              </button>
-              <button
-                className="pj-pill"
-                data-tone="accent"
-                disabled={busy || !hasPhotos}
-                onClick={togglePlay}
-              >
-                {playback.playing || waitingToPlay ? (
-                  <Pause size={16} aria-hidden="true" />
-                ) : (
-                  <Play size={16} aria-hidden="true" />
-                )}
-                {playback.playing || waitingToPlay
-                  ? "Pause"
-                  : finished
-                    ? "Replay journey"
-                    : "Play journey"}
               </button>
             </div>
           </div>
@@ -1349,7 +1374,7 @@ export default function PhotoJourney() {
               <strong className="pj-import-message" title={importProgress}>
                 {importProgress}
               </strong>
-              <ImportProgress value={importPercent} />
+              <Progress value={importPercent} label="Import progress" />
               <p>
                 Import in progress. The player and totals show the previously
                 imported files until these finish. Large ZIPs can take several
@@ -1363,6 +1388,7 @@ export default function PhotoJourney() {
                 <span>Chapter</span>
                 <select
                   aria-label="Player chapter"
+                  disabled={exportingVideo}
                   value={selectedDay}
                   onChange={(event) => {
                     setSelectedDay(event.target.value);
@@ -1387,7 +1413,7 @@ export default function PhotoJourney() {
                 <select
                   aria-label="Map style"
                   value={mapMode}
-                  disabled={mapDead}
+                  disabled={mapDead || exportingVideo}
                   onChange={(event) =>
                     chooseMapMode(event.target.value as MapMode)
                   }
@@ -1429,7 +1455,7 @@ export default function PhotoJourney() {
             <div className="pj-controls">
               <div className="pj-transport">
                 <button
-                  disabled={!hasPhotos || activeIndex === 0}
+                  disabled={!hasPhotos || exportingVideo || activeIndex === 0}
                   onClick={() => playback.select(activeIndex - 1)}
                   aria-label="Previous photo"
                 >
@@ -1437,7 +1463,7 @@ export default function PhotoJourney() {
                 </button>
                 <button
                   className="pj-play"
-                  disabled={!hasPhotos}
+                  disabled={!hasPhotos || exportingVideo}
                   onClick={togglePlay}
                   aria-label={
                     playback.playing || waitingToPlay
@@ -1459,7 +1485,9 @@ export default function PhotoJourney() {
                 </button>
                 <button
                   disabled={
-                    !hasPhotos || activeIndex >= visiblePhotos.length - 1
+                    !hasPhotos ||
+                    exportingVideo ||
+                    activeIndex >= visiblePhotos.length - 1
                   }
                   onClick={() => playback.select(activeIndex + 1)}
                   aria-label="Next photo"
@@ -1487,7 +1515,7 @@ export default function PhotoJourney() {
                   onSeek={playback.seek}
                 />
                 <input
-                  disabled={!hasPhotos}
+                  disabled={!hasPhotos || exportingVideo}
                   type="range"
                   min={0}
                   max={playback.total}
@@ -1506,7 +1534,7 @@ export default function PhotoJourney() {
               </span>
               <select
                 className="pj-speed"
-                disabled={!hasPhotos}
+                disabled={!hasPhotos || exportingVideo}
                 value={playback.speed}
                 onChange={(event) =>
                   playback.setSpeed(Number(event.target.value))
@@ -1953,11 +1981,13 @@ export default function PhotoJourney() {
                       packing={packing}
                       exportingVideo={exportingVideo}
                       videoExportProgress={videoExportProgress}
+                      videoResolution={videoResolution}
                       busy={busy}
                       onExport={download}
                       onIncludePhotos={setIncludePhotos}
                       onBundle={downloadBundle}
                       onVideo={() => void exportVideo()}
+                      onVideoResolution={setVideoResolution}
                     />
                     <section className="pj-panel pj-export-all">
                       <h3>Whole journey, organized by day</h3>
