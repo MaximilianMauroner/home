@@ -39,7 +39,7 @@ export const VIDEO_OUTPUT_RESOLUTIONS = [
 export type VideoResolutionLabel =
   (typeof VIDEO_OUTPUT_RESOLUTIONS)[number]["label"];
 const PHOTO_WIDTH = VIDEO_WIDTH / 2;
-const INFO_HEIGHT = 82;
+const INFO_HEIGHT = 58;
 const MAP_LEFT = PHOTO_WIDTH;
 
 export type JourneyVideoOptions = {
@@ -582,6 +582,56 @@ function boundsForSegments(segments: readonly TrackPoint[][]) {
   );
 }
 
+function boundsAround(point: Coordinates | undefined, fallback?: Bounds) {
+  if (!point) return fallback;
+  const latitudeRadius = 0.012;
+  const longitudeRadius =
+    latitudeRadius / Math.max(0.25, Math.cos((point.latitude * Math.PI) / 180));
+  return {
+    minLatitude: point.latitude - latitudeRadius,
+    maxLatitude: point.latitude + latitudeRadius,
+    minLongitude: point.longitude - longitudeRadius,
+    maxLongitude: point.longitude + longitudeRadius,
+  };
+}
+
+function drawPhotoMapMarker(
+  context: CanvasRenderingContext2D,
+  prepared: PreparedMap,
+  area: MapArea,
+  marker: Coordinates | undefined,
+  bitmap: ImageBitmap,
+) {
+  if (!marker) return;
+  const local = projectMercatorPoint(marker, prepared.view, {
+    left: 0,
+    top: 0,
+    width: prepared.canvas.width,
+    height: prepared.canvas.height,
+  });
+  const x = area.left + (local.x / prepared.canvas.width) * area.width;
+  const y = area.top + (local.y / prepared.canvas.height) * area.height;
+  const size = 46;
+  context.save();
+  context.fillStyle = "#071014";
+  context.beginPath();
+  context.roundRect(x - size / 2 - 4, y - size / 2 - 4, size + 8, size + 8, 12);
+  context.fill();
+  context.beginPath();
+  context.roundRect(x - size / 2, y - size / 2, size, size, 9);
+  context.clip();
+  const scale = Math.max(size / bitmap.width, size / bitmap.height);
+  const width = bitmap.width * scale;
+  const height = bitmap.height * scale;
+  context.drawImage(bitmap, x - width / 2, y - height / 2, width, height);
+  context.restore();
+  context.strokeStyle = "#f1cf67";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.roundRect(x - size / 2 - 2, y - size / 2 - 2, size + 4, size + 4, 11);
+  context.stroke();
+}
+
 function markerForState(
   state: TimelineState,
   placements: readonly Placement[],
@@ -652,37 +702,47 @@ function drawInfo(
   context.fillRect(0, VIDEO_HEIGHT - INFO_HEIGHT, PHOTO_WIDTH, INFO_HEIGHT);
   context.fillStyle = "#f4f7f7";
   context.font = "600 24px system-ui, sans-serif";
-  context.fillText(
-    photo.metadata.place ?? photo.name,
-    28,
-    VIDEO_HEIGHT - 43,
-    PHOTO_WIDTH - 150,
-  );
+  context.fillText(photo.name, 28, VIDEO_HEIGHT - 29, PHOTO_WIDTH - 150);
   context.fillStyle = "#9aabb0";
   context.font = "16px system-ui, sans-serif";
+  const match =
+    placement?.source === "track"
+      ? placement.recordingGap
+        ? "Recording gap · last GPX position"
+        : "Matched to recording"
+      : "Not matched to recording";
   context.fillText(
-    formatCapture(placement, photo, timezone),
+    `${formatCapture(placement, photo, timezone)} · ${match}`,
     28,
-    VIDEO_HEIGHT - 18,
+    VIDEO_HEIGHT - 9,
   );
-  context.textAlign = "right";
-  context.fillStyle = "#f1cf67";
-  context.font = "600 18px ui-monospace, monospace";
+  context.fillStyle = "#071014d9";
+  context.beginPath();
+  context.roundRect(18, 18, 92, 36, 18);
+  context.fill();
+  context.fillStyle = "#f4f7f7";
+  context.font = "600 17px ui-monospace, monospace";
   context.fillText(
     `${String(index + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`,
-    PHOTO_WIDTH - 28,
-    VIDEO_HEIGHT - 28,
+    31,
+    42,
   );
-  context.textAlign = "left";
 }
 
 function drawCard(
   context: CanvasRenderingContext2D,
   title: string,
   subtitle: string,
+  values?: readonly (readonly [string, string])[],
+  clear = true,
 ) {
-  context.fillStyle = "#071014";
-  context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+  if (clear) {
+    context.fillStyle = "#071014";
+    context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+  } else {
+    context.fillStyle = "#071014a8";
+    context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+  }
   context.fillStyle = "#f1cf67";
   context.font = "600 18px system-ui, sans-serif";
   context.fillText("PHOTO JOURNEY", 96, 270);
@@ -692,6 +752,19 @@ function drawCard(
   context.fillStyle = "#9aabb0";
   context.font = "22px system-ui, sans-serif";
   context.fillText(subtitle, 96, 395, VIDEO_WIDTH - 192);
+  values?.forEach(([label, value], index) => {
+    const left = 96 + index * 210;
+    context.fillStyle = "#071014c7";
+    context.beginPath();
+    context.roundRect(left, 435, 188, 92, 14);
+    context.fill();
+    context.fillStyle = "#9aabb0";
+    context.font = "12px system-ui, sans-serif";
+    context.fillText(label.toUpperCase(), left + 16, 462);
+    context.fillStyle = "#f4f7f7";
+    context.font = "600 24px system-ui, sans-serif";
+    context.fillText(value, left + 16, 497, 155);
+  });
 }
 
 async function bitmapFor(
@@ -1041,6 +1114,20 @@ async function renderAtResolution(
   const bitmaps = new Map<string, ImageBitmap>();
   const totalSeconds = options.timeline.totalDuration / 1000;
   const stats = options.track ? trackStats(options.track) : undefined;
+  const locatedCount = options.placements.filter(
+    (placement) => placement.coordinates,
+  ).length;
+  const dayCount = new Set(
+    options.placements.flatMap((placement) =>
+      placement.instant === undefined
+        ? []
+        : [
+            new Intl.DateTimeFormat("en-CA", {
+              timeZone: options.timezone,
+            }).format(placement.instant),
+          ],
+    ),
+  ).size;
   const frameDuration = 1 / VIDEO_FRAME_RATE;
   const frameCount = Math.max(1, Math.ceil(totalSeconds * VIDEO_FRAME_RATE));
   let started = false;
@@ -1053,10 +1140,37 @@ async function renderAtResolution(
       const seconds = Math.min(totalSeconds, frame * frameDuration);
       const state = timelineAt(seconds * 1000, options.timeline);
       if (state.phase === "intro") {
+        const segments =
+          recordedContextForPhoto(options.routeStory, 0) ?? allSegments;
+        const bounds = boundsForSegments(segments) ?? fallbackBounds;
+        const cacheKey = `intro:${mapMode}`;
+        let prepared = mapCache.get(cacheKey);
+        if (!prepared && bounds) {
+          prepared = await prepareMapBackdrop(
+            segments,
+            bounds,
+            {
+              ...FULL_MAP,
+              width: FULL_MAP.width * renderScale,
+              height: FULL_MAP.height * renderScale,
+            },
+            mapMode,
+            options.signal,
+          );
+          mapCache.set(cacheKey, prepared);
+        }
+        if (prepared) drawPreparedMap(context, prepared, FULL_MAP);
         drawCard(
           context,
           options.title,
-          `${options.photos.length} photos${stats ? ` · ${stats.distanceKm.toFixed(1)} km recorded` : ""}`,
+          "Your recorded journey",
+          [
+            ["Photos", String(options.photos.length)],
+            ["Located", String(locatedCount)],
+            ["Distance", stats ? `${stats.distanceKm.toFixed(1)} km` : "—"],
+            ["Days", String(Math.max(1, dayCount))],
+          ],
+          !prepared,
         );
       } else if (state.phase === "day") {
         drawCard(context, state.dayLabel ?? "Next day", options.title);
@@ -1073,14 +1187,17 @@ async function renderAtResolution(
             options.routeStory,
             state.checkpointPhotoIndex,
           ) ?? allSegments;
-        const bounds = boundsForSegments(segments) ?? fallbackBounds;
+        const bounds = boundsAround(
+          options.placements[state.checkpointPhotoIndex]?.coordinates,
+          boundsForSegments(segments) ?? fallbackBounds,
+        );
         const marker = markerForState(
           { ...state, currentLegProgress: legProgress },
           options.placements,
           options.routeStory,
         );
         const groupKey = options.routeStory?.context.indexOf(segments[0]) ?? -1;
-        const cacheKey = `${groupKey}:full:${mapMode}`;
+        const cacheKey = `${groupKey}:${state.checkpointPhotoIndex}:full:${mapMode}`;
         let prepared = mapCache.get(cacheKey);
         if (!prepared && bounds) {
           try {
@@ -1149,14 +1266,17 @@ async function renderAtResolution(
         const segments =
           recordedContextForPhoto(options.routeStory, photoIndex) ??
           allSegments;
-        const bounds = boundsForSegments(segments) ?? fallbackBounds;
         const marker = markerForState(
           state,
           options.placements,
           options.routeStory,
         );
+        const bounds = boundsAround(
+          marker,
+          boundsForSegments(segments) ?? fallbackBounds,
+        );
         const groupKey = options.routeStory?.context.indexOf(segments[0]) ?? -1;
-        const cacheKey = `${groupKey}:split:${mapMode}`;
+        const cacheKey = `${groupKey}:${photoIndex}:split:${mapMode}`;
         let prepared = mapCache.get(cacheKey);
         if (!prepared && bounds) {
           try {
@@ -1187,7 +1307,7 @@ async function renderAtResolution(
             options.routeStory,
             photoIndex,
           );
-          drawPreparedMarker(context, prepared, mapArea, marker);
+          drawPhotoMapMarker(context, prepared, mapArea, marker, bitmap);
         } else {
           drawRoute(context, segments, bounds, mapArea, FULL_MAP);
           drawMarker(context, marker, bounds, mapArea);
