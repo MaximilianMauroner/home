@@ -19,6 +19,7 @@ import { burstPhotoProgress, journeyMotion } from "./motion";
 import type { Track } from "./gpx";
 import {
   recordedElevationProfile,
+  recordedDepartureProgressStats,
   recordedPhotoProgressStats,
   recordedProgressStats,
   type RecordedElevationProfile,
@@ -128,7 +129,7 @@ export default function JourneyStage({
     ? state.photoIndex
     : activeIndex;
   const card = CARD_PHASES.has(state.phase);
-  const traveling = state.phase === "approach";
+  const traveling = state.phase === "approach" || state.phase === "trail";
   const transitionCheckpoint = !state.dayChange
     ? timeline.stops[state.checkpointIndex - 1]
     : undefined;
@@ -151,11 +152,17 @@ export default function JourneyStage({
   const targetPlacement = placements?.[state.checkpointPhotoIndex];
   const trailStats =
     traveling && state.currentLegEligible
-      ? recordedProgressStats(
-          routeStory,
-          state.checkpointPhotoIndex,
-          motion.leg,
-        )
+      ? state.phase === "trail"
+        ? recordedDepartureProgressStats(
+            routeStory,
+            state.checkpointPhotoIndex,
+            motion.leg,
+          )
+        : recordedProgressStats(
+            routeStory,
+            state.checkpointPhotoIndex,
+            motion.leg,
+          )
       : undefined;
   const photoStats =
     !traveling && !card && photo

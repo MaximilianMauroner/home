@@ -296,6 +296,27 @@ describe("Photo Journey recorded route presentation", () => {
     ]);
   });
 
+  test("finishes a recording after its final photo before starting the next GPX", () => {
+    const placements = [
+      placement("first", 1_000, points[1]),
+      placement("second", 86_400_000, points[3], {
+        recordingId: "next-walk",
+        recordingSegmentId: "1:0",
+      }),
+    ];
+    const story = buildRouteStory(disconnected, placements, [true, false]);
+
+    expect(story.departureLegs[0]?.points).toEqual(points.slice(1, 3));
+    expect(story.departureLegs[1]?.points).toEqual(points.slice(3));
+    const halfway = visibleRouteSegments(story, 0, "trail", 0.5, true);
+    expect(halfway.completed).toEqual([story.legs[0]!.drawable]);
+    expect(halfway.current[0][0]).toEqual(points[1]);
+    expect(halfway.current[0].at(-1)).not.toEqual(points[2]);
+    expect(
+      visibleRouteSegments(story, 1, "approach", 0, false).completed,
+    ).toContain(story.departureLegs[0]!.drawable);
+  });
+
   test("recovers the selected sample when a checkpoint repeats the same coordinates", () => {
     const repeated = [
       { latitude: 48, longitude: 16, time: 0 },

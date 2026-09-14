@@ -515,8 +515,12 @@ export function visibleRouteSegments(
   currentPrefix?: Coordinates[],
   checkpointEndIndex = activeIndex,
 ) {
+  const traveling = phase === "approach" || phase === "trail";
   const arrived =
-    phase === "reveal" || phase === "hold" || phase === "departure";
+    phase === "reveal" ||
+    phase === "hold" ||
+    phase === "departure" ||
+    phase === "trail";
   const completedIndex =
     phase === "outro" || phase === "complete"
       ? story.legs.length - 1
@@ -527,9 +531,18 @@ export function visibleRouteSegments(
   for (let index = 0; index <= completedIndex; index += 1) {
     const leg = story.legs[index];
     if (leg) completed.push(leg.drawable);
+    const departure = story.departureLegs[index];
+    if (
+      departure &&
+      (index < activeIndex || phase === "outro" || phase === "complete")
+    )
+      completed.push(departure.drawable);
   }
-  const active = story.legs[activeIndex];
-  if (phase === "approach" && active && currentEligible)
+  const active =
+    phase === "trail"
+      ? story.departureLegs[activeIndex]
+      : story.legs[activeIndex];
+  if (traveling && active && currentEligible)
     return {
       completed,
       current: [currentPrefix ?? recordedLegPrefix(active, currentProgress)],
@@ -610,10 +623,15 @@ export default function JourneyMap({
     () => dayChanges?.map((change) => (change ? "1" : "0")).join(""),
     [dayChanges],
   );
+  const routeTraveling = phase === "approach" || phase === "trail";
   const activeRouteFrame = useMemo(() => {
-    const leg = currentLegEligible ? routeStory?.legs[activeIndex] : undefined;
+    const leg = currentLegEligible
+      ? phase === "trail"
+        ? routeStory?.departureLegs[activeIndex]
+        : routeStory?.legs[activeIndex]
+      : undefined;
     return leg ? recordedLegCameraFrame(leg, currentLegProgress) : undefined;
-  }, [activeIndex, currentLegEligible, currentLegProgress, routeStory]);
+  }, [activeIndex, currentLegEligible, currentLegProgress, phase, routeStory]);
   const activeCheckpoint = useMemo(
     () =>
       timeline.stops.find((stop) => stop.photoIndices.includes(activeIndex)),
@@ -910,7 +928,7 @@ export default function JourneyMap({
     const paintKey = `${engine}:${seekVersion}:${activeIndex}:${phase}`;
     if (routePaintRef.current.key !== paintKey)
       routePaintRef.current = { key: paintKey, nextAt: 0 };
-    if (playing && phase === "approach") {
+    if (playing && routeTraveling) {
       const interval = 1000 / 30;
       const deadline = routePaintRef.current.nextAt;
       if (deadline && now < deadline) return;
@@ -1001,7 +1019,9 @@ export default function JourneyMap({
       return;
     }
     const activeLeg = currentLegEligible
-      ? routeStory.legs[activeIndex]
+      ? phase === "trail"
+        ? routeStory.departureLegs[activeIndex]
+        : routeStory.legs[activeIndex]
       : undefined;
     const visible = visibleRouteSegments(
       routeStory,
@@ -1035,7 +1055,7 @@ export default function JourneyMap({
     const settled = routeTipForPlacement(placement);
     const carried = placement?.source === "carried";
     const tip =
-      phase === "approach" && currentLegEligible
+      routeTraveling && currentLegEligible
         ? activeRouteFrame?.tip
         : arrived
           ? settled
@@ -1430,7 +1450,10 @@ export default function JourneyMap({
     const recordedLegKnown = !track || Boolean(activeRouteFrame);
     const padding = cameraPadding;
     const routeWindow = activeRouteFrame?.window ?? [];
-    const activeRecordedLeg = routeStory?.legs[activeIndex];
+    const activeRecordedLeg =
+      phase === "trail"
+        ? routeStory?.departureLegs[activeIndex]
+        : routeStory?.legs[activeIndex];
     const activeLegPoints =
       activeRecordedLeg?.drawable ??
       (move.from ? [move.from, move.center] : routeWindow);
@@ -1440,7 +1463,9 @@ export default function JourneyMap({
       reducedMotion,
     );
     const previousLeg = routeStory
-      ? previousRecordedLeg(routeStory.legs, activeIndex, activeRecordedLeg)
+      ? phase === "trail"
+        ? routeStory.legs[activeIndex]
+        : previousRecordedLeg(routeStory.legs, activeIndex, activeRecordedLeg)
       : undefined;
     const previousBearing = previousLeg
       ? journeyCameraBearing(previousLeg.drawable, mode, reducedMotion)
@@ -1450,7 +1475,7 @@ export default function JourneyMap({
       700 / Math.max(1, approachDuration ?? 700),
     );
     const routeBearing =
-      phase === "approach" && activeRecordedLeg && previousLeg && !dayChange
+      routeTraveling && activeRecordedLeg && previousLeg && !dayChange
         ? interpolateJourneyBearing(
             previousBearing,
             targetBearing,
@@ -1458,7 +1483,7 @@ export default function JourneyMap({
           )
         : targetBearing;
     const followZoom = mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM;
-    if (phase !== "approach") {
+    if (!routeTraveling) {
       const settled = routeWindow.length
         ? fit([...routeWindow, center], followZoom)
         : { center: lngLat(center), zoom: stopZoom };
@@ -1541,7 +1566,7 @@ export default function JourneyMap({
     const continuing =
       previousState?.activeIndex === activeIndex &&
       previousState.seekVersion === seekVersion &&
-      previousState.phase === "approach";
+      (previousState.phase === "approach" || previousState.phase === "trail");
     // Pull back once when a leg starts. Pause/resume and speed changes continue from the live
     // camera with only the remaining timeline duration; they never restart the whole leg.
     if (!continuing)
