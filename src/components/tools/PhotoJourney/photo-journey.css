@@ -1045,36 +1045,6 @@
   background: var(--pj-bg-1);
 }
 
-/* Current-tab capture becomes a clean stage-sized video after the browser picker closes. */
-.pj-stage[data-recording="true"] {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  width: 100vw;
-  height: 100vh;
-  max-width: none;
-  background: var(--pj-bg-0);
-}
-.pj-stage[data-recording="true"] .pj-viewport {
-  height: 100vh;
-  min-height: 100vh;
-  border-radius: 0;
-}
-.pj-stage[data-recording="true"] .pj-controls {
-  display: none;
-}
-.pj-stage[data-recording="true"] {
-  display: block;
-}
-.pj-stage[data-recording="true"] .pj-stage-context,
-.pj-stage[data-recording="true"] .pj-filmstrip,
-.pj-stage[data-recording="true"] .pj-album-context {
-  display: none;
-}
-.pj-stage[data-recording="true"] .pj-album {
-  height: 100vh;
-  grid-template-rows: minmax(0, 1fr);
-}
 .pj-transport {
   display: flex;
   align-items: center;

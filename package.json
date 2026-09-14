@@ -47,6 +47,7 @@
     "lucide-react": "^0.460.0",
     "maplibre-gl": "^6",
     "mdast-util-to-string": "^4.0.0",
+    "mediabunny": "1.56.2",
     "minisearch": "^7.2.0",
     "prettier": "^3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.9",

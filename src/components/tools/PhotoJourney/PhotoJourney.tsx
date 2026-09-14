@@ -102,7 +102,8 @@ function downloadStem(value: string) {
 }
 
 function ImportProgress({ value }: { value?: number }) {
-  const progress = value === undefined ? 0.08 : Math.max(0, Math.min(1, value / 100));
+  const progress =
+    value === undefined ? 0.08 : Math.max(0, Math.min(1, value / 100));
   return (
     <div
       className="pj-progress"
@@ -205,7 +206,8 @@ function ExportPanel({
   photoBytes,
   includePhotos,
   packing,
-  recordingVideo,
+  exportingVideo,
+  videoExportProgress,
   busy,
   onExport,
   onIncludePhotos,
@@ -218,7 +220,8 @@ function ExportPanel({
   photoBytes: number;
   includePhotos: boolean;
   packing: boolean;
-  recordingVideo: boolean;
+  exportingVideo: boolean;
+  videoExportProgress?: number;
   busy: boolean;
   onExport: (format: ExportFormat) => void;
   onIncludePhotos: (value: boolean) => void;
@@ -279,7 +282,9 @@ function ExportPanel({
           onClick={onVideo}
         >
           <Video size={15} aria-hidden="true" />
-          {recordingVideo ? "Stop and save recording" : "Record playback"}
+          {exportingVideo
+            ? `Cancel MP4 export${videoExportProgress === undefined ? "" : ` · ${videoExportProgress}%`}`
+            : "Export MP4 · 4K"}
         </button>
         {hasPhotos && (
           <label className="pj-pill pj-toggle" data-size="sm">
@@ -292,6 +297,10 @@ function ExportPanel({
           </label>
         )}
       </div>
+      <p className="pj-editor-note">
+        MP4 export prefers 4K and falls back to 1080p when needed. It renders
+        locally and does not share or record your screen.
+      </p>
     </section>
   );
 }
@@ -337,12 +346,12 @@ export default function PhotoJourney() {
   const [includePhotos, setIncludePhotos] = useState(false);
   const [packing, setPacking] = useState(false);
   const [savingProject, setSavingProject] = useState(false);
-  const [recordingVideo, setRecordingVideo] = useState(false);
+  const [exportingVideo, setExportingVideo] = useState(false);
+  const [videoExportProgress, setVideoExportProgress] = useState<number>();
   const [stageReady, setStageReady] = useState(false);
   const [waitingToPlay, setWaitingToPlay] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
-  const recorderRef = useRef<MediaRecorder>();
-  const captureRef = useRef<MediaStream>();
+  const videoAbortRef = useRef<AbortController>();
   const inputRef = useRef<HTMLInputElement>(null);
   const photosRef = useRef(photos);
   const recordingsRef = useRef(recordings);
@@ -480,18 +489,6 @@ export default function PhotoJourney() {
         : playback.state.checkpointPhotoIndex - 1;
   const activePhoto = visiblePhotos[activeIndex];
   const finished = playback.elapsed >= playback.total;
-  const stopVideoExport = useCallback(() => {
-    const recorder = recorderRef.current;
-    if (recorder?.state === "recording") recorder.stop();
-    captureRef.current
-      ?.getTracks()
-      .forEach((captureTrack) => captureTrack.stop());
-  }, []);
-
-  useEffect(() => {
-    if (recordingVideo && finished) stopVideoExport();
-  }, [finished, recordingVideo, stopVideoExport]);
-
   const cancelPendingStart = useCallback(() => {
     pendingStart.current = undefined;
     setWaitingToPlay(false);
@@ -586,6 +583,7 @@ export default function PhotoJourney() {
     mounted.current = true;
     return () => {
       mounted.current = false;
+      videoAbortRef.current?.abort();
       photosRef.current.forEach(revokePhoto);
     };
   }, []);
@@ -607,76 +605,40 @@ export default function PhotoJourney() {
   }
 
   async function exportVideo() {
-    if (recordingVideo) {
-      stopVideoExport();
+    if (exportingVideo) {
+      videoAbortRef.current?.abort();
       return;
     }
-    if (
-      !navigator.mediaDevices?.getDisplayMedia ||
-      typeof MediaRecorder === "undefined"
-    ) {
-      setErrors(["Video export is unavailable in this browser."]);
-      return;
-    }
+    const abort = new AbortController();
+    videoAbortRef.current = abort;
     try {
       pausePlayback();
       setErrors([]);
-      revealStage("start");
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 30 },
-        audio: false,
-        // Chromium uses these hints to put this tab first in the capture picker.
-        preferCurrentTab: true,
-        selfBrowserSurface: "include",
-      } as DisplayMediaStreamOptions);
-      const mimeType = [
-        "video/webm;codecs=vp9",
-        "video/webm;codecs=vp8",
-        "video/webm",
-      ].find((type) => MediaRecorder.isTypeSupported(type));
-      const chunks: Blob[] = [];
-      const recorder = new MediaRecorder(
-        stream,
-        mimeType ? { mimeType } : undefined,
-      );
-      recorderRef.current = recorder;
-      captureRef.current = stream;
-      recorder.ondataavailable = (event) => {
-        if (event.data.size) chunks.push(event.data);
-      };
-      recorder.onstop = () => {
-        if (chunks.length) {
-          save(
-            new Blob(chunks, { type: recorder.mimeType || "video/webm" }),
-            `${downloadStem(title)}.webm`,
-          );
-        }
-        stream.getTracks().forEach((captureTrack) => captureTrack.stop());
-        recorderRef.current = undefined;
-        captureRef.current = undefined;
-        setRecordingVideo(false);
-        pausePlayback();
-      };
-      stream.getVideoTracks()[0]?.addEventListener(
-        "ended",
-        () => {
-          if (recorder.state === "recording") recorder.stop();
-        },
-        { once: true },
-      );
-      recorder.start(1000);
-      setRecordingVideo(true);
-      requestPlaybackStart(true);
+      setExportingVideo(true);
+      setVideoExportProgress(0);
+      const { renderJourneyMp4 } = await import("./video-export");
+      const blob = await renderJourneyMp4({
+        title,
+        timezone: normalizeTimezone(tripTimezone),
+        photos: visiblePhotos,
+        placements: visiblePlacements,
+        timeline: playback.timeline,
+        track: scopedTrack,
+        routeStory: playback.routeStory,
+        signal: abort.signal,
+        onProgress: setVideoExportProgress,
+      });
+      if (!abort.signal.aborted) save(blob, `${downloadStem(title)}.mp4`);
     } catch (error) {
-      captureRef.current
-        ?.getTracks()
-        .forEach((captureTrack) => captureTrack.stop());
-      setRecordingVideo(false);
-      if ((error as DOMException)?.name !== "NotAllowedError") {
+      if ((error as DOMException)?.name !== "AbortError") {
         setErrors([
-          `The video could not be recorded: ${error instanceof Error ? error.message : "unknown error"}`,
+          `The MP4 could not be exported: ${error instanceof Error ? error.message : "unknown error"}`,
         ]);
       }
+    } finally {
+      if (videoAbortRef.current === abort) videoAbortRef.current = undefined;
+      setExportingVideo(false);
+      setVideoExportProgress(undefined);
     }
   }
 
@@ -1395,11 +1357,7 @@ export default function PhotoJourney() {
               </p>
             </div>
           )}
-          <div
-            className="pj-stage"
-            ref={stageRef}
-            data-recording={recordingVideo}
-          >
+          <div className="pj-stage" ref={stageRef}>
             <div className="pj-stage-context">
               <label>
                 <span>Chapter</span>
@@ -1993,7 +1951,8 @@ export default function PhotoJourney() {
                       photoBytes={photoBytes}
                       includePhotos={includePhotos}
                       packing={packing}
-                      recordingVideo={recordingVideo}
+                      exportingVideo={exportingVideo}
+                      videoExportProgress={videoExportProgress}
                       busy={busy}
                       onExport={download}
                       onIncludePhotos={setIncludePhotos}
