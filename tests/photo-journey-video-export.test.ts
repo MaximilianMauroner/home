@@ -6,10 +6,20 @@ import {
   VIDEO_OUTPUT_RESOLUTIONS,
   VIDEO_WIDTH,
   videoResolutionAttempts,
+  videoMapTileUrl,
 } from "../src/components/tools/PhotoJourney/video-export";
 import type { Track } from "../src/components/tools/PhotoJourney/gpx";
 
 describe("Photo Journey MP4 layout", () => {
+  test("uses a finished topographic raster instead of raw elevation data", () => {
+    expect(videoMapTileUrl("terrain", 15, 17430, 11591)).toBe(
+      "https://a.tile.opentopomap.org/15/17430/11591.png",
+    );
+    expect(videoMapTileUrl("online", 15, 17430, 11591)).toBe(
+      "https://tile.openstreetmap.org/15/17430/11591.png",
+    );
+  });
+
   test("defaults to portable 1080p and keeps 4K optional", () => {
     expect(VIDEO_OUTPUT_RESOLUTIONS).toEqual([
       { width: 1920, height: 1080, label: "1080p" },
