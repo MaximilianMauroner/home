@@ -36,6 +36,22 @@ describe("Photo Journey MP4 layout", () => {
     }
   });
 
+  test("can project the active trail across the full route-only frame", () => {
+    const bounds = {
+      minLatitude: 10,
+      maxLatitude: 11,
+      minLongitude: 20,
+      maxLongitude: 21,
+    };
+    const projected = projectVideoPoint(
+      { latitude: 10.5, longitude: 20.5 },
+      bounds,
+      { left: 0, top: 0, width: VIDEO_WIDTH, height: VIDEO_HEIGHT },
+    );
+
+    expect(projected).toEqual({ x: VIDEO_WIDTH / 2, y: VIDEO_HEIGHT / 2 });
+  });
+
   test("uses GPX bounds instead of off-route camera coordinates", () => {
     const track: Track = {
       points: [

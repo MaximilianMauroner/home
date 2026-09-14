@@ -103,22 +103,11 @@ export default function JourneyStage({
     : activeIndex;
   const card = CARD_PHASES.has(state.phase);
   const traveling = state.phase === "approach";
-  // Keep the last photo in view while the route continues toward the next one.
-  // The destination still owns the clock, route progress, and camera; only presentation lags.
-  const previousCheckpoint =
-    traveling && !state.dayChange
-      ? timeline.stops[state.checkpointIndex - 1]
-      : undefined;
   const transitionCheckpoint = !state.dayChange
     ? timeline.stops[state.checkpointIndex - 1]
     : undefined;
-  const presentationIndex =
-    previousCheckpoint?.photoIndices.at(-1) ?? timelineIndex;
+  const presentationIndex = timelineIndex;
   const transitionPhotoIndex = transitionCheckpoint?.photoIndices.at(-1);
-  const transitionPhoto =
-    transitionPhotoIndex === undefined
-      ? undefined
-      : photos[transitionPhotoIndex];
   const photo = photos[presentationIndex];
   const phase = state.phase;
   const motion = journeyMotion(state, reducedMotion);
@@ -130,25 +119,23 @@ export default function JourneyStage({
       : presentationIndex;
   const preload = usePhotoPreload(photos, timelineIndex, retainedPreloadIndex);
   const originalStatus = preload.statusFor(photo?.url);
-  const transitionOriginalStatus = preload.statusFor(transitionPhoto?.url);
-  const checkpoint =
-    previousCheckpoint ?? timeline.stops[state.checkpointIndex];
+  const checkpoint = timeline.stops[state.checkpointIndex];
   const checkpointPresentationProgress = motion.checkpoint;
   const placement = placements?.[presentationIndex];
   const originalError =
     originalStatus === "error" || originalFailed === photo?.id;
+  const arrivalProgress =
+    !playing || state.phase !== "reveal" ? 1 : motion.photoTransition;
   const photoProgress =
     !playing || traveling || card
       ? 1
-      : state.phase === "reveal" && transitionPhoto
-        ? motion.photoTransition
-        : burstPhotoProgress(
-            state,
-            checkpoint?.photoIndices.indexOf(timelineIndex) ?? 0,
-            reducedMotion,
-          );
+      : burstPhotoProgress(
+          state,
+          checkpoint?.photoIndices.indexOf(timelineIndex) ?? 0,
+          reducedMotion,
+        );
   const previousPhoto =
-    state.phase === "reveal" ? transitionPhoto : photos[presentationIndex - 1];
+    state.phase === "reveal" ? undefined : photos[presentationIndex - 1];
   const clock = useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -204,6 +191,11 @@ export default function JourneyStage({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+  useEffect(() => {
+    if (!playing) return;
+    if (traveling) setMobileView("map");
+    else if (state.phase === "reveal") setMobileView("photo");
+  }, [playing, state.phase, traveling]);
   return (
     <div className="pj-album">
       <div
@@ -214,6 +206,12 @@ export default function JourneyStage({
         data-card={card}
         data-playing={playing}
         data-phase={phase}
+        data-route-only={traveling}
+        style={
+          {
+            "--pj-photo-share": `${arrivalProgress * 60}%`,
+          } as CSSProperties
+        }
       >
         <div
           ref={mapFrame}
@@ -230,6 +228,7 @@ export default function JourneyStage({
           <JourneyMap
             photos={photos}
             activeIndex={state.checkpointPhotoIndex}
+            activePhotoIndex={timelineIndex}
             stops={stops}
             track={track}
             routeStory={routeStory}
@@ -264,17 +263,28 @@ export default function JourneyStage({
             </div>
           )}
         </div>
-        {photo && (
-          <section className="pj-album-photo" aria-label="Current photo">
+        {photo && !traveling && (
+          <section
+            className="pj-album-photo"
+            aria-label="Current photo"
+            style={
+              {
+                "--pj-photo-matte": photo.dominantColor ?? "#030607",
+                opacity: arrivalProgress,
+                transform: `translate3d(${(1 - arrivalProgress) * -36}px, 0, 0) scale(${0.97 + arrivalProgress * 0.03})`,
+              } as CSSProperties
+            }
+          >
+            <img
+              className="pj-album-backdrop"
+              src={photo.thumbnailUrl}
+              alt=""
+              aria-hidden="true"
+            />
             {photoProgress < 1 && previousPhoto && (
               <img
                 className="pj-album-image"
-                src={
-                  state.phase === "reveal" &&
-                  transitionOriginalStatus === "ready"
-                    ? previousPhoto.url
-                    : previousPhoto.thumbnailUrl
-                }
+                src={previousPhoto.thumbnailUrl}
                 alt=""
                 aria-hidden="true"
               />
@@ -348,7 +358,7 @@ export default function JourneyStage({
             backdropProgress={motion.cardBackdrop}
           />
         )}
-        {photo && !card && (
+        {photo && !card && !traveling && (
           <div className="pj-counter" aria-hidden="true">
             {pad(presentationIndex + 1)} <span>/ {pad(photos.length)}</span>
           </div>
@@ -356,7 +366,12 @@ export default function JourneyStage({
       </div>
       <div className="pj-album-context">
         <p>
-          {photo ? (
+          {traveling ? (
+            <>
+              <span className="pj-album-place">Following recorded trail</span>
+              <span>Next photo appears at the recorded stop</span>
+            </>
+          ) : photo ? (
             <>
               <span className="pj-album-place">{place ?? photo.name}</span>
               <span>{capturedAt}</span>
@@ -366,7 +381,7 @@ export default function JourneyStage({
             "Recorded route"
           )}
         </p>
-        {photos.length > 0 && (
+        {photos.length > 0 && !traveling && (
           <div className="pj-album-view" role="group" aria-label="Player view">
             <button
               aria-pressed={mobileView === "photo"}

@@ -1,10 +1,31 @@
 import { describe, expect, test } from "vitest";
 
-import { approachAnimationDuration, cameraFrameForPoints, interpolateJourneyBearing, interpolateJourneyCamera, isUserMapMovement, journeyCameraBearing, journeyCameraPitch, previousRecordedLeg, suppressedMarkerIndexes, TERRAIN_PITCH } from "../src/components/tools/PhotoJourney/JourneyMap";
+import {
+  approachAnimationDuration,
+  cameraFrameForPoints,
+  checkpointMarkerPhotoIndex,
+  interpolateJourneyBearing,
+  interpolateJourneyCamera,
+  isUserMapMovement,
+  journeyCameraBearing,
+  journeyCameraPitch,
+  previousRecordedLeg,
+  suppressedMarkerIndexes,
+  TERRAIN_PITCH,
+} from "../src/components/tools/PhotoJourney/JourneyMap";
 import type { RecordedLeg } from "../src/components/tools/PhotoJourney/route-progress";
-import { trackStats, type Track } from "../src/components/tools/PhotoJourney/gpx";
+import {
+  trackStats,
+  type Track,
+} from "../src/components/tools/PhotoJourney/gpx";
 
 describe("Photo Journey map timing and recording budgets", () => {
+  test("uses the current photo for an active grouped checkpoint marker", () => {
+    const checkpoint = { photoIndex: 11, photoIndices: [11, 12, 13] };
+    expect(checkpointMarkerPhotoIndex(checkpoint, 12, true)).toBe(12);
+    expect(checkpointMarkerPhotoIndex(checkpoint, 12, false)).toBe(11);
+  });
+
   test("keeps timeline and MapLibre animation units in milliseconds", () => {
     expect(approachAnimationDuration(3_000, 1)).toBe(3_000);
     expect(approachAnimationDuration(3_000, 2)).toBe(1_500);
@@ -21,7 +42,12 @@ describe("Photo Journey map timing and recording budgets", () => {
   });
 
   test("handles recording-sized arrays without spread argument limits", () => {
-    const points = Array.from({ length: 20_000 }, (_, index) => ({ latitude: 45, longitude: 11 + index / 1_000, elevation: index % 2 ? 100 : 101, time: index * 1_000 }));
+    const points = Array.from({ length: 20_000 }, (_, index) => ({
+      latitude: 45,
+      longitude: 11 + index / 1_000,
+      elevation: index % 2 ? 100 : 101,
+      time: index * 1_000,
+    }));
     const track: Track = { points, segmentStarts: [0] };
     const stats = trackStats(track);
     expect(stats.pointCount).toBe(points.length);
@@ -35,9 +61,24 @@ describe("Photo Journey map timing and recording budgets", () => {
   });
 
   test("derives camera composition from geometry, viewport, and drawer padding", () => {
-    const points = [{ latitude: 48, longitude: 16 }, { latitude: 48.005, longitude: 16.01 }];
-    const first = cameraFrameForPoints(points, { width: 1200, height: 700 }, 70, 18, { top: 0, right: 480, bottom: 0, left: 0 });
-    const second = cameraFrameForPoints(points, { width: 1200, height: 700 }, 70, 18, { top: 0, right: 480, bottom: 0, left: 0 });
+    const points = [
+      { latitude: 48, longitude: 16 },
+      { latitude: 48.005, longitude: 16.01 },
+    ];
+    const first = cameraFrameForPoints(
+      points,
+      { width: 1200, height: 700 },
+      70,
+      18,
+      { top: 0, right: 480, bottom: 0, left: 0 },
+    );
+    const second = cameraFrameForPoints(
+      points,
+      { width: 1200, height: 700 },
+      70,
+      18,
+      { top: 0, right: 480, bottom: 0, left: 0 },
+    );
     expect(first).toEqual(second);
     expect(first.zoom).toBeGreaterThan(10);
   });
@@ -51,8 +92,14 @@ describe("Photo Journey map timing and recording budgets", () => {
   });
 
   test("faces terrain travel along the route while flat and reduced views stay north-up", () => {
-    const eastbound = [{ latitude: 48, longitude: 16 }, { latitude: 48, longitude: 16.01 }];
-    expect(journeyCameraBearing(eastbound, "terrain", false)).toBeCloseTo(90, 1);
+    const eastbound = [
+      { latitude: 48, longitude: 16 },
+      { latitude: 48, longitude: 16.01 },
+    ];
+    expect(journeyCameraBearing(eastbound, "terrain", false)).toBeCloseTo(
+      90,
+      1,
+    );
     expect(journeyCameraBearing(eastbound, "online", false)).toBe(0);
     expect(journeyCameraBearing(eastbound, "terrain", true)).toBe(0);
     expect(journeyCameraBearing([eastbound[0]], "terrain", false)).toBe(0);
@@ -60,20 +107,34 @@ describe("Photo Journey map timing and recording budgets", () => {
 
   test("interpolates headings across the shortest deterministic turn", () => {
     expect(interpolateJourneyBearing(170, -170, 0)).toBe(170);
+    expect(interpolateJourneyBearing(170, -170, 0.25)).toBe(175);
     expect(interpolateJourneyBearing(170, -170, 0.5)).toBe(180);
     expect(interpolateJourneyBearing(170, -170, 1)).toBe(190);
   });
 
   test("blends camera center and zoom without crossing the long side of the globe", () => {
-    expect(interpolateJourneyCamera(
-      { center: [179, 10], zoom: 12 },
-      { center: [-179, 14], zoom: 14 },
-      0.5,
-    )).toEqual({ center: [180, 12], zoom: 13 });
+    expect(
+      interpolateJourneyCamera(
+        { center: [0, 0], zoom: 10 },
+        { center: [8, 4], zoom: 14 },
+        0.25,
+      ),
+    ).toEqual({ center: [2, 1], zoom: 11 });
+    expect(
+      interpolateJourneyCamera(
+        { center: [179, 10], zoom: 12 },
+        { center: [-179, 14], zoom: 14 },
+        0.5,
+      ),
+    ).toEqual({ center: [180, 12], zoom: 13 });
   });
 
   test("does not rewind the camera across an unanimated route gap", () => {
-    const point = (longitude: number) => ({ latitude: 48, longitude, time: longitude * 1_000 });
+    const point = (longitude: number) => ({
+      latitude: 48,
+      longitude,
+      time: longitude * 1_000,
+    });
     const leg = (from: number, to: number): RecordedLeg => ({
       points: [point(from), point(to)],
       drawable: [point(from), point(to)],
@@ -83,43 +144,75 @@ describe("Photo Journey map timing and recording budgets", () => {
     });
     const first = leg(0, 1);
     const active = leg(1, 2);
-    expect(previousRecordedLeg([undefined, first, undefined, active], 3, active)).toBeUndefined();
-    expect(previousRecordedLeg([undefined, first, active], 2, active)).toBe(first);
+    expect(
+      previousRecordedLeg([undefined, first, undefined, active], 3, active),
+    ).toBeUndefined();
+    expect(previousRecordedLeg([undefined, first, active], 2, active)).toBe(
+      first,
+    );
   });
 
   test.each([
     { width: 1200, height: 700, right: 480, bottom: 0 },
     { width: 390, height: 600, right: 0, bottom: 312 },
     { width: 390, height: 600, right: 0, bottom: 432 },
-  ])("fits tilted route corners outside the drawer at $width × $height with bottom $bottom", (layout) => {
-    const padding = { top: 0, left: 0, right: layout.right, bottom: layout.bottom };
-    const points = [
-      { latitude: 46.5, longitude: 11.5 },
-      { latitude: 46.52, longitude: 11.55 },
-      { latitude: 46.5, longitude: 11.55 },
-      { latitude: 46.52, longitude: 11.5 },
-    ];
-    const view = cameraFrameForPoints(points, layout, 70, 18, padding, TERRAIN_PITCH);
-    const worldY = (latitude: number) => (1 - Math.asinh(Math.tan(latitude * Math.PI / 180)) / Math.PI) / 2;
-    const worldSize = 512 * 2 ** view.zoom;
-    const distance = layout.height * 1.5;
-    const radians = TERRAIN_PITCH * Math.PI / 180;
-    for (const point of points) {
-      const dx = (point.longitude - view.center[0]) / 360 * worldSize;
-      const dy = (worldY(point.latitude) - worldY(view.center[1])) * worldSize;
-      const perspective = distance / (distance - dy * Math.sin(radians));
-      const x = (layout.width - padding.right) / 2 + dx * perspective;
-      const y = (layout.height - padding.bottom) / 2 + dy * Math.cos(radians) * perspective;
-      expect(x).toBeGreaterThanOrEqual(70 - 1e-6);
-      expect(x).toBeLessThanOrEqual(layout.width - padding.right - 70 + 1e-6);
-      expect(y).toBeGreaterThanOrEqual(70 - 1e-6);
-      expect(y).toBeLessThanOrEqual(layout.height - padding.bottom - 70 + 1e-6);
-    }
-  });
+  ])(
+    "fits tilted route corners outside the drawer at $width × $height with bottom $bottom",
+    (layout) => {
+      const padding = {
+        top: 0,
+        left: 0,
+        right: layout.right,
+        bottom: layout.bottom,
+      };
+      const points = [
+        { latitude: 46.5, longitude: 11.5 },
+        { latitude: 46.52, longitude: 11.55 },
+        { latitude: 46.5, longitude: 11.55 },
+        { latitude: 46.52, longitude: 11.5 },
+      ];
+      const view = cameraFrameForPoints(
+        points,
+        layout,
+        70,
+        18,
+        padding,
+        TERRAIN_PITCH,
+      );
+      const worldY = (latitude: number) =>
+        (1 - Math.asinh(Math.tan((latitude * Math.PI) / 180)) / Math.PI) / 2;
+      const worldSize = 512 * 2 ** view.zoom;
+      const distance = layout.height * 1.5;
+      const radians = (TERRAIN_PITCH * Math.PI) / 180;
+      for (const point of points) {
+        const dx = ((point.longitude - view.center[0]) / 360) * worldSize;
+        const dy =
+          (worldY(point.latitude) - worldY(view.center[1])) * worldSize;
+        const perspective = distance / (distance - dy * Math.sin(radians));
+        const x = (layout.width - padding.right) / 2 + dx * perspective;
+        const y =
+          (layout.height - padding.bottom) / 2 +
+          dy * Math.cos(radians) * perspective;
+        expect(x).toBeGreaterThanOrEqual(70 - 1e-6);
+        expect(x).toBeLessThanOrEqual(layout.width - padding.right - 70 + 1e-6);
+        expect(y).toBeGreaterThanOrEqual(70 - 1e-6);
+        expect(y).toBeLessThanOrEqual(
+          layout.height - padding.bottom - 70 + 1e-6,
+        );
+      }
+    },
+  );
 
   test("keeps degenerate tilted frames finite", () => {
     for (const points of [[], [{ latitude: 46.5, longitude: 11.5 }]]) {
-      const view = cameraFrameForPoints(points, { width: 390, height: 600 }, 70, 15, undefined, TERRAIN_PITCH);
+      const view = cameraFrameForPoints(
+        points,
+        { width: 390, height: 600 },
+        70,
+        15,
+        undefined,
+        TERRAIN_PITCH,
+      );
       expect(view.center.every(Number.isFinite)).toBe(true);
       expect(Number.isFinite(view.zoom)).toBe(true);
       expect(view.zoom).toBeLessThanOrEqual(15);

@@ -23,6 +23,7 @@ import {
   type JourneyStop,
   type JourneyPhase,
   type JourneyTimeline,
+  type TimelineStop,
 } from "./timeline";
 import type { Placement } from "./track";
 import type { Coordinates, JourneyPhoto } from "./types";
@@ -42,12 +43,20 @@ export const TERRAIN_EXAGGERATION = 1.4;
 /** A steady north-up tilt gives local terrain depth without orbiting the route. */
 export const TERRAIN_PITCH = 45;
 
-export function journeyCameraPitch(mode: MapMode, globe: boolean, reducedMotion: boolean) {
+export function journeyCameraPitch(
+  mode: MapMode,
+  globe: boolean,
+  reducedMotion: boolean,
+) {
   return mode === "terrain" && !globe && !reducedMotion ? TERRAIN_PITCH : 0;
 }
 
 /** Point the terrain camera along a broad route window instead of turning at every GPS sample. */
-export function journeyCameraBearing(points: readonly Coordinates[], mode: MapMode, reducedMotion: boolean) {
+export function journeyCameraBearing(
+  points: readonly Coordinates[],
+  mode: MapMode,
+  reducedMotion: boolean,
+) {
   if (mode !== "terrain" || reducedMotion || points.length < 2) return 0;
   const from = points[0];
   const to = points.at(-1)!;
@@ -56,18 +65,22 @@ export function journeyCameraBearing(points: readonly Coordinates[], mode: MapMo
   const fromLatitude = from.latitude * radians;
   const toLatitude = to.latitude * radians;
   const y = Math.sin(deltaLongitude) * Math.cos(toLatitude);
-  const x = Math.cos(fromLatitude) * Math.sin(toLatitude) -
+  const x =
+    Math.cos(fromLatitude) * Math.sin(toLatitude) -
     Math.sin(fromLatitude) * Math.cos(toLatitude) * Math.cos(deltaLongitude);
   if (Math.abs(x) + Math.abs(y) < Number.EPSILON) return 0;
   return Math.atan2(y, x) / radians;
 }
 
 /** Interpolate across the shortest turn so seeking and playback produce the same heading. */
-export function interpolateJourneyBearing(from: number, to: number, progress: number) {
+export function interpolateJourneyBearing(
+  from: number,
+  to: number,
+  progress: number,
+) {
   const delta = ((to - from + 540) % 360) - 180;
   const t = Math.max(0, Math.min(1, progress));
-  const eased = t * t * (3 - 2 * t);
-  return from + delta * eased;
+  return from + delta * t;
 }
 
 export function interpolateJourneyCamera(
@@ -76,24 +89,40 @@ export function interpolateJourneyCamera(
   progress: number,
 ) {
   const t = Math.max(0, Math.min(1, progress));
-  const eased = t * t * (3 - 2 * t);
   const longitudeDelta = ((to.center[0] - from.center[0] + 540) % 360) - 180;
   return {
     center: [
-      from.center[0] + longitudeDelta * eased,
-      from.center[1] + (to.center[1] - from.center[1]) * eased,
+      from.center[0] + longitudeDelta * t,
+      from.center[1] + (to.center[1] - from.center[1]) * t,
     ] as [number, number],
-    zoom: from.zoom + (to.zoom - from.zoom) * eased,
+    zoom: from.zoom + (to.zoom - from.zoom) * t,
   };
 }
 
-export function previousRecordedLeg(legs: readonly (RecordedLeg | undefined)[], activeIndex: number, activeLeg?: RecordedLeg) {
+export function checkpointMarkerPhotoIndex(
+  checkpoint: Pick<TimelineStop, "photoIndex" | "photoIndices">,
+  activeIndex: number,
+  active: boolean,
+) {
+  return active && checkpoint.photoIndices.includes(activeIndex)
+    ? activeIndex
+    : checkpoint.photoIndex;
+}
+
+export function previousRecordedLeg(
+  legs: readonly (RecordedLeg | undefined)[],
+  activeIndex: number,
+  activeLeg?: RecordedLeg,
+) {
   if (!activeLeg) return undefined;
   const candidate = legs[activeIndex - 1];
   const previousEnd = candidate?.points.at(-1);
   const activeStart = activeLeg.points[0];
-  return candidate?.segmentIndex === activeLeg.segmentIndex && previousEnd && activeStart &&
-    previousEnd.latitude === activeStart.latitude && previousEnd.longitude === activeStart.longitude
+  return candidate?.segmentIndex === activeLeg.segmentIndex &&
+    previousEnd &&
+    activeStart &&
+    previousEnd.latitude === activeStart.latitude &&
+    previousEnd.longitude === activeStart.longitude
     ? candidate
     : undefined;
 }
@@ -103,7 +132,10 @@ export const GLOBE_LEG_KM = 1500;
 export type MapMode = "offline" | "online" | "terrain";
 
 type JourneyMapProps = {
+  /** Route destination. This remains the checkpoint's first photo during a same-stop burst. */
   activeIndex: number;
+  /** Exact photo visible in the album, including later photos at the same checkpoint. */
+  activePhotoIndex?: number;
   photos: JourneyPhoto[];
   reducedMotion: boolean;
   stops: JourneyStop[];
@@ -142,12 +174,17 @@ type JourneyMapProps = {
 };
 
 /** MapLibre and the timeline both use milliseconds; playback speed scales that duration. */
-export function approachAnimationDuration(approachDuration: number, speed: number) {
+export function approachAnimationDuration(
+  approachDuration: number,
+  speed: number,
+) {
   return Math.max(0, approachDuration / Math.max(0.01, speed));
 }
 
 export function isUserMapMovement(event: unknown) {
-  return Boolean((event as { originalEvent?: unknown } | undefined)?.originalEvent);
+  return Boolean(
+    (event as { originalEvent?: unknown } | undefined)?.originalEvent,
+  );
 }
 
 export type MarkerCollisionBox = {
@@ -158,7 +195,10 @@ export type MarkerCollisionBox = {
 };
 
 /** Uses a small spatial grid so dense journeys do not compare every marker with every other marker. */
-export function suppressedMarkerIndexes(boxes: readonly MarkerCollisionBox[], cellSize = 64) {
+export function suppressedMarkerIndexes(
+  boxes: readonly MarkerCollisionBox[],
+  cellSize = 64,
+) {
   const cells = new Map<string, number[]>();
   const suppressed = new Set<number>();
   const keysFor = (box: MarkerCollisionBox) => {
@@ -177,7 +217,12 @@ export function suppressedMarkerIndexes(boxes: readonly MarkerCollisionBox[], ce
     const candidates = new Set(keys.flatMap((key) => cells.get(key) ?? []));
     const overlaps = [...candidates].some((acceptedIndex) => {
       const accepted = boxes[acceptedIndex];
-      return box.left < accepted.right && box.right > accepted.left && box.top < accepted.bottom && box.bottom > accepted.top;
+      return (
+        box.left < accepted.right &&
+        box.right > accepted.left &&
+        box.top < accepted.bottom &&
+        box.bottom > accepted.top
+      );
     });
     if (overlaps) {
       suppressed.add(index);
@@ -199,13 +244,25 @@ function graticule(): GeoJSON.FeatureCollection {
     features.push({
       type: "Feature",
       properties: {},
-      geometry: { type: "LineString", coordinates: [[-540, lat], [540, lat]] },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [-540, lat],
+          [540, lat],
+        ],
+      },
     });
   for (let lon = -540; lon <= 540; lon += 15)
     features.push({
       type: "Feature",
       properties: {},
-      geometry: { type: "LineString", coordinates: [[lon, -85], [lon, 85]] },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [lon, -85],
+          [lon, 85],
+        ],
+      },
     });
   return { type: "FeatureCollection", features };
 }
@@ -298,14 +355,22 @@ export function baseStyle(): StyleSpecification {
         type: "line",
         source: "route-context",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#071014", "line-opacity": 0.65, "line-width": 6 },
+        paint: {
+          "line-color": "#071014",
+          "line-opacity": 0.65,
+          "line-width": 6,
+        },
       },
       {
         id: "route-context",
         type: "line",
         source: "route-context",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#67b9de", "line-opacity": 0.78, "line-width": 2.5 },
+        paint: {
+          "line-color": "#67b9de",
+          "line-opacity": 0.78,
+          "line-width": 2.5,
+        },
       },
       {
         id: "route-completed-halo",
@@ -403,7 +468,9 @@ function applyMode(map: MapLibreMap, mode: MapMode) {
   if (flat && map.getTerrain()) map.setTerrain(null);
 }
 
-function routeData(segments: readonly (readonly Coordinates[])[]): GeoJSON.FeatureCollection {
+function routeData(
+  segments: readonly (readonly Coordinates[])[],
+): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
   for (const segment of segments) {
     if (segment.length === 1) {
@@ -435,10 +502,14 @@ export function visibleRouteSegments(
   currentPrefix?: Coordinates[],
   checkpointEndIndex = activeIndex,
 ) {
-  const arrived = phase === "reveal" || phase === "hold" || phase === "departure";
-  const completedIndex = phase === "outro" || phase === "complete"
-    ? story.legs.length - 1
-    : arrived ? checkpointEndIndex : activeIndex - 1;
+  const arrived =
+    phase === "reveal" || phase === "hold" || phase === "departure";
+  const completedIndex =
+    phase === "outro" || phase === "complete"
+      ? story.legs.length - 1
+      : arrived
+        ? checkpointEndIndex
+        : activeIndex - 1;
   const completed: Coordinates[][] = [];
   for (let index = 0; index <= completedIndex; index += 1) {
     const leg = story.legs[index];
@@ -446,12 +517,16 @@ export function visibleRouteSegments(
   }
   const active = story.legs[activeIndex];
   if (phase === "approach" && active && currentEligible)
-    return { completed, current: [currentPrefix ?? recordedLegPrefix(active, currentProgress)] };
+    return {
+      completed,
+      current: [currentPrefix ?? recordedLegPrefix(active, currentProgress)],
+    };
   return { completed, current: [] as Coordinates[][] };
 }
 
 export default function JourneyMap({
   activeIndex,
+  activePhotoIndex = activeIndex,
   photos,
   reducedMotion,
   stops,
@@ -487,8 +562,15 @@ export default function JourneyMap({
   const moduleRef = useRef<typeof import("maplibre-gl")>();
   const markersRef = useRef(new Map<string, MapLibreMarker>());
   const lastRoutePaintRef = useRef(0);
-  const completedRef = useRef<{ engine: number; segments: readonly (readonly Coordinates[])[] }>();
-  const inferredCompletedRef = useRef<{ engine: number; key: string; stops: JourneyStop[] }>();
+  const completedRef = useRef<{
+    engine: number;
+    segments: readonly (readonly Coordinates[])[];
+  }>();
+  const inferredCompletedRef = useRef<{
+    engine: number;
+    key: string;
+    stops: JourneyStop[];
+  }>();
   const projectionRef = useRef<"mercator" | "globe">("mercator");
   // Bumped once the engine arrives, so every effect below runs again against the live map.
   const [engine, setEngine] = useState(0);
@@ -511,7 +593,7 @@ export default function JourneyMap({
     mode: MapMode;
   }>();
   const dayChangesKey = useMemo(
-    () => dayChanges?.map((change) => change ? "1" : "0").join(""),
+    () => dayChanges?.map((change) => (change ? "1" : "0")).join(""),
     [dayChanges],
   );
   const activeRouteFrame = useMemo(() => {
@@ -519,10 +601,16 @@ export default function JourneyMap({
     return leg ? recordedLegFrame(leg, currentLegProgress) : undefined;
   }, [activeIndex, currentLegEligible, currentLegProgress, routeStory]);
   const activeCheckpoint = useMemo(
-    () => timeline.stops.find((stop) => stop.photoIndices.includes(activeIndex)),
+    () =>
+      timeline.stops.find((stop) => stop.photoIndices.includes(activeIndex)),
     [activeIndex, timeline],
   );
-  const checkpointArrived = phase === "reveal" || phase === "hold" || phase === "departure" || phase === "outro" || phase === "complete";
+  const checkpointArrived =
+    phase === "reveal" ||
+    phase === "hold" ||
+    phase === "departure" ||
+    phase === "outro" ||
+    phase === "complete";
 
   // The engine loads behind the same wait that already decodes the photos: a dynamic import
   // keeps the ~272 KB gz of WebGL mapping out of the first paint.
@@ -560,7 +648,10 @@ export default function JourneyMap({
         });
         map = instance;
         instance.addControl(
-          new module.NavigationControl({ showCompass: false, visualizePitch: false }),
+          new module.NavigationControl({
+            showCompass: false,
+            visualizePitch: false,
+          }),
           "top-left",
         );
         instance.getCanvas().addEventListener("webglcontextlost", (event) => {
@@ -579,7 +670,11 @@ export default function JourneyMap({
         let styleSettled = false;
         const finishStyle = () => {
           if (!active || styleSettled) return;
-          if (!instance.getSource("route-current") || !instance.getLayer("route-current")) return;
+          if (
+            !instance.getSource("route-current") ||
+            !instance.getLayer("route-current")
+          )
+            return;
           styleSettled = true;
           instance.off("styledata", finishStyle);
           if (styleTimer !== undefined) window.clearTimeout(styleTimer);
@@ -667,9 +762,13 @@ export default function JourneyMap({
       if (sourceId === "dem" && map.isSourceLoaded("dem")) finish(false);
     };
     const onError = (event: unknown) => {
-      if ((event as { sourceId?: string } | null)?.sourceId === "dem") finish(true);
+      if ((event as { sourceId?: string } | null)?.sourceId === "dem")
+        finish(true);
     };
-    const timer = window.setTimeout(() => finish(!map.isSourceLoaded("dem")), 12000);
+    const timer = window.setTimeout(
+      () => finish(!map.isSourceLoaded("dem")),
+      12000,
+    );
     map.on("sourcedata", onSource);
     map.on("error", onError);
     return () => {
@@ -687,7 +786,8 @@ export default function JourneyMap({
     let pending = false;
     const refresh = () => {
       pending = false;
-      for (const marker of markersRef.current.values()) marker.setLngLat(marker.getLngLat());
+      for (const marker of markersRef.current.values())
+        marker.setLngLat(marker.getLngLat());
       // Let an in-progress overview animation finish; tile arrivals must not restart it.
       if (!map.isMoving()) setTerrainRevision((revision) => revision + 1);
     };
@@ -734,12 +834,26 @@ export default function JourneyMap({
       pin.append(img);
       wrapper.append(pin);
       wrapper.title = photo.name;
-      wrapper.setAttribute("aria-label", `Open ${checkpoint.photoIndices.length === 1 ? photo.name : `${checkpoint.photoIndices.length} photos`} at checkpoint`);
-      wrapper.dataset.count = checkpoint.photoIndices.length > 1 ? String(checkpoint.photoIndices.length) : "";
-      wrapper.addEventListener("click", () => onCheckpointSelect?.(index, wrapper));
+      wrapper.setAttribute(
+        "aria-label",
+        `Open ${checkpoint.photoIndices.length === 1 ? photo.name : `${checkpoint.photoIndices.length} photos`} at checkpoint`,
+      );
+      wrapper.dataset.count =
+        checkpoint.photoIndices.length > 1
+          ? String(checkpoint.photoIndices.length)
+          : "";
+      wrapper.addEventListener("click", () =>
+        onCheckpointSelect?.(index, wrapper),
+      );
       markers.set(
         photo.id,
-        new module.Marker({ element: wrapper, anchor: "center", pitchAlignment: "viewport", rotationAlignment: "viewport", opacityWhenCovered: 0.65 })
+        new module.Marker({
+          element: wrapper,
+          anchor: "center",
+          pitchAlignment: "viewport",
+          rotationAlignment: "viewport",
+          opacityWhenCovered: 0.65,
+        })
           .setLngLat(lngLat(coordinates))
           .addTo(map),
       );
@@ -747,7 +861,17 @@ export default function JourneyMap({
     markersRef.current = markers;
     // dayChanges is commonly mapped from stable timeline stops at the JSX boundary.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos, stops, track, routeStory, timeline, dayChangesKey, ready, engine, onCheckpointSelect]);
+  }, [
+    photos,
+    stops,
+    track,
+    routeStory,
+    timeline,
+    dayChangesKey,
+    ready,
+    engine,
+    onCheckpointSelect,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -765,43 +889,91 @@ export default function JourneyMap({
     // GeoJSON updates cross a worker boundary and force the terrain scene to repaint. Keep the
     // camera on the display clock, but cap route serialization at a visually continuous 30 Hz.
     const now = performance.now();
-    if (playing && phase === "approach" && now - lastRoutePaintRef.current < 1000 / 30) return;
+    if (
+      playing &&
+      phase === "approach" &&
+      now - lastRoutePaintRef.current < 1000 / 30
+    )
+      return;
     lastRoutePaintRef.current = now;
     const showPosition = (position?: Coordinates) => {
-      (map.getSource("route-tip") as GeoJSONSource | undefined)?.setData(position ? {
-        type: "FeatureCollection",
-        features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: lngLat(position) } }],
-      } : EMPTY_FEATURES);
+      (map.getSource("route-tip") as GeoJSONSource | undefined)?.setData(
+        position
+          ? {
+              type: "FeatureCollection",
+              features: [
+                {
+                  type: "Feature",
+                  properties: {},
+                  geometry: { type: "Point", coordinates: lngLat(position) },
+                },
+              ],
+            }
+          : EMPTY_FEATURES,
+      );
     };
-    const arrived = phase === "reveal" || phase === "hold" || phase === "departure";
-    const checkpointEndIndex = activeCheckpoint?.photoIndices.at(-1) ?? activeIndex;
+    const arrived =
+      phase === "reveal" || phase === "hold" || phase === "departure";
+    const checkpointEndIndex =
+      activeCheckpoint?.photoIndices.at(-1) ?? activeIndex;
     if (!routeStory) {
-      if (completedRef.current?.engine !== engine || completedRef.current.segments.length) {
+      if (
+        completedRef.current?.engine !== engine ||
+        completedRef.current.segments.length
+      ) {
         completedRef.current = { engine, segments: [] };
-        (map.getSource("route-completed") as GeoJSONSource | undefined)?.setData(EMPTY_FEATURES);
+        (
+          map.getSource("route-completed") as GeoJSONSource | undefined
+        )?.setData(EMPTY_FEATURES);
       }
-      const completedThrough = phase === "outro" || phase === "complete"
-        ? stops.length
-        : activeIndex + (phase === "reveal" || phase === "hold" || phase === "departure" ? 1 : 0);
+      const completedThrough =
+        phase === "outro" || phase === "complete"
+          ? stops.length
+          : activeIndex +
+            (phase === "reveal" || phase === "hold" || phase === "departure"
+              ? 1
+              : 0);
       const completedKey = `${completedThrough}:${dayChangesKey}`;
       const previousInferred = inferredCompletedRef.current;
-      if (previousInferred?.engine !== engine || previousInferred?.key !== completedKey || previousInferred?.stops !== stops) {
+      if (
+        previousInferred?.engine !== engine ||
+        previousInferred?.key !== completedKey ||
+        previousInferred?.stops !== stops
+      ) {
         const completed = inferredRouteSegments(
           stops.slice(0, completedThrough),
           dayChanges?.slice(0, completedThrough),
         );
         inferredCompletedRef.current = { engine, key: completedKey, stops };
-        (map.getSource("route-inferred") as GeoJSONSource | undefined)?.setData(routeData(completed));
+        (map.getSource("route-inferred") as GeoJSONSource | undefined)?.setData(
+          routeData(completed),
+        );
       }
       const previous = stops[activeIndex - 1];
       const current = stops[activeIndex];
-      const traveling = !track && phase === "approach" && currentLegEligible &&
-        previous?.located && current?.located && previous.coordinates && current.coordinates
-        ? [routePrefix([previous.coordinates, current.coordinates], currentLegProgress)]
-        : [];
-      (map.getSource("route-current") as GeoJSONSource | undefined)?.setData(routeData(traveling));
+      const traveling =
+        !track &&
+        phase === "approach" &&
+        currentLegEligible &&
+        previous?.located &&
+        current?.located &&
+        previous.coordinates &&
+        current.coordinates
+          ? [
+              routePrefix(
+                [previous.coordinates, current.coordinates],
+                currentLegProgress,
+              ),
+            ]
+          : [];
+      (map.getSource("route-current") as GeoJSONSource | undefined)?.setData(
+        routeData(traveling),
+      );
       const settled = stops[checkpointEndIndex];
-      showPosition(traveling[0]?.at(-1) ?? (arrived && settled?.located ? settled.coordinates : undefined));
+      showPosition(
+        traveling[0]?.at(-1) ??
+          (arrived && settled?.located ? settled.coordinates : undefined),
+      );
       return;
     }
     const visible = visibleRouteSegments(
@@ -820,21 +992,50 @@ export default function JourneyMap({
     const unchanged =
       previous?.engine === engine &&
       previous.segments.length === visible.completed.length &&
-      previous.segments.every((segment, index) => segment === visible.completed[index]);
+      previous.segments.every(
+        (segment, index) => segment === visible.completed[index],
+      );
     if (!unchanged) {
       completedRef.current = { engine, segments: visible.completed };
-      (map.getSource("route-completed") as GeoJSONSource | undefined)?.setData(routeData(visible.completed));
+      (map.getSource("route-completed") as GeoJSONSource | undefined)?.setData(
+        routeData(visible.completed),
+      );
     }
-    (map.getSource("route-current") as GeoJSONSource | undefined)?.setData(routeData(visible.current));
+    (map.getSource("route-current") as GeoJSONSource | undefined)?.setData(
+      routeData(visible.current),
+    );
     const placement = placements?.[checkpointEndIndex];
-    const settled = placement && !placement.ambiguous && !placement.choiceUnavailable
-      ? placement.source === "track" ? placement.coordinates : placement.trackCoordinates
-      : undefined;
-    const tip = phase === "approach" && currentLegEligible
-      ? activeRouteFrame?.tip
-      : arrived ? settled : undefined;
+    const settled =
+      placement && !placement.ambiguous && !placement.choiceUnavailable
+        ? placement.source === "track"
+          ? placement.coordinates
+          : placement.trackCoordinates
+        : undefined;
+    const tip =
+      phase === "approach" && currentLegEligible
+        ? activeRouteFrame?.tip
+        : arrived
+          ? settled
+          : undefined;
     showPosition(tip);
-  }, [routeStory, activeRouteFrame, activeIndex, activeCheckpoint, phase, currentLegProgress, currentLegEligible, placements, stops, track, timeline, dayChanges, dayChangesKey, playing, ready, engine]);
+  }, [
+    routeStory,
+    activeRouteFrame,
+    activeIndex,
+    activeCheckpoint,
+    phase,
+    currentLegProgress,
+    currentLegEligible,
+    placements,
+    stops,
+    track,
+    timeline,
+    dayChanges,
+    dayChangesKey,
+    playing,
+    ready,
+    engine,
+  ]);
 
   // Checkpoints begin as quiet dots, reveal their photo on arrival, and remain as visited stops.
   useEffect(() => {
@@ -845,25 +1046,70 @@ export default function JourneyMap({
       const photo = photos[index];
       const element = photo ? markers.get(photo.id)?.getElement() : undefined;
       if (!element) return;
-      const active = checkpoint.checkpointIndex === activeCheckpointIndex && checkpointArrived;
+      const active =
+        checkpoint.checkpointIndex === activeCheckpointIndex &&
+        checkpointArrived;
+      if (active) {
+        const activePhoto =
+          photos[
+            checkpointMarkerPhotoIndex(checkpoint, activePhotoIndex, active)
+          ];
+        const image = element.querySelector("img");
+        if (activePhoto && image) {
+          image.src = activePhoto.thumbnailUrl;
+          element.title = activePhoto.name;
+          element.setAttribute(
+            "aria-label",
+            `Current photo: ${activePhoto.name}`,
+          );
+        }
+      }
       element.classList.toggle("pj-map-marker-active", active);
       element.classList.toggle("pj-map-marker-selected", active && !playing);
-      element.classList.toggle("pj-map-marker-past", index < activeIndex || active);
-      element.classList.toggle("pj-map-marker-future", index > activeIndex || (index === activeIndex && !checkpointArrived));
-      element.classList.toggle("pj-map-marker-playback-hidden", playing);
+      element.classList.toggle(
+        "pj-map-marker-past",
+        index < activeIndex || active,
+      );
+      element.classList.toggle(
+        "pj-map-marker-future",
+        index > activeIndex || (index === activeIndex && !checkpointArrived),
+      );
+      element.classList.toggle(
+        "pj-map-marker-playback-hidden",
+        playing && !active,
+      );
       element.style.setProperty("--pj-checkpoint-progress", active ? "1" : "0");
       element.style.zIndex = active ? "3" : index < activeIndex ? "2" : "1";
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex, activeCheckpoint, checkpointArrived, photos, stops, track, routeStory, timeline, playing, dayChangesKey, ready, engine]);
+  }, [
+    activeIndex,
+    activePhotoIndex,
+    activeCheckpoint,
+    checkpointArrived,
+    photos,
+    stops,
+    track,
+    routeStory,
+    timeline,
+    playing,
+    dayChangesKey,
+    ready,
+    engine,
+  ]);
 
   // Reveal and departure animate only the active marker. Hundreds of inactive markers remain
   // untouched while the timeline advances frame by frame.
   useEffect(() => {
-    const photo = activeCheckpoint ? photos[activeCheckpoint.photoIndex] : undefined;
-    const element = photo ? markersRef.current.get(photo.id)?.getElement() : undefined;
+    const photo = activeCheckpoint
+      ? photos[activeCheckpoint.photoIndex]
+      : undefined;
+    const element = photo
+      ? markersRef.current.get(photo.id)?.getElement()
+      : undefined;
     if (!element) return;
-    const progress = phase === "reveal" || phase === "departure" ? checkpointProgress : 1;
+    const progress =
+      phase === "reveal" || phase === "departure" ? checkpointProgress : 1;
     element.style.setProperty("--pj-checkpoint-progress", String(progress));
     element.dataset.departing = String(phase === "departure");
   }, [activeCheckpoint, checkpointProgress, phase, photos]);
@@ -874,17 +1120,31 @@ export default function JourneyMap({
     const map = mapRef.current;
     if (!map) return;
     const update = () => {
-      const elements = [...markersRef.current.values()].map((marker) => marker.getElement());
-      elements.sort((a, b) => Number(b.classList.contains("pj-map-marker-active")) - Number(a.classList.contains("pj-map-marker-active")) ||
-        Number(b.classList.contains("pj-map-marker-past")) - Number(a.classList.contains("pj-map-marker-past")));
+      const elements = [...markersRef.current.values()].map((marker) =>
+        marker.getElement(),
+      );
+      elements.sort(
+        (a, b) =>
+          Number(b.classList.contains("pj-map-marker-active")) -
+            Number(a.classList.contains("pj-map-marker-active")) ||
+          Number(b.classList.contains("pj-map-marker-past")) -
+            Number(a.classList.contains("pj-map-marker-past")),
+      );
       const spacing = map.getZoom() < 11 ? 34 : 12;
       const boxes = elements.map((element) => {
         const box = element.getBoundingClientRect();
-        return { left: box.left - spacing, right: box.right + spacing, top: box.top - spacing, bottom: box.bottom + spacing };
+        return {
+          left: box.left - spacing,
+          right: box.right + spacing,
+          top: box.top - spacing,
+          bottom: box.bottom + spacing,
+        };
       });
       const suppressed = suppressedMarkerIndexes(boxes);
       elements.forEach((element, index) => {
-        const hidden = suppressed.has(index) && !element.classList.contains("pj-map-marker-active");
+        const hidden =
+          suppressed.has(index) &&
+          !element.classList.contains("pj-map-marker-active");
         element.classList.toggle("pj-map-marker-suppressed", hidden);
         element.tabIndex = hidden ? -1 : 0;
         if (hidden) element.setAttribute("aria-hidden", "true");
@@ -895,7 +1155,10 @@ export default function JourneyMap({
     let timer: number | undefined;
     const schedule = () => {
       if (timer !== undefined) return;
-      timer = window.setTimeout(() => { timer = undefined; update(); }, 160);
+      timer = window.setTimeout(() => {
+        timer = undefined;
+        update();
+      }, 160);
     };
     schedule();
     map.on("move", schedule);
@@ -961,14 +1224,22 @@ export default function JourneyMap({
     if (!map || !ready) return;
     if (followSuspended) return;
     const previousState = cameraStateRef.current;
-    const commandChanged = !previousState ||
+    const commandChanged =
+      !previousState ||
       previousState.activeIndex !== activeIndex ||
       previousState.seekVersion !== seekVersion ||
       previousState.playing !== playing ||
       previousState.phase !== phase ||
       previousState.speed !== speed ||
       previousState.mode !== mode;
-    cameraStateRef.current = { activeIndex, seekVersion, playing, phase, speed, mode };
+    cameraStateRef.current = {
+      activeIndex,
+      seekVersion,
+      playing,
+      phase,
+      speed,
+      mode,
+    };
     if (commandChanged) map.stop();
     if (
       !playing &&
@@ -987,16 +1258,24 @@ export default function JourneyMap({
     const move = cameraFor(stops, activeIndex);
     // Simplifying a recording-sized track is only worth it for the framing branch below, which
     // runs four times per stop. A leg needs its own two endpoints instead.
-    const overviewPoints = () => (track ? trackSegments(track, 60).flat() : locatedPoints(stops));
+    const overviewPoints = () =>
+      track ? trackSegments(track, 60).flat() : locatedPoints(stops);
     // A long hop arcs on a globe instead of smearing across Mercator.
     const projectionPoints = overview
       ? overviewPoints()
       : [move?.from, move?.center].flatMap((point) => (point ? [point] : []));
     const globe = mode !== "offline" && legSpansGlobe(projectionPoints);
     const pitch = journeyCameraPitch(mode, globe, reducedMotion);
-    const fit = (points: Coordinates[], maxZoom: number) => cameraFrameForPoints(
-      unwrapPoints(points), frameRef.current, 70, maxZoom, cameraPadding, pitch, map.getVerticalFieldOfView(),
-    );
+    const fit = (points: Coordinates[], maxZoom: number) =>
+      cameraFrameForPoints(
+        unwrapPoints(points),
+        frameRef.current,
+        70,
+        maxZoom,
+        cameraPadding,
+        pitch,
+        map.getVerticalFieldOfView(),
+      );
     if (projectionRef.current !== (globe ? "globe" : "mercator")) {
       projectionRef.current = globe ? "globe" : "mercator";
       try {
@@ -1010,21 +1289,45 @@ export default function JourneyMap({
       if (!projectionPoints.length) return;
       const maxOverviewZoom = mode === "offline" ? OFFLINE_MAX_ZOOM : stopZoom;
       const view = fit(projectionPoints, maxOverviewZoom);
-      if (!playing || reducedMotion) map.jumpTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch, padding: cameraPadding });
-      else map.easeTo({ center: view.center, zoom: view.zoom, bearing: 0, pitch, padding: cameraPadding, duration: approachAnimationDuration(remainingRef.current, speed) });
+      if (!playing || reducedMotion)
+        map.jumpTo({
+          center: view.center,
+          zoom: view.zoom,
+          bearing: 0,
+          pitch,
+          padding: cameraPadding,
+        });
+      else
+        map.easeTo({
+          center: view.center,
+          zoom: view.zoom,
+          bearing: 0,
+          pitch,
+          padding: cameraPadding,
+          duration: approachAnimationDuration(remainingRef.current, speed),
+        });
       return;
     }
     if (!move) return;
     // Reposition while the opaque day card covers the map. The first uncovered frame is already
     // at the next day's real first fix, so there is no invented overnight flight or visible snap.
     if (phase === "day") {
-      const entryLeg = currentLegEligible ? routeStory?.legs[activeIndex] : undefined;
+      const entryLeg = currentLegEligible
+        ? routeStory?.legs[activeIndex]
+        : undefined;
       const entryFrame = entryLeg ? recordedLegFrame(entryLeg, 0) : undefined;
-      const entryView = entryFrame?.window.length ? fit(entryFrame.window, mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM) : undefined;
+      const entryView = entryFrame?.window.length
+        ? fit(
+            entryFrame.window,
+            mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM,
+          )
+        : undefined;
       map.jumpTo({
         center: entryView?.center ?? lngLat(move.center),
         zoom: entryView?.zoom ?? stopZoom,
-        bearing: entryLeg ? journeyCameraBearing(entryLeg.drawable, mode, reducedMotion) : 0,
+        bearing: entryLeg
+          ? journeyCameraBearing(entryLeg.drawable, mode, reducedMotion)
+          : 0,
         pitch,
         padding: cameraPadding,
       });
@@ -1042,51 +1345,85 @@ export default function JourneyMap({
       longitude: nearestLongitude(move.center.longitude, map.getCenter().lng),
     };
     if (dayChange && phase === "approach" && !activeRouteFrame) {
-      map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch, padding: cameraPadding });
+      map.jumpTo({
+        center: lngLat(center),
+        zoom: stopZoom,
+        bearing: 0,
+        pitch,
+        padding: cameraPadding,
+      });
       return;
     }
     const recordedLegKnown = !track || Boolean(activeRouteFrame);
     const padding = cameraPadding;
     const routeWindow = activeRouteFrame?.window ?? [];
     const activeRecordedLeg = routeStory?.legs[activeIndex];
-    const activeLegPoints = activeRecordedLeg?.drawable ??
+    const activeLegPoints =
+      activeRecordedLeg?.drawable ??
       (move.from ? [move.from, move.center] : routeWindow);
-    const targetBearing = journeyCameraBearing(activeLegPoints, mode, reducedMotion);
+    const targetBearing = journeyCameraBearing(
+      activeLegPoints,
+      mode,
+      reducedMotion,
+    );
     const previousLeg = routeStory
       ? previousRecordedLeg(routeStory.legs, activeIndex, activeRecordedLeg)
       : undefined;
     const previousBearing = previousLeg
       ? journeyCameraBearing(previousLeg.drawable, mode, reducedMotion)
       : targetBearing;
-    const cameraBlendFraction = Math.min(1, 700 / Math.max(1, approachDuration ?? 700));
-    const routeBearing = phase === "approach" && activeRecordedLeg && previousLeg && !dayChange
-      ? interpolateJourneyBearing(previousBearing, targetBearing, currentLegProgress / cameraBlendFraction)
-      : targetBearing;
+    const cameraBlendFraction = Math.min(
+      1,
+      700 / Math.max(1, approachDuration ?? 700),
+    );
+    const routeBearing =
+      phase === "approach" && activeRecordedLeg && previousLeg && !dayChange
+        ? interpolateJourneyBearing(
+            previousBearing,
+            targetBearing,
+            currentLegProgress / cameraBlendFraction,
+          )
+        : targetBearing;
     const followZoom = mode === "offline" ? OFFLINE_FOLLOW_ZOOM : FOLLOW_ZOOM;
     if (phase !== "approach") {
       const settled = routeWindow.length
         ? fit([...routeWindow, center], followZoom)
         : { center: lngLat(center), zoom: stopZoom };
-      map.jumpTo({ center: settled.center, zoom: settled.zoom, bearing: routeBearing, pitch, padding });
+      map.jumpTo({
+        center: settled.center,
+        zoom: settled.zoom,
+        bearing: routeBearing,
+        pitch,
+        padding,
+      });
       return;
     }
-    if (reducedMotion || (!move.from && !activeRouteFrame) || !recordedLegKnown) {
-      map.jumpTo({ center: lngLat(center), zoom: stopZoom, bearing: 0, pitch, padding });
+    if (
+      reducedMotion ||
+      (!move.from && !activeRouteFrame) ||
+      !recordedLegKnown
+    ) {
+      map.jumpTo({
+        center: lngLat(center),
+        zoom: stopZoom,
+        bearing: 0,
+        pitch,
+        padding,
+      });
       return;
     }
     // Garmin/Strava style: ride the recorded line instead of flying straight at the photo.
     // The follow effect below re-centers on every progress frame; here only set the zoom
     // and an initial position so there is no straight-line flight to fight it.
     const inferredStart = move.from;
-    const inferredTip = !track && inferredStart
-      ? routePrefix([inferredStart, move.center], currentLegProgress).at(-1)
-      : undefined;
+    const inferredTip =
+      !track && inferredStart
+        ? routePrefix([inferredStart, move.center], currentLegProgress).at(-1)
+        : undefined;
     if (activeRouteFrame || inferredTip) {
       const tip = inferredTip ?? activeRouteFrame?.tip;
       if (!tip) return;
-      let view = routeWindow.length
-        ? fit(routeWindow, followZoom)
-        : undefined;
+      let view = routeWindow.length ? fit(routeWindow, followZoom) : undefined;
       if (view && previousLeg && !dayChange) {
         const previousWindow = recordedLegFrame(previousLeg, 1).window;
         const previousView = fit(previousWindow, followZoom);
@@ -1096,12 +1433,20 @@ export default function JourneyMap({
           currentLegProgress / cameraBlendFraction,
         );
       }
-      const legZoom = inferredTip && inferredStart
-        ? fit([inferredStart, move.center], stopZoom).zoom
-        : stopZoom;
+      const legZoom =
+        inferredTip && inferredStart
+          ? fit([inferredStart, move.center], stopZoom).zoom
+          : stopZoom;
       map.jumpTo({
-        center: view?.center ?? lngLat({ latitude: tip.latitude, longitude: nearestLongitude(tip.longitude, map.getCenter().lng) }),
-        zoom: view?.zoom ?? journeyTravelZoom(currentLegProgress, stopZoom, legZoom),
+        center:
+          view?.center ??
+          lngLat({
+            latitude: tip.latitude,
+            longitude: nearestLongitude(tip.longitude, map.getCenter().lng),
+          }),
+        zoom:
+          view?.zoom ??
+          journeyTravelZoom(currentLegProgress, stopZoom, legZoom),
         bearing: routeBearing,
         pitch,
         padding,
@@ -1111,14 +1456,28 @@ export default function JourneyMap({
     if (!inferredStart) return;
     const leg = fit([inferredStart, move.center], stopZoom);
     if (!playing) {
-      map.jumpTo({ center: lngLat(center), zoom: leg.zoom, bearing: 0, pitch, padding });
+      map.jumpTo({
+        center: lngLat(center),
+        zoom: leg.zoom,
+        bearing: 0,
+        pitch,
+        padding,
+      });
       return;
     }
-    const continuing = previousState?.activeIndex === activeIndex &&
-      previousState.seekVersion === seekVersion && previousState.phase === "approach";
+    const continuing =
+      previousState?.activeIndex === activeIndex &&
+      previousState.seekVersion === seekVersion &&
+      previousState.phase === "approach";
     // Pull back once when a leg starts. Pause/resume and speed changes continue from the live
     // camera with only the remaining timeline duration; they never restart the whole leg.
-    if (!continuing) map.jumpTo({ center: map.getCenter(), zoom: leg.zoom, bearing: 0, pitch });
+    if (!continuing)
+      map.jumpTo({
+        center: map.getCenter(),
+        zoom: leg.zoom,
+        bearing: 0,
+        pitch,
+      });
     map.flyTo({
       center: lngLat(center),
       zoom: stopZoom,
@@ -1150,11 +1509,17 @@ export default function JourneyMap({
   ]);
 
   return (
-    <div ref={containerRef} className="pj-gl-map" data-offline={mode === "offline"}>
+    <div
+      ref={containerRef}
+      className="pj-gl-map"
+      data-offline={mode === "offline"}
+    >
       {failed && (
         <div className="pj-map-empty">
           <strong>3D map unavailable</strong>
-          <span>The journey plays on without it. WebGL is off or unsupported here.</span>
+          <span>
+            The journey plays on without it. WebGL is off or unsupported here.
+          </span>
         </div>
       )}
     </div>
@@ -1171,17 +1536,23 @@ export function cameraFrameForPoints(
   frame: { width: number; height: number },
   padding: number,
   maxZoom: number,
-  edgePadding: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 },
+  edgePadding: { top: number; right: number; bottom: number; left: number } = {
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
   pitch = 0,
   verticalFieldOfView = 36.86989764584402,
 ) {
   if (!points.length) return { center: [0, 0] as [number, number], zoom: 0 };
   const projected = points.map((point) => {
     const latitude = Math.max(-85.051129, Math.min(85.051129, point.latitude));
-    const radians = latitude * Math.PI / 180;
+    const radians = (latitude * Math.PI) / 180;
     return {
       x: (point.longitude + 180) / 360,
-      y: (1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2,
+      y:
+        (1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2,
     };
   });
   let minX = Number.POSITIVE_INFINITY;
@@ -1194,26 +1565,41 @@ export function cameraFrameForPoints(
     minY = Math.min(minY, point.y);
     maxY = Math.max(maxY, point.y);
   }
-  const width = Math.max(1, frame.width - padding * 2 - edgePadding.left - edgePadding.right);
-  const height = Math.max(1, frame.height - padding * 2 - edgePadding.top - edgePadding.bottom);
-  let scale = Math.min(width / Math.max(1 / 512, (maxX - minX) * 512), height / Math.max(1 / 512, (maxY - minY) * 512));
+  const width = Math.max(
+    1,
+    frame.width - padding * 2 - edgePadding.left - edgePadding.right,
+  );
+  const height = Math.max(
+    1,
+    frame.height - padding * 2 - edgePadding.top - edgePadding.bottom,
+  );
+  let scale = Math.min(
+    width / Math.max(1 / 512, (maxX - minX) * 512),
+    height / Math.max(1 / 512, (maxY - minY) * 512),
+  );
   if (pitch > 0) {
-    const radians = Math.min(TERRAIN_PITCH, pitch) * Math.PI / 180;
-    const distance = Math.max(1, frame.height) / (2 * Math.tan(verticalFieldOfView * Math.PI / 360));
+    const radians = (Math.min(TERRAIN_PITCH, pitch) * Math.PI) / 180;
+    const distance =
+      Math.max(1, frame.height) /
+      (2 * Math.tan((verticalFieldOfView * Math.PI) / 360));
     const halfX = (maxX - minX) * 256;
     const halfY = (maxY - minY) * 256;
     // At scale s, the near edge is halfY*s*sin(pitch) closer to the camera.
     // Solve the perspective screen bounds for s without moving the live map to probe it.
     const depth = halfY * Math.sin(radians);
-    const widthLimit = (width / 2) * distance / (halfX * distance + (width / 2) * depth);
-    const heightLimit = (height / 2) * distance / (halfY * Math.cos(radians) * distance + (height / 2) * depth);
+    const widthLimit =
+      ((width / 2) * distance) / (halfX * distance + (width / 2) * depth);
+    const heightLimit =
+      ((height / 2) * distance) /
+      (halfY * Math.cos(radians) * distance + (height / 2) * depth);
     scale = Math.min(scale, widthLimit, heightLimit);
   }
   const fitted = Math.max(0, Math.min(maxZoom, Math.log2(scale)));
   const x = (minX + maxX) / 2;
   const y = (minY + maxY) / 2;
   const longitude = x * 360 - 180;
-  const latitude = Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI;
+  const latitude =
+    (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI;
   return { center: [longitude, latitude] as [number, number], zoom: fitted };
 }
 function nearestLongitude(longitude: number, reference: number) {
@@ -1243,9 +1629,7 @@ export function legSpansGlobe(points: Coordinates[]) {
 function webglAvailable() {
   try {
     const canvas = document.createElement("canvas");
-    return Boolean(
-      canvas.getContext("webgl2") ?? canvas.getContext("webgl"),
-    );
+    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
   } catch {
     return false;
   }

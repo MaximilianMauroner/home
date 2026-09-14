@@ -7,6 +7,7 @@ import {
   Quality,
 } from "mediabunny";
 import { trackSegments, trackStats, type Track, type TrackPoint } from "./gpx";
+import { smoothProgress } from "./motion";
 import { recordedLegFrame, type RouteStory } from "./route-progress";
 import {
   timelineAt,
@@ -44,6 +45,26 @@ type Bounds = {
   maxLatitude: number;
   minLongitude: number;
   maxLongitude: number;
+};
+
+type MapArea = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+const FULL_MAP: MapArea = {
+  left: 0,
+  top: 0,
+  width: VIDEO_WIDTH,
+  height: VIDEO_HEIGHT,
+};
+const SPLIT_MAP: MapArea = {
+  left: MAP_LEFT,
+  top: 0,
+  width: VIDEO_WIDTH - MAP_LEFT,
+  height: VIDEO_HEIGHT,
 };
 
 function abortError() {
@@ -92,7 +113,11 @@ export function videoBounds(
   };
 }
 
-export function projectVideoPoint(point: Coordinates, bounds: Bounds) {
+export function projectVideoPoint(
+  point: Coordinates,
+  bounds: Bounds,
+  area: MapArea = SPLIT_MAP,
+) {
   const latitudeRange = Math.max(
     0.0001,
     bounds.maxLatitude - bounds.minLatitude,
@@ -103,15 +128,16 @@ export function projectVideoPoint(point: Coordinates, bounds: Bounds) {
   );
   const reference = (bounds.minLongitude + bounds.maxLongitude) / 2;
   const x =
-    MAP_LEFT +
+    area.left +
     52 +
     ((unwrapLongitude(point.longitude, reference) - bounds.minLongitude) /
       longitudeRange) *
-      (VIDEO_WIDTH - MAP_LEFT - 104);
+      (area.width - 104);
   const y =
+    area.top +
     70 +
     ((bounds.maxLatitude - point.latitude) / latitudeRange) *
-      (VIDEO_HEIGHT - 140);
+      (area.height - 140);
   return { x, y };
 }
 
@@ -133,25 +159,44 @@ function drawContainedImage(
   );
 }
 
+function drawCoveredImage(
+  context: CanvasRenderingContext2D,
+  image: ImageBitmap,
+  width: number,
+  height: number,
+) {
+  const scale = Math.max(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  context.drawImage(
+    image,
+    (width - drawWidth) / 2,
+    (height - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
+}
+
 function drawRoute(
   context: CanvasRenderingContext2D,
   segments: readonly TrackPoint[][],
   bounds: Bounds | undefined,
+  area: MapArea = SPLIT_MAP,
 ) {
   context.fillStyle = "#0b1519";
-  context.fillRect(MAP_LEFT, 0, VIDEO_WIDTH - MAP_LEFT, VIDEO_HEIGHT);
+  context.fillRect(area.left, area.top, area.width, area.height);
   context.strokeStyle = "#20343c";
   context.lineWidth = 1;
-  for (let x = MAP_LEFT + 52; x < VIDEO_WIDTH; x += 96) {
+  for (let x = area.left + 52; x < area.left + area.width; x += 96) {
     context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, VIDEO_HEIGHT);
+    context.moveTo(x, area.top);
+    context.lineTo(x, area.top + area.height);
     context.stroke();
   }
-  for (let y = 70; y < VIDEO_HEIGHT; y += 96) {
+  for (let y = area.top + 70; y < area.top + area.height; y += 96) {
     context.beginPath();
-    context.moveTo(MAP_LEFT, y);
-    context.lineTo(VIDEO_WIDTH, y);
+    context.moveTo(area.left, y);
+    context.lineTo(area.left + area.width, y);
     context.stroke();
   }
   if (!bounds) return;
@@ -163,7 +208,7 @@ function drawRoute(
     if (!segment.length) continue;
     context.beginPath();
     segment.forEach((point, index) => {
-      const projected = projectVideoPoint(point, bounds);
+      const projected = projectVideoPoint(point, bounds, area);
       if (index) context.lineTo(projected.x, projected.y);
       else context.moveTo(projected.x, projected.y);
     });
@@ -188,9 +233,10 @@ function drawMarker(
   context: CanvasRenderingContext2D,
   point: Coordinates | undefined,
   bounds: Bounds | undefined,
+  area: MapArea = SPLIT_MAP,
 ) {
   if (!point || !bounds) return;
-  const { x, y } = projectVideoPoint(point, bounds);
+  const { x, y } = projectVideoPoint(point, bounds, area);
   context.fillStyle = "#071014";
   context.beginPath();
   context.arc(x, y, 12, 0, Math.PI * 2);
@@ -298,6 +344,53 @@ function trimBitmapCache(cache: Map<string, ImageBitmap>, keepId: string) {
   }
 }
 
+function arrivalMapArea(progress: number): MapArea {
+  const left = MAP_LEFT * progress;
+  return {
+    left,
+    top: 0,
+    width: VIDEO_WIDTH - left,
+    height: VIDEO_HEIGHT,
+  };
+}
+
+function drawRouteLabel(context: CanvasRenderingContext2D, area: MapArea) {
+  context.fillStyle = "#f1cf67";
+  context.font = "600 15px system-ui, sans-serif";
+  context.fillText("GPX ROUTE", area.left + 28, 36);
+}
+
+function drawPhotoPanel(
+  context: CanvasRenderingContext2D,
+  bitmap: ImageBitmap,
+  photo: JourneyPhoto,
+  placement: Placement | undefined,
+  photoIndex: number,
+  total: number,
+  timezone: string,
+  progress: number,
+) {
+  const scale = 0.97 + progress * 0.03;
+  context.save();
+  context.globalAlpha = progress;
+  context.translate((1 - progress) * -36, VIDEO_HEIGHT / 2);
+  context.scale(scale, scale);
+  context.translate(0, -VIDEO_HEIGHT / 2);
+  context.beginPath();
+  context.rect(0, 0, PHOTO_WIDTH, VIDEO_HEIGHT);
+  context.clip();
+  context.fillStyle = photo.dominantColor ?? "#05090b";
+  context.fillRect(0, 0, PHOTO_WIDTH, VIDEO_HEIGHT - INFO_HEIGHT);
+  context.save();
+  context.globalAlpha = 0.22;
+  context.filter = "saturate(0.72) brightness(0.48)";
+  drawCoveredImage(context, bitmap, PHOTO_WIDTH, VIDEO_HEIGHT - INFO_HEIGHT);
+  context.restore();
+  drawContainedImage(context, bitmap, PHOTO_WIDTH, VIDEO_HEIGHT - INFO_HEIGHT);
+  drawInfo(context, photo, placement, photoIndex, total, timezone);
+  context.restore();
+}
+
 async function supportedOutput(format: Mp4OutputFormat, quality: Quality) {
   for (const resolution of VIDEO_OUTPUT_RESOLUTIONS) {
     const codec = await getFirstEncodableVideoCodec(
@@ -372,35 +465,40 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
           options.title,
           `${options.photos.length} photos · Journey complete`,
         );
+      } else if (state.phase === "approach") {
+        drawRoute(context, segments, bounds, FULL_MAP);
+        drawMarker(
+          context,
+          markerForState(state, options.placements, options.routeStory),
+          bounds,
+          FULL_MAP,
+        );
+        drawRouteLabel(context, FULL_MAP);
       } else {
         const photoIndex = photoIndexForState(state, options.timeline);
         const photo = options.photos[photoIndex] ?? options.photos[0];
         const bitmap = await bitmapFor(photo, bitmaps);
-        context.fillStyle = photo.dominantColor ?? "#05090b";
-        context.fillRect(0, 0, PHOTO_WIDTH, VIDEO_HEIGHT - INFO_HEIGHT);
-        drawContainedImage(
+        const arrivalProgress =
+          state.phase === "reveal" ? smoothProgress(state.phaseProgress) : 1;
+        const mapArea = arrivalMapArea(arrivalProgress);
+        drawRoute(context, segments, bounds, mapArea);
+        drawMarker(
+          context,
+          markerForState(state, options.placements, options.routeStory),
+          bounds,
+          mapArea,
+        );
+        drawRouteLabel(context, mapArea);
+        drawPhotoPanel(
           context,
           bitmap,
-          PHOTO_WIDTH,
-          VIDEO_HEIGHT - INFO_HEIGHT,
-        );
-        drawInfo(
-          context,
           photo,
           options.placements[photoIndex],
           photoIndex,
           options.photos.length,
           options.timezone,
+          arrivalProgress,
         );
-        drawRoute(context, segments, bounds);
-        drawMarker(
-          context,
-          markerForState(state, options.placements, options.routeStory),
-          bounds,
-        );
-        context.fillStyle = "#f1cf67";
-        context.font = "600 15px system-ui, sans-serif";
-        context.fillText("GPX ROUTE", MAP_LEFT + 28, 36);
         trimBitmapCache(bitmaps, photo.id);
       }
       await source.add(seconds, frameDuration, {
