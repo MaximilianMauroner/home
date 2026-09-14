@@ -210,6 +210,7 @@ function ExportPanel({
   exportingVideo,
   videoExportProgress,
   videoResolution,
+  mapMode,
   busy,
   onExport,
   onIncludePhotos,
@@ -226,6 +227,7 @@ function ExportPanel({
   exportingVideo: boolean;
   videoExportProgress?: number;
   videoResolution: VideoResolutionLabel;
+  mapMode: MapMode;
   busy: boolean;
   onExport: (format: ExportFormat) => void;
   onIncludePhotos: (value: boolean) => void;
@@ -293,6 +295,17 @@ function ExportPanel({
             if the browser cannot finish it. Video renders from your photos and
             route; it never records your screen.
           </p>
+          {mapMode === "terrain" && (
+            <p>
+              Terrain video maps use{" "}
+              <a href="https://opentopomap.org/about#verwendung">OpenTopoMap</a>
+              . Map data ©{" "}
+              <a href="https://www.openstreetmap.org/copyright">
+                OpenStreetMap contributors
+              </a>
+              , SRTM. Map style © OpenTopoMap (CC-BY-SA 3.0).
+            </p>
+          )}
         </section>
         <section className="pj-export-group">
           <h3>Route data</h3>
@@ -1986,6 +1999,7 @@ export default function PhotoJourney() {
                       exportingVideo={exportingVideo}
                       videoExportProgress={videoExportProgress}
                       videoResolution={videoResolution}
+                      mapMode={mapMode}
                       busy={busy}
                       onExport={download}
                       onIncludePhotos={setIncludePhotos}

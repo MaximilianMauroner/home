@@ -329,6 +329,10 @@ async function fetchTile(url: string, signal?: AbortSignal) {
   return createImageBitmap(await response.blob());
 }
 
+function isAbort(error: unknown) {
+  return (error as DOMException)?.name === "AbortError";
+}
+
 function tileUrl(template: string, zoom: number, x: number, y: number) {
   const count = 2 ** zoom;
   const wrappedX = ((x % count) + count) % count;
@@ -345,6 +349,28 @@ export function videoMapTileUrl(
   y: number,
 ) {
   return tileUrl(mode === "terrain" ? TERRAIN_TILE : OSM_TILE, zoom, x, y);
+}
+
+export async function fetchVideoMapTile(
+  mode: Exclude<MapMode, "offline">,
+  zoom: number,
+  x: number,
+  y: number,
+  signal?: AbortSignal,
+  load = fetchTile,
+) {
+  try {
+    return await load(videoMapTileUrl(mode, zoom, x, y), signal);
+  } catch (error) {
+    if (isAbort(error)) throw error;
+    if (mode !== "terrain") return undefined;
+    try {
+      return await load(videoMapTileUrl("online", zoom, x, y), signal);
+    } catch (fallbackError) {
+      if (isAbort(fallbackError)) throw fallbackError;
+      return undefined;
+    }
+  }
 }
 
 async function prepareMapBackdrop(
@@ -378,15 +404,14 @@ async function prepareMapBackdrop(
         const top = y * TILE_SIZE - view.originY;
         jobs.push(
           (async () => {
-            const base = await fetchTile(
-              videoMapTileUrl(
-                mode === "terrain" ? "terrain" : "online",
-                view.zoom,
-                x,
-                y,
-              ),
+            const base = await fetchVideoMapTile(
+              mode === "terrain" ? "terrain" : "online",
+              view.zoom,
+              x,
+              y,
               signal,
             );
+            if (!base) return;
             context.drawImage(base, left, top, TILE_SIZE, TILE_SIZE);
             base.close();
           })(),
@@ -436,7 +461,7 @@ async function prepareMapBackdrop(
   context.font = `${10 * pixelScale}px system-ui, sans-serif`;
   context.fillText(
     mode === "terrain"
-      ? "© OpenStreetMap · SRTM · OpenTopoMap"
+      ? "© OpenStreetMap · SRTM · OpenTopoMap (CC-BY-SA 3.0)"
       : "© OpenStreetMap",
     14 * pixelScale,
     canvas.height - 9 * pixelScale,

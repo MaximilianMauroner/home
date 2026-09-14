@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  fetchVideoMapTile,
   projectVideoPoint,
   videoBounds,
   VIDEO_HEIGHT,
@@ -18,6 +19,47 @@ describe("Photo Journey MP4 layout", () => {
     expect(videoMapTileUrl("online", 15, 17430, 11591)).toBe(
       "https://tile.openstreetmap.org/15/17430/11591.png",
     );
+  });
+
+  test("keeps a bounded fallback when a terrain tile fails", async () => {
+    const fallback = { close() {} } as ImageBitmap;
+    const requests: string[] = [];
+    const result = await fetchVideoMapTile(
+      "terrain",
+      15,
+      17430,
+      11591,
+      undefined,
+      async (url) => {
+        requests.push(url);
+        if (url.includes("opentopomap")) throw new Error("tile unavailable");
+        return fallback;
+      },
+    );
+
+    expect(result).toBe(fallback);
+    expect(requests).toEqual([
+      "https://a.tile.opentopomap.org/15/17430/11591.png",
+      "https://tile.openstreetmap.org/15/17430/11591.png",
+    ]);
+  });
+
+  test("settles a missing tile without an unbounded retry", async () => {
+    let requests = 0;
+    const result = await fetchVideoMapTile(
+      "terrain",
+      15,
+      17430,
+      11591,
+      undefined,
+      async () => {
+        requests += 1;
+        throw new Error("offline");
+      },
+    );
+
+    expect(result).toBeUndefined();
+    expect(requests).toBe(2);
   });
 
   test("defaults to portable 1080p and keeps 4K optional", () => {
