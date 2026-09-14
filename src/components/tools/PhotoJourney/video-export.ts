@@ -42,6 +42,7 @@ export type VideoResolutionLabel =
 const PHOTO_WIDTH = VIDEO_WIDTH / 2;
 const INFO_HEIGHT = 58;
 const MAP_LEFT = PHOTO_WIDTH;
+const TRAIL_PROGRESS_CAMERA_PADDING = 220;
 
 export type JourneyVideoOptions = {
   title: string;
@@ -1283,8 +1284,9 @@ async function renderAtResolution(
       const seconds = Math.min(totalSeconds, frame * frameDuration);
       const state = timelineAt(seconds * 1000, options.timeline);
       if (state.phase === "intro") {
-        const segments =
-          recordedContextForPhoto(options.routeStory, 0) ?? allSegments;
+        const segments = allSegments.length
+          ? allSegments
+          : (recordedContextForPhoto(options.routeStory, 0) ?? []);
         const bounds = boundsForSegments(segments) ?? fallbackBounds;
         if (terrainRenderer && bounds) {
           const terrain = await terrainRenderer.render(
@@ -1360,6 +1362,11 @@ async function renderAtResolution(
           options.placements,
           options.routeStory,
         );
+        const trailStats = recordedProgressStats(
+          options.routeStory,
+          state.checkpointPhotoIndex,
+          legProgress,
+        );
         if (!bounds) {
           context.fillStyle = "#132027";
           context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
@@ -1410,6 +1417,12 @@ async function renderAtResolution(
                 : previousCamera?.window,
               previousBearingPoints: previousLeg?.drawable,
               cameraBlend: Math.min(1, legProgress / blendFraction),
+              edgePadding: {
+                top: 0,
+                right: 0,
+                bottom: trailStats ? TRAIL_PROGRESS_CAMERA_PADDING : 0,
+                left: 0,
+              },
             },
             options.signal,
           );
@@ -1451,11 +1464,6 @@ async function renderAtResolution(
           drawMarker(context, marker, bounds, FULL_MAP);
         }
         drawRouteLabel(context, FULL_MAP);
-        const trailStats = recordedProgressStats(
-          options.routeStory,
-          state.checkpointPhotoIndex,
-          legProgress,
-        );
         if (trailStats) {
           drawTrailProgress(
             context,

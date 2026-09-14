@@ -17,6 +17,7 @@ import {
   videoMarkerLongitude,
   videoTerrainJumpOptions,
   videoRouteData,
+  waitForReadyVideoMapIdle,
   waitForVideoMapPaint,
 } from "../src/components/tools/PhotoJourney/video-terrain-renderer";
 
@@ -68,6 +69,31 @@ describe("Photo Journey MP4 layout", () => {
     await Promise.resolve();
     expect(settled).toBe(false);
     paint?.();
+    await waiting;
+    expect(settled).toBe(true);
+  });
+
+  test("waits through terrain changes until the painted map is idle", async () => {
+    let idle: (() => void) | undefined;
+    const fakeMap = {
+      on: (_event: string, listener: () => void) => {
+        idle = listener;
+        return fakeMap;
+      },
+      off: () => fakeMap,
+      triggerRepaint: () => undefined,
+    } as unknown as MapLibreMap;
+    let ready = false;
+    let settled = false;
+    const waiting = waitForReadyVideoMapIdle(fakeMap, () => ready).then(() => {
+      settled = true;
+    });
+
+    idle?.();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    ready = true;
+    idle?.();
     await waiting;
     expect(settled).toBe(true);
   });

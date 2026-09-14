@@ -172,6 +172,40 @@ export function waitForVideoMapPaint(
   });
 }
 
+/** Waits until MapLibre has painted all follow-up terrain work for the frame. */
+export function waitForReadyVideoMapIdle(
+  map: MapLibreMap,
+  ready: () => boolean,
+  signal?: AbortSignal,
+  timeoutMs = 8_000,
+) {
+  if (signal?.aborted) return Promise.reject(abortError());
+  return new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      globalThis.clearTimeout(timeout);
+      map.off("idle", settled);
+      signal?.removeEventListener("abort", abort);
+    };
+    const settled = () => {
+      if (!ready()) return;
+      cleanup();
+      resolve();
+    };
+    const fail = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+    const abort = () => fail(abortError());
+    const timeout = globalThis.setTimeout(
+      () => fail(new Error("The 3D terrain tiles did not finish rendering.")),
+      timeoutMs,
+    );
+    map.on("idle", settled);
+    signal?.addEventListener("abort", abort, { once: true });
+    map.triggerRepaint();
+  });
+}
+
 export function videoTerrainJumpOptions(
   view: { center: [number, number]; zoom: number },
   pitch: number,
@@ -373,19 +407,13 @@ export class VideoTerrainRenderer {
         this.map.areTilesLoaded()
       );
     };
-    const settled = await waitForMap(
+    await waitForReadyVideoMapIdle(
       this.map,
       ready,
       signal,
       changedSources ? 8_000 : 3_000,
     );
     if (this.failed) throw this.failed;
-    if (!settled)
-      throw new Error("The 3D terrain tiles did not finish rendering.");
-    await waitForVideoMapPaint(this.map, signal);
-    if (this.failed) throw this.failed;
-    if (!ready())
-      throw new Error("The 3D terrain changed before frame capture.");
     const projected = frame.marker
       ? this.map.project([
           videoMarkerLongitude(
