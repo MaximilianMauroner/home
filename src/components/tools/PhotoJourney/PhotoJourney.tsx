@@ -297,13 +297,12 @@ function ExportPanel({
           </p>
           {mapMode === "terrain" && (
             <p>
-              Terrain video maps use{" "}
-              <a href="https://opentopomap.org/about#verwendung">OpenTopoMap</a>
-              . Map data ©{" "}
+              Terrain video maps use the same tilted MapLibre view as the
+              player. Map data ©{" "}
               <a href="https://www.openstreetmap.org/copyright">
                 OpenStreetMap contributors
               </a>
-              , SRTM. Map style © OpenTopoMap (CC-BY-SA 3.0).
+              . Elevation data: AWS Terrain Tiles (3DEP, SRTM, GMTED).
             </p>
           )}
         </section>

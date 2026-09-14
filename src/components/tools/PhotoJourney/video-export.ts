@@ -27,7 +27,8 @@ import {
 import type { Placement } from "./track";
 import { localDisplayMoment, photoDisplayMoment } from "./time-display";
 import type { Coordinates, JourneyPhoto } from "./types";
-import type { MapMode } from "./JourneyMap";
+import { previousRecordedLeg, STOP_ZOOM, type MapMode } from "./JourneyMap";
+import { VideoTerrainRenderer } from "./video-terrain-renderer";
 
 export const VIDEO_WIDTH = 1280;
 export const VIDEO_HEIGHT = 720;
@@ -574,6 +575,61 @@ function drawTravelledRoute(
   context.restore();
 }
 
+function travelledSegments(
+  routeStory: RouteStory | undefined,
+  photoIndex: number,
+  currentProgress = 1,
+) {
+  if (!routeStory) return [];
+  const activeSegments = new Set(
+    recordedContextForPhoto(routeStory, photoIndex)?.map((segment) =>
+      routeStory.context.indexOf(segment),
+    ),
+  );
+  return routeStory.legs.slice(0, photoIndex + 1).flatMap((leg, index) => {
+    if (!leg || !activeSegments.has(leg.segmentIndex)) return [];
+    return [
+      index === photoIndex
+        ? recordedLegPrefix(leg, currentProgress)
+        : leg.drawable,
+    ];
+  });
+}
+
+function completedTerrainSegments(
+  routeStory: RouteStory | undefined,
+  photoIndex: number,
+) {
+  if (!routeStory) return [];
+  const activeSegments = new Set(
+    recordedContextForPhoto(routeStory, photoIndex)?.map((segment) =>
+      routeStory.context.indexOf(segment),
+    ),
+  );
+  return routeStory.legs
+    .slice(0, photoIndex)
+    .flatMap((leg) =>
+      leg && activeSegments.has(leg.segmentIndex) ? [leg.drawable] : [],
+    );
+}
+
+function trimPreparedMapCache(cache: Map<string, PreparedMap>, keepId: string) {
+  for (const [id, prepared] of cache) {
+    if (id === keepId || cache.size <= 3) continue;
+    prepared.canvas.width = 1;
+    prepared.canvas.height = 1;
+    cache.delete(id);
+  }
+}
+
+function cameraPointsForBounds(bounds: Bounds | undefined) {
+  if (!bounds) return [];
+  return [
+    { latitude: bounds.minLatitude, longitude: bounds.minLongitude },
+    { latitude: bounds.maxLatitude, longitude: bounds.maxLongitude },
+  ];
+}
+
 function boundsForSegments(segments: readonly TrackPoint[][]) {
   const points = segments.flat();
   return videoBounds(
@@ -630,6 +686,70 @@ function drawPhotoMapMarker(
   context.beginPath();
   context.roundRect(x - size / 2 - 2, y - size / 2 - 2, size + 4, size + 4, 11);
   context.stroke();
+}
+
+function drawPhotoMapMarkerAt(
+  context: CanvasRenderingContext2D,
+  point: { x: number; y: number } | undefined,
+  bitmap: ImageBitmap,
+) {
+  if (!point) return;
+  const size = 46;
+  context.save();
+  context.fillStyle = "#071014";
+  context.beginPath();
+  context.roundRect(
+    point.x - size / 2 - 4,
+    point.y - size / 2 - 4,
+    size + 8,
+    size + 8,
+    12,
+  );
+  context.fill();
+  context.beginPath();
+  context.roundRect(point.x - size / 2, point.y - size / 2, size, size, 9);
+  context.clip();
+  const scale = Math.max(size / bitmap.width, size / bitmap.height);
+  const width = bitmap.width * scale;
+  const height = bitmap.height * scale;
+  context.drawImage(
+    bitmap,
+    point.x - width / 2,
+    point.y - height / 2,
+    width,
+    height,
+  );
+  context.restore();
+  context.strokeStyle = "#f1cf67";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.roundRect(
+    point.x - size / 2 - 2,
+    point.y - size / 2 - 2,
+    size + 4,
+    size + 4,
+    11,
+  );
+  context.stroke();
+}
+
+function drawMapAttribution(context: CanvasRenderingContext2D, area: MapArea) {
+  const label = "© OpenStreetMap contributors · Terrain: AWS";
+  context.font = "10px system-ui, sans-serif";
+  const width = context.measureText(label).width + 14;
+  context.fillStyle = "#071014cc";
+  context.fillRect(
+    area.left + area.width - width - 8,
+    area.top + area.height - 24,
+    width,
+    18,
+  );
+  context.fillStyle = "#d2dcde";
+  context.fillText(
+    label,
+    area.left + area.width - width,
+    area.top + area.height - 11,
+  );
 }
 
 function markerForState(
@@ -944,6 +1064,7 @@ function drawTrailProgress(
             ? "—"
             : `${Math.round(stats.elevationM)} m`,
         ],
+        ["ELEVATION GAIN", `${Math.round(stats.ascentM)} m`],
         [
           "DISTANCE",
           `${stats.distanceKm.toFixed(stats.distanceKm < 10 ? 2 : 1)} km`,
@@ -989,7 +1110,7 @@ function drawTrailProgress(
       width - 28,
       profileHeight,
     );
-  const columns = 3;
+  const columns = compact ? 4 : 3;
   const itemWidth = (width - 28) / columns;
   const valuesTop = top + (profile ? profileHeight + 25 : 16);
   for (const [index, [label, value]] of items.entries()) {
@@ -1111,6 +1232,7 @@ async function renderAtResolution(
   const fallbackBounds = videoBounds(options.track, options.placements);
   const mapMode = options.mapMode ?? "terrain";
   const mapCache = new Map<string, PreparedMap>();
+  let terrainRenderer: VideoTerrainRenderer | undefined;
   const bitmaps = new Map<string, ImageBitmap>();
   const totalSeconds = options.timeline.totalDuration / 1000;
   const stats = options.track ? trackStats(options.track) : undefined;
@@ -1135,6 +1257,20 @@ async function renderAtResolution(
   try {
     await output.start();
     started = true;
+    if (mapMode === "terrain") {
+      try {
+        terrainRenderer = await VideoTerrainRenderer.create(
+          supported.resolution.width,
+          supported.resolution.height,
+          options.signal,
+        );
+      } catch (error) {
+        if (isAbort(error)) throw error;
+        throw new Error(
+          `The 3D terrain renderer could not start. ${error instanceof Error ? error.message : "Retry the export in a browser with WebGL enabled."}`,
+        );
+      }
+    }
     for (let frame = 0; frame < frameCount; frame += 1) {
       checkAbort(options.signal);
       const seconds = Math.min(totalSeconds, frame * frameDuration);
@@ -1143,9 +1279,28 @@ async function renderAtResolution(
         const segments =
           recordedContextForPhoto(options.routeStory, 0) ?? allSegments;
         const bounds = boundsForSegments(segments) ?? fallbackBounds;
+        if (terrainRenderer && bounds) {
+          const terrain = await terrainRenderer.render(
+            {
+              renderKey: "intro",
+              contextKey: "intro",
+              completedKey: "intro",
+              currentKey: "intro",
+              segments,
+              completed: [],
+              cameraPoints: segments.length
+                ? segments.flat()
+                : cameraPointsForBounds(bounds),
+              maxZoom: STOP_ZOOM,
+            },
+            options.signal,
+          );
+          context.drawImage(terrain.canvas, 0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+          drawMapAttribution(context, FULL_MAP);
+        }
         const cacheKey = `intro:${mapMode}`;
         let prepared = mapCache.get(cacheKey);
-        if (!prepared && bounds) {
+        if (!terrainRenderer && !prepared && bounds) {
           prepared = await prepareMapBackdrop(
             segments,
             bounds,
@@ -1158,8 +1313,10 @@ async function renderAtResolution(
             options.signal,
           );
           mapCache.set(cacheKey, prepared);
+          trimPreparedMapCache(mapCache, cacheKey);
         }
-        if (prepared) drawPreparedMap(context, prepared, FULL_MAP);
+        if (!terrainRenderer && prepared)
+          drawPreparedMap(context, prepared, FULL_MAP);
         drawCard(
           context,
           options.title,
@@ -1170,7 +1327,7 @@ async function renderAtResolution(
             ["Distance", stats ? `${stats.distanceKm.toFixed(1)} km` : "—"],
             ["Days", String(Math.max(1, dayCount))],
           ],
-          !prepared,
+          !prepared && !terrainRenderer,
         );
       } else if (state.phase === "day") {
         drawCard(context, state.dayLabel ?? "Next day", options.title);
@@ -1196,10 +1353,63 @@ async function renderAtResolution(
           options.placements,
           options.routeStory,
         );
+        if (!bounds) {
+          context.fillStyle = "#132027";
+          context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+        }
         const groupKey = options.routeStory?.context.indexOf(segments[0]) ?? -1;
         const cacheKey = `${groupKey}:${state.checkpointPhotoIndex}:full:${mapMode}`;
         let prepared = mapCache.get(cacheKey);
-        if (!prepared && bounds) {
+        if (terrainRenderer && bounds) {
+          const activeLeg =
+            options.routeStory?.legs[state.checkpointPhotoIndex];
+          const cameraFrame = activeLeg
+            ? recordedLegFrame(activeLeg, legProgress)
+            : undefined;
+          const previousLeg = options.routeStory
+            ? previousRecordedLeg(
+                options.routeStory.legs,
+                state.checkpointPhotoIndex,
+                activeLeg,
+              )
+            : undefined;
+          const previousCamera = previousLeg
+            ? recordedLegFrame(previousLeg, 1)
+            : undefined;
+          const blendFraction = Math.min(
+            1,
+            700 / Math.max(1, state.approachDuration),
+          );
+          const current = cameraFrame?.revealed ?? [];
+          const terrain = await terrainRenderer.render(
+            {
+              renderKey: `approach:${state.checkpointPhotoIndex}:${frame}`,
+              contextKey: `context:${groupKey}`,
+              completedKey: `completed:${state.checkpointPhotoIndex}`,
+              currentKey: `current:${state.checkpointPhotoIndex}:${frame}`,
+              segments,
+              completed: completedTerrainSegments(
+                options.routeStory,
+                state.checkpointPhotoIndex,
+              ),
+              current,
+              marker,
+              cameraPoints: cameraFrame?.window.length
+                ? cameraFrame.window
+                : cameraPointsForBounds(bounds),
+              bearingPoints: activeLeg?.drawable,
+              previousCameraPoints: state.dayChange
+                ? undefined
+                : previousCamera?.window,
+              previousBearingPoints: previousLeg?.drawable,
+              cameraBlend: Math.min(1, legProgress / blendFraction),
+            },
+            options.signal,
+          );
+          context.drawImage(terrain.canvas, 0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+          drawMapAttribution(context, FULL_MAP);
+        }
+        if (!terrainRenderer && !prepared && bounds) {
           try {
             prepared = await prepareMapBackdrop(
               segments,
@@ -1213,11 +1423,12 @@ async function renderAtResolution(
               options.signal,
             );
             mapCache.set(cacheKey, prepared);
+            trimPreparedMapCache(mapCache, cacheKey);
           } catch (error) {
             if ((error as DOMException)?.name === "AbortError") throw error;
           }
         }
-        if (prepared) {
+        if (!terrainRenderer && prepared) {
           drawPreparedMap(context, prepared, FULL_MAP);
           drawTravelledRoute(
             context,
@@ -1228,7 +1439,7 @@ async function renderAtResolution(
             legProgress,
           );
           drawPreparedMarker(context, prepared, FULL_MAP, marker);
-        } else {
+        } else if (!terrainRenderer) {
           drawRoute(context, segments, bounds, FULL_MAP);
           drawMarker(context, marker, bounds, FULL_MAP);
         }
@@ -1263,6 +1474,8 @@ async function renderAtResolution(
         const photoOffset = stop?.photoIndices.indexOf(photoIndex) ?? 0;
         const photoProgress = burstPhotoProgress(state, photoOffset, false);
         const mapArea = composedMapArea(panelProgress);
+        context.fillStyle = "#132027";
+        context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
         const segments =
           recordedContextForPhoto(options.routeStory, photoIndex) ??
           allSegments;
@@ -1278,7 +1491,38 @@ async function renderAtResolution(
         const groupKey = options.routeStory?.context.indexOf(segments[0]) ?? -1;
         const cacheKey = `${groupKey}:${photoIndex}:split:${mapMode}`;
         let prepared = mapCache.get(cacheKey);
-        if (!prepared && bounds) {
+        if (terrainRenderer && bounds) {
+          const activeLeg = options.routeStory?.legs[photoIndex];
+          const cameraFrame = activeLeg
+            ? recordedLegFrame(activeLeg, 1)
+            : undefined;
+          const terrain = await terrainRenderer.render(
+            {
+              renderKey: `photo:${photoIndex}:${panelProgress.toFixed(3)}`,
+              contextKey: `context:${groupKey}`,
+              completedKey: `completed:${photoIndex + 1}`,
+              currentKey: `settled:${photoIndex}`,
+              segments,
+              completed: travelledSegments(options.routeStory, photoIndex),
+              marker,
+              cameraPoints: cameraFrame?.window.length
+                ? cameraFrame.window
+                : cameraPointsForBounds(bounds),
+              bearingPoints: activeLeg?.drawable,
+              edgePadding: {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: mapArea.left,
+              },
+            },
+            options.signal,
+          );
+          context.drawImage(terrain.canvas, 0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+          drawMapAttribution(context, mapArea);
+          drawPhotoMapMarkerAt(context, terrain.marker, bitmap);
+        }
+        if (!terrainRenderer && !prepared && bounds) {
           try {
             prepared = await prepareMapBackdrop(
               segments,
@@ -1292,13 +1536,12 @@ async function renderAtResolution(
               options.signal,
             );
             mapCache.set(cacheKey, prepared);
+            trimPreparedMapCache(mapCache, cacheKey);
           } catch (error) {
             if ((error as DOMException)?.name === "AbortError") throw error;
           }
         }
-        context.fillStyle = "#132027";
-        context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
-        if (prepared) {
+        if (!terrainRenderer && prepared) {
           drawPreparedMap(context, prepared, mapArea);
           drawTravelledRoute(
             context,
@@ -1308,7 +1551,7 @@ async function renderAtResolution(
             photoIndex,
           );
           drawPhotoMapMarker(context, prepared, mapArea, marker, bitmap);
-        } else {
+        } else if (!terrainRenderer) {
           drawRoute(context, segments, bounds, mapArea, FULL_MAP);
           drawMarker(context, marker, bounds, mapArea);
         }
@@ -1384,6 +1627,12 @@ async function renderAtResolution(
       await output.cancel();
     throw error;
   } finally {
+    terrainRenderer?.destroy();
+    for (const prepared of mapCache.values()) {
+      prepared.canvas.width = 1;
+      prepared.canvas.height = 1;
+    }
+    mapCache.clear();
     for (const bitmap of bitmaps.values()) bitmap.close();
     canvas.width = 1;
     canvas.height = 1;

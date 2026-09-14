@@ -29,8 +29,8 @@ import type { Placement } from "./track";
 import type { Coordinates, JourneyPhoto } from "./types";
 
 /** Street level for map tiles. The offline outline has no detail past regional scale. */
-const STOP_ZOOM = 13;
-const FOLLOW_ZOOM = 15;
+export const STOP_ZOOM = 13;
+export const FOLLOW_ZOOM = 15;
 const OFFLINE_STOP_ZOOM = 15;
 const OFFLINE_FOLLOW_ZOOM = 17;
 const OFFLINE_MAX_ZOOM = 18;
@@ -467,7 +467,7 @@ function loadLand(): Promise<number[][][]> {
 }
 
 /** The style never reloads: modes only flip layer visibility, so route and markers survive. */
-function applyMode(map: MapLibreMap, mode: MapMode) {
+export function applyMode(map: MapLibreMap, mode: MapMode) {
   const flat = mode !== "terrain";
   const offline = mode === "offline";
   const show = (id: string, visible: boolean) =>
@@ -1324,7 +1324,7 @@ export default function JourneyMap({
     const pitch = journeyCameraPitch(mode, globe, reducedMotion);
     const fit = (points: Coordinates[], maxZoom: number) =>
       cameraFrameForPoints(
-        unwrapPoints(points),
+        unwrapJourneyPoints(points),
         frameRef.current,
         70,
         maxZoom,
@@ -1678,7 +1678,7 @@ export function cameraFrameForPoints(
 function nearestLongitude(longitude: number, reference: number) {
   return longitude + Math.round((reference - longitude) / 360) * 360;
 }
-function unwrapPoints(points: Coordinates[]) {
+export function unwrapJourneyPoints(points: Coordinates[]) {
   let longitude = points[0]?.longitude ?? 0;
   return points.map((point) => {
     longitude = nearestLongitude(point.longitude, longitude);
