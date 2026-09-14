@@ -546,6 +546,22 @@ describe("placing photos on the track", () => {
     });
   });
 
+  test("shows an untimed photo at its nearby position on the GPX", () => {
+    const [placement] = resolvePlacements(
+      [
+        photo("near-route", {
+          coordinates: { latitude: 46.4702, longitude: 11.6014 },
+        }),
+      ],
+      track,
+    );
+    expect(placement.source).toBe("none");
+    expect(placement.coordinates?.latitude).toBeCloseTo(46.47, 6);
+    expect(placement.coordinates?.longitude).toBeCloseTo(11.6014, 6);
+    expect(placement.trackCoordinates).toEqual(placement.coordinates);
+    expect(placement.discrepancyM).toBeLessThan(25);
+  });
+
   test("reports nothing to place when there is neither time nor position", () => {
     const [placement] = resolvePlacements([photo("blank")], track);
     expect(placement.source).toBe("none");

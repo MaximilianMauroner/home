@@ -1,6 +1,7 @@
 import {
   buildTimedIndex,
   pointAtTimedIndex,
+  trackSegments,
   trackStats,
   type TimedIndex,
   type Track,
@@ -18,6 +19,8 @@ import type {
 export const COVERAGE_LIMIT_SECONDS = 150;
 /** A discrepancy this large is worth showing as a conflict, but never silently resolves one. */
 export const DISCREPANCY_LIMIT_M = 60;
+/** Photo GPS can locate an untimed photo on a nearby GPX without treating it as a time match. */
+export const SPATIAL_FALLBACK_LIMIT_M = 5_000;
 
 export type PlacementSource = "photo" | "track" | "carried" | "none";
 export type PlacementChoice =
@@ -63,7 +66,11 @@ export type PlacementOptions = {
   choices?: Readonly<Record<string, PlacementChoice | undefined>>;
 };
 
-type LookupSource = { id?: string; groups: TimedIndex["points"][] };
+type LookupSource = {
+  id?: string;
+  groups: TimedIndex["points"][];
+  segments: Coordinates[][];
+};
 
 function sourceLookup(track: Track, id?: string): LookupSource {
   const groups = new Map<string, TimedIndex["points"]>();
@@ -73,7 +80,49 @@ function sourceLookup(track: Track, id?: string): LookupSource {
     if (group) group.push(entry);
     else groups.set(key, [entry]);
   }
-  return { id, groups: [...groups.values()] };
+  return { id, groups: [...groups.values()], segments: trackSegments(track) };
+}
+
+function wrappedLongitudeDelta(from: number, to: number) {
+  return ((to - from + 540) % 360) - 180;
+}
+
+/** Find the closest drawable point, including positions between recorded samples. */
+function nearestRoutePoint(
+  sources: readonly Pick<LookupSource, "segments">[],
+  point: Coordinates,
+) {
+  const scale = Math.max(0.01, Math.cos((point.latitude * Math.PI) / 180));
+  let nearest: { coordinates: Coordinates; distanceM: number } | undefined;
+  const consider = (start: Coordinates, end: Coordinates) => {
+    const endX = wrappedLongitudeDelta(start.longitude, end.longitude) * scale;
+    const endY = end.latitude - start.latitude;
+    const pointX =
+      wrappedLongitudeDelta(start.longitude, point.longitude) * scale;
+    const pointY = point.latitude - start.latitude;
+    const lengthSquared = endX * endX + endY * endY;
+    const fraction = lengthSquared
+      ? Math.max(
+          0,
+          Math.min(1, (pointX * endX + pointY * endY) / lengthSquared),
+        )
+      : 0;
+    const coordinates = {
+      latitude: start.latitude + endY * fraction,
+      longitude: start.longitude + (endX / scale) * fraction,
+    };
+    const distanceM = distanceKm(point, coordinates) * 1_000;
+    if (!nearest || distanceM < nearest.distanceM)
+      nearest = { coordinates, distanceM };
+  };
+  for (const source of sources) {
+    for (const segment of source.segments) {
+      if (segment.length === 1) consider(segment[0], segment[0]);
+      for (let index = 1; index < segment.length; index += 1)
+        consider(segment[index - 1], segment[index]);
+    }
+  }
+  return nearest;
 }
 
 /**
@@ -250,6 +299,22 @@ function resolve(
         elevation: photo.metadata.altitude,
         instant,
         offsetMinutes,
+        choiceUnavailable,
+      };
+    }
+    const spatialFallback = own ? nearestRoutePoint(sources, own) : undefined;
+    if (
+      spatialFallback &&
+      spatialFallback.distanceM <= SPATIAL_FALLBACK_LIMIT_M
+    ) {
+      return {
+        photoId: photo.id,
+        coordinates: spatialFallback.coordinates,
+        source: "none",
+        discrepancyM: spatialFallback.distanceM,
+        instant,
+        offsetMinutes,
+        trackCoordinates: spatialFallback.coordinates,
         choiceUnavailable,
       };
     }

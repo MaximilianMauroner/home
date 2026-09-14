@@ -127,13 +127,12 @@ export function previousRecordedLeg(
     : undefined;
 }
 
-/** Keep an unmatched photo anchored to the last verified recording point without calling it a match. */
+/** Keep an unmatched photo on its spatial GPX fallback or last verified recording point. */
 export function routeTipForPlacement(placement?: Placement) {
   if (!placement || placement.ambiguous || placement.choiceUnavailable)
     return undefined;
   if (placement.source === "track") return placement.coordinates;
-  if (placement.source === "carried") return placement.coordinates;
-  return placement.trackCoordinates;
+  return placement.trackCoordinates ?? placement.coordinates;
 }
 /** Legs longer than this arc on a globe instead of smearing across Mercator. */
 export const GLOBE_LEG_KM = 1500;
@@ -1365,7 +1364,22 @@ export default function JourneyMap({
         });
       return;
     }
-    if (!move) return;
+    if (!move) {
+      const fallbackPoints = overviewPoints();
+      if (!fallbackPoints.length) return;
+      const view = fit(
+        fallbackPoints,
+        mode === "offline" ? OFFLINE_MAX_ZOOM : stopZoom,
+      );
+      map.jumpTo({
+        center: view.center,
+        zoom: view.zoom,
+        bearing: 0,
+        pitch,
+        padding: cameraPadding,
+      });
+      return;
+    }
     // Reposition while the opaque day card covers the map. The first uncovered frame is already
     // at the next day's real first fix, so there is no invented overnight flight or visible snap.
     if (phase === "day") {
