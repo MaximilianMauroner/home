@@ -463,6 +463,7 @@ export function timelineAt(
     );
   return stateFor(safe, stop, "trail", stop.trailStart, stop.end, {
     photoIndex: stop.photoIndices.at(-1) ?? stop.photoIndex,
+    checkpointPhotoIndex: stop.photoIndices.at(-1) ?? stop.photoIndex,
   });
 }
 
