@@ -15,10 +15,15 @@ function placedBy(placement: Placement) {
     placement.discrepancyM === undefined
       ? undefined
       : `${Math.round(placement.discrepancyM).toLocaleString("en")} m from the track`;
-  if (placement.source === "track")
+  if (placement.source === "track") {
+    if (placement.recordingGap)
+      return off
+        ? `Last known GPX position during a recording gap. The camera's fix was ${off}.`
+        : "Last known GPX position during a recording gap, placed by timecode.";
     return off
       ? `Recording, by timecode. The camera's fix was ${off}.`
       : "Recording, by timecode. This photo has no GPS.";
+  }
   if (placement.source === "photo")
     return off ? `This photo's own GPS, ${off}.` : "This photo's own GPS.";
   if (placement.source === "carried")
@@ -34,6 +39,7 @@ function Inspector({
   recordings,
   choice,
   offsetMinutes,
+  timezone,
   onSetOffset,
   onChoosePlacement,
 }: {
@@ -43,6 +49,7 @@ function Inspector({
   recordings?: readonly JourneyRecording[];
   choice?: PlacementChoice;
   offsetMinutes?: number;
+  timezone?: string;
   onSetOffset?: (photoId: string, minutes: number | undefined) => void;
   onChoosePlacement?: (
     photoId: string,
@@ -63,10 +70,11 @@ function Inspector({
       if (!recording.included) return [];
       const candidate = resolvePlacementsForRecordings([photo], [recording], {
         offsetMinutesByPhoto: { [photo.id]: offsetMinutes },
+        timezone,
       })[0];
       return candidate?.source === "track" ? [{ recording, candidate }] : [];
     });
-  }, [photo, recordings, offsetMinutes]);
+  }, [photo, recordings, offsetMinutes, timezone]);
   if (!photo) return null;
   const { metadata } = photo;
   const hasRecordingData = Boolean(
@@ -82,7 +90,9 @@ function Inspector({
       : metadata.coordinates;
   const effectivePlace =
     placement?.source === "track"
-      ? "Matched to recording"
+      ? placement.recordingGap
+        ? "Recording gap · last GPX position"
+        : "Matched to recording"
       : placement?.ambiguous
         ? "Choose a recording"
         : hasRecordingData

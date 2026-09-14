@@ -1836,6 +1836,7 @@ export default function PhotoJourney() {
                       recordings={recordings}
                       choices={placementChoices}
                       offsets={offsetMinutesByPhoto}
+                      timezone={tripTimezone}
                       onChoose={choosePlacement}
                       onSetOffset={setPhotoOffset}
                       onRecordings={() => {
@@ -1921,6 +1922,7 @@ export default function PhotoJourney() {
                             ? offsetMinutesByPhoto[activePhoto.id]
                             : undefined
                         }
+                        timezone={tripTimezone}
                         onSetOffset={setPhotoOffset}
                         onChoosePlacement={choosePlacement}
                       />

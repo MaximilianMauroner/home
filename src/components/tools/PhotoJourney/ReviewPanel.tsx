@@ -17,6 +17,7 @@ function ReviewPanel({
   recordings,
   choices,
   offsets,
+  timezone,
   onChoose,
   onSetOffset,
   onRecordings,
@@ -27,6 +28,7 @@ function ReviewPanel({
   recordings: JourneyRecording[];
   choices: Record<string, PlacementChoice>;
   offsets: Record<string, number>;
+  timezone: string;
   onChoose: (id: string, choice: PlacementChoice | undefined) => void;
   onSetOffset: (id: string, minutes: number | undefined) => void;
   onRecordings: () => void;
@@ -149,6 +151,7 @@ function ReviewPanel({
               recordings={recordings}
               choice={choices[selected.photo.id]}
               offsetMinutes={offsets[selected.photo.id]}
+              timezone={timezone}
               onChoosePlacement={onChoose}
               onSetOffset={(id, minutes) => {
                 onSetOffset(id, minutes);

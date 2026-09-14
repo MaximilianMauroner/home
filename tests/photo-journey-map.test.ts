@@ -32,16 +32,16 @@ describe("Photo Journey map timing and recording budgets", () => {
     expect(approachAnimationDuration(3_000, 2)).toBe(1_500);
   });
 
-  test("shows a spatial GPX fallback for an otherwise unmatched photo", () => {
-    const fallback = { latitude: 46.47, longitude: 11.6014 };
+  test("shows a time-resolved GPX pause position but not an unmatched photo", () => {
+    const pausePosition = { latitude: 46.47, longitude: 11.6014 };
     expect(
       routeTipForPlacement({
-        photoId: "untimed",
-        source: "none",
-        coordinates: fallback,
-        trackCoordinates: fallback,
+        photoId: "paused",
+        source: "track",
+        coordinates: pausePosition,
+        recordingGap: true,
       }),
-    ).toEqual(fallback);
+    ).toEqual(pausePosition);
     expect(
       routeTipForPlacement({ photoId: "unknown", source: "none" }),
     ).toBeUndefined();

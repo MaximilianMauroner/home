@@ -603,12 +603,12 @@ describe("placing photos on the track", () => {
       coordinates: { latitude: 46.47, longitude: 11.6014 },
     });
     expect(placements[2]).toMatchObject({
-      source: "carried",
-      coordinates: placements[1].coordinates,
+      source: "none",
+      coordinates: undefined,
     });
   });
 
-  test("shows an untimed photo at its nearby position on the GPX", () => {
+  test("does not use camera GPS to place an untimed photo on a GPX", () => {
     const [placement] = resolvePlacements(
       [
         photo("near-route", {
@@ -618,10 +618,168 @@ describe("placing photos on the track", () => {
       track,
     );
     expect(placement.source).toBe("none");
-    expect(placement.coordinates?.latitude).toBeCloseTo(46.47, 6);
-    expect(placement.coordinates?.longitude).toBeCloseTo(11.6014, 6);
-    expect(placement.trackCoordinates).toEqual(placement.coordinates);
-    expect(placement.discrepancyM).toBeLessThan(25);
+    expect(placement.coordinates).toBeUndefined();
+    expect(placement.trackCoordinates).toBeUndefined();
+    expect(placement.discrepancyM).toBeUndefined();
+  });
+
+  test("holds the last GPX fix for a photo taken during a recording pause", () => {
+    const pausedTrack = parseGpx(
+      gpx(
+        `<trk><trkseg>` +
+          trkpt(46.7632, 11.4921, 2739, "2026-08-22T09:58:34Z") +
+          trkpt(46.762, 11.4898, 2717, "2026-08-22T11:13:22Z") +
+          `</trkseg></trk>`,
+      ),
+    );
+    const [placement] = resolvePlacements(
+      [
+        photo("summit-pause", {
+          capturedAtWallClock: "2026-08-22T13:02:32",
+          utcOffsetMinutes: 120,
+          // This bad camera fix must remain diagnostic and must not move the photo.
+          coordinates: { latitude: 46.7568, longitude: 11.5194 },
+        }),
+      ],
+      pausedTrack,
+    );
+    expect(placement).toMatchObject({
+      source: "track",
+      coordinates: { latitude: 46.7632, longitude: 11.4921 },
+      elevation: 2739,
+      recordingGap: true,
+      recordingSampleTime: Date.parse("2026-08-22T09:58:34Z"),
+      gapSeconds: 3838,
+      conflict: true,
+    });
+    expect(placement.discrepancyM).toBeGreaterThan(2_000);
+  });
+
+  test("does not pull a paused photo forward to a nearby resumed sample", () => {
+    const pausedTrack = parseGpx(
+      gpx(
+        `<trk><trkseg>` +
+          trkpt(46.7632, 11.4921, 2739, "2026-08-22T09:58:34Z") +
+          trkpt(46.762, 11.4898, 2717, "2026-08-22T11:13:22Z") +
+          `</trkseg></trk>`,
+      ),
+    );
+    const [placement] = resolvePlacements(
+      [
+        photo("after-pause", {
+          capturedAtWallClock: "2026-08-22T13:12:32",
+          utcOffsetMinutes: 120,
+        }),
+      ],
+      pausedTrack,
+    );
+    expect(placement).toMatchObject({
+      source: "track",
+      coordinates: { latitude: 46.7632, longitude: 11.4921 },
+      recordingGap: true,
+      gapSeconds: 4438,
+    });
+  });
+
+  test("moves to the resumed GPX fix when recording actually resumes", () => {
+    const pausedTrack = parseGpx(
+      gpx(
+        `<trk><trkseg>` +
+          trkpt(46.7632, 11.4921, 2739, "2026-08-22T09:58:34Z") +
+          trkpt(46.762, 11.4898, 2717, "2026-08-22T11:13:22Z") +
+          `</trkseg></trk>`,
+      ),
+    );
+    const [placement] = resolvePlacements(
+      [
+        photo("resumed", {
+          capturedAtWallClock: "2026-08-22T13:13:22",
+          utcOffsetMinutes: 120,
+        }),
+      ],
+      pausedTrack,
+    );
+    expect(placement).toMatchObject({
+      source: "track",
+      coordinates: { latitude: 46.762, longitude: 11.4898 },
+      recordingGap: false,
+      gapSeconds: 0,
+    });
+  });
+
+  test("leaves photos outside the recording time range unplaced", () => {
+    const placements = resolvePlacements(
+      [
+        photo("one-second-before", {
+          capturedAtWallClock: "2026-08-20T05:59:59",
+          utcOffsetMinutes: 0,
+        }),
+        photo("one-second-after", {
+          capturedAtWallClock: "2026-08-20T06:04:01",
+          utcOffsetMinutes: 0,
+        }),
+      ],
+      track,
+    );
+    expect(placements).toMatchObject([
+      { source: "none", coordinates: undefined },
+      { source: "none", coordinates: undefined },
+    ]);
+  });
+
+  test("holds a gap across GPX segment boundaries without inventing movement", () => {
+    const segmentedTrack = parseGpx(
+      gpx(
+        `<trk><trkseg>` +
+          trkpt(46.7632, 11.4921, 2739, "2026-08-22T09:58:34Z") +
+          `</trkseg><trkseg>` +
+          trkpt(46.762, 11.4898, 2717, "2026-08-22T11:13:22Z") +
+          `</trkseg></trk>`,
+      ),
+    );
+    const [placement] = resolvePlacements(
+      [
+        photo("segmented-pause", {
+          capturedAtWallClock: "2026-08-22T13:02:32",
+          utcOffsetMinutes: 120,
+        }),
+      ],
+      segmentedTrack,
+    );
+    expect(placement).toMatchObject({
+      source: "track",
+      coordinates: { latitude: 46.7632, longitude: 11.4921 },
+      recordingSegmentId: "0:0",
+      recordingGap: true,
+    });
+  });
+
+  test("does not hide conflicting duplicate fixes at a gap boundary", () => {
+    const duplicatedTrack = parseGpx(
+      gpx(
+        `<trk><trkseg>` +
+          trkpt(46, 11, 2000, "2026-08-22T09:58:34Z") +
+          trkpt(47, 12, 2000, "2026-08-22T09:58:34Z") +
+          trkpt(46.1, 11.1, 1900, "2026-08-22T11:13:22Z") +
+          `</trkseg></trk>`,
+      ),
+    );
+    const [placement] = resolvePlacements(
+      [
+        photo("ambiguous-gap", {
+          capturedAtWallClock: "2026-08-22T13:02:32",
+          utcOffsetMinutes: 120,
+        }),
+      ],
+      duplicatedTrack,
+    );
+    expect(placement).toMatchObject({
+      source: "none",
+      recordingGap: true,
+      ambiguous: true,
+      conflict: true,
+    });
+    expect(placement.coordinates).toBeUndefined();
   });
 
   test("reports nothing to place when there is neither time nor position", () => {

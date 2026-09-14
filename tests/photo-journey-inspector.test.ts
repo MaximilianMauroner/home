@@ -64,9 +64,8 @@ describe("Photo Journey inspector", () => {
   test("keeps overlap choices available after one recording is selected", async () => {
     const onChoosePlacement = vi.fn();
     const journeyPhoto = photo({
-      capturedAtWallClock: "2026-09-13T08:00:00",
-      utcOffsetMinutes: 0,
-      capturedAtLabel: "2026-09-13 08:00:00 +00:00",
+      capturedAtWallClock: "2026-09-13T10:00:00",
+      capturedAtLabel: "2026-09-13 10:00:00",
       modifiedAtLabel: "-",
       dimensions: "1 × 1",
       fileSize: "5 B",
@@ -92,6 +91,7 @@ describe("Photo Journey inspector", () => {
           index: 0,
           recordings,
           choice: { source: "track", recordingId: recordings[0].id },
+          timezone: "Europe/Rome",
           onChoosePlacement,
         }),
       ),

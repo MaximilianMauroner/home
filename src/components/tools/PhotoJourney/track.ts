@@ -1,7 +1,6 @@
 import {
   buildTimedIndex,
   pointAtTimedIndex,
-  trackSegments,
   trackStats,
   type TimedIndex,
   type Track,
@@ -19,8 +18,6 @@ import type {
 export const COVERAGE_LIMIT_SECONDS = 150;
 /** A discrepancy this large is worth showing as a conflict, but never silently resolves one. */
 export const DISCREPANCY_LIMIT_M = 60;
-/** Photo GPS can locate an untimed photo on a nearby GPX without treating it as a time match. */
-export const SPATIAL_FALLBACK_LIMIT_M = 5_000;
 
 export type PlacementSource = "photo" | "track" | "carried" | "none";
 export type PlacementChoice =
@@ -47,6 +44,8 @@ export type Placement = {
   recordingSampleTime?: number;
   /** Distance along the matched segment, used to distinguish a stop from a leave-and-return. */
   recordingDistanceKm?: number;
+  /** The shutter fired inside a recording gap, so this uses its last known GPX fix. */
+  recordingGap?: boolean;
   /** Recording position kept alongside an original photo fix for an explicit choice. */
   trackCoordinates?: Coordinates;
   /** A source or GPS conflict needs a user decision. */
@@ -180,61 +179,20 @@ export function timezoneOffsetMinutesAtWallClock(
 
 type LookupSource = {
   id?: string;
+  points: TimedIndex["points"];
   groups: TimedIndex["points"][];
-  segments: Coordinates[][];
 };
 
 function sourceLookup(track: Track, id?: string): LookupSource {
+  const points = buildTimedIndex(track, id).points;
   const groups = new Map<string, TimedIndex["points"]>();
-  for (const entry of buildTimedIndex(track, id).points) {
+  for (const entry of points) {
     const key = `${entry.trackIndex ?? 0}:${entry.segmentIndex ?? 0}`;
     const group = groups.get(key);
     if (group) group.push(entry);
     else groups.set(key, [entry]);
   }
-  return { id, groups: [...groups.values()], segments: trackSegments(track) };
-}
-
-function wrappedLongitudeDelta(from: number, to: number) {
-  return ((to - from + 540) % 360) - 180;
-}
-
-/** Find the closest drawable point, including positions between recorded samples. */
-function nearestRoutePoint(
-  sources: readonly Pick<LookupSource, "segments">[],
-  point: Coordinates,
-) {
-  const scale = Math.max(0.01, Math.cos((point.latitude * Math.PI) / 180));
-  let nearest: { coordinates: Coordinates; distanceM: number } | undefined;
-  const consider = (start: Coordinates, end: Coordinates) => {
-    const endX = wrappedLongitudeDelta(start.longitude, end.longitude) * scale;
-    const endY = end.latitude - start.latitude;
-    const pointX =
-      wrappedLongitudeDelta(start.longitude, point.longitude) * scale;
-    const pointY = point.latitude - start.latitude;
-    const lengthSquared = endX * endX + endY * endY;
-    const fraction = lengthSquared
-      ? Math.max(
-          0,
-          Math.min(1, (pointX * endX + pointY * endY) / lengthSquared),
-        )
-      : 0;
-    const coordinates = {
-      latitude: start.latitude + endY * fraction,
-      longitude: start.longitude + (endX / scale) * fraction,
-    };
-    const distanceM = distanceKm(point, coordinates) * 1_000;
-    if (!nearest || distanceM < nearest.distanceM)
-      nearest = { coordinates, distanceM };
-  };
-  for (const source of sources) {
-    for (const segment of source.segments) {
-      if (segment.length === 1) consider(segment[0], segment[0]);
-      for (let index = 1; index < segment.length; index += 1)
-        consider(segment[index - 1], segment[index]);
-    }
-  }
-  return nearest;
+  return { id, points, groups: [...groups.values()] };
 }
 
 /**
@@ -287,39 +245,100 @@ function sourcesForRecordings(recordings: readonly JourneyRecording[]) {
     .map((recording) => sourceLookup(recording.track, recording.id));
 }
 
+type FoundPoint = NonNullable<ReturnType<typeof pointAtTimedIndex>>;
+
+/**
+ * A stopped recorder has no samples to interpolate. The last fix before a gap is the only
+ * GPX-backed statement about where the camera was, so hold that fix until recording resumes.
+ */
+function pointDuringRecordingGap(
+  points: TimedIndex["points"],
+  instant: number,
+): FoundPoint | undefined {
+  if (points.length < 2) return undefined;
+  let low = 0;
+  let high = points.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (points[middle].point.time! <= instant) low = middle + 1;
+    else high = middle;
+  }
+  const previous = points[low - 1];
+  const next = points[low];
+  if (!previous || !next) return undefined;
+  if (instant === previous.point.time) return undefined;
+  const recordingGapMs = next.point.time! - previous.point.time!;
+  if (recordingGapMs <= COVERAGE_LIMIT_SECONDS * 2 * 1000) return undefined;
+  const alternatives = [] as TimedIndex["points"];
+  for (let index = low - 2; index >= 0; index -= 1) {
+    const alternative = points[index];
+    if (alternative.point.time !== previous.point.time) break;
+    alternatives.push(alternative);
+  }
+  return {
+    index: previous.pointIndex,
+    ...previous,
+    gapMs: instant - previous.point.time!,
+    alternatives,
+  };
+}
+
+function foundCandidates(found: FoundPoint, instant: number): FoundPoint[] {
+  return [
+    found,
+    ...found.alternatives.map((entry) => ({
+      index: entry.pointIndex,
+      ...entry,
+      gapMs: Math.abs(entry.point.time! - instant),
+      alternatives: [] as FoundPoint["alternatives"],
+    })),
+  ];
+}
+
 function lookup(
   sources: readonly LookupSource[],
   instant: number,
   preferredSourceId?: string,
 ) {
-  const matches: Array<{
+  type Match = {
     source: LookupSource;
-    found: NonNullable<ReturnType<typeof pointAtTimedIndex>>;
-  }> = [];
+    found: FoundPoint;
+  };
+  const exactMatches: Match[] = [];
+  const pauseMatches: Match[] = [];
   const candidates = preferredSourceId
     ? sources.filter((source) => source.id === preferredSourceId)
     : sources;
   for (const source of candidates) {
-    // Keep each recorded segment independent. A sorted index may contain adjacent timestamps
-    // on opposite sides of a pause, but that boundary is still not a continuous candidate.
+    const gap = pointDuringRecordingGap(source.points, instant);
+    if (gap) {
+      for (const candidate of foundCandidates(gap, instant))
+        pauseMatches.push({ source, found: candidate });
+      continue;
+    }
+    // Keep each recorded segment independent for direct nearest-sample matching. Gap placement
+    // above may hold the prior endpoint across segments, but it never implies a connecting leg.
     for (const points of source.groups) {
+      const firstTime = points[0]?.point.time;
+      const lastTime = points.at(-1)?.point.time;
+      if (
+        firstTime === undefined ||
+        lastTime === undefined ||
+        instant < firstTime ||
+        instant > lastTime
+      )
+        continue;
       const found = pointAtTimedIndex({ points, sourceId: source.id }, instant);
-      if (!found) continue;
-      const candidates = [
-        found,
-        ...found.alternatives.map((entry) => ({
-          index: entry.pointIndex,
-          ...entry,
-          gapMs: Math.abs(entry.point.time! - instant),
-          alternatives: [] as typeof found.alternatives,
-        })),
-      ];
-      for (const candidate of candidates) {
-        if (candidate.gapMs <= COVERAGE_LIMIT_SECONDS * 1000)
-          matches.push({ source, found: candidate });
+      if (found) {
+        for (const candidate of foundCandidates(found, instant)) {
+          if (candidate.gapMs <= COVERAGE_LIMIT_SECONDS * 1000)
+            exactMatches.push({ source, found: candidate });
+        }
       }
     }
   }
+  const recordingGap = exactMatches.length === 0;
+  const matches = recordingGap ? pauseMatches : exactMatches;
   matches.sort((a, b) => a.found.gapMs - b.found.gapMs);
   if (!matches.length) return undefined;
   const best = matches[0];
@@ -328,7 +347,7 @@ function lookup(
       Math.abs(match.found.gapMs - best.found.gapMs) <= 1000 &&
       distanceKm(match.found.point, best.found.point) * 1000 > 5,
   );
-  return { ...best, ambiguous: competing.length > 0 };
+  return { ...best, ambiguous: competing.length > 0, recordingGap };
 }
 
 function resolve(
@@ -370,12 +389,9 @@ function resolve(
         // A generic source choice cannot decide which overlapping recording represents the
         // journey. Keep the photo unresolved until the user selects a recording by ID. Camera
         // GPS remains diagnostic data and never becomes route truth while a GPX is included.
-        const coordinates = carried;
-        const source: PlacementSource = coordinates ? "carried" : "none";
         return {
           photoId: photo.id,
-          coordinates,
-          source,
+          source: "none",
           discrepancyM,
           gapSeconds: match.found.gapMs / 1000,
           instant,
@@ -384,6 +400,7 @@ function resolve(
           recordingSegmentId: `${match.found.trackIndex ?? 0}:${match.found.segmentIndex ?? 0}`,
           recordingSampleTime: match.found.point.time,
           recordingDistanceKm: match.found.segmentDistanceKm,
+          recordingGap: match.recordingGap,
           trackCoordinates: onTrack,
           conflict: true,
           ambiguous: true,
@@ -392,7 +409,6 @@ function resolve(
       }
       // The shutter instant and selected recording decide the route position. A camera fix can
       // expose clock or GPS errors, but even a legacy `photo` choice cannot move this stop off GPX.
-      carried = onTrack;
       return {
         photoId: photo.id,
         coordinates: onTrack,
@@ -406,6 +422,7 @@ function resolve(
         recordingSegmentId: `${match.found.trackIndex ?? 0}:${match.found.segmentIndex ?? 0}`,
         recordingSampleTime: match.found.point.time,
         recordingDistanceKm: match.found.segmentDistanceKm,
+        recordingGap: match.recordingGap,
         trackCoordinates: own ? onTrack : undefined,
         conflict: Boolean(
           own &&
@@ -428,26 +445,10 @@ function resolve(
         choiceUnavailable,
       };
     }
-    const spatialFallback = own ? nearestRoutePoint(sources, own) : undefined;
-    if (
-      spatialFallback &&
-      spatialFallback.distanceM <= SPATIAL_FALLBACK_LIMIT_M
-    ) {
-      return {
-        photoId: photo.id,
-        coordinates: spatialFallback.coordinates,
-        source: "none",
-        discrepancyM: spatialFallback.distanceM,
-        instant,
-        offsetMinutes,
-        trackCoordinates: spatialFallback.coordinates,
-        choiceUnavailable,
-      };
-    }
     return {
       photoId: photo.id,
-      coordinates: carried,
-      source: carried ? "carried" : "none",
+      coordinates: hasRecordingData ? undefined : carried,
+      source: hasRecordingData ? "none" : carried ? "carried" : "none",
       instant,
       offsetMinutes,
       choiceUnavailable,

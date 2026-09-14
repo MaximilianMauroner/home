@@ -164,7 +164,9 @@ export default function JourneyStage({
       : (photo?.metadata.capturedAtLabel ?? "Time unknown");
   const locationLabel =
     placement?.source === "track"
-      ? "Matched to recording"
+      ? placement.recordingGap
+        ? "Recording gap · last GPX position"
+        : "Matched to recording"
       : track?.points.length
         ? "Not matched to recording"
         : stops[presentationIndex]?.located

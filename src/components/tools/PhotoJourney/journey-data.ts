@@ -167,6 +167,7 @@ export function exportPlacement(photo: JourneyPhoto, placement?: Placement) {
     conflict: placement?.conflict,
     ambiguous: placement?.ambiguous,
     choiceUnavailable: placement?.choiceUnavailable,
+    recordingGap: placement?.recordingGap,
     offsetMinutes:
       placement?.offsetMinutes ?? photoOffsetMinutes(photo.metadata),
     // Only a resolved instant is safe to serialize. A bare camera wall clock must never become a
@@ -226,6 +227,7 @@ export function exportJourney(
       locationConflict: placement.conflict,
       ambiguousRecordingMatch: placement.ambiguous,
       recordingChoiceUnavailable: placement.choiceUnavailable,
+      recordingGap: placement.recordingGap,
       placedCoordinates: placement.coordinates,
       cameraFixOffByM:
         placement.discrepancyM === undefined
@@ -284,6 +286,7 @@ export function exportJourney(
       locationConflict: entry.conflict,
       ambiguousRecordingMatch: entry.ambiguous,
       recordingChoiceUnavailable: entry.choiceUnavailable,
+      recordingGap: entry.recordingGap,
     },
   }));
   const recordedFeatures: Array<{

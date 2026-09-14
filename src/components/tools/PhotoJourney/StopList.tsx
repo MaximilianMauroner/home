@@ -55,7 +55,9 @@ function StopList({
           const place = placement?.ambiguous
             ? "Choose a recording"
             : placement?.source === "track"
-              ? "Matched to recording"
+              ? placement.recordingGap
+                ? "Recording gap · last GPX position"
+                : "Matched to recording"
               : placement?.source === "carried"
                 ? "Previous position · not this photo"
                 : summary.track
@@ -100,9 +102,13 @@ function StopList({
                       <span
                         className="pj-stop-tag"
                         title={
-                          placement.discrepancyM === undefined
-                            ? "The recording places this photo by its capture time."
-                            : `Matched to the recording by capture time. The camera GPS differs by ${Math.round(placement.discrepancyM).toLocaleString("en")} m.`
+                          placement.recordingGap
+                            ? placement.discrepancyM === undefined
+                              ? "The capture time is inside a recording gap. The last known GPX position is used."
+                              : `The capture time is inside a recording gap. The last known GPX position is used, and the camera GPS differs by ${Math.round(placement.discrepancyM).toLocaleString("en")} m.`
+                            : placement.discrepancyM === undefined
+                              ? "The recording places this photo by its capture time."
+                              : `Matched to the recording by capture time. The camera GPS differs by ${Math.round(placement.discrepancyM).toLocaleString("en")} m.`
                         }
                       >
                         GPX

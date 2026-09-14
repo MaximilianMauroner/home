@@ -127,7 +127,7 @@ export function previousRecordedLeg(
     : undefined;
 }
 
-/** Keep an unmatched photo on its spatial GPX fallback or last verified recording point. */
+/** Return only a position already resolved by the placement policy. */
 export function routeTipForPlacement(placement?: Placement) {
   if (!placement || placement.ambiguous || placement.choiceUnavailable)
     return undefined;
