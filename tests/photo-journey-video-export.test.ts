@@ -1,15 +1,67 @@
 import { describe, expect, test } from "vitest";
 import {
+  fetchVideoMapTile,
   projectVideoPoint,
   videoBounds,
   VIDEO_HEIGHT,
   VIDEO_OUTPUT_RESOLUTIONS,
   VIDEO_WIDTH,
   videoResolutionAttempts,
+  videoMapTileUrl,
 } from "../src/components/tools/PhotoJourney/video-export";
 import type { Track } from "../src/components/tools/PhotoJourney/gpx";
 
 describe("Photo Journey MP4 layout", () => {
+  test("uses a finished topographic raster instead of raw elevation data", () => {
+    expect(videoMapTileUrl("terrain", 15, 17430, 11591)).toBe(
+      "https://a.tile.opentopomap.org/15/17430/11591.png",
+    );
+    expect(videoMapTileUrl("online", 15, 17430, 11591)).toBe(
+      "https://tile.openstreetmap.org/15/17430/11591.png",
+    );
+  });
+
+  test("keeps a bounded fallback when a terrain tile fails", async () => {
+    const fallback = { close() {} } as ImageBitmap;
+    const requests: string[] = [];
+    const result = await fetchVideoMapTile(
+      "terrain",
+      15,
+      17430,
+      11591,
+      undefined,
+      async (url) => {
+        requests.push(url);
+        if (url.includes("opentopomap")) throw new Error("tile unavailable");
+        return fallback;
+      },
+    );
+
+    expect(result).toBe(fallback);
+    expect(requests).toEqual([
+      "https://a.tile.opentopomap.org/15/17430/11591.png",
+      "https://tile.openstreetmap.org/15/17430/11591.png",
+    ]);
+  });
+
+  test("settles a missing tile without an unbounded retry", async () => {
+    let requests = 0;
+    const result = await fetchVideoMapTile(
+      "terrain",
+      15,
+      17430,
+      11591,
+      undefined,
+      async () => {
+        requests += 1;
+        throw new Error("offline");
+      },
+    );
+
+    expect(result).toBeUndefined();
+    expect(requests).toBe(2);
+  });
+
   test("defaults to portable 1080p and keeps 4K optional", () => {
     expect(VIDEO_OUTPUT_RESOLUTIONS).toEqual([
       { width: 1920, height: 1080, label: "1080p" },

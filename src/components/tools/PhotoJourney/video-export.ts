@@ -244,8 +244,7 @@ function drawRoute(
 
 const TILE_SIZE = 256;
 const OSM_TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const TERRAIN_TILE =
-  "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+const TERRAIN_TILE = "https://a.tile.opentopomap.org/{z}/{x}/{y}.png";
 
 type MercatorView = {
   zoom: number;
@@ -330,6 +329,10 @@ async function fetchTile(url: string, signal?: AbortSignal) {
   return createImageBitmap(await response.blob());
 }
 
+function isAbort(error: unknown) {
+  return (error as DOMException)?.name === "AbortError";
+}
+
 function tileUrl(template: string, zoom: number, x: number, y: number) {
   const count = 2 ** zoom;
   const wrappedX = ((x % count) + count) % count;
@@ -339,43 +342,35 @@ function tileUrl(template: string, zoom: number, x: number, y: number) {
     .replace("{y}", String(y));
 }
 
-function drawHillshade(
-  context: CanvasRenderingContext2D,
-  bitmap: ImageBitmap,
-  left: number,
-  top: number,
+export function videoMapTileUrl(
+  mode: Exclude<MapMode, "offline">,
+  zoom: number,
+  x: number,
+  y: number,
 ) {
-  const source = document.createElement("canvas");
-  source.width = TILE_SIZE;
-  source.height = TILE_SIZE;
-  const sourceContext = canvasContext(source);
-  sourceContext.drawImage(bitmap, 0, 0, TILE_SIZE, TILE_SIZE);
-  const pixels = sourceContext.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
-  const output = sourceContext.createImageData(TILE_SIZE, TILE_SIZE);
-  const elevation = (index: number) =>
-    pixels.data[index] * 256 +
-    pixels.data[index + 1] +
-    pixels.data[index + 2] / 256 -
-    32768;
-  for (let y = 1; y < TILE_SIZE - 1; y += 1) {
-    for (let x = 1; x < TILE_SIZE - 1; x += 1) {
-      const index = (y * TILE_SIZE + x) * 4;
-      const east = elevation(index + 4);
-      const west = elevation(index - 4);
-      const south = elevation(index + TILE_SIZE * 4);
-      const north = elevation(index - TILE_SIZE * 4);
-      const light = Math.max(
-        -90,
-        Math.min(90, (west - east) * 0.7 + (south - north) * 0.45),
-      );
-      output.data[index] = light > 0 ? 255 : 0;
-      output.data[index + 1] = light > 0 ? 255 : 0;
-      output.data[index + 2] = light > 0 ? 255 : 0;
-      output.data[index + 3] = Math.abs(light) * (light > 0 ? 0.55 : 1.15);
+  return tileUrl(mode === "terrain" ? TERRAIN_TILE : OSM_TILE, zoom, x, y);
+}
+
+export async function fetchVideoMapTile(
+  mode: Exclude<MapMode, "offline">,
+  zoom: number,
+  x: number,
+  y: number,
+  signal?: AbortSignal,
+  load = fetchTile,
+) {
+  try {
+    return await load(videoMapTileUrl(mode, zoom, x, y), signal);
+  } catch (error) {
+    if (isAbort(error)) throw error;
+    if (mode !== "terrain") return undefined;
+    try {
+      return await load(videoMapTileUrl("online", zoom, x, y), signal);
+    } catch (fallbackError) {
+      if (isAbort(fallbackError)) throw fallbackError;
+      return undefined;
     }
   }
-  sourceContext.putImageData(output, 0, 0);
-  context.drawImage(source, left, top);
 }
 
 async function prepareMapBackdrop(
@@ -409,26 +404,22 @@ async function prepareMapBackdrop(
         const top = y * TILE_SIZE - view.originY;
         jobs.push(
           (async () => {
-            const base = await fetchTile(
-              tileUrl(OSM_TILE, view.zoom, x, y),
+            const base = await fetchVideoMapTile(
+              mode === "terrain" ? "terrain" : "online",
+              view.zoom,
+              x,
+              y,
               signal,
             );
+            if (!base) return;
             context.drawImage(base, left, top, TILE_SIZE, TILE_SIZE);
             base.close();
-            if (mode === "terrain") {
-              const terrain = await fetchTile(
-                tileUrl(TERRAIN_TILE, view.zoom, x, y),
-                signal,
-              );
-              drawHillshade(context, terrain, left, top);
-              terrain.close();
-            }
           })(),
         );
       }
     }
     await Promise.all(jobs);
-    context.fillStyle = "#07101452";
+    context.fillStyle = "#0710142e";
     context.fillRect(0, 0, canvas.width, canvas.height);
   }
   context.lineCap = "round";
@@ -459,19 +450,32 @@ async function prepareMapBackdrop(
     context.stroke();
   }
   context.globalAlpha = 1;
-  context.fillStyle = "#071014b8";
+  context.font = `${10 * pixelScale}px system-ui, sans-serif`;
+  const creditLines =
+    mode === "terrain"
+      ? [
+          "Map data © OpenStreetMap contributors · openstreetmap.org/copyright · SRTM",
+          "Map style © OpenTopoMap (CC-BY-SA 3.0)",
+        ]
+      : ["Map data © OpenStreetMap contributors · openstreetmap.org/copyright"];
+  const creditWidth =
+    Math.max(...creditLines.map((line) => context.measureText(line).width)) +
+    12 * pixelScale;
+  const creditHeight = (creditLines.length * 13 + 7) * pixelScale;
+  context.fillStyle = "#071014cc";
   context.fillRect(
     8 * pixelScale,
-    canvas.height - 22 * pixelScale,
-    (mode === "terrain" ? 250 : 138) * pixelScale,
-    18 * pixelScale,
+    canvas.height - creditHeight - 4 * pixelScale,
+    creditWidth,
+    creditHeight,
   );
   context.fillStyle = "#d2dcde";
-  context.font = `${10 * pixelScale}px system-ui, sans-serif`;
-  context.fillText(
-    mode === "terrain" ? "© OpenStreetMap · Terrain: AWS" : "© OpenStreetMap",
-    14 * pixelScale,
-    canvas.height - 9 * pixelScale,
+  creditLines.forEach((line, index) =>
+    context.fillText(
+      line,
+      14 * pixelScale,
+      canvas.height - (creditLines.length - index) * 13 * pixelScale,
+    ),
   );
   return { canvas, view };
 }
