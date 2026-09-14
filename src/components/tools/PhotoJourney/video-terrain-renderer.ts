@@ -40,6 +40,14 @@ export type RenderedTerrainFrame = {
   marker?: { x: number; y: number };
 };
 
+/** Returns the marker longitude in the world copy nearest the camera. */
+export function videoMarkerLongitude(
+  longitude: number,
+  cameraLongitude: number,
+) {
+  return longitude + Math.round((cameraLongitude - longitude) / 360) * 360;
+}
+
 export function videoRouteData(
   segments: readonly (readonly Coordinates[])[],
 ): GeoJSON.FeatureCollection {
@@ -379,7 +387,13 @@ export class VideoTerrainRenderer {
     if (!ready())
       throw new Error("The 3D terrain changed before frame capture.");
     const projected = frame.marker
-      ? this.map.project([frame.marker.longitude, frame.marker.latitude])
+      ? this.map.project([
+          videoMarkerLongitude(
+            frame.marker.longitude,
+            this.map.getCenter().lng,
+          ),
+          frame.marker.latitude,
+        ])
       : undefined;
     const result = {
       canvas: this.map.getCanvas(),

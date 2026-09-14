@@ -3,6 +3,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import {
   fetchVideoMapTile,
   projectVideoPoint,
+  terrainCameraPhotoIndex,
   videoBounds,
   VIDEO_HEIGHT,
   VIDEO_OUTPUT_RESOLUTIONS,
@@ -13,12 +14,26 @@ import {
 import type { Track } from "../src/components/tools/PhotoJourney/gpx";
 import {
   VideoTerrainRenderer,
+  videoMarkerLongitude,
   videoTerrainJumpOptions,
   videoRouteData,
   waitForVideoMapPaint,
 } from "../src/components/tools/PhotoJourney/video-terrain-renderer";
 
 describe("Photo Journey MP4 layout", () => {
+  test("keeps burst photos on their checkpoint camera", () => {
+    expect(
+      terrainCameraPhotoIndex({
+        checkpointPhotoIndex: 7,
+      }),
+    ).toBe(7);
+  });
+
+  test("projects markers in the camera's antimeridian world copy", () => {
+    expect(videoMarkerLongitude(-179, 181)).toBe(181);
+    expect(videoMarkerLongitude(179, -181)).toBe(-181);
+  });
+
   test("applies photo-panel padding to the terrain camera", () => {
     expect(
       videoTerrainJumpOptions({ center: [11, 46], zoom: 15 }, 45, 20, {

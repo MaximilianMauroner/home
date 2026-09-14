@@ -765,6 +765,13 @@ function markerForState(
     : destination;
 }
 
+/** Keeps every photo in a checkpoint burst on the checkpoint's route camera. */
+export function terrainCameraPhotoIndex(
+  state: Pick<TimelineState, "checkpointPhotoIndex">,
+) {
+  return state.checkpointPhotoIndex;
+}
+
 function drawMarker(
   context: CanvasRenderingContext2D,
   point: Coordinates | undefined,
@@ -1492,7 +1499,8 @@ async function renderAtResolution(
         const cacheKey = `${groupKey}:${photoIndex}:split:${mapMode}`;
         let prepared = mapCache.get(cacheKey);
         if (terrainRenderer && bounds) {
-          const activeLeg = options.routeStory?.legs[photoIndex];
+          const cameraPhotoIndex = terrainCameraPhotoIndex(state);
+          const activeLeg = options.routeStory?.legs[cameraPhotoIndex];
           const cameraFrame = activeLeg
             ? recordedLegFrame(activeLeg, 1)
             : undefined;
