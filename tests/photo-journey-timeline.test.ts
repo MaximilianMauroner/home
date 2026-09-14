@@ -4,6 +4,7 @@ import {
   buildTimeline,
   distanceKm,
   cameraFor,
+  DEPARTURE_DURATION,
   inferredRouteSegments,
   locatedPoints,
   placementLegEligibility,
@@ -47,6 +48,47 @@ function stopsFor(photos: JourneyPhoto[]) {
 }
 
 describe("Photo Journey timeline", () => {
+  test("reserves a route-only phase after a recording's final photo", () => {
+    const timeline = buildTimeline(
+      [photo(48, 16), photo(49, 17)],
+      undefined,
+      undefined,
+      {
+        departureLegDistancesKm: [2, undefined],
+      },
+    );
+    const first = timeline.stops[0];
+
+    expect(first.trailStart).toBe(first.departureStart + DEPARTURE_DURATION);
+    expect(first.end).toBeGreaterThan(first.trailStart);
+    expect(timelineAt(first.trailStart, timeline)).toMatchObject({
+      phase: "trail",
+      currentLegProgress: 0,
+      currentLegEligible: true,
+    });
+    expect(
+      timelineAt(first.end - 1, timeline).currentLegProgress,
+    ).toBeGreaterThan(0.99);
+    expect(timelineAt(first.end, timeline).phase).toBe("approach");
+  });
+  test("finishes a grouped checkpoint from the burst's final photo", () => {
+    const photos = [photo(48, 16), photo(48, 16), photo(49, 17)];
+    const timeline = buildTimeline(
+      photos,
+      photos.map((entry) => entry.metadata.coordinates),
+      [0, 1_000, 120_000],
+      { departureLegDistancesKm: [undefined, 2, undefined] },
+    );
+    const burst = timeline.stops[0];
+
+    expect(burst.photoIndices).toEqual([0, 1]);
+    expect(timelineAt(burst.trailStart, timeline)).toMatchObject({
+      phase: "trail",
+      photoIndex: 1,
+      checkpointPhotoIndex: 1,
+      currentLegEligible: true,
+    });
+  });
   test("opens and closes on the route with variable stop offsets", () => {
     const timeline = buildTimeline([photo(48, 16), photo(40, -74)]);
     expect(timelineAt(0, timeline).phase).toBe("intro");

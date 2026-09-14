@@ -15,6 +15,7 @@ export type JourneyPhase =
   | "intro"
   | "day"
   | "approach"
+  | "trail"
   | "reveal"
   | "hold"
   | "departure"
@@ -61,6 +62,8 @@ export type TimelineStop = {
   dayLabel?: string;
   dayChange: boolean;
   legEligible: boolean;
+  departureLegEligible: boolean;
+  trailStart: number;
   burst: boolean;
 };
 export type JourneyTimeline = {
@@ -144,6 +147,8 @@ export function buildTimeline(
     recordingDistancesKm?: ReadonlyArray<number | undefined>;
     /** Exact validated distance of each destination-indexed recorded leg. */
     recordedLegDistancesKm?: ReadonlyArray<number | undefined>;
+    /** Recorded remainder after each checkpoint's final photo. */
+    departureLegDistancesKm?: ReadonlyArray<number | undefined>;
     located?: ReadonlyArray<boolean | undefined>;
   },
 ): JourneyTimeline {
@@ -288,7 +293,13 @@ export function buildTimeline(
       revealEnd +
       HOLD_DURATION +
       (photoIndices.length - 1) * BURST_HOLD_DURATION;
-    const end = departureStart + DEPARTURE_DURATION;
+    const trailStart = departureStart + DEPARTURE_DURATION;
+    const departureDistance =
+      options?.departureLegDistancesKm?.[photoIndices.at(-1) ?? photoIndex];
+    const trailDuration = departureDistance
+      ? recordedApproachDuration(departureDistance, false)
+      : 0;
+    const end = trailStart + trailDuration;
     offset = end;
     return {
       id: photoIndices.map((index) => photos[index].id).join("\u0000"),
@@ -301,11 +312,13 @@ export function buildTimeline(
       revealStart,
       revealEnd,
       departureStart,
+      trailStart,
       end,
       dayStart,
       dayLabel,
       dayChange: Boolean(photoIndex > 0 && dayLabel),
       legEligible: Boolean(options?.legEligibility?.[photoIndex]),
+      departureLegEligible: trailDuration > 0,
       burst,
     };
   });
@@ -343,6 +356,7 @@ function stateFor(
     phase === "reveal" ||
     phase === "hold" ||
     phase === "departure" ||
+    phase === "trail" ||
     phase === "outro" ||
     phase === "complete";
   const revealElapsed = Math.max(0, safe - (stop?.revealStart ?? safe));
@@ -361,8 +375,12 @@ function stateFor(
     dayLabel: stop?.dayLabel,
     dayChange: stop?.dayChange ?? false,
     approachDuration: stop?.approachDuration ?? 0,
-    currentLegProgress: phase === "approach" ? progress : arrived ? 1 : 0,
-    currentLegEligible: stop?.legEligible ?? false,
+    currentLegProgress:
+      phase === "approach" || phase === "trail" ? progress : arrived ? 1 : 0,
+    currentLegEligible:
+      phase === "trail"
+        ? (stop?.departureLegEligible ?? false)
+        : (stop?.legEligible ?? false),
     checkpointPhotoIndex: stop?.photoIndex ?? 0,
     checkpointIndex: stop?.checkpointIndex ?? 0,
     checkpointProgress: substage(REVEAL_DURATION * 0.1, REVEAL_DURATION * 0.4),
@@ -432,8 +450,20 @@ export function timelineAt(
       imageProgress: 1,
     });
   }
-  return stateFor(safe, stop, "departure", stop.departureStart, stop.end, {
+  if (safe < stop.trailStart)
+    return stateFor(
+      safe,
+      stop,
+      "departure",
+      stop.departureStart,
+      stop.trailStart,
+      {
+        photoIndex: stop.photoIndices.at(-1) ?? stop.photoIndex,
+      },
+    );
+  return stateFor(safe, stop, "trail", stop.trailStart, stop.end, {
     photoIndex: stop.photoIndices.at(-1) ?? stop.photoIndex,
+    checkpointPhotoIndex: stop.photoIndices.at(-1) ?? stop.photoIndex,
   });
 }
 

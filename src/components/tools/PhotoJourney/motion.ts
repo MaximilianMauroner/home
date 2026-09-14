@@ -26,7 +26,7 @@ export function journeyTravelZoom(
 /** Presentation is sampled from the playback clock; no CSS or wall-clock timers to drift. */
 export function journeyMotion(state: TimelineState, reducedMotion: boolean) {
   const elapsed = state.phaseDuration * state.phaseProgress;
-  const approach = state.phase === "approach";
+  const approach = state.phase === "approach" || state.phase === "trail";
   const departure = state.phase === "departure";
   const atCheckpoint =
     approach || state.phase === "reveal" || state.phase === "hold" || departure;

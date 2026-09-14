@@ -14,7 +14,6 @@ function subscribeMotion(notify: () => void) {
 export function useReducedMotion() {
   return useSyncExternalStore(subscribeMotion, () => window.matchMedia(motionQuery).matches, () => false);
 }
-
 /** `placements` decide where each stop sits, so a track correction also retimes its approach. */
 export function usePlayback(
   photos: JourneyPhoto[],
@@ -53,6 +52,7 @@ export function usePlayback(
       recordingSegmentIds: placements?.map((placement) => placement.recordingSegmentId),
       recordingDistancesKm: placements?.map((placement) => placement.recordingDistanceKm),
       recordedLegDistancesKm: routeStory?.legs.map((leg) => leg?.distanceKm),
+      departureLegDistancesKm: routeStory?.departureLegs.map((leg) => leg?.distanceKm),
       located: placements?.map((placement) => placement.source === "photo" || placement.source === "track"),
     }),
     [photos, positions, instants, dayOptions?.dayKeys, dayOptions?.dayLabels, legEligibility, placements, routeStory],

@@ -545,7 +545,8 @@ export default function PhotoJourney() {
       ? visiblePhotos.length - 1
       : playback.state.phase === "reveal" ||
           playback.state.phase === "hold" ||
-          playback.state.phase === "departure"
+          playback.state.phase === "departure" ||
+          playback.state.phase === "trail"
         ? playback.state.checkpointPhotoIndex
         : playback.state.checkpointPhotoIndex - 1;
   const activePhoto = visiblePhotos[activeIndex];

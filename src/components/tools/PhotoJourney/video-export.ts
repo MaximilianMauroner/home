@@ -10,6 +10,7 @@ import { trackSegments, trackStats, type Track, type TrackPoint } from "./gpx";
 import { burstPhotoProgress, journeyMotion } from "./motion";
 import {
   recordedElevationProfile,
+  recordedDepartureProgressStats,
   recordedContextForPhoto,
   recordedLegFrame,
   recordedLegPrefix,
@@ -27,7 +28,12 @@ import {
 import type { Placement } from "./track";
 import { localDisplayMoment, photoDisplayMoment } from "./time-display";
 import type { Coordinates, JourneyPhoto } from "./types";
-import { previousRecordedLeg, STOP_ZOOM, type MapMode } from "./JourneyMap";
+import {
+  previousRecordedLeg,
+  routeCameraBlendFraction,
+  STOP_ZOOM,
+  type MapMode,
+} from "./JourneyMap";
 import { VideoTerrainRenderer } from "./video-terrain-renderer";
 
 export const VIDEO_WIDTH = 1280;
@@ -530,6 +536,7 @@ function drawTravelledRoute(
   routeStory: RouteStory | undefined,
   photoIndex: number,
   currentProgress = 1,
+  departure = false,
 ) {
   if (!routeStory) return;
   const activeSegments = new Set(
@@ -540,12 +547,21 @@ function drawTravelledRoute(
   const lines = routeStory.legs
     .slice(0, photoIndex + 1)
     .flatMap((leg, index) => {
-      if (!leg || !activeSegments.has(leg.segmentIndex)) return [];
-      return [
-        index === photoIndex
-          ? recordedLegPrefix(leg, currentProgress)
-          : leg.drawable,
-      ];
+      const visible: TrackPoint[][] = [];
+      if (leg && activeSegments.has(leg.segmentIndex))
+        visible.push(
+          index === photoIndex && !departure
+            ? recordedLegPrefix(leg, currentProgress)
+            : leg.drawable,
+        );
+      const tail = routeStory.departureLegs[index];
+      if (tail && (index < photoIndex || departure))
+        visible.push(
+          index === photoIndex
+            ? recordedLegPrefix(tail, currentProgress)
+            : tail.drawable,
+        );
+      return visible;
     });
   context.save();
   context.lineCap = "round";
@@ -576,10 +592,11 @@ function drawTravelledRoute(
   context.restore();
 }
 
-function travelledSegments(
+export function travelledSegments(
   routeStory: RouteStory | undefined,
   photoIndex: number,
   currentProgress = 1,
+  departure = false,
 ) {
   if (!routeStory) return [];
   const activeSegments = new Set(
@@ -588,12 +605,21 @@ function travelledSegments(
     ),
   );
   return routeStory.legs.slice(0, photoIndex + 1).flatMap((leg, index) => {
-    if (!leg || !activeSegments.has(leg.segmentIndex)) return [];
-    return [
-      index === photoIndex
-        ? recordedLegPrefix(leg, currentProgress)
-        : leg.drawable,
-    ];
+    const visible: TrackPoint[][] = [];
+    if (leg && activeSegments.has(leg.segmentIndex))
+      visible.push(
+        index === photoIndex && !departure
+          ? recordedLegPrefix(leg, currentProgress)
+          : leg.drawable,
+      );
+    const tail = routeStory.departureLegs[index];
+    if (tail && (index < photoIndex || departure))
+      visible.push(
+        index === photoIndex
+          ? recordedLegPrefix(tail, currentProgress)
+          : tail.drawable,
+      );
+    return visible;
   });
 }
 
@@ -607,11 +633,13 @@ function completedTerrainSegments(
       routeStory.context.indexOf(segment),
     ),
   );
-  return routeStory.legs
-    .slice(0, photoIndex)
-    .flatMap((leg) =>
-      leg && activeSegments.has(leg.segmentIndex) ? [leg.drawable] : [],
-    );
+  return routeStory.legs.slice(0, photoIndex).flatMap((leg, index) => {
+    const visible: TrackPoint[][] = [];
+    if (leg && activeSegments.has(leg.segmentIndex)) visible.push(leg.drawable);
+    const tail = routeStory.departureLegs[index];
+    if (tail) visible.push(tail.drawable);
+    return visible;
+  });
 }
 
 function trimPreparedMapCache(cache: Map<string, PreparedMap>, keepId: string) {
@@ -759,8 +787,11 @@ function markerForState(
   routeStory?: RouteStory,
 ) {
   const destination = placements[state.checkpointPhotoIndex]?.coordinates;
-  if (state.phase !== "approach") return destination;
-  const leg = routeStory?.legs[state.checkpointPhotoIndex];
+  if (state.phase !== "approach" && state.phase !== "trail") return destination;
+  const leg =
+    state.phase === "trail"
+      ? routeStory?.departureLegs[state.checkpointPhotoIndex]
+      : routeStory?.legs[state.checkpointPhotoIndex];
   return leg
     ? recordedLegFrame(leg, state.currentLegProgress).tip
     : destination;
@@ -1346,53 +1377,66 @@ async function renderAtResolution(
           options.title,
           `${options.photos.length} photos · Journey complete`,
         );
-      } else if (state.phase === "approach") {
+      } else if (state.phase === "approach" || state.phase === "trail") {
         const legProgress = journeyMotion(state, false).leg;
+        const departure = state.phase === "trail";
         const segments =
           recordedContextForPhoto(
             options.routeStory,
             state.checkpointPhotoIndex,
           ) ?? allSegments;
-        const bounds = boundsAround(
-          options.placements[state.checkpointPhotoIndex]?.coordinates,
-          boundsForSegments(segments) ?? fallbackBounds,
-        );
+        const bounds = departure
+          ? (boundsForSegments(segments) ?? fallbackBounds)
+          : boundsAround(
+              options.placements[state.checkpointPhotoIndex]?.coordinates,
+              boundsForSegments(segments) ?? fallbackBounds,
+            );
         const marker = markerForState(
           { ...state, currentLegProgress: legProgress },
           options.placements,
           options.routeStory,
         );
-        const trailStats = recordedProgressStats(
-          options.routeStory,
-          state.checkpointPhotoIndex,
-          legProgress,
-        );
+        const trailStats = departure
+          ? recordedDepartureProgressStats(
+              options.routeStory,
+              state.checkpointPhotoIndex,
+              legProgress,
+            )
+          : recordedProgressStats(
+              options.routeStory,
+              state.checkpointPhotoIndex,
+              legProgress,
+            );
         if (!bounds) {
           context.fillStyle = "#132027";
           context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
         }
         const groupKey = options.routeStory?.context.indexOf(segments[0]) ?? -1;
-        const cacheKey = `${groupKey}:${state.checkpointPhotoIndex}:full:${mapMode}`;
+        const cacheKey = `${groupKey}:${state.checkpointPhotoIndex}:${departure ? "trail" : "approach"}:${mapMode}`;
         let prepared = mapCache.get(cacheKey);
         if (terrainRenderer && bounds) {
-          const activeLeg =
-            options.routeStory?.legs[state.checkpointPhotoIndex];
+          const activeLeg = departure
+            ? options.routeStory?.departureLegs[state.checkpointPhotoIndex]
+            : options.routeStory?.legs[state.checkpointPhotoIndex];
           const cameraFrame = activeLeg
             ? recordedLegFrame(activeLeg, legProgress)
             : undefined;
           const previousLeg = options.routeStory
-            ? previousRecordedLeg(
-                options.routeStory.legs,
-                state.checkpointPhotoIndex,
-                activeLeg,
-              )
+            ? departure
+              ? options.routeStory.legs[state.checkpointPhotoIndex]
+              : previousRecordedLeg(
+                  options.routeStory.legs,
+                  state.checkpointPhotoIndex,
+                  activeLeg,
+                )
             : undefined;
           const previousCamera = previousLeg
             ? recordedLegFrame(previousLeg, 1)
             : undefined;
-          const blendFraction = Math.min(
-            1,
-            700 / Math.max(1, state.approachDuration),
+          const blendFraction = routeCameraBlendFraction(
+            state.phase,
+            state.approachDuration,
+            state.phaseDuration,
           );
           const current = cameraFrame?.revealed ?? [];
           const terrain = await terrainRenderer.render(
@@ -1402,10 +1446,19 @@ async function renderAtResolution(
               completedKey: `completed:${state.checkpointPhotoIndex}`,
               currentKey: `current:${state.checkpointPhotoIndex}:${frame}`,
               segments,
-              completed: completedTerrainSegments(
-                options.routeStory,
-                state.checkpointPhotoIndex,
-              ),
+              completed: [
+                ...completedTerrainSegments(
+                  options.routeStory,
+                  state.checkpointPhotoIndex,
+                ),
+                ...(departure &&
+                options.routeStory?.legs[state.checkpointPhotoIndex]
+                  ? [
+                      options.routeStory.legs[state.checkpointPhotoIndex]!
+                        .drawable,
+                    ]
+                  : []),
+              ],
               current,
               marker,
               cameraPoints: cameraFrame?.window.length
@@ -1457,6 +1510,7 @@ async function renderAtResolution(
             options.routeStory,
             state.checkpointPhotoIndex,
             legProgress,
+            departure,
           );
           drawPreparedMarker(context, prepared, FULL_MAP, marker);
         } else if (!terrainRenderer) {

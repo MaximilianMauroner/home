@@ -57,6 +57,8 @@ export type RouteStory = {
   context: TrackPoint[][];
   /** Destination-indexed legs. Undefined means playback must not imply recorded movement. */
   legs: Array<RecordedLeg | undefined>;
+  /** Recorded remainder after a segment's final photo, indexed by that photo. */
+  departureLegs: Array<RecordedLeg | undefined>;
   /** Unsimplified cumulative values, built once so the live hike panel stays cheap per frame. */
   profiles: RouteProgressProfile[];
   /** Exact source samples for photo-state statistics, indexed like the input photos. */
@@ -347,10 +349,46 @@ export function buildRouteStory(
       ? prepareLeg(candidate)
       : undefined;
   });
+  const departureLegs = samples.map((sample, index) => {
+    if (!sample) return undefined;
+    if (
+      samples
+        .slice(index + 1)
+        .some((later) => later?.segmentIndex === sample.segmentIndex)
+    )
+      return undefined;
+    if (
+      samples.some(
+        (other) =>
+          other?.segmentIndex === sample.segmentIndex &&
+          other.pointIndex > sample.pointIndex,
+      )
+    )
+      return undefined;
+    const points = segments[sample.segmentIndex].points.slice(
+      sample.pointIndex,
+    );
+    if (points.length < 2) return undefined;
+    const valid = points.every(
+      (point, pointIndex) =>
+        point.time !== undefined &&
+        Number.isFinite(point.time) &&
+        (pointIndex === 0 || point.time! > points[pointIndex - 1].time!),
+    );
+    return valid
+      ? prepareLeg({
+          points,
+          segmentIndex: sample.segmentIndex,
+          startPointIndex: sample.pointIndex,
+          endPointIndex: segments[sample.segmentIndex].points.length - 1,
+        })
+      : undefined;
+  });
   const profiles = progressProfiles(segments);
   return {
     context: trackSegments(track),
     legs,
+    departureLegs,
     profiles,
     photoSamples: samples,
     elevationProfiles: elevationProfiles(profiles),
@@ -646,6 +684,24 @@ export function recordedProgressStats(
     afterIndex,
     fraction,
     targetDistance,
+  );
+}
+
+/** Returns real GPX progress while finishing the route after its final photo. */
+export function recordedDepartureProgressStats(
+  story: RouteStory | undefined,
+  photoIndex: number,
+  progress: number,
+) {
+  if (!story) return undefined;
+  const departure = story.departureLegs[photoIndex];
+  if (!departure) return undefined;
+  const replaced = [...story.legs];
+  replaced[photoIndex] = departure;
+  return recordedProgressStats(
+    { ...story, legs: replaced },
+    photoIndex,
+    progress,
   );
 }
 

@@ -4,6 +4,7 @@ import {
   fetchVideoMapTile,
   projectVideoPoint,
   terrainCameraPhotoIndex,
+  travelledSegments,
   videoBounds,
   VIDEO_HEIGHT,
   VIDEO_OUTPUT_RESOLUTIONS,
@@ -11,6 +12,8 @@ import {
   videoResolutionAttempts,
   videoMapTileUrl,
 } from "../src/components/tools/PhotoJourney/video-export";
+import { buildRouteStory } from "../src/components/tools/PhotoJourney/route-progress";
+import type { Placement } from "../src/components/tools/PhotoJourney/track";
 import type { Track } from "../src/components/tools/PhotoJourney/gpx";
 import {
   VideoTerrainRenderer,
@@ -22,6 +25,48 @@ import {
 } from "../src/components/tools/PhotoJourney/video-terrain-renderer";
 
 describe("Photo Journey MP4 layout", () => {
+  test("keeps a completed GPX tail after entering the next recording", () => {
+    const first = [
+      { latitude: 48, longitude: 16, time: 0 },
+      { latitude: 48.01, longitude: 16.01, time: 1_000 },
+      { latitude: 48.02, longitude: 16.02, time: 2_000 },
+    ];
+    const second = [
+      { latitude: 49, longitude: 17, time: 10_000 },
+      { latitude: 49.01, longitude: 17.01, time: 11_000 },
+    ];
+    const track: Track = {
+      points: [...first, ...second],
+      segmentStarts: [0, first.length],
+      parts: [
+        { points: first, segmentStarts: [0] },
+        { points: second, segmentStarts: [0] },
+      ],
+    };
+    const placements: Placement[] = [
+      {
+        photoId: "first",
+        source: "track",
+        coordinates: first[1],
+        instant: first[1].time,
+        recordingSampleTime: first[1].time,
+        gapSeconds: 0,
+      },
+      {
+        photoId: "second",
+        source: "track",
+        coordinates: second[1],
+        instant: second[1].time,
+        recordingSampleTime: second[1].time,
+        gapSeconds: 0,
+      },
+    ];
+    const story = buildRouteStory(track, placements, [true, true]);
+
+    expect(travelledSegments(story, 1)).toContain(
+      story.departureLegs[0]!.drawable,
+    );
+  });
   test("keeps burst photos on their checkpoint camera", () => {
     expect(
       terrainCameraPhotoIndex({
