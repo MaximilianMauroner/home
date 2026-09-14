@@ -8,6 +8,7 @@ import {
   normalizeMetadata,
   sortPhotos,
 } from "../src/components/tools/PhotoJourney/metadata";
+import { localDisplayMoment, photoDisplayMoment } from "../src/components/tools/PhotoJourney/time-display";
 import { thumbnailSize } from "../src/components/tools/PhotoJourney/thumbnail";
 import type { JourneyPhoto } from "../src/components/tools/PhotoJourney/types";
 
@@ -99,14 +100,15 @@ describe("Photo Journey metadata", () => {
     ]).map((item) => item.importOrder)).toEqual([0, 1]);
   });
 
-  test("preserves a Date-backed camera wall clock without using the viewer timezone", () => {
+  test("reconstructs an offset-tagged camera wall clock from exifr's UTC Date", () => {
     const result = normalizeMetadata(
       { name: "clock.jpg", size: 1, type: "image/jpeg", lastModified: 0 },
-      { DateTimeOriginal: new Date("2024-01-01T14:02:03.000Z"), OffsetTimeOriginal: "+02:00" },
+      { DateTimeOriginal: new Date("2026-08-19T07:10:37.000Z"), OffsetTimeOriginal: "+02:00" },
       1,
       1,
     );
-    expect(result.capturedAtWallClock).toBe("2024-01-01T14:02:03.000");
+    expect(result.capturedAt?.toISOString()).toBe("2026-08-19T07:10:37.000Z");
+    expect(result.capturedAtWallClock).toBe("2026-08-19T09:10:37.000");
     expect(result.utcOffsetMinutes).toBe(120);
   });
 
@@ -120,6 +122,20 @@ describe("Photo Journey metadata", () => {
     expect(result.capturedAt).toBeUndefined();
     expect(result.capturedAtWallClock).toBe("2024-01-01T14:02:03");
     expect(result.capturedAtLabel).toBe("2024-01-01 14:02:03");
+  });
+
+  test("keeps the camera-local clock when the browser and trip use UTC", () => {
+    const actualInstant = Date.parse("2026-08-19T07:10:37Z");
+    expect(photoDisplayMoment(
+      { capturedAtWallClock: "2026-08-19T09:10:37" },
+      actualInstant,
+      120,
+      "UTC",
+    )).toEqual({ instant: Date.parse("2026-08-19T09:10:37Z"), timeZone: "UTC" });
+    expect(localDisplayMoment(actualInstant, 120, "UTC")).toEqual({
+      instant: Date.parse("2026-08-19T09:10:37Z"),
+      timeZone: "UTC",
+    });
   });
 
   test("excludes photos without a capture clock or GPS from a journey", () => {

@@ -43,7 +43,7 @@ function date(value: unknown) {
   return Number.isNaN(parsed.valueOf()) ? undefined : parsed;
 }
 
-function wallClock(value: unknown) {
+function wallClock(value: unknown, offsetMinutes?: number) {
   if (typeof value === "string") {
     const match = /^(\d{4})[:\-](\d{2})[:\-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:[.,](\d+))?)?/.exec(value.trim());
     if (match) {
@@ -67,10 +67,13 @@ function wallClock(value: unknown) {
     }
   }
   if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+    // exifr applies OffsetTimeOriginal to Date values. Shift the instant back to the literal
+    // camera fields before storing the wall clock used for GPX matching and display.
+    const cameraTime = isValidUtcOffsetMinutes(offsetMinutes)
+      ? new Date(value.getTime() + offsetMinutes * 60_000)
+      : value;
     const pad = (part: number, size = 2) => String(part).padStart(size, "0");
-    // exifr represents EXIF's zone-less camera clock as a UTC Date. Read UTC fields here so the
-    // wall clock does not change when the viewer opens the same file in another browser zone.
-    return `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${pad(value.getUTCDate())}T${pad(value.getUTCHours())}:${pad(value.getUTCMinutes())}:${pad(value.getUTCSeconds())}.${pad(value.getUTCMilliseconds(), 3)}`;
+    return `${cameraTime.getUTCFullYear()}-${pad(cameraTime.getUTCMonth() + 1)}-${pad(cameraTime.getUTCDate())}T${pad(cameraTime.getUTCHours())}:${pad(cameraTime.getUTCMinutes())}:${pad(cameraTime.getUTCSeconds())}.${pad(cameraTime.getUTCMilliseconds(), 3)}`;
   }
   return undefined;
 }
@@ -144,12 +147,11 @@ export function normalizeMetadata(
   width: number,
   height: number,
 ): PhotoMetadata {
-  const capturedAt = date(
-    data.DateTimeOriginal ?? data.CreateDate ?? data.DateTimeDigitized,
-  );
-  const capturedAtWallClock = wallClock(
-    data.DateTimeOriginal ?? data.CreateDate ?? data.DateTimeDigitized,
-  );
+  const captureValue = data.DateTimeOriginal ?? data.CreateDate ?? data.DateTimeDigitized;
+  const offset = text(data.OffsetTimeOriginal ?? data.OffsetTime);
+  const utcOffsetMinutes = parseUtcOffset(offset);
+  const capturedAt = date(captureValue);
+  const capturedAtWallClock = wallClock(captureValue, utcOffsetMinutes);
   const latitude = number(data.latitude ?? data.GPSLatitude);
   const longitude = number(data.longitude ?? data.GPSLongitude);
   const exposure = number(data.ExposureTime);
@@ -162,12 +164,10 @@ export function normalizeMetadata(
     [make, model && model !== make ? model : undefined]
       .filter(Boolean)
       .join(" ") || undefined;
-  const offset = text(data.OffsetTimeOriginal ?? data.OffsetTime);
-
   return {
     capturedAt,
     capturedAtWallClock,
-    utcOffsetMinutes: parseUtcOffset(offset),
+    utcOffsetMinutes,
     capturedAtLabel: capturedAtWallClock
       ? `${capturedAtWallClock.replace("T", " ").replace(/\.\d{3}$/, "")}${offset ? ` ${offset}` : ""}`
       : capturedAt

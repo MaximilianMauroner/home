@@ -75,7 +75,12 @@ function cameraDayKey(photo: JourneyPhoto) {
 
 /** Chooses the resolved instant when available and otherwise preserves the camera date. */
 export function photoDayKey(photo: JourneyPhoto, placement?: Placement, timezone = "UTC") {
-  if (placement?.instant !== undefined) return dayKeyFromInstant(placement.instant, timezone);
+  if (placement?.instant !== undefined) {
+    const offset = placement.offsetMinutes;
+    if (offset !== undefined && Number.isFinite(offset) && offset >= -720 && offset <= 840)
+      return dayKeyFromInstant(placement.instant + offset * 60_000, "UTC");
+    return dayKeyFromInstant(placement.instant, timezone);
+  }
   return cameraDayKey(photo);
 }
 

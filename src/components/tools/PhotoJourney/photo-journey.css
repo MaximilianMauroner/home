@@ -626,6 +626,66 @@
   max-width: 36%;
   font-size: 0.8125rem;
 }
+.pj-trail-progress {
+  position: absolute;
+  left: 1rem;
+  bottom: 2.25rem;
+  z-index: 4;
+  width: min(52rem, calc(100% - 2rem));
+  padding: 0.7rem;
+  border: 1px solid var(--pj-line-strong);
+  border-radius: calc(var(--pj-radius) + 0.2rem);
+  background: #05090bea;
+  box-shadow: 0 18px 48px #0008;
+  pointer-events: none;
+}
+.pj-album .pj-viewport[data-route-only="true"] .pj-resume-follow {
+  top: 1rem;
+  right: 1rem;
+  bottom: auto;
+  left: auto;
+  max-width: min(20rem, 50%);
+  transform: none;
+}
+.pj-trail-progress > .pj-label {
+  display: block;
+  margin: 0 0 0.5rem 0.1rem;
+  color: var(--pj-accent);
+  font-size: 0.65rem;
+}
+.pj-trail-progress dl {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--pj-line);
+  border-radius: var(--pj-radius);
+  background: var(--pj-line);
+}
+.pj-trail-progress dl div {
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  background: var(--pj-bg-1);
+}
+.pj-trail-progress dt {
+  color: var(--pj-muted);
+  font-size: 0.65rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.pj-trail-progress dd {
+  min-height: 1.35rem;
+  margin: 0.18rem 0 0;
+  overflow: hidden;
+  color: var(--pj-ink);
+  font-size: clamp(0.82rem, 1.25vw, 1.05rem);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .pj-map {
   position: absolute;
   top: 0;
@@ -1849,6 +1909,27 @@
   .pj-album .pj-resume-follow {
     left: 50%;
     max-width: 90%;
+  }
+  .pj-trail-progress {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 3rem;
+    width: auto;
+    padding: 0.55rem;
+  }
+  .pj-album .pj-viewport[data-route-only="true"] .pj-resume-follow {
+    top: 0.75rem;
+    right: 0.75rem;
+    max-width: calc(100% - 5.5rem);
+  }
+  .pj-trail-progress dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .pj-trail-progress dl div {
+    padding: 0.45rem 0.5rem;
+  }
+  .pj-trail-progress dd {
+    font-size: 0.82rem;
   }
   .pj-counter {
     top: 0.75rem;

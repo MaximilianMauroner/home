@@ -40,6 +40,11 @@ describe("journey day scope", () => {
     expect(photoDayKey(photo("2"), { photoId: "2", source: "track", instant: summer }, "Europe/Berlin")).toBe("2026-03-30");
   });
 
+  test("uses a resolved camera offset when the viewer timezone is UTC", () => {
+    const instant = Date.parse("2026-08-19T22:30:00Z");
+    expect(photoDayKey(photo("1"), { photoId: "1", source: "track", instant, offsetMinutes: 120 }, "UTC")).toBe("2026-08-20");
+  });
+
   test("includes recording-only dates and keeps undated samples separate", () => {
     const photos = [photo("1", "2026:08:20 10:00:00")];
     const source = recording("walk", `<trk><trkseg>${point(1, 2, "2026-08-21T00:00:00Z")}${point(1, 2.1)}</trkseg></trk>`);

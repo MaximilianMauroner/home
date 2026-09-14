@@ -8,6 +8,7 @@ import {
   buildRouteStory,
   recordedLegCameraFrame,
   recordedLegFrame,
+  recordedProgressStats,
   routePrefix,
 } from "../src/components/tools/PhotoJourney/route-progress";
 import { placementLegEligibility } from "../src/components/tools/PhotoJourney/timeline";
@@ -115,6 +116,127 @@ describe("Photo Journey recorded route presentation", () => {
       travelledKm: frame.travelledKm,
     });
     expect(camera).not.toHaveProperty("revealed");
+  });
+
+  test("derives live hiking stats from GPX progress instead of animation time", () => {
+    const start = Date.parse("2026-08-19T07:00:00Z");
+    const hike: Track = {
+      points: [
+        {
+          latitude: 46,
+          longitude: 11,
+          elevation: 1_000,
+          time: start,
+        },
+        {
+          latitude: 46,
+          longitude: 11.01,
+          elevation: 1_015,
+          time: start + 60_000,
+        },
+        {
+          latitude: 46,
+          longitude: 11.02,
+          elevation: 1_012,
+          time: start + 120_000,
+        },
+      ],
+      segmentStarts: [0],
+    };
+    const placements = [
+      placement("summit", start + 120_000, hike.points[2], {
+        source: "track",
+        coordinates: hike.points[2],
+        recordingSampleTime: start + 120_000,
+        gapSeconds: 0,
+      }),
+    ];
+    const story = buildRouteStory(hike, placements, [true]);
+    const halfway = recordedProgressStats(story, 0, 0.5)!;
+    expect(halfway.time).toBeCloseTo(start + 60_000, -1);
+    expect(halfway.elapsedSeconds).toBeCloseTo(60, 1);
+    expect(halfway.movingSeconds).toBeCloseTo(60, 1);
+    expect(halfway.distanceKm).toBeGreaterThan(0.7);
+    expect(halfway.distanceKm).toBeLessThan(0.8);
+    expect(halfway.elevationM).toBeCloseTo(1_015, 0);
+    expect(halfway.ascentM).toBeCloseTo(15, 0);
+  });
+
+  test("keeps hike totals across paused GPX segments without joining the gap", () => {
+    const start = Date.parse("2026-08-19T07:00:00Z");
+    const points: Track["points"] = [
+      { latitude: 46, longitude: 11, elevation: 1_000, time: start },
+      {
+        latitude: 46,
+        longitude: 11.01,
+        elevation: 1_015,
+        time: start + 60_000,
+      },
+      {
+        latitude: 47,
+        longitude: 12,
+        elevation: 1_100,
+        time: start + 600_000,
+      },
+      {
+        latitude: 47,
+        longitude: 12.01,
+        elevation: 1_120,
+        time: start + 660_000,
+      },
+    ];
+    const hike: Track = {
+      points,
+      segmentStarts: [0, 2],
+      parts: [{ points, segmentStarts: [0, 2] }],
+    };
+    const destination = hike.points[3];
+    const story = buildRouteStory(
+      hike,
+      [
+        placement("after-pause", destination.time!, destination, {
+          source: "track",
+          coordinates: destination,
+          recordingSampleTime: destination.time,
+          gapSeconds: 0,
+        }),
+      ],
+      [true],
+    );
+    const complete = recordedProgressStats(story, 0, 1)!;
+
+    expect(complete.elapsedSeconds).toBe(660);
+    expect(complete.movingSeconds).toBe(120);
+    expect(complete.distanceKm).toBeGreaterThan(1.5);
+    expect(complete.distanceKm).toBeLessThan(1.7);
+    expect(complete.ascentM).toBe(35);
+  });
+
+  test("uses the destination time when the hike ends with a stationary pause", () => {
+    const start = Date.parse("2026-08-19T07:00:00Z");
+    const points: Track["points"] = [
+      { latitude: 46, longitude: 11, time: start },
+      { latitude: 46, longitude: 11.01, time: start + 60_000 },
+      { latitude: 46, longitude: 11.01, time: start + 600_000 },
+    ];
+    const hike: Track = { points, segmentStarts: [0] };
+    const story = buildRouteStory(
+      hike,
+      [
+        placement("after-pause", points[2].time!, points[2], {
+          source: "track",
+          coordinates: points[2],
+          recordingSampleTime: points[2].time,
+          gapSeconds: 0,
+        }),
+      ],
+      [true],
+    );
+
+    expect(recordedProgressStats(story, 0, 1)).toMatchObject({
+      time: start + 600_000,
+      elapsedSeconds: 600,
+    });
   });
 
   test("animates the GPX prefix before the first photo from its recorded start", () => {

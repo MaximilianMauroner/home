@@ -17,7 +17,12 @@ import JourneyFilmstrip from "./JourneyFilmstrip";
 import { normalizeTimezone } from "./days";
 import { burstPhotoProgress, journeyMotion } from "./motion";
 import type { Track } from "./gpx";
-import type { RouteStory } from "./route-progress";
+import {
+  recordedProgressStats,
+  type RecordedProgressStats,
+  type RouteStory,
+} from "./route-progress";
+import { localDisplayMoment, photoDisplayMoment } from "./time-display";
 import {
   type JourneyPhase,
   type JourneyStop,
@@ -42,6 +47,24 @@ function formatMoving(totalSeconds: number) {
   const minutes = Math.round(totalSeconds / 60);
   if (minutes < 60) return `${minutes} min`;
   return `${Math.floor(minutes / 60)} h ${pad(minutes % 60)} min`;
+}
+
+function formatElapsed(totalSeconds: number | undefined) {
+  if (totalSeconds === undefined) return "—";
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${hours}:${pad(minutes)}:${pad(seconds % 60)}`;
+}
+
+function formatTrailDistance(distanceKm: number) {
+  return `${distanceKm.toFixed(distanceKm < 10 ? 2 : 1)} km`;
+}
+
+function formatPace(stats: RecordedProgressStats) {
+  if (stats.distanceKm < 0.05 || stats.movingSeconds < 30) return "—";
+  const seconds = Math.round(stats.movingSeconds / stats.distanceKm);
+  return `${Math.floor(seconds / 60)}:${pad(seconds % 60)} /km`;
 }
 
 export default function JourneyStage({
@@ -122,6 +145,16 @@ export default function JourneyStage({
   const checkpoint = timeline.stops[state.checkpointIndex];
   const checkpointPresentationProgress = motion.checkpoint;
   const placement = placements?.[presentationIndex];
+  const targetPlacement = placements?.[state.checkpointPhotoIndex];
+  const trailStats =
+    traveling && state.currentLegEligible
+      ? recordedProgressStats(
+          routeStory,
+          state.checkpointPhotoIndex,
+          motion.leg,
+        )
+      : undefined;
+  const showTrailProgress = traveling && trailStats !== undefined;
   const originalError =
     originalStatus === "error" || originalFailed === photo?.id;
   const panelProgress = !playing && state.panelVisible ? 1 : motion.panel;
@@ -129,13 +162,13 @@ export default function JourneyStage({
     () => ({
       top: 0,
       right: 0,
-      bottom: 0,
+      bottom: showTrailProgress ? (size.width > 640 ? 128 : 188) : 0,
       left:
         size.width > 640
           ? Math.round(size.width * DESKTOP_PHOTO_SHARE * panelProgress)
           : 0,
     }),
-    [panelProgress, size.width],
+    [panelProgress, showTrailProgress, size.width],
   );
   const photoProgress =
     !playing || traveling || card
@@ -147,21 +180,47 @@ export default function JourneyStage({
         );
   const previousPhoto =
     state.phase === "reveal" ? undefined : photos[presentationIndex - 1];
-  const clock = useMemo(
+  const captureMoment = photo
+    ? photoDisplayMoment(
+        photo.metadata,
+        placement?.instant,
+        placement?.offsetMinutes,
+        timezone,
+      )
+    : undefined;
+  const captureClock = useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
         day: "numeric",
         month: "short",
         hour: "2-digit",
         minute: "2-digit",
-        timeZone: normalizeTimezone(timezone),
+        timeZone: captureMoment?.timeZone ?? normalizeTimezone(timezone),
       }),
-    [timezone],
+    [captureMoment?.timeZone, timezone],
   );
-  const capturedAt =
-    placement?.instant !== undefined && Number.isFinite(placement.instant)
-      ? clock.format(placement.instant)
-      : (photo?.metadata.capturedAtLabel ?? "Time unknown");
+  const capturedAt = captureMoment
+    ? captureClock.format(captureMoment.instant)
+    : (photo?.metadata.capturedAtLabel ?? "Time unknown");
+  const trailMoment =
+    trailStats?.time === undefined
+      ? undefined
+      : localDisplayMoment(
+          trailStats.time,
+          targetPlacement?.offsetMinutes,
+          timezone,
+        );
+  const trailClock = useMemo(
+    () =>
+      new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZone: trailMoment?.timeZone ?? normalizeTimezone(timezone),
+      }),
+    [timezone, trailMoment?.timeZone],
+  );
+  const trailTime = trailMoment ? trailClock.format(trailMoment.instant) : "—";
   const locationLabel =
     placement?.source === "track"
       ? placement.recordingGap
@@ -271,6 +330,9 @@ export default function JourneyStage({
             </div>
           )}
         </div>
+        {showTrailProgress && (
+          <TrailProgress stats={trailStats} localTime={trailTime} />
+        )}
         {photo && !traveling && (
           <section
             className="pj-album-photo"
@@ -377,7 +439,11 @@ export default function JourneyStage({
           {traveling ? (
             <>
               <span className="pj-album-place">Following recorded trail</span>
-              <span>Next photo appears at the recorded stop</span>
+              <span>
+                {trailStats
+                  ? `${formatTrailDistance(trailStats.distanceKm)} · ${formatElapsed(trailStats.elapsedSeconds)} elapsed`
+                  : "Next photo appears at the recorded stop"}
+              </span>
             </>
           ) : photo ? (
             <>
@@ -414,6 +480,50 @@ export default function JourneyStage({
         onSelect={selectCheckpoint}
       />
     </div>
+  );
+}
+
+function TrailProgress({
+  stats,
+  localTime,
+}: {
+  stats: RecordedProgressStats;
+  localTime: string;
+}) {
+  return (
+    <aside className="pj-trail-progress" aria-label="Current hike progress">
+      <span className="pj-label">Live trail</span>
+      <dl>
+        <div>
+          <dt>Local time</dt>
+          <dd>{localTime}</dd>
+        </div>
+        <div>
+          <dt>Time since start</dt>
+          <dd>{formatElapsed(stats.elapsedSeconds)}</dd>
+        </div>
+        <div>
+          <dt>Distance</dt>
+          <dd>{formatTrailDistance(stats.distanceKm)}</dd>
+        </div>
+        <div>
+          <dt>Elevation</dt>
+          <dd>
+            {stats.elevationM === undefined
+              ? "—"
+              : `${Math.round(stats.elevationM).toLocaleString("en")} m`}
+          </dd>
+        </div>
+        <div>
+          <dt>Elevation gain</dt>
+          <dd>{Math.round(stats.ascentM).toLocaleString("en")} m</dd>
+        </div>
+        <div>
+          <dt>Avg. pace</dt>
+          <dd>{formatPace(stats)}</dd>
+        </div>
+      </dl>
+    </aside>
   );
 }
 

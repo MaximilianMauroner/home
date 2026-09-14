@@ -8,13 +8,19 @@ import {
 } from "mediabunny";
 import { trackSegments, trackStats, type Track, type TrackPoint } from "./gpx";
 import { burstPhotoProgress, journeyMotion } from "./motion";
-import { recordedLegFrame, type RouteStory } from "./route-progress";
+import {
+  recordedLegFrame,
+  recordedProgressStats,
+  type RecordedProgressStats,
+  type RouteStory,
+} from "./route-progress";
 import {
   timelineAt,
   type JourneyTimeline,
   type TimelineState,
 } from "./timeline";
 import type { Placement } from "./track";
+import { localDisplayMoment, photoDisplayMoment } from "./time-display";
 import type { Coordinates, JourneyPhoto } from "./types";
 
 export const VIDEO_WIDTH = 1280;
@@ -271,15 +277,20 @@ function formatCapture(
   photo: JourneyPhoto,
   timezone: string,
 ) {
-  if (placement?.instant === undefined)
-    return photo.metadata.capturedAtLabel ?? "Time unknown";
+  const moment = photoDisplayMoment(
+    photo.metadata,
+    placement?.instant,
+    placement?.offsetMinutes,
+    timezone,
+  );
+  if (!moment) return photo.metadata.capturedAtLabel ?? "Time unknown";
   return new Intl.DateTimeFormat(undefined, {
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: timezone,
-  }).format(placement.instant);
+    timeZone: moment.timeZone,
+  }).format(moment.instant);
 }
 
 function drawInfo(
@@ -380,6 +391,90 @@ function drawRouteLabel(context: CanvasRenderingContext2D, area: MapArea) {
   context.fillStyle = "#f1cf67";
   context.font = "600 15px system-ui, sans-serif";
   context.fillText("GPX ROUTE", area.left + 28, 36);
+}
+
+const trailClockFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function formatTrailClock(
+  time: number | undefined,
+  offsetMinutes: number | undefined,
+  timezone: string,
+) {
+  if (time === undefined) return "—";
+  const moment = localDisplayMoment(time, offsetMinutes, timezone);
+  let formatter = trailClockFormatters.get(moment.timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: moment.timeZone,
+    });
+    trailClockFormatters.set(moment.timeZone, formatter);
+  }
+  return formatter.format(moment.instant);
+}
+
+function formatTrailElapsed(totalSeconds: number | undefined) {
+  if (totalSeconds === undefined) return "—";
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function trailPace(stats: RecordedProgressStats) {
+  if (stats.distanceKm < 0.05 || stats.movingSeconds < 30) return "—";
+  const seconds = Math.round(stats.movingSeconds / stats.distanceKm);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} /km`;
+}
+
+function drawTrailProgress(
+  context: CanvasRenderingContext2D,
+  stats: RecordedProgressStats,
+  localTime: string,
+) {
+  const items = [
+    ["LOCAL TIME", localTime],
+    ["TIME SINCE START", formatTrailElapsed(stats.elapsedSeconds)],
+    [
+      "DISTANCE",
+      `${stats.distanceKm.toFixed(stats.distanceKm < 10 ? 2 : 1)} km`,
+    ],
+    [
+      "ELEVATION",
+      stats.elevationM === undefined
+        ? "—"
+        : `${Math.round(stats.elevationM)} m`,
+    ],
+    ["ELEVATION GAIN", `${Math.round(stats.ascentM)} m`],
+    ["AVG. PACE", trailPace(stats)],
+  ] as const;
+  const left = 28;
+  const top = VIDEO_HEIGHT - 112;
+  const width = 930;
+  const height = 84;
+  const itemWidth = width / items.length;
+  context.fillStyle = "#05090bea";
+  context.fillRect(left, top, width, height);
+  context.strokeStyle = "#31454d";
+  context.lineWidth = 1;
+  context.strokeRect(left, top, width, height);
+  for (const [index, [label, value]] of items.entries()) {
+    const x = left + index * itemWidth;
+    if (index) {
+      context.beginPath();
+      context.moveTo(x, top + 12);
+      context.lineTo(x, top + height - 12);
+      context.stroke();
+    }
+    context.fillStyle = "#9aabb0";
+    context.font = "11px system-ui, sans-serif";
+    context.fillText(label, x + 12, top + 27, itemWidth - 24);
+    context.fillStyle = "#f4f7f7";
+    context.font = "600 18px system-ui, sans-serif";
+    context.fillText(value, x + 12, top + 56, itemWidth - 24);
+  }
 }
 
 function drawPhotoPanel(
@@ -485,14 +580,35 @@ async function renderAtResolution(
           `${options.photos.length} photos · Journey complete`,
         );
       } else if (state.phase === "approach") {
+        const legProgress = journeyMotion(state, false).leg;
         drawRoute(context, segments, bounds, FULL_MAP);
         drawMarker(
           context,
-          markerForState(state, options.placements, options.routeStory),
+          markerForState(
+            { ...state, currentLegProgress: legProgress },
+            options.placements,
+            options.routeStory,
+          ),
           bounds,
           FULL_MAP,
         );
         drawRouteLabel(context, FULL_MAP);
+        const trailStats = recordedProgressStats(
+          options.routeStory,
+          state.checkpointPhotoIndex,
+          legProgress,
+        );
+        if (trailStats) {
+          drawTrailProgress(
+            context,
+            trailStats,
+            formatTrailClock(
+              trailStats.time,
+              options.placements[state.checkpointPhotoIndex]?.offsetMinutes,
+              options.timezone,
+            ),
+          );
+        }
       } else {
         const photoIndex = photoIndexForState(state, options.timeline);
         const photo = options.photos[photoIndex] ?? options.photos[0];
