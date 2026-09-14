@@ -329,6 +329,7 @@ export default function JourneyStage({
             phase={state.phase}
             dayChange={dayChange}
             approachDuration={state.approachDuration}
+            phaseDuration={state.phaseDuration}
             phaseRemaining={state.phaseRemaining}
             currentLegProgress={motion.leg}
             currentLegEligible={state.currentLegEligible}

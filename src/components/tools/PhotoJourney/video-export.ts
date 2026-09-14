@@ -28,7 +28,12 @@ import {
 import type { Placement } from "./track";
 import { localDisplayMoment, photoDisplayMoment } from "./time-display";
 import type { Coordinates, JourneyPhoto } from "./types";
-import { previousRecordedLeg, STOP_ZOOM, type MapMode } from "./JourneyMap";
+import {
+  previousRecordedLeg,
+  routeCameraBlendFraction,
+  STOP_ZOOM,
+  type MapMode,
+} from "./JourneyMap";
 import { VideoTerrainRenderer } from "./video-terrain-renderer";
 
 export const VIDEO_WIDTH = 1280;
@@ -550,11 +555,7 @@ function drawTravelledRoute(
             : leg.drawable,
         );
       const tail = routeStory.departureLegs[index];
-      if (
-        tail &&
-        activeSegments.has(tail.segmentIndex) &&
-        (index < photoIndex || departure)
-      )
+      if (tail && (index < photoIndex || departure))
         visible.push(
           index === photoIndex
             ? recordedLegPrefix(tail, currentProgress)
@@ -591,7 +592,7 @@ function drawTravelledRoute(
   context.restore();
 }
 
-function travelledSegments(
+export function travelledSegments(
   routeStory: RouteStory | undefined,
   photoIndex: number,
   currentProgress = 1,
@@ -612,11 +613,7 @@ function travelledSegments(
           : leg.drawable,
       );
     const tail = routeStory.departureLegs[index];
-    if (
-      tail &&
-      activeSegments.has(tail.segmentIndex) &&
-      (index < photoIndex || departure)
-    )
+    if (tail && (index < photoIndex || departure))
       visible.push(
         index === photoIndex
           ? recordedLegPrefix(tail, currentProgress)
@@ -640,8 +637,7 @@ function completedTerrainSegments(
     const visible: TrackPoint[][] = [];
     if (leg && activeSegments.has(leg.segmentIndex)) visible.push(leg.drawable);
     const tail = routeStory.departureLegs[index];
-    if (tail && activeSegments.has(tail.segmentIndex))
-      visible.push(tail.drawable);
+    if (tail) visible.push(tail.drawable);
     return visible;
   });
 }
@@ -1416,7 +1412,7 @@ async function renderAtResolution(
           context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
         }
         const groupKey = options.routeStory?.context.indexOf(segments[0]) ?? -1;
-        const cacheKey = `${groupKey}:${state.checkpointPhotoIndex}:full:${mapMode}`;
+        const cacheKey = `${groupKey}:${state.checkpointPhotoIndex}:${departure ? "trail" : "approach"}:${mapMode}`;
         let prepared = mapCache.get(cacheKey);
         if (terrainRenderer && bounds) {
           const activeLeg = departure
@@ -1437,9 +1433,10 @@ async function renderAtResolution(
           const previousCamera = previousLeg
             ? recordedLegFrame(previousLeg, 1)
             : undefined;
-          const blendFraction = Math.min(
-            1,
-            700 / Math.max(1, state.approachDuration),
+          const blendFraction = routeCameraBlendFraction(
+            state.phase,
+            state.approachDuration,
+            state.phaseDuration,
           );
           const current = cameraFrame?.revealed ?? [];
           const terrain = await terrainRenderer.render(

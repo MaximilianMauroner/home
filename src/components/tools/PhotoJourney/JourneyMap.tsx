@@ -35,6 +35,17 @@ const OFFLINE_STOP_ZOOM = 15;
 const OFFLINE_FOLLOW_ZOOM = 17;
 const OFFLINE_MAX_ZOOM = 18;
 
+export function routeCameraBlendFraction(
+  phase: JourneyPhase,
+  approachDuration: number,
+  phaseDuration: number,
+) {
+  return Math.min(
+    1,
+    700 / Math.max(1, phase === "trail" ? phaseDuration : approachDuration),
+  );
+}
+
 /** AWS Terrain Tiles, Terrarium-encoded PNG. Open data, no key, attribution required. */
 export const TERRAIN_DEM_TILES = [
   "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
@@ -155,6 +166,7 @@ type JourneyMapProps = {
   /** A chapter boundary must reposition instead of animating an unrecorded overnight leg. */
   dayChange?: boolean;
   approachDuration: number;
+  phaseDuration?: number;
   /** Remaining timeline time in the current phase; read only when a camera command starts. */
   phaseRemaining?: number;
   /** Timeline-derived progress for the active recorded leg. */
@@ -561,6 +573,7 @@ export default function JourneyMap({
   phase,
   dayChange = false,
   approachDuration,
+  phaseDuration = approachDuration,
   phaseRemaining,
   currentLegProgress = 0,
   currentLegEligible = false,
@@ -641,6 +654,7 @@ export default function JourneyMap({
     phase === "reveal" ||
     phase === "hold" ||
     phase === "departure" ||
+    phase === "trail" ||
     phase === "outro" ||
     phase === "complete";
 
@@ -955,7 +969,10 @@ export default function JourneyMap({
       );
     };
     const arrived =
-      phase === "reveal" || phase === "hold" || phase === "departure";
+      phase === "reveal" ||
+      phase === "hold" ||
+      phase === "departure" ||
+      phase === "trail";
     const checkpointEndIndex =
       activeCheckpoint?.photoIndices.at(-1) ?? activeIndex;
     if (!routeStory) {
@@ -972,7 +989,10 @@ export default function JourneyMap({
         phase === "outro" || phase === "complete"
           ? stops.length
           : activeIndex +
-            (phase === "reveal" || phase === "hold" || phase === "departure"
+            (phase === "reveal" ||
+            phase === "hold" ||
+            phase === "departure" ||
+            phase === "trail"
               ? 1
               : 0);
       const completedKey = `${completedThrough}:${dayChangesKey}`;
@@ -1470,9 +1490,10 @@ export default function JourneyMap({
     const previousBearing = previousLeg
       ? journeyCameraBearing(previousLeg.drawable, mode, reducedMotion)
       : targetBearing;
-    const cameraBlendFraction = Math.min(
-      1,
-      700 / Math.max(1, approachDuration ?? 700),
+    const cameraBlendFraction = routeCameraBlendFraction(
+      phase,
+      approachDuration ?? 700,
+      phaseDuration,
     );
     const routeBearing =
       routeTraveling && activeRecordedLeg && previousLeg && !dayChange
@@ -1596,6 +1617,7 @@ export default function JourneyMap({
     speed,
     seekVersion,
     approachDuration,
+    phaseDuration,
     currentLegEligible,
     currentLegProgress,
     cameraPadding,

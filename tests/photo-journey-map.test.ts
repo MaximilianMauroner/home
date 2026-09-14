@@ -10,6 +10,7 @@ import {
   journeyCameraBearing,
   journeyCameraPitch,
   previousRecordedLeg,
+  routeCameraBlendFraction,
   routeTipForPlacement,
   suppressedMarkerIndexes,
   TERRAIN_PITCH,
@@ -30,6 +31,11 @@ describe("Photo Journey map timing and recording budgets", () => {
   test("keeps timeline and MapLibre animation units in milliseconds", () => {
     expect(approachAnimationDuration(3_000, 1)).toBe(3_000);
     expect(approachAnimationDuration(3_000, 2)).toBe(1_500);
+  });
+
+  test("times trail camera blending from the route-only phase", () => {
+    expect(routeCameraBlendFraction("approach", 3_500, 6_000)).toBe(0.2);
+    expect(routeCameraBlendFraction("trail", 3_500, 7_000)).toBe(0.1);
   });
 
   test("shows a time-resolved GPX pause position but not an unmatched photo", () => {
