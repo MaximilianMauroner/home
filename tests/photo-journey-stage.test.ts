@@ -211,5 +211,6 @@ describe("Photo Journey stage presentation", () => {
     expect(photoMarkup).toContain('aria-label="Current hike progress"');
     expect(photoMarkup).toContain('data-compact="true"');
     expect(photoMarkup).toContain('class="pj-elevation-profile"');
+    expect(photoMarkup).toContain('class="pj-progress-elevation-gain"');
   });
 });

@@ -534,6 +534,10 @@ function JourneyProgressCard({
               : `${Math.round(stats.elevationM).toLocaleString("en")} m`}
           </dd>
         </div>
+        <div className="pj-progress-elevation-gain">
+          <dt>Elevation gain</dt>
+          <dd>{Math.round(stats.ascentM).toLocaleString("en")} m</dd>
+        </div>
         <div className="pj-progress-local-time">
           <dt>Local time</dt>
           <dd>{localTime}</dd>
@@ -545,10 +549,6 @@ function JourneyProgressCard({
         <div>
           <dt>Distance</dt>
           <dd>{formatTrailDistance(stats.distanceKm)}</dd>
-        </div>
-        <div className="pj-progress-secondary">
-          <dt>Elevation gain</dt>
-          <dd>{Math.round(stats.ascentM).toLocaleString("en")} m</dd>
         </div>
         <div className="pj-progress-secondary">
           <dt>Avg. pace</dt>

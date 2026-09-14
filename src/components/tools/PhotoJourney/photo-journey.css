@@ -705,7 +705,7 @@
   padding: 0;
 }
 .pj-trail-progress[data-compact="true"] dl {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .pj-trail-progress[data-compact="true"]
   :is(.pj-progress-local-time, .pj-progress-secondary) {
@@ -719,6 +719,10 @@
   line-height: 1.2;
   text-transform: uppercase;
   white-space: nowrap;
+}
+.pj-trail-progress[data-compact="true"] dt {
+  min-height: 1.4rem;
+  white-space: normal;
 }
 .pj-trail-progress dd {
   min-height: 1.35rem;

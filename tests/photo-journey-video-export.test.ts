@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
+import type { Map as MapLibreMap } from "maplibre-gl";
 import {
   fetchVideoMapTile,
   projectVideoPoint,
+  terrainCameraPhotoIndex,
   videoBounds,
   VIDEO_HEIGHT,
   VIDEO_OUTPUT_RESOLUTIONS,
@@ -10,9 +12,92 @@ import {
   videoMapTileUrl,
 } from "../src/components/tools/PhotoJourney/video-export";
 import type { Track } from "../src/components/tools/PhotoJourney/gpx";
+import {
+  VideoTerrainRenderer,
+  videoMarkerLongitude,
+  videoTerrainJumpOptions,
+  videoRouteData,
+  waitForVideoMapPaint,
+} from "../src/components/tools/PhotoJourney/video-terrain-renderer";
 
 describe("Photo Journey MP4 layout", () => {
-  test("uses a finished topographic raster instead of raw elevation data", () => {
+  test("keeps burst photos on their checkpoint camera", () => {
+    expect(
+      terrainCameraPhotoIndex({
+        checkpointPhotoIndex: 7,
+      }),
+    ).toBe(7);
+  });
+
+  test("projects markers in the camera's antimeridian world copy", () => {
+    expect(videoMarkerLongitude(-179, 181)).toBe(181);
+    expect(videoMarkerLongitude(179, -181)).toBe(-181);
+  });
+
+  test("applies photo-panel padding to the terrain camera", () => {
+    expect(
+      videoTerrainJumpOptions({ center: [11, 46], zoom: 15 }, 45, 20, {
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 640,
+      }),
+    ).toMatchObject({ padding: { left: 640 } });
+    expect(
+      videoTerrainJumpOptions({ center: [11, 46], zoom: 15 }, 45, 20),
+    ).toMatchObject({
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    });
+  });
+
+  test("waits for a paint after map sources become ready", async () => {
+    let paint: (() => void) | undefined;
+    const fakeMap = {
+      once: (_event: string, listener: () => void) => {
+        paint = listener;
+        return fakeMap;
+      },
+      off: () => fakeMap,
+      triggerRepaint: () => undefined,
+    } as unknown as MapLibreMap;
+    let settled = false;
+    const waiting = waitForVideoMapPaint(fakeMap).then(() => {
+      settled = true;
+    });
+
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    paint?.();
+    await waiting;
+    expect(settled).toBe(true);
+  });
+
+  test("rejects an already canceled terrain renderer before allocating WebGL", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      VideoTerrainRenderer.create(1920, 1080, controller.signal),
+    ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  test("keeps singleton fixes and unwraps antimeridian route geometry", () => {
+    const data = videoRouteData([
+      [{ latitude: 10, longitude: 179 }],
+      [
+        { latitude: 10, longitude: 179 },
+        { latitude: 11, longitude: -179 },
+      ],
+    ]);
+
+    expect(data.features[0]?.geometry.type).toBe("Point");
+    const line = data.features[1]?.geometry;
+    expect(line?.type).toBe("LineString");
+    if (line?.type !== "LineString") throw new Error("Expected route line");
+    expect(Math.abs(line.coordinates[1][0] - line.coordinates[0][0])).toBe(2);
+  });
+
+  test("keeps topographic raster URLs for the WebGL fallback", () => {
     expect(videoMapTileUrl("terrain", 15, 17430, 11591)).toBe(
       "https://a.tile.opentopomap.org/15/17430/11591.png",
     );
