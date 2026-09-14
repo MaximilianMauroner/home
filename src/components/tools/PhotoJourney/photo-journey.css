@@ -464,47 +464,37 @@
   min-height: 0;
 }
 .pj-album .pj-viewport {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-}
-.pj-album .pj-viewport[data-route-only="true"] {
-  grid-template-columns: minmax(0, 1fr);
-}
-@media (min-width: 641px) {
-  .pj-album .pj-viewport[data-phase="reveal"] {
-    grid-template-columns:
-      minmax(0, var(--pj-photo-share))
-      minmax(0, 1fr);
-  }
-}
-.pj-album .pj-viewport[data-photos="false"] {
-  grid-template-columns: minmax(0, 1fr);
+  display: block;
 }
 .pj-album .pj-map {
-  position: relative;
-  grid-column: 2;
-  grid-row: 1;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   min-width: 0;
   min-height: 0;
-  border-left: 1px solid var(--pj-line-strong);
-}
-.pj-album .pj-viewport[data-photos="false"] .pj-map {
-  grid-column: 1;
-  border-left: 0;
-}
-.pj-album .pj-viewport[data-route-only="true"] .pj-map {
-  grid-column: 1;
   border-left: 0;
 }
 .pj-album-photo {
-  position: relative;
-  grid-column: 1;
-  grid-row: 1;
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 2;
+  width: 60%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  border-right: 1px solid var(--pj-line-strong);
   background: color-mix(in oklch, var(--pj-photo-matte, #030607) 24%, #030607);
-  transform-origin: right center;
+  box-shadow: 20px 0 48px #0008;
+}
+.pj-album .pj-viewport[data-map="off"] .pj-album-photo {
+  width: 100%;
+  border-right: 0;
+  box-shadow: none;
+}
+.pj-album
+  .pj-viewport:is([data-phase="reveal"], [data-phase="departure"])
+  .pj-album-photo {
+  will-change: transform, opacity;
 }
 .pj-album-backdrop {
   position: absolute;
@@ -1729,11 +1719,15 @@
     max-width: 7rem;
   }
   .pj-album .pj-viewport {
-    grid-template-columns: minmax(0, 1fr);
+    display: block;
   }
   .pj-album .pj-map {
-    grid-column: 1;
     border-left: 0;
+  }
+  .pj-album-photo {
+    width: 100%;
+    border-right: 0;
+    box-shadow: none;
   }
   .pj-album .pj-viewport[data-mobile-view="photo"] .pj-map,
   .pj-album .pj-viewport[data-mobile-view="map"] .pj-album-photo {

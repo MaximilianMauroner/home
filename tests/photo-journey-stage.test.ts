@@ -93,5 +93,7 @@ describe("Photo Journey stage presentation", () => {
     expect(markup).toContain('aria-label="Current photo"');
     expect(markup).toContain("pj-album-backdrop");
     expect(markup).toContain("--pj-photo-matte:#3b172c");
+    expect(markup).not.toContain("--pj-photo-share");
+    expect(markup).toContain("translate3d(");
   });
 });

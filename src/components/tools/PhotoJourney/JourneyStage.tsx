@@ -35,7 +35,7 @@ const CARD_PHASES = new Set<JourneyPhase>([
   "outro",
   "complete",
 ]);
-const MAP_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
+const DESKTOP_PHOTO_SHARE = 0.6;
 const pad = (value: number) => String(value).padStart(2, "0");
 /** Moving time from the track, compact enough for a stat tile: "24 min" or "8 h 24 min". */
 function formatMoving(totalSeconds: number) {
@@ -124,8 +124,19 @@ export default function JourneyStage({
   const placement = placements?.[presentationIndex];
   const originalError =
     originalStatus === "error" || originalFailed === photo?.id;
-  const arrivalProgress =
-    !playing || state.phase !== "reveal" ? 1 : motion.photoTransition;
+  const panelProgress = !playing && state.panelVisible ? 1 : motion.panel;
+  const cameraPadding = useMemo(
+    () => ({
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left:
+        size.width > 640
+          ? Math.round(size.width * DESKTOP_PHOTO_SHARE * panelProgress)
+          : 0,
+    }),
+    [panelProgress, size.width],
+  );
   const photoProgress =
     !playing || traveling || card
       ? 1
@@ -207,11 +218,6 @@ export default function JourneyStage({
         data-playing={playing}
         data-phase={phase}
         data-route-only={traveling}
-        style={
-          {
-            "--pj-photo-share": `${arrivalProgress * 60}%`,
-          } as CSSProperties
-        }
       >
         <div
           ref={mapFrame}
@@ -250,7 +256,7 @@ export default function JourneyStage({
             onEngineFailed={onEngineFailed}
             onPlaybackReady={onPlaybackReady}
             timeline={timeline}
-            cameraPadding={MAP_PADDING}
+            cameraPadding={cameraPadding}
             checkpointProgress={checkpointPresentationProgress}
             followSuspended={followSuspended}
             onUserMove={suspendFollow}
@@ -270,8 +276,8 @@ export default function JourneyStage({
             style={
               {
                 "--pj-photo-matte": photo.dominantColor ?? "#030607",
-                opacity: arrivalProgress,
-                transform: `translate3d(${(1 - arrivalProgress) * -36}px, 0, 0) scale(${0.97 + arrivalProgress * 0.03})`,
+                opacity: Math.min(1, panelProgress * 1.8),
+                transform: `translate3d(${(panelProgress - 1) * 100}%, 0, 0)`,
               } as CSSProperties
             }
           >

@@ -1,4 +1,8 @@
-import { BURST_HOLD_DURATION, BURST_TRANSITION_DURATION, type TimelineState } from "./timeline";
+import {
+  BURST_HOLD_DURATION,
+  BURST_TRANSITION_DURATION,
+  type TimelineState,
+} from "./timeline";
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 const PHOTO_CROSSFADE_DURATION = 420;
@@ -10,7 +14,11 @@ export function smoothProgress(value: number) {
 }
 
 /** Pull back to frame a photo-only leg, then arrive at the same zoom as the hold. */
-export function journeyTravelZoom(progress: number, stopZoom: number, legZoom: number) {
+export function journeyTravelZoom(
+  progress: number,
+  stopZoom: number,
+  legZoom: number,
+) {
   const arc = Math.sin(Math.PI * clamp(progress)) ** 2;
   return stopZoom + (Math.min(stopZoom, legZoom) - stopZoom) * arc;
 }
@@ -20,7 +28,8 @@ export function journeyMotion(state: TimelineState, reducedMotion: boolean) {
   const elapsed = state.phaseDuration * state.phaseProgress;
   const approach = state.phase === "approach";
   const departure = state.phase === "departure";
-  const atCheckpoint = approach || state.phase === "reveal" || state.phase === "hold" || departure;
+  const atCheckpoint =
+    approach || state.phase === "reveal" || state.phase === "hold" || departure;
   const drawer = approach
     ? 1
     : departure
@@ -34,27 +43,60 @@ export function journeyMotion(state: TimelineState, reducedMotion: boolean) {
       ? smoothProgress((state.phaseProgress - 0.12) / 0.88)
       : state.imageProgress;
   let card = 1;
-  if (state.phase === "intro") card = smoothProgress(state.phaseRemaining / 350);
+  if (state.phase === "intro")
+    card = smoothProgress(state.phaseRemaining / 350);
   if (state.phase === "outro") card = smoothProgress(elapsed / 500);
-  if (state.phase === "day") card = smoothProgress(elapsed / 250) * smoothProgress(state.phaseRemaining / 300);
+  if (state.phase === "day")
+    card =
+      smoothProgress(elapsed / 250) *
+      smoothProgress(state.phaseRemaining / 300);
+  const panel =
+    state.phase === "reveal"
+      ? reducedMotion
+        ? 1
+        : smoothProgress(elapsed / PHOTO_CROSSFADE_DURATION)
+      : state.phase === "hold"
+        ? 1
+        : state.phase === "departure"
+          ? reducedMotion
+            ? 1
+            : 1 - smoothProgress(state.phaseProgress)
+          : 0;
   return {
     drawer: !atCheckpoint ? 0 : reducedMotion ? 1 : drawer,
     image: reducedMotion ? 1 : image,
-    photoTransition: reducedMotion || state.phase !== "reveal"
-      ? 1
-      : smoothProgress(elapsed / PHOTO_CROSSFADE_DURATION),
-    checkpoint: reducedMotion ? Number(atCheckpoint) : departure
-      ? 1 - smoothProgress(state.phaseProgress) : smoothProgress(state.checkpointProgress),
+    photoTransition:
+      reducedMotion || state.phase !== "reveal"
+        ? 1
+        : smoothProgress(elapsed / PHOTO_CROSSFADE_DURATION),
+    // The map canvas never changes size. This one clock moves the photo overlay in and shifts
+    // the map composition toward the uncovered part of the stage, then reverses both on exit.
+    panel,
+    checkpoint: reducedMotion
+      ? Number(atCheckpoint)
+      : departure
+        ? 1 - smoothProgress(state.phaseProgress)
+        : smoothProgress(state.checkpointProgress),
     // Route distance is the motion clock. Easing every photo-to-photo leg makes the camera
     // brake and accelerate at every checkpoint, so recorded travel stays linear.
     leg: state.currentLegProgress,
     card: reducedMotion ? 1 : card,
-    cardBackdrop: reducedMotion ? 1 : state.phase === "day" ? smoothProgress(state.phaseRemaining / 300) : card,
+    cardBackdrop: reducedMotion
+      ? 1
+      : state.phase === "day"
+        ? smoothProgress(state.phaseRemaining / 300)
+        : card,
   };
 }
 
-export function burstPhotoProgress(state: TimelineState, photoOffset: number, reducedMotion: boolean) {
+export function burstPhotoProgress(
+  state: TimelineState,
+  photoOffset: number,
+  reducedMotion: boolean,
+) {
   if (reducedMotion || state.phase !== "hold" || photoOffset <= 0) return 1;
   const elapsed = state.phaseDuration * state.phaseProgress;
-  return smoothProgress((elapsed - photoOffset * BURST_HOLD_DURATION) / BURST_TRANSITION_DURATION);
+  return smoothProgress(
+    (elapsed - photoOffset * BURST_HOLD_DURATION) / BURST_TRANSITION_DURATION,
+  );
 }

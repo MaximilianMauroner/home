@@ -9,7 +9,7 @@ import type {
 import { trackSegments, type Track } from "./gpx";
 import { journeyTravelZoom } from "./motion";
 import {
-  recordedLegFrame,
+  recordedLegCameraFrame,
   recordedLegPrefix,
   routePrefix,
   type RecordedLeg,
@@ -561,7 +561,8 @@ export default function JourneyMap({
   const mapRef = useRef<MapLibreMap>();
   const moduleRef = useRef<typeof import("maplibre-gl")>();
   const markersRef = useRef(new Map<string, MapLibreMarker>());
-  const lastRoutePaintRef = useRef(0);
+  const mountedMarkerIdsRef = useRef(new Set<string>());
+  const routePaintRef = useRef({ key: "", nextAt: 0 });
   const completedRef = useRef<{
     engine: number;
     segments: readonly (readonly Coordinates[])[];
@@ -598,7 +599,7 @@ export default function JourneyMap({
   );
   const activeRouteFrame = useMemo(() => {
     const leg = currentLegEligible ? routeStory?.legs[activeIndex] : undefined;
-    return leg ? recordedLegFrame(leg, currentLegProgress) : undefined;
+    return leg ? recordedLegCameraFrame(leg, currentLegProgress) : undefined;
   }, [activeIndex, currentLegEligible, currentLegProgress, routeStory]);
   const activeCheckpoint = useMemo(
     () =>
@@ -645,6 +646,9 @@ export default function JourneyMap({
           attributionControl: { compact: false },
           renderWorldCopies: true,
           maxPitch: TERRAIN_PITCH,
+          // Full-resolution Retina terrain is expensive while the camera moves. This cap keeps
+          // labels crisp without asking the GPU to redraw a 4K backing canvas every frame.
+          pixelRatio: Math.min(window.devicePixelRatio, 1.5),
         });
         map = instance;
         instance.addControl(
@@ -652,7 +656,7 @@ export default function JourneyMap({
             showCompass: false,
             visualizePitch: false,
           }),
-          "top-left",
+          "top-right",
         );
         instance.getCanvas().addEventListener("webglcontextlost", (event) => {
           // A lost context never recovers its tiles; say so instead of showing a dead map.
@@ -786,6 +790,7 @@ export default function JourneyMap({
     let pending = false;
     const refresh = () => {
       pending = false;
+      if (playing) return;
       for (const marker of markersRef.current.values())
         marker.setLngLat(marker.getLngLat());
       // Let an in-progress overview animation finish; tile arrivals must not restart it.
@@ -801,7 +806,7 @@ export default function JourneyMap({
       map.off("sourcedata", onSource);
       map.off("render", refresh);
     };
-  }, [mode, ready, engine]);
+  }, [mode, ready, engine, playing]);
 
   // Static markers change with source data, never with the playback frame. The recording itself
   // is deliberately absent here: route geometry is revealed only by the playback overlays below.
@@ -815,6 +820,7 @@ export default function JourneyMap({
       EMPTY_FEATURES,
     );
     for (const marker of markersRef.current.values()) marker.remove();
+    mountedMarkerIdsRef.current.clear();
     const markers = new Map<string, MapLibreMarker>();
     timeline.stops.forEach((checkpoint) => {
       const index = checkpoint.photoIndex;
@@ -845,18 +851,17 @@ export default function JourneyMap({
       wrapper.addEventListener("click", () =>
         onCheckpointSelect?.(index, wrapper),
       );
-      markers.set(
-        photo.id,
-        new module.Marker({
-          element: wrapper,
-          anchor: "center",
-          pitchAlignment: "viewport",
-          rotationAlignment: "viewport",
-          opacityWhenCovered: 0.65,
-        })
-          .setLngLat(lngLat(coordinates))
-          .addTo(map),
-      );
+      const marker = new module.Marker({
+        element: wrapper,
+        anchor: "center",
+        pitchAlignment: "viewport",
+        rotationAlignment: "viewport",
+        opacityWhenCovered: 0.65,
+      })
+        .setLngLat(lngLat(coordinates))
+        .addTo(map);
+      markers.set(photo.id, marker);
+      mountedMarkerIdsRef.current.add(photo.id);
     });
     markersRef.current = markers;
     // dayChanges is commonly mapped from stable timeline stops at the JSX boundary.
@@ -889,13 +894,19 @@ export default function JourneyMap({
     // GeoJSON updates cross a worker boundary and force the terrain scene to repaint. Keep the
     // camera on the display clock, but cap route serialization at a visually continuous 30 Hz.
     const now = performance.now();
-    if (
-      playing &&
-      phase === "approach" &&
-      now - lastRoutePaintRef.current < 1000 / 30
-    )
-      return;
-    lastRoutePaintRef.current = now;
+    const paintKey = `${engine}:${seekVersion}:${activeIndex}:${phase}`;
+    if (routePaintRef.current.key !== paintKey)
+      routePaintRef.current = { key: paintKey, nextAt: 0 };
+    if (playing && phase === "approach") {
+      const interval = 1000 / 30;
+      const deadline = routePaintRef.current.nextAt;
+      if (deadline && now < deadline) return;
+      routePaintRef.current.nextAt = deadline
+        ? deadline + interval * (Math.floor((now - deadline) / interval) + 1)
+        : now + interval;
+    } else {
+      routePaintRef.current.nextAt = 0;
+    }
     const showPosition = (position?: Coordinates) => {
       (map.getSource("route-tip") as GeoJSONSource | undefined)?.setData(
         position
@@ -976,13 +987,16 @@ export default function JourneyMap({
       );
       return;
     }
+    const activeLeg = currentLegEligible
+      ? routeStory.legs[activeIndex]
+      : undefined;
     const visible = visibleRouteSegments(
       routeStory,
       activeIndex,
       phase,
       currentLegProgress,
       currentLegEligible,
-      activeRouteFrame?.revealed,
+      activeLeg ? recordedLegPrefix(activeLeg, currentLegProgress) : undefined,
       activeCheckpoint?.photoIndices.at(-1),
     );
     // Completed legs are whole recorded slices that only change at a stop boundary, while this
@@ -1033,18 +1047,23 @@ export default function JourneyMap({
     dayChanges,
     dayChangesKey,
     playing,
+    seekVersion,
     ready,
     engine,
   ]);
 
   // Checkpoints begin as quiet dots, reveal their photo on arrival, and remain as visited stops.
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
     const markers = markersRef.current;
+    const mounted = mountedMarkerIdsRef.current;
     const activeCheckpointIndex = activeCheckpoint?.checkpointIndex;
     timeline.stops.forEach((checkpoint) => {
       const index = checkpoint.photoIndex;
       const photo = photos[index];
-      const element = photo ? markers.get(photo.id)?.getElement() : undefined;
+      const marker = photo ? markers.get(photo.id) : undefined;
+      const element = marker?.getElement();
       if (!element) return;
       const active =
         checkpoint.checkpointIndex === activeCheckpointIndex &&
@@ -1080,6 +1099,14 @@ export default function JourneyMap({
       );
       element.style.setProperty("--pj-checkpoint-progress", active ? "1" : "0");
       element.style.zIndex = active ? "3" : index < activeIndex ? "2" : "1";
+      const shouldMount = !playing || active;
+      if (shouldMount && marker && photo && !mounted.has(photo.id)) {
+        marker.addTo(map);
+        mounted.add(photo.id);
+      } else if (!shouldMount && marker && photo && mounted.has(photo.id)) {
+        marker.remove();
+        mounted.delete(photo.id);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1119,6 +1146,19 @@ export default function JourneyMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    if (playing) {
+      // Playback mounts at most its active photo marker. Clear stale browse suppression without
+      // forcing layout reads for every checkpoint on each camera frame.
+      for (const marker of markersRef.current.values()) {
+        const element = marker.getElement();
+        const active = element.classList.contains("pj-map-marker-active");
+        element.classList.remove("pj-map-marker-suppressed");
+        element.tabIndex = active ? 0 : -1;
+        if (active) element.removeAttribute("aria-hidden");
+        else element.setAttribute("aria-hidden", "true");
+      }
+      return;
+    }
     const update = () => {
       const elements = [...markersRef.current.values()].map((marker) =>
         marker.getElement(),
@@ -1170,7 +1210,14 @@ export default function JourneyMap({
       map.off("moveend", schedule);
       map.off("resize", schedule);
     };
-  }, [activeIndex, checkpointArrived, timeline, engine, terrainRevision]);
+  }, [
+    activeIndex,
+    checkpointArrived,
+    timeline,
+    engine,
+    terrainRevision,
+    playing,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1315,7 +1362,9 @@ export default function JourneyMap({
       const entryLeg = currentLegEligible
         ? routeStory?.legs[activeIndex]
         : undefined;
-      const entryFrame = entryLeg ? recordedLegFrame(entryLeg, 0) : undefined;
+      const entryFrame = entryLeg
+        ? recordedLegCameraFrame(entryLeg, 0)
+        : undefined;
       const entryView = entryFrame?.window.length
         ? fit(
             entryFrame.window,
@@ -1425,7 +1474,7 @@ export default function JourneyMap({
       if (!tip) return;
       let view = routeWindow.length ? fit(routeWindow, followZoom) : undefined;
       if (view && previousLeg && !dayChange) {
-        const previousWindow = recordedLegFrame(previousLeg, 1).window;
+        const previousWindow = recordedLegCameraFrame(previousLeg, 1).window;
         const previousView = fit(previousWindow, followZoom);
         view = interpolateJourneyCamera(
           previousView,

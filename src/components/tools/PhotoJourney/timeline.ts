@@ -1,12 +1,12 @@
 import type { Placement } from "./track";
 import type { Coordinates, JourneyPhoto } from "./types";
 
-export const INTRO_DURATION = 2500;
-export const DAY_DURATION = 1200;
+export const INTRO_DURATION = 900;
+export const DAY_DURATION = 900;
 export const OUTRO_DURATION = 3000;
 export const REVEAL_DURATION = 520;
 export const HOLD_DURATION = 3500;
-export const DEPARTURE_DURATION = 180;
+export const DEPARTURE_DURATION = 420;
 export const BURST_HOLD_DURATION = 1800;
 export const BURST_TRANSITION_DURATION = 220;
 
@@ -238,7 +238,9 @@ export function buildTimeline(
       lastDay = key;
     }
     const dayStart = offset;
-    if (dayLabel) offset += DAY_DURATION;
+    // The opening card already introduces day one. A second card before the first route makes
+    // playback feel unresponsive; day cards are reserved for real day boundaries after it.
+    if (dayLabel && photoIndex > 0) offset += DAY_DURATION;
     const own = positionOf(photoIndex);
     const burst = photoIndices.length > 1;
     const distance = own && lastPosition ? distanceKm(lastPosition, own) : 0;

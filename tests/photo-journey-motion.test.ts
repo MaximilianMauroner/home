@@ -46,6 +46,7 @@ describe("Photo Journey motion", () => {
       drawer: 1,
       image: 0,
       photoTransition: 0,
+      panel: 0,
       checkpoint: 0,
     });
     const overlap = motionAt(stop.revealStart + 260);
@@ -54,15 +55,20 @@ describe("Photo Journey motion", () => {
     expect(overlap.image).toBeLessThan(1);
     expect(overlap.photoTransition).toBeGreaterThan(0);
     expect(overlap.photoTransition).toBeLessThan(1);
+    expect(overlap.panel).toBeGreaterThan(0);
+    expect(overlap.panel).toBeLessThan(1);
     expect(motionAt(stop.revealEnd)).toMatchObject({
       drawer: 1,
       image: 1,
+      panel: 1,
       checkpoint: 1,
     });
     expect(motionAt(stop.departureStart)).toMatchObject({
       drawer: 1,
+      panel: 1,
       checkpoint: 1,
     });
+    expect(motionAt(stop.end - 0.01).panel).toBeLessThan(0.00001);
     expect(motionAt(stop.end - 0.01).drawer).toBe(1);
     expect(motionAt(stop.end).drawer).toBe(0);
   });
@@ -81,7 +87,12 @@ describe("Photo Journey motion", () => {
         },
         false,
       );
-    expect(sample(0.5)).toMatchObject({ drawer: 1, image: 1, leg: 0.5 });
+    expect(sample(0.5)).toMatchObject({
+      drawer: 1,
+      image: 1,
+      leg: 0.5,
+      panel: 0,
+    });
     expect(sample(0.82).drawer).toBe(1);
     expect(sample(0.95).drawer).toBe(1);
   });
@@ -123,7 +134,7 @@ describe("Photo Journey motion", () => {
       motionAt(stop.departureStart + DEPARTURE_DURATION / 2, true).drawer,
     ).toBe(1);
     expect(motionAt(stop.end, true)).toMatchObject({ drawer: 0, card: 1 });
-    expect(motionAt(stop.dayStart, true)).toMatchObject({ drawer: 0, card: 1 });
+    expect(motionAt(0, true)).toMatchObject({ drawer: 0, card: 1 });
   });
 
   test("directly selecting any burst photo lands on its fully visible image", () => {
@@ -135,8 +146,31 @@ describe("Photo Journey motion", () => {
   });
 
   test("day cards hide repositioning, then uncover the map; the ending remains visible", () => {
-    expect(motionAt(stop.dayStart)).toMatchObject({ card: 0, cardBackdrop: 1 });
-    expect(motionAt(stop.start - 0.01).cardBackdrop).toBeLessThan(0.00001);
+    const nextDayPhotos = photos.slice(0, 2).map((photo, index) => ({
+      ...photo,
+      id: `day-${index}`,
+      metadata: {
+        ...photo.metadata,
+        capturedAt: new Date(2025, 0, index + 1, 12),
+        coordinates: { latitude: 48 + index, longitude: 16 + index },
+      },
+    }));
+    const nextDayTimeline = buildTimeline(nextDayPhotos);
+    const second = nextDayTimeline.stops[1];
+    const nextDayMotionAt = (elapsed: number) =>
+      journeyMotion(timelineAt(elapsed, nextDayTimeline), false);
+
+    expect(nextDayTimeline.stops[0].dayStart).toBe(
+      nextDayTimeline.stops[0].start,
+    );
+    expect(nextDayMotionAt(second.dayStart)).toMatchObject({
+      card: 0,
+      cardBackdrop: 1,
+      panel: 0,
+    });
+    expect(nextDayMotionAt(second.start - 0.01).cardBackdrop).toBeLessThan(
+      0.00001,
+    );
     expect(motionAt(stop.end).card).toBe(0);
     expect(motionAt(timeline.totalDuration - 0.01).card).toBe(1);
     expect(motionAt(timeline.totalDuration).card).toBe(1);

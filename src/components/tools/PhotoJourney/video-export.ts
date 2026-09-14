@@ -7,7 +7,7 @@ import {
   Quality,
 } from "mediabunny";
 import { trackSegments, trackStats, type Track, type TrackPoint } from "./gpx";
-import { smoothProgress } from "./motion";
+import { journeyMotion } from "./motion";
 import { recordedLegFrame, type RouteStory } from "./route-progress";
 import {
   timelineAt,
@@ -182,21 +182,22 @@ function drawRoute(
   segments: readonly TrackPoint[][],
   bounds: Bounds | undefined,
   area: MapArea = SPLIT_MAP,
+  surface: MapArea = area,
 ) {
   context.fillStyle = "#0b1519";
-  context.fillRect(area.left, area.top, area.width, area.height);
+  context.fillRect(surface.left, surface.top, surface.width, surface.height);
   context.strokeStyle = "#20343c";
   context.lineWidth = 1;
-  for (let x = area.left + 52; x < area.left + area.width; x += 96) {
+  for (let x = surface.left + 52; x < surface.left + surface.width; x += 96) {
     context.beginPath();
-    context.moveTo(x, area.top);
-    context.lineTo(x, area.top + area.height);
+    context.moveTo(x, surface.top);
+    context.lineTo(x, surface.top + surface.height);
     context.stroke();
   }
-  for (let y = area.top + 70; y < area.top + area.height; y += 96) {
+  for (let y = surface.top + 70; y < surface.top + surface.height; y += 96) {
     context.beginPath();
-    context.moveTo(area.left, y);
-    context.lineTo(area.left + area.width, y);
+    context.moveTo(surface.left, y);
+    context.lineTo(surface.left + surface.width, y);
     context.stroke();
   }
   if (!bounds) return;
@@ -344,7 +345,7 @@ function trimBitmapCache(cache: Map<string, ImageBitmap>, keepId: string) {
   }
 }
 
-function arrivalMapArea(progress: number): MapArea {
+function composedMapArea(progress: number): MapArea {
   const left = MAP_LEFT * progress;
   return {
     left,
@@ -370,12 +371,9 @@ function drawPhotoPanel(
   timezone: string,
   progress: number,
 ) {
-  const scale = 0.97 + progress * 0.03;
   context.save();
-  context.globalAlpha = progress;
-  context.translate((1 - progress) * -36, VIDEO_HEIGHT / 2);
-  context.scale(scale, scale);
-  context.translate(0, -VIDEO_HEIGHT / 2);
+  context.globalAlpha = Math.min(1, progress * 1.8);
+  context.translate((progress - 1) * PHOTO_WIDTH, 0);
   context.beginPath();
   context.rect(0, 0, PHOTO_WIDTH, VIDEO_HEIGHT);
   context.clip();
@@ -478,10 +476,11 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
         const photoIndex = photoIndexForState(state, options.timeline);
         const photo = options.photos[photoIndex] ?? options.photos[0];
         const bitmap = await bitmapFor(photo, bitmaps);
-        const arrivalProgress =
-          state.phase === "reveal" ? smoothProgress(state.phaseProgress) : 1;
-        const mapArea = arrivalMapArea(arrivalProgress);
-        drawRoute(context, segments, bounds, mapArea);
+        const panelProgress = journeyMotion(state, false).panel;
+        const mapArea = composedMapArea(panelProgress);
+        // The surface remains full-frame. Only the route composition shifts toward the visible
+        // map area while the photo overlays it, matching the stable live MapLibre canvas.
+        drawRoute(context, segments, bounds, mapArea, FULL_MAP);
         drawMarker(
           context,
           markerForState(state, options.placements, options.routeStory),
@@ -497,7 +496,7 @@ export async function renderJourneyMp4(options: JourneyVideoOptions) {
           photoIndex,
           options.photos.length,
           options.timezone,
-          arrivalProgress,
+          panelProgress,
         );
         trimBitmapCache(bitmaps, photo.id);
       }
