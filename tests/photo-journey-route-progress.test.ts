@@ -6,6 +6,7 @@ import {
 } from "../src/components/tools/PhotoJourney/JourneyMap";
 import {
   buildRouteStory,
+  recordedContextForPhoto,
   recordedElevationProfile,
   recordedLegCameraFrame,
   recordedLegFrame,
@@ -97,6 +98,27 @@ describe("Photo Journey recorded route presentation", () => {
       points.slice(0, 3).filter((_, index) => index !== 1),
       points.slice(3),
     ]);
+  });
+
+  test("frames export context to the photo's GPX recording", () => {
+    const first = points.slice(0, 3);
+    const second = points.slice(3);
+    const track: Track = {
+      points: [...first, ...second],
+      segmentStarts: [0, first.length],
+      parts: [
+        { points: first, segmentStarts: [0] },
+        { points: second, segmentStarts: [0] },
+      ],
+    };
+    const placements = [
+      placement("first", first[1].time!, first[1]),
+      placement("second", second[1].time!, second[1]),
+    ];
+    const story = buildRouteStory(track, placements, [true, true]);
+
+    expect(recordedContextForPhoto(story, 0)).toEqual([story.context[0]]);
+    expect(recordedContextForPhoto(story, 1)).toEqual([story.context[1]]);
   });
 
   test("uses one route frame for the line tip and bounded camera window", () => {

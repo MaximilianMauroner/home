@@ -10,7 +10,9 @@ import { trackSegments, trackStats, type Track, type TrackPoint } from "./gpx";
 import { burstPhotoProgress, journeyMotion } from "./motion";
 import {
   recordedElevationProfile,
+  recordedContextForPhoto,
   recordedLegFrame,
+  recordedLegPrefix,
   recordedPhotoProgressStats,
   recordedProgressStats,
   type RecordedElevationProfile,
@@ -25,6 +27,7 @@ import {
 import type { Placement } from "./track";
 import { localDisplayMoment, photoDisplayMoment } from "./time-display";
 import type { Coordinates, JourneyPhoto } from "./types";
+import type { MapMode } from "./JourneyMap";
 
 export const VIDEO_WIDTH = 1280;
 export const VIDEO_HEIGHT = 720;
@@ -47,6 +50,7 @@ export type JourneyVideoOptions = {
   timeline: JourneyTimeline;
   track?: Track;
   routeStory?: RouteStory;
+  mapMode?: MapMode;
   resolution?: VideoResolutionLabel;
   signal?: AbortSignal;
   onProgress?: (progress: number) => void;
@@ -236,6 +240,342 @@ function drawRoute(
     });
     context.stroke();
   }
+}
+
+const TILE_SIZE = 256;
+const OSM_TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TERRAIN_TILE =
+  "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+
+type MercatorView = {
+  zoom: number;
+  originX: number;
+  originY: number;
+  referenceLongitude: number;
+};
+
+function mercatorWorld(point: Coordinates, zoom: number, reference: number) {
+  const longitude = unwrapLongitude(point.longitude, reference);
+  const latitude = Math.max(-85.051129, Math.min(85.051129, point.latitude));
+  const scale = 2 ** zoom * TILE_SIZE;
+  const radians = (latitude * Math.PI) / 180;
+  return {
+    x: ((longitude + 180) / 360) * scale,
+    y:
+      ((1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) /
+        2) *
+      scale,
+  };
+}
+
+function mercatorView(
+  bounds: Bounds,
+  area: MapArea,
+  maxZoom = 16,
+): MercatorView {
+  const referenceLongitude = (bounds.minLongitude + bounds.maxLongitude) / 2;
+  const padding = 54;
+  let zoom = maxZoom;
+  for (; zoom > 2; zoom -= 1) {
+    const nw = mercatorWorld(
+      { latitude: bounds.maxLatitude, longitude: bounds.minLongitude },
+      zoom,
+      referenceLongitude,
+    );
+    const se = mercatorWorld(
+      { latitude: bounds.minLatitude, longitude: bounds.maxLongitude },
+      zoom,
+      referenceLongitude,
+    );
+    if (
+      se.x - nw.x <= area.width - padding * 2 &&
+      se.y - nw.y <= area.height - padding * 2
+    )
+      break;
+  }
+  const nw = mercatorWorld(
+    { latitude: bounds.maxLatitude, longitude: bounds.minLongitude },
+    zoom,
+    referenceLongitude,
+  );
+  const se = mercatorWorld(
+    { latitude: bounds.minLatitude, longitude: bounds.maxLongitude },
+    zoom,
+    referenceLongitude,
+  );
+  return {
+    zoom,
+    originX: (nw.x + se.x - area.width) / 2,
+    originY: (nw.y + se.y - area.height) / 2,
+    referenceLongitude,
+  };
+}
+
+function projectMercatorPoint(
+  point: Coordinates,
+  view: MercatorView,
+  area: MapArea,
+) {
+  const world = mercatorWorld(point, view.zoom, view.referenceLongitude);
+  return {
+    x: area.left + world.x - view.originX,
+    y: area.top + world.y - view.originY,
+  };
+}
+
+async function fetchTile(url: string, signal?: AbortSignal) {
+  const response = await fetch(url, { signal });
+  if (!response.ok)
+    throw new Error(`Map tile request failed (${response.status}).`);
+  return createImageBitmap(await response.blob());
+}
+
+function tileUrl(template: string, zoom: number, x: number, y: number) {
+  const count = 2 ** zoom;
+  const wrappedX = ((x % count) + count) % count;
+  return template
+    .replace("{z}", String(zoom))
+    .replace("{x}", String(wrappedX))
+    .replace("{y}", String(y));
+}
+
+function drawHillshade(
+  context: CanvasRenderingContext2D,
+  bitmap: ImageBitmap,
+  left: number,
+  top: number,
+) {
+  const source = document.createElement("canvas");
+  source.width = TILE_SIZE;
+  source.height = TILE_SIZE;
+  const sourceContext = canvasContext(source);
+  sourceContext.drawImage(bitmap, 0, 0, TILE_SIZE, TILE_SIZE);
+  const pixels = sourceContext.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
+  const output = sourceContext.createImageData(TILE_SIZE, TILE_SIZE);
+  const elevation = (index: number) =>
+    pixels.data[index] * 256 +
+    pixels.data[index + 1] +
+    pixels.data[index + 2] / 256 -
+    32768;
+  for (let y = 1; y < TILE_SIZE - 1; y += 1) {
+    for (let x = 1; x < TILE_SIZE - 1; x += 1) {
+      const index = (y * TILE_SIZE + x) * 4;
+      const east = elevation(index + 4);
+      const west = elevation(index - 4);
+      const south = elevation(index + TILE_SIZE * 4);
+      const north = elevation(index - TILE_SIZE * 4);
+      const light = Math.max(
+        -90,
+        Math.min(90, (west - east) * 0.7 + (south - north) * 0.45),
+      );
+      output.data[index] = light > 0 ? 255 : 0;
+      output.data[index + 1] = light > 0 ? 255 : 0;
+      output.data[index + 2] = light > 0 ? 255 : 0;
+      output.data[index + 3] = Math.abs(light) * (light > 0 ? 0.55 : 1.15);
+    }
+  }
+  sourceContext.putImageData(output, 0, 0);
+  context.drawImage(source, left, top);
+}
+
+async function prepareMapBackdrop(
+  segments: readonly TrackPoint[][],
+  bounds: Bounds,
+  area: MapArea,
+  mode: MapMode,
+  signal?: AbortSignal,
+) {
+  const canvas = document.createElement("canvas");
+  canvas.width = area.width;
+  canvas.height = area.height;
+  const context = canvasContext(canvas);
+  context.fillStyle = "#132027";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const localArea = { left: 0, top: 0, width: area.width, height: area.height };
+  const view = mercatorView(bounds, localArea, mode === "terrain" ? 15 : 17);
+  const pixelScale = area.height / VIDEO_HEIGHT;
+  if (mode !== "offline") {
+    const firstX = Math.floor(view.originX / TILE_SIZE);
+    const lastX = Math.floor((view.originX + area.width) / TILE_SIZE);
+    const firstY = Math.max(0, Math.floor(view.originY / TILE_SIZE));
+    const lastY = Math.min(
+      2 ** view.zoom - 1,
+      Math.floor((view.originY + area.height) / TILE_SIZE),
+    );
+    const jobs: Promise<void>[] = [];
+    for (let y = firstY; y <= lastY; y += 1) {
+      for (let x = firstX; x <= lastX; x += 1) {
+        const left = x * TILE_SIZE - view.originX;
+        const top = y * TILE_SIZE - view.originY;
+        jobs.push(
+          (async () => {
+            const base = await fetchTile(
+              tileUrl(OSM_TILE, view.zoom, x, y),
+              signal,
+            );
+            context.drawImage(base, left, top, TILE_SIZE, TILE_SIZE);
+            base.close();
+            if (mode === "terrain") {
+              const terrain = await fetchTile(
+                tileUrl(TERRAIN_TILE, view.zoom, x, y),
+                signal,
+              );
+              drawHillshade(context, terrain, left, top);
+              terrain.close();
+            }
+          })(),
+        );
+      }
+    }
+    await Promise.all(jobs);
+    context.fillStyle = "#07101452";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.strokeStyle = "#071014";
+  context.lineWidth = 7 * pixelScale;
+  for (const segment of segments) {
+    if (!segment.length) continue;
+    context.beginPath();
+    segment.forEach((point, index) => {
+      const projected = projectMercatorPoint(point, view, localArea);
+      if (index) context.lineTo(projected.x, projected.y);
+      else context.moveTo(projected.x, projected.y);
+    });
+    context.stroke();
+  }
+  context.strokeStyle = "#38bdf8";
+  context.globalAlpha = 0.78;
+  context.lineWidth = 3 * pixelScale;
+  for (const segment of segments) {
+    if (!segment.length) continue;
+    context.beginPath();
+    segment.forEach((point, index) => {
+      const projected = projectMercatorPoint(point, view, localArea);
+      if (index) context.lineTo(projected.x, projected.y);
+      else context.moveTo(projected.x, projected.y);
+    });
+    context.stroke();
+  }
+  context.globalAlpha = 1;
+  context.fillStyle = "#071014b8";
+  context.fillRect(
+    8 * pixelScale,
+    canvas.height - 22 * pixelScale,
+    (mode === "terrain" ? 250 : 138) * pixelScale,
+    18 * pixelScale,
+  );
+  context.fillStyle = "#d2dcde";
+  context.font = `${10 * pixelScale}px system-ui, sans-serif`;
+  context.fillText(
+    mode === "terrain" ? "© OpenStreetMap · Terrain: AWS" : "© OpenStreetMap",
+    14 * pixelScale,
+    canvas.height - 9 * pixelScale,
+  );
+  return { canvas, view };
+}
+
+type PreparedMap = Awaited<ReturnType<typeof prepareMapBackdrop>>;
+
+function drawPreparedMap(
+  context: CanvasRenderingContext2D,
+  prepared: PreparedMap,
+  area: MapArea,
+) {
+  context.drawImage(
+    prepared.canvas,
+    area.left,
+    area.top,
+    area.width,
+    area.height,
+  );
+}
+
+function drawPreparedMarker(
+  context: CanvasRenderingContext2D,
+  prepared: PreparedMap,
+  area: MapArea,
+  marker: Coordinates | undefined,
+) {
+  if (!marker) return;
+  const local = projectMercatorPoint(marker, prepared.view, {
+    left: 0,
+    top: 0,
+    width: prepared.canvas.width,
+    height: prepared.canvas.height,
+  });
+  const x = area.left + (local.x / prepared.canvas.width) * area.width;
+  const y = area.top + (local.y / prepared.canvas.height) * area.height;
+  context.fillStyle = "#071014";
+  context.beginPath();
+  context.arc(x, y, 12, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = "#f1cf67";
+  context.beginPath();
+  context.arc(x, y, 7, 0, Math.PI * 2);
+  context.fill();
+}
+
+function drawTravelledRoute(
+  context: CanvasRenderingContext2D,
+  prepared: PreparedMap,
+  area: MapArea,
+  routeStory: RouteStory | undefined,
+  photoIndex: number,
+  currentProgress = 1,
+) {
+  if (!routeStory) return;
+  const activeSegments = new Set(
+    recordedContextForPhoto(routeStory, photoIndex)?.map((segment) =>
+      routeStory.context.indexOf(segment),
+    ),
+  );
+  const lines = routeStory.legs
+    .slice(0, photoIndex + 1)
+    .flatMap((leg, index) => {
+      if (!leg || !activeSegments.has(leg.segmentIndex)) return [];
+      return [
+        index === photoIndex
+          ? recordedLegPrefix(leg, currentProgress)
+          : leg.drawable,
+      ];
+    });
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.strokeStyle = "#071014";
+  context.lineWidth = 7;
+  for (const width of [7, 4]) {
+    context.lineWidth = width;
+    context.strokeStyle = width === 7 ? "#071014" : "#f1cf67";
+    for (const line of lines) {
+      if (!line.length) continue;
+      context.beginPath();
+      line.forEach((point, index) => {
+        const local = projectMercatorPoint(point, prepared.view, {
+          left: 0,
+          top: 0,
+          width: prepared.canvas.width,
+          height: prepared.canvas.height,
+        });
+        const x = area.left + (local.x / prepared.canvas.width) * area.width;
+        const y = area.top + (local.y / prepared.canvas.height) * area.height;
+        if (index) context.lineTo(x, y);
+        else context.moveTo(x, y);
+      });
+      context.stroke();
+    }
+  }
+  context.restore();
+}
+
+function boundsForSegments(segments: readonly TrackPoint[][]) {
+  const points = segments.flat();
+  return videoBounds(
+    points.length ? { points, segmentStarts: [0] } : undefined,
+    [],
+  );
 }
 
 function markerForState(
@@ -679,10 +1019,8 @@ async function renderAtResolution(
   canvas.width = supported.resolution.width;
   canvas.height = supported.resolution.height;
   const context = canvasContext(canvas);
-  context.scale(
-    supported.resolution.width / VIDEO_WIDTH,
-    supported.resolution.height / VIDEO_HEIGHT,
-  );
+  const renderScale = supported.resolution.width / VIDEO_WIDTH;
+  context.scale(renderScale, supported.resolution.height / VIDEO_HEIGHT);
   const target = new BufferTarget();
   const output = new Output({ format, target });
   const source = new CanvasSource(canvas, {
@@ -692,8 +1030,10 @@ async function renderAtResolution(
   });
   output.addVideoTrack(source, { frameRate: VIDEO_FRAME_RATE });
   output.setMetadataTags({ title: options.title });
-  const segments = options.track ? trackSegments(options.track) : [];
-  const bounds = videoBounds(options.track, options.placements);
+  const allSegments = options.track ? trackSegments(options.track) : [];
+  const fallbackBounds = videoBounds(options.track, options.placements);
+  const mapMode = options.mapMode ?? "terrain";
+  const mapCache = new Map<string, PreparedMap>();
   const bitmaps = new Map<string, ImageBitmap>();
   const totalSeconds = options.timeline.totalDuration / 1000;
   const stats = options.track ? trackStats(options.track) : undefined;
@@ -724,17 +1064,53 @@ async function renderAtResolution(
         );
       } else if (state.phase === "approach") {
         const legProgress = journeyMotion(state, false).leg;
-        drawRoute(context, segments, bounds, FULL_MAP);
-        drawMarker(
-          context,
-          markerForState(
-            { ...state, currentLegProgress: legProgress },
-            options.placements,
+        const segments =
+          recordedContextForPhoto(
             options.routeStory,
-          ),
-          bounds,
-          FULL_MAP,
+            state.checkpointPhotoIndex,
+          ) ?? allSegments;
+        const bounds = boundsForSegments(segments) ?? fallbackBounds;
+        const marker = markerForState(
+          { ...state, currentLegProgress: legProgress },
+          options.placements,
+          options.routeStory,
         );
+        const groupKey = options.routeStory?.context.indexOf(segments[0]) ?? -1;
+        const cacheKey = `${groupKey}:full:${mapMode}`;
+        let prepared = mapCache.get(cacheKey);
+        if (!prepared && bounds) {
+          try {
+            prepared = await prepareMapBackdrop(
+              segments,
+              bounds,
+              {
+                ...FULL_MAP,
+                width: FULL_MAP.width * renderScale,
+                height: FULL_MAP.height * renderScale,
+              },
+              mapMode,
+              options.signal,
+            );
+            mapCache.set(cacheKey, prepared);
+          } catch (error) {
+            if ((error as DOMException)?.name === "AbortError") throw error;
+          }
+        }
+        if (prepared) {
+          drawPreparedMap(context, prepared, FULL_MAP);
+          drawTravelledRoute(
+            context,
+            prepared,
+            FULL_MAP,
+            options.routeStory,
+            state.checkpointPhotoIndex,
+            legProgress,
+          );
+          drawPreparedMarker(context, prepared, FULL_MAP, marker);
+        } else {
+          drawRoute(context, segments, bounds, FULL_MAP);
+          drawMarker(context, marker, bounds, FULL_MAP);
+        }
         drawRouteLabel(context, FULL_MAP);
         const trailStats = recordedProgressStats(
           options.routeStory,
@@ -766,15 +1142,52 @@ async function renderAtResolution(
         const photoOffset = stop?.photoIndices.indexOf(photoIndex) ?? 0;
         const photoProgress = burstPhotoProgress(state, photoOffset, false);
         const mapArea = composedMapArea(panelProgress);
-        // The surface remains full-frame. Only the route composition shifts toward the visible
-        // map area while the photo overlays it, matching the stable live MapLibre canvas.
-        drawRoute(context, segments, bounds, mapArea, FULL_MAP);
-        drawMarker(
-          context,
-          markerForState(state, options.placements, options.routeStory),
-          bounds,
-          mapArea,
+        const segments =
+          recordedContextForPhoto(options.routeStory, photoIndex) ??
+          allSegments;
+        const bounds = boundsForSegments(segments) ?? fallbackBounds;
+        const marker = markerForState(
+          state,
+          options.placements,
+          options.routeStory,
         );
+        const groupKey = options.routeStory?.context.indexOf(segments[0]) ?? -1;
+        const cacheKey = `${groupKey}:split:${mapMode}`;
+        let prepared = mapCache.get(cacheKey);
+        if (!prepared && bounds) {
+          try {
+            prepared = await prepareMapBackdrop(
+              segments,
+              bounds,
+              {
+                ...SPLIT_MAP,
+                width: SPLIT_MAP.width * renderScale,
+                height: SPLIT_MAP.height * renderScale,
+              },
+              mapMode,
+              options.signal,
+            );
+            mapCache.set(cacheKey, prepared);
+          } catch (error) {
+            if ((error as DOMException)?.name === "AbortError") throw error;
+          }
+        }
+        context.fillStyle = "#132027";
+        context.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+        if (prepared) {
+          drawPreparedMap(context, prepared, mapArea);
+          drawTravelledRoute(
+            context,
+            prepared,
+            mapArea,
+            options.routeStory,
+            photoIndex,
+          );
+          drawPreparedMarker(context, prepared, mapArea, marker);
+        } else {
+          drawRoute(context, segments, bounds, mapArea, FULL_MAP);
+          drawMarker(context, marker, bounds, mapArea);
+        }
         drawRouteLabel(context, mapArea);
         if (photoProgress < 1 && photoIndex > 0) {
           const previous = options.photos[photoIndex - 1];

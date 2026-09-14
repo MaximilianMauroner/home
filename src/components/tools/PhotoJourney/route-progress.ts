@@ -65,6 +65,35 @@ export type RouteStory = {
   elevationProfiles: Array<ElevationProfile | undefined>;
 };
 
+/** Keep export and live-map framing inside the GPX recording that contains this photo. */
+export function recordedContextForPhoto(
+  story: RouteStory | undefined,
+  photoIndex: number,
+) {
+  if (!story) return undefined;
+  let sample = story.photoSamples[photoIndex];
+  if (!sample) {
+    for (
+      let distance = 1;
+      distance < story.photoSamples.length;
+      distance += 1
+    ) {
+      sample =
+        story.photoSamples[photoIndex - distance] ??
+        story.photoSamples[photoIndex + distance];
+      if (sample) break;
+    }
+  }
+  const groupIndex = sample
+    ? story.profiles[sample.segmentIndex]?.groupIndex
+    : undefined;
+  if (groupIndex === undefined) return undefined;
+  return story.context.filter(
+    (_, segmentIndex) =>
+      story.profiles[segmentIndex]?.groupIndex === groupIndex,
+  );
+}
+
 type SourceSegment = {
   points: TrackPoint[];
   /** Segments from one GPX track share hike totals across recorder pauses. */

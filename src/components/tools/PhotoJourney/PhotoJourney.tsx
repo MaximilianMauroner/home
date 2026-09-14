@@ -674,6 +674,7 @@ export default function PhotoJourney() {
         timeline: playback.timeline,
         track: scopedTrack,
         routeStory: playback.routeStory,
+        mapMode,
         resolution: videoResolution,
         signal: abort.signal,
         onProgress: setVideoExportProgress,
