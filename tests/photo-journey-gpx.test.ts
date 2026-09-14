@@ -24,6 +24,7 @@ import {
   placementSummary,
   resolvePlacements,
   resolvePlacementsForRecordings,
+  timezoneOffsetMinutesAtWallClock,
 } from "../src/components/tools/PhotoJourney/track";
 import type {
   JourneyPhoto,
@@ -440,6 +441,67 @@ describe("time lookup and simplification", () => {
 
 describe("placing photos on the track", () => {
   const track = parseGpx(CLIMB);
+
+  test("derives the camera offset from the trip timezone and daylight saving time", () => {
+    expect(
+      timezoneOffsetMinutesAtWallClock("2026-08-20T08:02:00", "Europe/Rome"),
+    ).toBe(120);
+    expect(
+      timezoneOffsetMinutesAtWallClock("2026-01-20T07:02:00", "Europe/Rome"),
+    ).toBe(60);
+    expect(
+      timezoneOffsetMinutesAtWallClock("2026-08-20T08:02:00", "Not/A_Zone"),
+    ).toBeUndefined();
+  });
+
+  test("matches a zone-less camera clock through the selected trip timezone", () => {
+    const [placement] = resolvePlacements(
+      [
+        photo("local-clock", {
+          capturedAt: wallClock("2026-08-20T08:02:00Z", 0),
+          capturedAtWallClock: "2026-08-20T08:02:00",
+        }),
+      ],
+      track,
+      { timezone: "Europe/Rome" },
+    );
+    expect(placement).toMatchObject({
+      source: "track",
+      instant: Date.parse("2026-08-20T06:02:00Z"),
+      offsetMinutes: 120,
+    });
+  });
+
+  test("keeps an explicit photo offset above the trip timezone", () => {
+    const image = photo("manual-clock", {
+      capturedAtWallClock: "2026-08-20T06:02:00",
+    });
+    const [placement] = resolvePlacements([image], track, {
+      timezone: "Europe/Rome",
+      offsetMinutesByPhoto: { [image.id]: 0 },
+    });
+    expect(placement).toMatchObject({
+      source: "track",
+      instant: Date.parse("2026-08-20T06:02:00Z"),
+      offsetMinutes: 0,
+    });
+  });
+
+  test("allows a manual photo offset to correct an embedded EXIF offset", () => {
+    const image = photo("incorrect-tag", {
+      capturedAtWallClock: "2026-08-20T06:02:00",
+      utcOffsetMinutes: 120,
+    });
+    expect(resolvePlacements([image], track)[0].source).toBe("none");
+    const [corrected] = resolvePlacements([image], track, {
+      offsetMinutesByPhoto: { [image.id]: 0 },
+    });
+    expect(corrected).toMatchObject({
+      source: "track",
+      instant: Date.parse("2026-08-20T06:02:00Z"),
+      offsetMinutes: 0,
+    });
+  });
 
   test("uses the recorded position when a timed photo also has a nearby fix", () => {
     const [placement] = resolvePlacements(

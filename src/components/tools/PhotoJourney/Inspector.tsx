@@ -280,12 +280,14 @@ function Inspector({
             </p>
           </div>
         )}
-      {unresolvedClock && onSetOffset && (
+      {metadata.capturedAtWallClock && hasRecordingData && onSetOffset && (
         <div className="pj-time-choice">
-          <strong>Resolve this camera clock</strong>
+          <strong>Adjust this camera clock</strong>
           <p>
-            This wall clock has no timezone. Enter minutes east of UTC only when
-            you know the camera's setting.
+            {metadata.utcOffsetMinutes === undefined
+              ? "This photo uses the selected trip timezone automatically."
+              : `This photo includes a UTC offset of ${metadata.utcOffsetMinutes} minutes east.`}{" "}
+            Enter a different offset only if its route position is wrong.
           </p>
           <div className="pj-placement-buttons">
             <input

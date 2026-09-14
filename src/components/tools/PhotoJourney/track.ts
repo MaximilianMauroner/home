@@ -62,9 +62,121 @@ export type PlacementOptions = {
   offsetMinutes?: number;
   /** Per-photo fallback/override, keyed by stable photo ID. */
   offsetMinutesByPhoto?: Readonly<Record<string, number | undefined>>;
+  /** IANA zone used to resolve camera wall clocks that do not include their own offset. */
+  timezone?: string;
   /** Explicitly chosen source for a photo/recording discrepancy. */
   choices?: Readonly<Record<string, PlacementChoice | undefined>>;
 };
+
+type WallClockParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+const wallClockFormatterCache = new Map<
+  string,
+  Intl.DateTimeFormat | undefined
+>();
+
+function wallClockFormatter(timezone: string) {
+  if (wallClockFormatterCache.has(timezone))
+    return wallClockFormatterCache.get(timezone);
+  let formatter: Intl.DateTimeFormat | undefined;
+  try {
+    formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    formatter = undefined;
+  }
+  wallClockFormatterCache.set(timezone, formatter);
+  return formatter;
+}
+
+function wallClockParts(value?: string): WallClockParts | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(
+    value ?? "",
+  );
+  if (!match) return undefined;
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4]),
+    minute: Number(match[5]),
+    second: Number(match[6] ?? "0"),
+  };
+}
+
+function zonedParts(formatter: Intl.DateTimeFormat, instant: number) {
+  const values = Object.fromEntries(
+    formatter
+      .formatToParts(new Date(instant))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)]),
+  );
+  return {
+    year: values.year,
+    month: values.month,
+    day: values.day,
+    hour: values.hour,
+    minute: values.minute,
+    second: values.second,
+  } satisfies WallClockParts;
+}
+
+function sameWallClock(first: WallClockParts, second: WallClockParts) {
+  return (Object.keys(first) as Array<keyof WallClockParts>).every(
+    (key) => first[key] === second[key],
+  );
+}
+
+/** Resolve a zone-less EXIF clock in the selected trip zone, including daylight saving time. */
+export function timezoneOffsetMinutesAtWallClock(
+  wallClock: string | undefined,
+  timezone: string | undefined,
+) {
+  const desired = wallClockParts(wallClock);
+  if (!desired || !timezone) return undefined;
+  const formatter = wallClockFormatter(timezone);
+  if (!formatter) return undefined;
+  const wallAsUtc = Date.UTC(
+    desired.year,
+    desired.month - 1,
+    desired.day,
+    desired.hour,
+    desired.minute,
+    desired.second,
+  );
+  let instant = wallAsUtc;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const local = zonedParts(formatter, instant);
+    const localAsUtc = Date.UTC(
+      local.year,
+      local.month - 1,
+      local.day,
+      local.hour,
+      local.minute,
+      local.second,
+    );
+    const offsetMinutes = Math.round((localAsUtc - instant) / 60_000);
+    instant = wallAsUtc - offsetMinutes * 60_000;
+  }
+  if (!sameWallClock(zonedParts(formatter, instant), desired)) return undefined;
+  const offsetMinutes = Math.round((wallAsUtc - instant) / 60_000);
+  return isValidUtcOffsetMinutes(offsetMinutes) ? offsetMinutes : undefined;
+}
 
 type LookupSource = {
   id?: string;
@@ -146,6 +258,13 @@ export function photoInstant(
   fallbackOffsetMinutes?: number,
 ) {
   const offset = photoOffsetMinutes(metadata, fallbackOffsetMinutes);
+  return photoInstantAtOffset(metadata, offset);
+}
+
+function photoInstantAtOffset(
+  metadata: PhotoMetadata,
+  offset: number | undefined,
+) {
   if (offset === undefined) return undefined;
   if (metadata.capturedAtWallClock) {
     const wall = Date.parse(`${metadata.capturedAtWallClock}Z`);
@@ -222,10 +341,17 @@ function resolve(
   let carried: Coordinates | undefined;
   return photos.map((photo) => {
     const own = photo.metadata.coordinates;
+    const explicitOffset = options.offsetMinutesByPhoto?.[photo.id];
     const fallbackOffset =
-      options.offsetMinutesByPhoto?.[photo.id] ?? options.offsetMinutes;
-    const offsetMinutes = photoOffsetMinutes(photo.metadata, fallbackOffset);
-    const instant = photoInstant(photo.metadata, fallbackOffset);
+      options.offsetMinutes ??
+      timezoneOffsetMinutesAtWallClock(
+        photo.metadata.capturedAtWallClock,
+        options.timezone,
+      );
+    const offsetMinutes = isValidUtcOffsetMinutes(explicitOffset)
+      ? explicitOffset
+      : photoOffsetMinutes(photo.metadata, fallbackOffset);
+    const instant = photoInstantAtOffset(photo.metadata, offsetMinutes);
     const choice = choices[photo.id];
     const preferredRecordingId =
       typeof choice === "object" ? choice.recordingId : undefined;

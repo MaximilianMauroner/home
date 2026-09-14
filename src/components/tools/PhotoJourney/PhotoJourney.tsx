@@ -419,8 +419,9 @@ export default function PhotoJourney() {
       resolvePlacementsForRecordings(photos, recordings, {
         offsetMinutesByPhoto,
         choices: placementChoices,
+        timezone: tripTimezone,
       }),
-    [photos, recordings, offsetMinutesByPhoto, placementChoices],
+    [photos, recordings, offsetMinutesByPhoto, placementChoices, tripTimezone],
   );
   const days = useMemo(
     () => deriveJourneyDays(photos, placements, recordings, tripTimezone),
@@ -1752,11 +1753,11 @@ export default function PhotoJourney() {
                           aria-label="Photo clock settings"
                         >
                           <div>
-                            <strong>Some camera clocks have no timezone</strong>
+                            <strong>Camera clocks use the trip timezone</strong>
                             <p>
-                              Choose an offset only if you know what the camera
-                              used. This applies to untagged photos and can be
-                              cleared.
+                              Untagged photos use {tripTimezone}, including
+                              daylight saving time. Set a minute offset only to
+                              override a camera whose clock was wrong.
                             </p>
                           </div>
                           <label>
@@ -1767,7 +1768,7 @@ export default function PhotoJourney() {
                               max={840}
                               step={15}
                               value={fallbackOffsetInput}
-                              placeholder="e.g. 120"
+                              placeholder="Override, e.g. 120"
                               onChange={(event) =>
                                 setFallbackOffsetInput(event.target.value)
                               }
