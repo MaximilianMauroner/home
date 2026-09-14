@@ -10,6 +10,7 @@ import {
 import { ChartHeader } from "./ChartHeader";
 import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 import { getParticipantColors } from "./utils";
+import { LINE_CHART_INTERACTION } from "./chartOptions";
 
 export const ActivityByDay = ({ messages, persons }: GraphProps) => {
   // UI state
@@ -72,7 +73,9 @@ export const ActivityByDay = ({ messages, persons }: GraphProps) => {
   const hasTwo = persons.length === 2;
   const p1Id = persons[0]?.id;
   const p2Id = persons[1]?.id;
-  const participantColors = getParticipantColors(persons.map((person) => person.name));
+  const participantColors = getParticipantColors(
+    persons.map((person) => person.name),
+  );
   const colorToRgb = (color: string, fallback: number[]) => {
     const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
     return match
@@ -143,6 +146,7 @@ export const ActivityByDay = ({ messages, persons }: GraphProps) => {
 
   const options = {
     responsive: true,
+    interaction: LINE_CHART_INTERACTION,
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -167,7 +171,7 @@ export const ActivityByDay = ({ messages, persons }: GraphProps) => {
         },
       },
     },
-    maintainAspectRatio: true,
+    maintainAspectRatio: false,
     scales: {
       y: { beginAtZero: true },
     },
@@ -197,9 +201,32 @@ export const ActivityByDay = ({ messages, persons }: GraphProps) => {
         />
         Show 3-day moving average
       </label>
-      <div className="mx-auto w-full">
+      <div className="mx-auto h-64 w-full sm:h-96">
         <Line data={data} options={options} />
       </div>
+      <details className="mt-3 text-sm">
+        <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+          View daily data table
+        </summary>
+        <div className="tool-scroll-area mt-2 max-h-72 overflow-auto rounded-lg border">
+          <table className="w-full text-left">
+            <thead className="sticky top-0 bg-card">
+              <tr>
+                <th className="px-3 py-2">Date</th>
+                <th className="px-3 py-2">Messages</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {allDates.map((date, index) => (
+                <tr key={date}>
+                  <td className="px-3 py-2">{date}</td>
+                  <td className="px-3 py-2">{totalMessagesPerDay[index]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </>
   );
 };

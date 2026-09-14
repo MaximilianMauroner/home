@@ -9,6 +9,7 @@ import {
 import { formatHours } from "../conversationMetrics";
 import { ChartHeader } from "./ChartHeader";
 import { CHART_ASSUMPTIONS } from "./chartAssumptions";
+import { LINE_CHART_INTERACTION } from "./chartOptions";
 
 export const SilentPeriods = ({ messages, persons }: GraphProps) => {
   const silentData = useMemo(() => {
@@ -241,6 +242,7 @@ export const SilentPeriods = ({ messages, persons }: GraphProps) => {
 
   const timelineOptions = {
     responsive: true,
+    interaction: LINE_CHART_INTERACTION,
     plugins: {
       legend: { display: false },
       tooltip: {

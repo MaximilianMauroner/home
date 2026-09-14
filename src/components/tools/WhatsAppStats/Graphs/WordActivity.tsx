@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors, EMOJI_PATTERN } from "./utils";
@@ -7,6 +7,7 @@ import { ChartHeader } from "./ChartHeader";
 import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const WordActivity = ({ messages, persons }: GraphProps) => {
+  const [limit, setLimit] = useState(10);
   // Build word counts per person and total
   const { sortedWords, wordPerPerson } = useMemo(() => {
     const wordCounts = new Map<string, number>();
@@ -34,10 +35,10 @@ export const WordActivity = ({ messages, persons }: GraphProps) => {
     // Sort by total count, descending
     const sortedWords = Array.from(wordCounts.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 30);
+      .slice(0, limit);
 
     return { sortedWords, wordPerPerson };
-  }, [messages]);
+  }, [limit, messages]);
 
   if (sortedWords.length === 0) {
     return (
@@ -89,11 +90,27 @@ export const WordActivity = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <ChartHeader
-        title="Word Usage (Top 30, excluding common words)"
-        assumption={CHART_ASSUMPTIONS.wordUsage}
-        className="mt-8"
-      />
+      <div className="mt-8 flex flex-wrap items-start justify-between gap-3">
+        <ChartHeader
+          title={`Word Usage (Top ${limit})`}
+          assumption={CHART_ASSUMPTIONS.wordUsage}
+          className="mb-0 sm:mb-0"
+        />
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Show</span>
+          <select
+            className="tool-field h-9 py-0"
+            value={limit}
+            onChange={(event) => setLimit(Number(event.target.value))}
+          >
+            {[10, 20, 30].map((count) => (
+              <option key={count} value={count}>
+                Top {count}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <div className="mb-4 flex flex-col flex-wrap text-sm text-muted-foreground">
         {persons.map((p) => {
           let maxWord = null;
@@ -121,7 +138,7 @@ export const WordActivity = ({ messages, persons }: GraphProps) => {
       </div>
       <div
         className="mx-auto w-full"
-        style={{ minHeight: 600, maxHeight: 1800 }}
+        style={{ height: Math.max(320, limit * 34) }}
       >
         <Bar data={data} options={options} />
       </div>

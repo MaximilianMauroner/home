@@ -4,6 +4,7 @@ import type { GraphProps } from "./types";
 import { hourFromTime } from "../datetime";
 import { ChartHeader } from "./ChartHeader";
 import { CHART_ASSUMPTIONS } from "./chartAssumptions";
+import { LINE_CHART_INTERACTION } from "./chartOptions";
 
 export const ActivityByTime = ({ messages, persons }: GraphProps) => {
   // Prepare data
@@ -50,7 +51,8 @@ export const ActivityByTime = ({ messages, persons }: GraphProps) => {
 
     const sharedLineChartOptions = {
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
+      interaction: LINE_CHART_INTERACTION,
       plugins: {
         legend: {
           display: false,
@@ -104,9 +106,32 @@ export const ActivityByTime = ({ messages, persons }: GraphProps) => {
           return `${data.labels[maxIdx]} (${maxCount} messages)`;
         })()}
       </p>
-      <div className="mx-auto w-full">
+      <div className="mx-auto h-64 w-full sm:h-96">
         <Line data={data} options={options} />
       </div>
+      <details className="mt-3 text-sm">
+        <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+          View hourly data table
+        </summary>
+        <div className="tool-scroll-area mt-2 max-h-72 overflow-auto rounded-lg border">
+          <table className="w-full text-left">
+            <thead className="sticky top-0 bg-card">
+              <tr>
+                <th className="px-3 py-2">Hour</th>
+                <th className="px-3 py-2">Messages</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {data.labels.map((label, index) => (
+                <tr key={label}>
+                  <td className="px-3 py-2">{label}</td>
+                  <td className="px-3 py-2">{data.datasets[0].data[index]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </>
   );
 };

@@ -29,7 +29,9 @@ export const GitHubStyleChart = ({ messages, year }: GitHubStyleChartProps) => {
   };
 
   const handleMouseEnter = (
-    e: React.MouseEvent<HTMLDivElement>,
+    e:
+      | React.MouseEvent<HTMLButtonElement>
+      | React.FocusEvent<HTMLButtonElement>,
     date: Date,
     count: number,
   ) => {
@@ -90,7 +92,10 @@ export const GitHubStyleChart = ({ messages, year }: GitHubStyleChartProps) => {
       />
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>Each square is one day. Darker green means more messages.</span>
-        <div className="flex items-center gap-1" aria-label="Activity color scale">
+        <div
+          className="flex items-center gap-1"
+          aria-label="Activity color scale"
+        >
           <span className="mr-1 text-xs">Less</span>
           {[0, 1, 2, 3, 4, 5, 6].map((level) => (
             <span
@@ -109,17 +114,18 @@ export const GitHubStyleChart = ({ messages, year }: GitHubStyleChartProps) => {
               <div key={weekIndex} className="grid gap-1">
                 {week.map((day, dayIndex) =>
                   day ? (
-                    <div
+                    <button
+                      type="button"
                       key={day.dateKey}
-                      className="wa-activity-cell h-3 w-3 rounded-sm"
+                      className="wa-activity-cell h-3 w-3 rounded-sm p-0 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
                       data-level={getLevel(day.count, maxCount)}
-                      title={`${formatDate(day.date)}: ${day.count} message${
-                        day.count !== 1 ? "s" : ""
-                      }`}
+                      aria-label={`${formatDate(day.date)}: ${day.count} message${day.count !== 1 ? "s" : ""}`}
                       onMouseEnter={(e) =>
                         handleMouseEnter(e, day.date, day.count)
                       }
                       onMouseLeave={handleMouseLeave}
+                      onFocus={(e) => handleMouseEnter(e, day.date, day.count)}
+                      onBlur={handleMouseLeave}
                     />
                   ) : (
                     <div

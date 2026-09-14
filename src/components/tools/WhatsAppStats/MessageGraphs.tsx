@@ -1,5 +1,5 @@
 import type { Message, Person } from "./db";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { isTextualMessage } from "./messageClassification";
 import {
   GitHubStyleChart,
@@ -38,7 +38,9 @@ function ChartSection({
       <h2 className="mb-3 text-lg font-semibold tracking-tight sm:text-xl">
         {title}
       </h2>
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">{children}</div>
+      <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-2">
+        {children}
+      </div>
     </section>
   );
 }
@@ -51,7 +53,7 @@ function ChartCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg border p-3 sm:p-5 ${className}`}>
+    <div className={`min-w-0 rounded-lg border p-3 sm:p-5 ${className}`}>
       {children}
     </div>
   );
@@ -64,6 +66,8 @@ export default function MessageGraphs({
   messages: Message[];
   persons: Person[];
 }) {
+  const [activeSection, setActiveSection] = useState("overview");
+
   if (!messages || messages.length === 0) {
     return (
       <div className="mt-4 rounded-lg border p-4 text-sm text-muted-foreground">
@@ -71,7 +75,7 @@ export default function MessageGraphs({
       </div>
     );
   }
-  const year = messages[0].year;
+  const year = messages.at(-1)?.year ?? messages[0].year;
 
   const filteredMessages = messages.filter((e) => {
     // Filter out media/deleted placeholders and emoji-only messages.
@@ -86,67 +90,79 @@ export default function MessageGraphs({
       >
         <div className="flex min-w-max gap-2">
           {sections.map((section) => (
-            <a
+            <button
+              type="button"
               key={section.id}
-              href={`#${section.id}`}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-pressed={activeSection === section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
+                activeSection === section.id
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
             >
               {section.label}
-            </a>
+            </button>
           ))}
         </div>
       </nav>
 
-      <ChartSection id="overview" title="Overview">
-        <ChartCard className="lg:col-span-2">
-          <GitHubStyleChart messages={messages} year={year} />
-        </ChartCard>
-        <ChartCard className="lg:col-span-2">
-          <ConversationInsights messages={messages} persons={persons} />
-        </ChartCard>
-      </ChartSection>
-
-      <ChartSection id="participants" title="Participant Balance">
-        <ChartCard className="lg:col-span-2">
-          <ParticipantDistribution messages={messages} persons={persons} />
-        </ChartCard>
-      </ChartSection>
-
-      <ChartSection id="timing" title="Timing Patterns">
-        <ChartCard className="lg:col-span-2">
-          <ActivityByTime messages={messages} persons={persons} />
-        </ChartCard>
-        <ChartCard className="lg:col-span-2">
-          <ActivityByDay messages={messages} persons={persons} />
-        </ChartCard>
-        <ChartCard className="lg:col-span-2">
-          <RunningAverageMessages messages={messages} persons={persons} />
-        </ChartCard>
-      </ChartSection>
-
-      <ChartSection id="language" title="Language And Emoji">
-        <ChartCard className="lg:col-span-2">
-          <EmojiActivity messages={messages} persons={persons} />
-        </ChartCard>
-        <ChartCard className="lg:col-span-2">
-          <WordActivity messages={filteredMessages} persons={persons} />
-        </ChartCard>
-      </ChartSection>
-
-      <ChartSection id="dynamics" title="Conversation Dynamics">
-        <ChartCard>
-          <ResponseTimeAnalysis messages={messages} persons={persons} />
-        </ChartCard>
-        <ChartCard>
-          <ConversationStarters messages={messages} persons={persons} />
-        </ChartCard>
-        <ChartCard>
-          <ThreadLengthDistribution messages={messages} persons={persons} />
-        </ChartCard>
-        <ChartCard>
-          <SilentPeriods messages={messages} persons={persons} />
-        </ChartCard>
-      </ChartSection>
+      {activeSection === "overview" && (
+        <ChartSection id="overview" title="Overview">
+          <ChartCard className="lg:col-span-2">
+            <GitHubStyleChart messages={messages} year={year} />
+          </ChartCard>
+          <ChartCard className="lg:col-span-2">
+            <ConversationInsights messages={messages} persons={persons} />
+          </ChartCard>
+        </ChartSection>
+      )}
+      {activeSection === "participants" && (
+        <ChartSection id="participants" title="Participant Balance">
+          <ChartCard className="lg:col-span-2">
+            <ParticipantDistribution messages={messages} persons={persons} />
+          </ChartCard>
+        </ChartSection>
+      )}
+      {activeSection === "timing" && (
+        <ChartSection id="timing" title="Timing Patterns">
+          <ChartCard className="lg:col-span-2">
+            <ActivityByTime messages={messages} persons={persons} />
+          </ChartCard>
+          <ChartCard className="lg:col-span-2">
+            <ActivityByDay messages={messages} persons={persons} />
+          </ChartCard>
+          <ChartCard className="lg:col-span-2">
+            <RunningAverageMessages messages={messages} persons={persons} />
+          </ChartCard>
+        </ChartSection>
+      )}
+      {activeSection === "language" && (
+        <ChartSection id="language" title="Language And Emoji">
+          <ChartCard className="lg:col-span-2">
+            <EmojiActivity messages={messages} persons={persons} />
+          </ChartCard>
+          <ChartCard className="lg:col-span-2">
+            <WordActivity messages={filteredMessages} persons={persons} />
+          </ChartCard>
+        </ChartSection>
+      )}
+      {activeSection === "dynamics" && (
+        <ChartSection id="dynamics" title="Conversation Dynamics">
+          <ChartCard>
+            <ResponseTimeAnalysis messages={messages} persons={persons} />
+          </ChartCard>
+          <ChartCard>
+            <ConversationStarters messages={messages} persons={persons} />
+          </ChartCard>
+          <ChartCard>
+            <ThreadLengthDistribution messages={messages} persons={persons} />
+          </ChartCard>
+          <ChartCard>
+            <SilentPeriods messages={messages} persons={persons} />
+          </ChartCard>
+        </ChartSection>
+      )}
     </div>
   );
 }

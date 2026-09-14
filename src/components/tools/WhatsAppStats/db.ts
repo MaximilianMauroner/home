@@ -14,6 +14,11 @@ interface Message {
 interface Chat {
   id: number;
   name: string;
+  fingerprint?: string;
+  importedAt?: string;
+  messageCount?: number;
+  firstDate?: string;
+  lastDate?: string;
 }
 
 interface Person {
@@ -33,6 +38,12 @@ whatsappDB.version(3).stores({
   messages: "++id, personId, chatId, year, [chatId+year]",
   persons: "++id, name, chatId",
   chats: "++id, name",
+});
+
+whatsappDB.version(4).stores({
+  messages: "++id, personId, chatId, year, [chatId+year]",
+  persons: "++id, name, chatId",
+  chats: "++id, name, fingerprint",
 });
 
 export type { Message, Person, Chat };

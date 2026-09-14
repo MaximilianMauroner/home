@@ -109,8 +109,8 @@ export const ConversationInsights = ({ messages, persons }: GraphProps) => {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-        <div>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+        <div className="min-w-0">
           <div className="mb-2 flex items-end justify-between gap-4">
             <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Weekday / Hour Heatmap
@@ -120,8 +120,13 @@ export const ConversationInsights = ({ messages, persons }: GraphProps) => {
             </span>
           </div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>Darker blue means more messages in that weekday/hour slot.</span>
-            <div className="flex items-center gap-1" aria-label="Heatmap color scale">
+            <span>
+              Darker blue means more messages in that weekday/hour slot.
+            </span>
+            <div
+              className="flex items-center gap-1"
+              aria-label="Heatmap color scale"
+            >
               <span className="mr-1 text-xs">Less</span>
               {[0, 0.25, 0.5, 0.75, 1].map((strength) => (
                 <span
@@ -129,9 +134,7 @@ export const ConversationInsights = ({ messages, persons }: GraphProps) => {
                   className="h-4 w-4 rounded-sm border border-border/60"
                   style={{
                     backgroundColor:
-                      strength === 0
-                        ? heatColor(0, 1)
-                        : heatColor(strength, 1),
+                      strength === 0 ? heatColor(0, 1) : heatColor(strength, 1),
                   }}
                 />
               ))}
@@ -156,18 +159,17 @@ export const ConversationInsights = ({ messages, persons }: GraphProps) => {
                   </div>
                   {insights.weekdayHour.matrix[weekdayIndex].map(
                     (count, hour) => (
-                      <div
+                      <button
+                        type="button"
                         key={`${weekday}-${hour}`}
-                        className="h-5 w-5 rounded-sm border border-border/60"
+                        className="h-5 w-5 rounded-sm border border-border/60 p-0 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
                         style={{
                           backgroundColor: heatColor(
                             count,
                             insights.weekdayHour.maxCount,
                           ),
                         }}
-                        title={`${weekday} ${HOUR_LABELS[hour]}: ${count} message${
-                          count !== 1 ? "s" : ""
-                        }`}
+                        aria-label={`${weekday} ${HOUR_LABELS[hour]}: ${count} message${count !== 1 ? "s" : ""}`}
                       />
                     ),
                   )}

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Bar } from "react-chartjs-2";
 import type { GraphProps } from "./types";
 import { getParticipantColors, EMOJI_PATTERN } from "./utils";
@@ -6,6 +6,7 @@ import { ChartHeader } from "./ChartHeader";
 import { CHART_ASSUMPTIONS } from "./chartAssumptions";
 
 export const EmojiActivity = ({ messages, persons }: GraphProps) => {
+  const [limit, setLimit] = useState(10);
   const emojiCounts = useMemo(() => {
     const emojiMap = new Map<string, number>();
     const emojiPerPerson: Record<string, Record<number, number>> = {};
@@ -50,7 +51,7 @@ export const EmojiActivity = ({ messages, persons }: GraphProps) => {
   }
 
   // Only show the top 30 emojis
-  const topEmoji = emojiCounts.sorted.slice(0, 30);
+  const topEmoji = emojiCounts.sorted.slice(0, limit);
 
   // Prepare stacked datasets: one for each person
   const colorMap = getParticipantColors(persons.map((p) => p.name));
@@ -91,10 +92,27 @@ export const EmojiActivity = ({ messages, persons }: GraphProps) => {
 
   return (
     <>
-      <ChartHeader
-        title="Emoji Usage"
-        assumption={CHART_ASSUMPTIONS.emojiUsage}
-      />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <ChartHeader
+          title={`Emoji Usage (Top ${limit})`}
+          assumption={CHART_ASSUMPTIONS.emojiUsage}
+          className="mb-0 sm:mb-0"
+        />
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Show</span>
+          <select
+            className="tool-field h-9 py-0"
+            value={limit}
+            onChange={(event) => setLimit(Number(event.target.value))}
+          >
+            {[10, 20, 30].map((count) => (
+              <option key={count} value={count}>
+                Top {count}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <div className="mb-4 flex flex-col flex-wrap text-sm text-muted-foreground">
         {persons
           .map((p) => {
@@ -139,7 +157,7 @@ export const EmojiActivity = ({ messages, persons }: GraphProps) => {
       </div>
       <div
         className="mx-auto w-full"
-        style={{ minHeight: 600, maxHeight: 1200 }}
+        style={{ height: Math.max(320, limit * 34) }}
       >
         <Bar data={data} options={options} />
       </div>

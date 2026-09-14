@@ -10,6 +10,7 @@ import {
 } from "../datetime";
 import { ChartHeader } from "./ChartHeader";
 import { CHART_ASSUMPTIONS } from "./chartAssumptions";
+import { LINE_CHART_INTERACTION } from "./chartOptions";
 
 interface DayOption {
   value: number;
@@ -140,6 +141,7 @@ export const RunningAverageMessages = ({ messages, persons }: GraphProps) => {
     () => ({
       responsive: true,
       maintainAspectRatio: false,
+      interaction: LINE_CHART_INTERACTION,
       plugins: {
         legend: {
           position: "top" as const,
