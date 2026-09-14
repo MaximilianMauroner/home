@@ -24,6 +24,7 @@ export type RecordedLeg = {
 
 type RouteProgressProfile = {
   points: TrackPoint[];
+  groupIndex: number;
   startTime?: number;
   cumulativeKm: number[];
   cumulativeAscentM: number[];
@@ -39,6 +40,18 @@ export type RecordedProgressStats = {
   ascentM: number;
 };
 
+export type RecordedElevationProfile = {
+  points: Array<{ distanceKm: number; elevationM: number }>;
+  currentDistanceKm: number;
+  totalDistanceKm: number;
+  minElevationM: number;
+  maxElevationM: number;
+};
+
+type ElevationProfile = Omit<RecordedElevationProfile, "currentDistanceKm">;
+
+export type RecordedSample = { segmentIndex: number; pointIndex: number };
+
 export type RouteStory = {
   /** Every honest recording segment, shown faintly as geographic context. */
   context: TrackPoint[][];
@@ -46,6 +59,10 @@ export type RouteStory = {
   legs: Array<RecordedLeg | undefined>;
   /** Unsimplified cumulative values, built once so the live hike panel stays cheap per frame. */
   profiles: RouteProgressProfile[];
+  /** Exact source samples for photo-state statistics, indexed like the input photos. */
+  photoSamples: Array<RecordedSample | undefined>;
+  /** Stable, bounded elevation shapes for each GPX recording part. */
+  elevationProfiles: Array<ElevationProfile | undefined>;
 };
 
 type SourceSegment = {
@@ -104,7 +121,7 @@ function isPlacementSample(point: TrackPoint, placement: Placement) {
   );
 }
 
-type PlacementSample = { segmentIndex: number; pointIndex: number };
+type PlacementSample = RecordedSample;
 
 function exactPlacementSample(
   segments: readonly SourceSegment[],
@@ -146,6 +163,7 @@ type ProgressBaseline = {
 
 function progressProfile(
   points: TrackPoint[],
+  groupIndex: number,
   baseline: ProgressBaseline,
 ): RouteProgressProfile {
   const cumulativeKm = [baseline.distanceKm];
@@ -181,6 +199,7 @@ function progressProfile(
   }
   return {
     points,
+    groupIndex,
     startTime: baseline.startTime,
     cumulativeKm,
     cumulativeAscentM,
@@ -201,7 +220,7 @@ function progressProfiles(segments: readonly SourceSegment[]) {
       movingSeconds: 0,
     };
     const baseline = { ...prior, startTime: prior.startTime ?? firstTime };
-    const profile = progressProfile(points, baseline);
+    const profile = progressProfile(points, groupIndex, baseline);
     const last = points.length - 1;
     baselines.set(groupIndex, {
       startTime: baseline.startTime ?? firstTime,
@@ -210,6 +229,55 @@ function progressProfiles(segments: readonly SourceSegment[]) {
       movingSeconds: profile.cumulativeMovingSeconds[last],
     });
     return profile;
+  });
+}
+
+function elevationProfiles(profiles: readonly RouteProgressProfile[]) {
+  const grouped: Array<Array<{ distanceKm: number; elevationM: number }>> = [];
+  for (const profile of profiles) {
+    const points = (grouped[profile.groupIndex] ??= []);
+    profile.points.forEach((point, index) => {
+      if (point.elevation === undefined) return;
+      points.push({
+        distanceKm: profile.cumulativeKm[index],
+        elevationM: point.elevation,
+      });
+    });
+  }
+  return grouped.map((points) => {
+    if (!points.length) return undefined;
+    const selected = new Set<number>([0, points.length - 1]);
+    if (points.length > 96) {
+      for (let index = 1; index < 95; index += 1)
+        selected.add(Math.round((index * (points.length - 1)) / 95));
+      let minimumIndex = 0;
+      let maximumIndex = 0;
+      points.forEach((point, index) => {
+        if (point.elevationM < points[minimumIndex].elevationM)
+          minimumIndex = index;
+        if (point.elevationM > points[maximumIndex].elevationM)
+          maximumIndex = index;
+      });
+      selected.add(minimumIndex);
+      selected.add(maximumIndex);
+    } else {
+      points.forEach((_, index) => selected.add(index));
+    }
+    const bounded = [...selected]
+      .sort((first, second) => first - second)
+      .map((index) => points[index]);
+    let minElevationM = points[0].elevationM;
+    let maxElevationM = points[0].elevationM;
+    for (const point of points) {
+      minElevationM = Math.min(minElevationM, point.elevationM);
+      maxElevationM = Math.max(maxElevationM, point.elevationM);
+    }
+    return {
+      points: bounded,
+      totalDistanceKm: points.at(-1)?.distanceKm ?? 0,
+      minElevationM,
+      maxElevationM,
+    };
   });
 }
 
@@ -250,10 +318,13 @@ export function buildRouteStory(
       ? prepareLeg(candidate)
       : undefined;
   });
+  const profiles = progressProfiles(segments);
   return {
     context: trackSegments(track),
     legs,
-    profiles: progressProfiles(segments),
+    profiles,
+    photoSamples: samples,
+    elevationProfiles: elevationProfiles(profiles),
   };
 }
 
@@ -433,6 +504,44 @@ export function recordedLegFrame(
 const interpolateValue = (start: number, end: number, progress: number) =>
   start + (end - start) * progress;
 
+function progressStatsAt(
+  profile: RouteProgressProfile,
+  beforeIndex: number,
+  afterIndex: number,
+  fraction: number,
+  targetDistance: number,
+): RecordedProgressStats {
+  const before = profile.points[beforeIndex];
+  const after = profile.points[afterIndex];
+  const optionalValue = (
+    first: number | undefined,
+    second: number | undefined,
+  ) =>
+    first === undefined || second === undefined
+      ? (first ?? second)
+      : interpolateValue(first, second, fraction);
+  const time = optionalValue(before.time, after.time);
+  return {
+    time,
+    elapsedSeconds:
+      time === undefined || profile.startTime === undefined
+        ? undefined
+        : Math.max(0, (time - profile.startTime) / 1000),
+    movingSeconds: interpolateValue(
+      profile.cumulativeMovingSeconds[beforeIndex],
+      profile.cumulativeMovingSeconds[afterIndex],
+      fraction,
+    ),
+    distanceKm: targetDistance,
+    elevationM: optionalValue(before.elevation, after.elevation),
+    ascentM: interpolateValue(
+      profile.cumulativeAscentM[beforeIndex],
+      profile.cumulativeAscentM[afterIndex],
+      fraction,
+    ),
+  };
+}
+
 /** Returns real GPX progress for the map-only part of playback. */
 export function recordedProgressStats(
   story: RouteStory | undefined,
@@ -502,34 +611,49 @@ export function recordedProgressStats(
           : 0;
     }
   }
-  const before = profile.points[beforeIndex];
-  const after = profile.points[afterIndex];
-  const optionalValue = (
-    first: number | undefined,
-    second: number | undefined,
-  ) =>
-    first === undefined || second === undefined
-      ? (first ?? second)
-      : interpolateValue(first, second, fraction);
-  const time = optionalValue(before.time, after.time);
-  const segmentStartTime = profile.startTime;
+  return progressStatsAt(
+    profile,
+    beforeIndex,
+    afterIndex,
+    fraction,
+    targetDistance,
+  );
+}
+
+/** Returns the frozen GPX totals at a displayed photo's exact matched sample. */
+export function recordedPhotoProgressStats(
+  story: RouteStory | undefined,
+  photoIndex: number,
+): RecordedProgressStats | undefined {
+  const sample = story?.photoSamples[photoIndex];
+  if (!sample) return undefined;
+  const profile = story.profiles[sample.segmentIndex];
+  if (!profile?.points[sample.pointIndex]) return undefined;
+  return progressStatsAt(
+    profile,
+    sample.pointIndex,
+    sample.pointIndex,
+    0,
+    profile.cumulativeKm[sample.pointIndex],
+  );
+}
+
+/** Returns a stable activity elevation shape with only its current distance changing. */
+export function recordedElevationProfile(
+  story: RouteStory | undefined,
+  photoIndex: number,
+  currentDistanceKm: number,
+): RecordedElevationProfile | undefined {
+  const sample = story?.photoSamples[photoIndex];
+  if (!sample) return undefined;
+  const sourceProfile = story.profiles[sample.segmentIndex];
+  const elevationProfile = story.elevationProfiles[sourceProfile.groupIndex];
+  if (!elevationProfile) return undefined;
   return {
-    time,
-    elapsedSeconds:
-      time === undefined || segmentStartTime === undefined
-        ? undefined
-        : Math.max(0, (time - segmentStartTime) / 1000),
-    movingSeconds: interpolateValue(
-      profile.cumulativeMovingSeconds[beforeIndex],
-      profile.cumulativeMovingSeconds[afterIndex],
-      fraction,
-    ),
-    distanceKm: targetDistance,
-    elevationM: optionalValue(before.elevation, after.elevation),
-    ascentM: interpolateValue(
-      profile.cumulativeAscentM[beforeIndex],
-      profile.cumulativeAscentM[afterIndex],
-      fraction,
+    ...elevationProfile,
+    currentDistanceKm: Math.min(
+      elevationProfile.totalDistanceKm,
+      Math.max(0, currentDistanceKm),
     ),
   };
 }

@@ -9,8 +9,11 @@ import {
 import { trackSegments, trackStats, type Track, type TrackPoint } from "./gpx";
 import { burstPhotoProgress, journeyMotion } from "./motion";
 import {
+  recordedElevationProfile,
   recordedLegFrame,
+  recordedPhotoProgressStats,
   recordedProgressStats,
+  type RecordedElevationProfile,
   type RecordedProgressStats,
   type RouteStory,
 } from "./route-progress";
@@ -429,52 +432,192 @@ function trailPace(stats: RecordedProgressStats) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} /km`;
 }
 
+function traceElevationProfile(
+  context: CanvasRenderingContext2D,
+  profile: RecordedElevationProfile,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+) {
+  const distanceScale = Math.max(profile.totalDistanceKm, Number.EPSILON);
+  const elevationScale = Math.max(
+    profile.maxElevationM - profile.minElevationM,
+    Number.EPSILON,
+  );
+  const points = profile.points.map((point) => ({
+    x: left + (point.distanceKm / distanceScale) * width,
+    y:
+      top +
+      height -
+      ((point.elevationM - profile.minElevationM) / elevationScale) * height,
+  }));
+  context.beginPath();
+  points.forEach((point, index) =>
+    index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y),
+  );
+  return points;
+}
+
+function drawElevationProfile(
+  context: CanvasRenderingContext2D,
+  profile: RecordedElevationProfile,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+) {
+  const progress =
+    profile.totalDistanceKm > 0
+      ? profile.currentDistanceKm / profile.totalDistanceKm
+      : 0;
+  const points = traceElevationProfile(
+    context,
+    profile,
+    left,
+    top,
+    width,
+    height,
+  );
+  context.lineTo(left + width, top + height);
+  context.lineTo(left, top + height);
+  context.closePath();
+  context.fillStyle = "#90a1a51f";
+  context.fill();
+  traceElevationProfile(context, profile, left, top, width, height);
+  context.strokeStyle = "#718187";
+  context.lineWidth = 1.25;
+  context.stroke();
+  context.save();
+  context.beginPath();
+  context.rect(left, top - 2, width * progress, height + 4);
+  context.clip();
+  traceElevationProfile(context, profile, left, top, width, height);
+  context.strokeStyle = "#38bdf8";
+  context.lineWidth = 2;
+  context.stroke();
+  context.restore();
+  const markerX = left + width * progress;
+  const marker = points.reduce((closest, point) =>
+    Math.abs(point.x - markerX) < Math.abs(closest.x - markerX)
+      ? point
+      : closest,
+  );
+  context.beginPath();
+  context.arc(markerX, marker.y, 4, 0, Math.PI * 2);
+  context.fillStyle = "#f1cf67";
+  context.fill();
+  context.strokeStyle = "#071014";
+  context.lineWidth = 2;
+  context.stroke();
+}
+
 function drawTrailProgress(
   context: CanvasRenderingContext2D,
   stats: RecordedProgressStats,
   localTime: string,
+  profile: RecordedElevationProfile | undefined,
+  compact = false,
 ) {
-  const items = [
-    ["LOCAL TIME", localTime],
-    ["TIME SINCE START", formatTrailElapsed(stats.elapsedSeconds)],
-    [
-      "DISTANCE",
-      `${stats.distanceKm.toFixed(stats.distanceKm < 10 ? 2 : 1)} km`,
-    ],
-    [
-      "ELEVATION",
-      stats.elevationM === undefined
-        ? "—"
-        : `${Math.round(stats.elevationM)} m`,
-    ],
-    ["ELEVATION GAIN", `${Math.round(stats.ascentM)} m`],
-    ["AVG. PACE", trailPace(stats)],
-  ] as const;
-  const left = 28;
-  const top = VIDEO_HEIGHT - 112;
-  const width = 930;
-  const height = 84;
-  const itemWidth = width / items.length;
-  context.fillStyle = "#05090bea";
-  context.fillRect(left, top, width, height);
+  const items = compact
+    ? ([
+        [
+          "ELEVATION",
+          stats.elevationM === undefined
+            ? "—"
+            : `${Math.round(stats.elevationM)} m`,
+        ],
+        [
+          "DISTANCE",
+          `${stats.distanceKm.toFixed(stats.distanceKm < 10 ? 2 : 1)} km`,
+        ],
+        ["TIME SINCE START", formatTrailElapsed(stats.elapsedSeconds)],
+      ] as const)
+    : ([
+        [
+          "ELEVATION",
+          stats.elevationM === undefined
+            ? "—"
+            : `${Math.round(stats.elevationM)} m`,
+        ],
+        ["LOCAL TIME", localTime],
+        ["TIME SINCE START", formatTrailElapsed(stats.elapsedSeconds)],
+        [
+          "DISTANCE",
+          `${stats.distanceKm.toFixed(stats.distanceKm < 10 ? 2 : 1)} km`,
+        ],
+        ["ELEVATION GAIN", `${Math.round(stats.ascentM)} m`],
+        ["AVG. PACE", trailPace(stats)],
+      ] as const);
+  const left = compact ? 20 : 28;
+  const width = compact ? 340 : 430;
+  const height = compact ? 122 : 176;
+  const top = compact
+    ? VIDEO_HEIGHT - INFO_HEIGHT - height - 18
+    : VIDEO_HEIGHT - height - 28;
+  context.fillStyle = "#05090bd9";
+  context.beginPath();
+  context.roundRect(left, top, width, height, 14);
+  context.fill();
   context.strokeStyle = "#31454d";
   context.lineWidth = 1;
-  context.strokeRect(left, top, width, height);
+  context.stroke();
+  const profileHeight = compact ? 47 : 70;
+  if (profile)
+    drawElevationProfile(
+      context,
+      profile,
+      left + 14,
+      top + 12,
+      width - 28,
+      profileHeight,
+    );
+  const columns = 3;
+  const itemWidth = (width - 28) / columns;
+  const valuesTop = top + (profile ? profileHeight + 25 : 16);
   for (const [index, [label, value]] of items.entries()) {
-    const x = left + index * itemWidth;
-    if (index) {
-      context.beginPath();
-      context.moveTo(x, top + 12);
-      context.lineTo(x, top + height - 12);
-      context.stroke();
-    }
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const x = left + 14 + column * itemWidth;
+    const y = valuesTop + row * 46;
     context.fillStyle = "#9aabb0";
-    context.font = "11px system-ui, sans-serif";
-    context.fillText(label, x + 12, top + 27, itemWidth - 24);
-    context.fillStyle = "#f4f7f7";
-    context.font = "600 18px system-ui, sans-serif";
-    context.fillText(value, x + 12, top + 56, itemWidth - 24);
+    context.font = "10px system-ui, sans-serif";
+    context.fillText(label, x, y, itemWidth - 8);
+    context.fillStyle = index === 0 ? "#f1cf67" : "#f4f7f7";
+    context.font = "600 16px system-ui, sans-serif";
+    context.fillText(value, x, y + 21, itemWidth - 8);
   }
+}
+
+function drawPhotoProgress(
+  context: CanvasRenderingContext2D,
+  routeStory: RouteStory | undefined,
+  placement: Placement | undefined,
+  photoIndex: number,
+  timezone: string,
+  panelProgress: number,
+) {
+  const stats = recordedPhotoProgressStats(routeStory, photoIndex);
+  if (!stats) return;
+  const profile = recordedElevationProfile(
+    routeStory,
+    photoIndex,
+    stats.distanceKm,
+  );
+  context.save();
+  context.globalAlpha *= Math.min(1, panelProgress * 1.8);
+  context.translate((panelProgress - 1) * PHOTO_WIDTH, 0);
+  context.beginPath();
+  context.rect(0, 0, PHOTO_WIDTH, VIDEO_HEIGHT);
+  context.clip();
+  drawTrailProgress(
+    context,
+    stats,
+    formatTrailClock(stats.time, placement?.offsetMinutes, timezone),
+    profile,
+    true,
+  );
+  context.restore();
 }
 
 function drawPhotoPanel(
@@ -607,6 +750,11 @@ async function renderAtResolution(
               options.placements[state.checkpointPhotoIndex]?.offsetMinutes,
               options.timezone,
             ),
+            recordedElevationProfile(
+              options.routeStory,
+              state.checkpointPhotoIndex,
+              trailStats.distanceKm,
+            ),
           );
         }
       } else {
@@ -645,6 +793,14 @@ async function renderAtResolution(
             options.timezone,
             panelProgress,
           );
+          drawPhotoProgress(
+            context,
+            options.routeStory,
+            options.placements[photoIndex - 1],
+            photoIndex - 1,
+            options.timezone,
+            panelProgress,
+          );
         }
         context.save();
         context.globalAlpha = photoProgress;
@@ -655,6 +811,14 @@ async function renderAtResolution(
           options.placements[photoIndex],
           photoIndex,
           options.photos.length,
+          options.timezone,
+          panelProgress,
+        );
+        drawPhotoProgress(
+          context,
+          options.routeStory,
+          options.placements[photoIndex],
+          photoIndex,
           options.timezone,
           panelProgress,
         );

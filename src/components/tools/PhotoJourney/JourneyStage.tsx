@@ -18,7 +18,10 @@ import { normalizeTimezone } from "./days";
 import { burstPhotoProgress, journeyMotion } from "./motion";
 import type { Track } from "./gpx";
 import {
+  recordedElevationProfile,
+  recordedPhotoProgressStats,
   recordedProgressStats,
+  type RecordedElevationProfile,
   type RecordedProgressStats,
   type RouteStory,
 } from "./route-progress";
@@ -154,7 +157,22 @@ export default function JourneyStage({
           motion.leg,
         )
       : undefined;
-  const showTrailProgress = traveling && trailStats !== undefined;
+  const photoStats =
+    !traveling && !card && photo
+      ? recordedPhotoProgressStats(routeStory, presentationIndex)
+      : undefined;
+  const progressStats = traveling ? trailStats : photoStats;
+  const progressPhotoIndex = traveling
+    ? state.checkpointPhotoIndex
+    : presentationIndex;
+  const elevationProfile = progressStats
+    ? recordedElevationProfile(
+        routeStory,
+        progressPhotoIndex,
+        progressStats.distanceKm,
+      )
+    : undefined;
+  const showTrailProgress = traveling && progressStats !== undefined;
   const originalError =
     originalStatus === "error" || originalFailed === photo?.id;
   const panelProgress = !playing && state.panelVisible ? 1 : motion.panel;
@@ -162,7 +180,7 @@ export default function JourneyStage({
     () => ({
       top: 0,
       right: 0,
-      bottom: showTrailProgress ? (size.width > 640 ? 128 : 188) : 0,
+      bottom: showTrailProgress ? (size.width > 640 ? 220 : 205) : 0,
       left:
         size.width > 640
           ? Math.round(size.width * DESKTOP_PHOTO_SHARE * panelProgress)
@@ -202,12 +220,13 @@ export default function JourneyStage({
   const capturedAt = captureMoment
     ? captureClock.format(captureMoment.instant)
     : (photo?.metadata.capturedAtLabel ?? "Time unknown");
+  const progressPlacement = traveling ? targetPlacement : placement;
   const trailMoment =
-    trailStats?.time === undefined
+    progressStats?.time === undefined
       ? undefined
       : localDisplayMoment(
-          trailStats.time,
-          targetPlacement?.offsetMinutes,
+          progressStats.time,
+          progressPlacement?.offsetMinutes,
           timezone,
         );
   const trailClock = useMemo(
@@ -330,8 +349,13 @@ export default function JourneyStage({
             </div>
           )}
         </div>
-        {showTrailProgress && (
-          <TrailProgress stats={trailStats} localTime={trailTime} />
+        {progressStats && (
+          <JourneyProgressCard
+            stats={progressStats}
+            profile={elevationProfile}
+            localTime={trailTime}
+            compact={!traveling}
+          />
         )}
         {photo && !traveling && (
           <section
@@ -483,18 +507,34 @@ export default function JourneyStage({
   );
 }
 
-function TrailProgress({
+function JourneyProgressCard({
   stats,
+  profile,
   localTime,
+  compact,
 }: {
   stats: RecordedProgressStats;
+  profile?: RecordedElevationProfile;
   localTime: string;
+  compact: boolean;
 }) {
   return (
-    <aside className="pj-trail-progress" aria-label="Current hike progress">
-      <span className="pj-label">Live trail</span>
+    <aside
+      className="pj-trail-progress"
+      data-compact={compact}
+      aria-label="Current hike progress"
+    >
+      {profile && <ElevationProfile profile={profile} />}
       <dl>
-        <div>
+        <div className="pj-progress-primary">
+          <dt>Elevation</dt>
+          <dd>
+            {stats.elevationM === undefined
+              ? "—"
+              : `${Math.round(stats.elevationM).toLocaleString("en")} m`}
+          </dd>
+        </div>
+        <div className="pj-progress-local-time">
           <dt>Local time</dt>
           <dd>{localTime}</dd>
         </div>
@@ -506,24 +546,71 @@ function TrailProgress({
           <dt>Distance</dt>
           <dd>{formatTrailDistance(stats.distanceKm)}</dd>
         </div>
-        <div>
-          <dt>Elevation</dt>
-          <dd>
-            {stats.elevationM === undefined
-              ? "—"
-              : `${Math.round(stats.elevationM).toLocaleString("en")} m`}
-          </dd>
-        </div>
-        <div>
+        <div className="pj-progress-secondary">
           <dt>Elevation gain</dt>
           <dd>{Math.round(stats.ascentM).toLocaleString("en")} m</dd>
         </div>
-        <div>
+        <div className="pj-progress-secondary">
           <dt>Avg. pace</dt>
           <dd>{formatPace(stats)}</dd>
         </div>
       </dl>
     </aside>
+  );
+}
+
+function ElevationProfile({ profile }: { profile: RecordedElevationProfile }) {
+  const width = 300;
+  const top = 6;
+  const bottom = 54;
+  const distanceScale = Math.max(profile.totalDistanceKm, Number.EPSILON);
+  const elevationScale = Math.max(
+    profile.maxElevationM - profile.minElevationM,
+    Number.EPSILON,
+  );
+  const coordinates = profile.points.map((point) => ({
+    x: (point.distanceKm / distanceScale) * width,
+    y:
+      bottom -
+      ((point.elevationM - profile.minElevationM) / elevationScale) *
+        (bottom - top),
+  }));
+  if (!coordinates.length) return null;
+  const line = coordinates
+    .map((point, index) => `${index ? "L" : "M"}${point.x},${point.y}`)
+    .join(" ");
+  const area = `${line} L${width},${bottom} L0,${bottom} Z`;
+  const currentX = Math.min(
+    width,
+    Math.max(0, (profile.currentDistanceKm / distanceScale) * width),
+  );
+  const current = coordinates.reduce((closest, point) =>
+    Math.abs(point.x - currentX) < Math.abs(closest.x - currentX)
+      ? point
+      : closest,
+  );
+  return (
+    <svg
+      className="pj-elevation-profile"
+      viewBox={`0 0 ${width} 62`}
+      preserveAspectRatio="none"
+      aria-label={`Elevation profile, ${profile.totalDistanceKm.toFixed(1)} kilometres total`}
+    >
+      <path className="pj-elevation-profile-future" d={area} />
+      <path
+        className="pj-elevation-profile-complete"
+        d={area}
+        style={{ clipPath: `inset(0 ${100 - (currentX / width) * 100}% 0 0)` }}
+      />
+      <line x1={currentX} x2={currentX} y1={top} y2={bottom} />
+      <circle cx={currentX} cy={current.y} r="3.5" />
+      <text x="0" y="61">
+        0
+      </text>
+      <text x={width} y="61" textAnchor="end">
+        {profile.totalDistanceKm.toFixed(1)} km
+      </text>
+    </svg>
   );
 }
 

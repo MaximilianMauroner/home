@@ -205,7 +205,11 @@ describe("Photo Journey stage presentation", () => {
     expect(approachMarkup).toContain("Time since start");
     expect(approachMarkup).toContain("Elevation gain");
     expect(approachMarkup).toContain("Avg. pace");
+    expect(approachMarkup).toContain('data-compact="false"');
     expect(photoMarkup).toContain("09:10 AM");
     expect(photoMarkup).not.toContain("07:10 AM");
+    expect(photoMarkup).toContain('aria-label="Current hike progress"');
+    expect(photoMarkup).toContain('data-compact="true"');
+    expect(photoMarkup).toContain('class="pj-elevation-profile"');
   });
 });

@@ -6,8 +6,10 @@ import {
 } from "../src/components/tools/PhotoJourney/JourneyMap";
 import {
   buildRouteStory,
+  recordedElevationProfile,
   recordedLegCameraFrame,
   recordedLegFrame,
+  recordedPhotoProgressStats,
   recordedProgressStats,
   routePrefix,
 } from "../src/components/tools/PhotoJourney/route-progress";
@@ -160,6 +162,19 @@ describe("Photo Journey recorded route presentation", () => {
     expect(halfway.distanceKm).toBeLessThan(0.8);
     expect(halfway.elevationM).toBeCloseTo(1_015, 0);
     expect(halfway.ascentM).toBeCloseTo(15, 0);
+
+    const photoStats = recordedPhotoProgressStats(story, 0)!;
+    expect(photoStats.time).toBe(start + 120_000);
+    expect(photoStats.elevationM).toBe(1_012);
+    const elevation = recordedElevationProfile(
+      story,
+      0,
+      photoStats.distanceKm,
+    )!;
+    expect(elevation.points).toHaveLength(3);
+    expect(elevation.minElevationM).toBe(1_000);
+    expect(elevation.maxElevationM).toBe(1_015);
+    expect(elevation.currentDistanceKm).toBe(elevation.totalDistanceKm);
   });
 
   test("keeps hike totals across paused GPX segments without joining the gap", () => {
@@ -210,6 +225,10 @@ describe("Photo Journey recorded route presentation", () => {
     expect(complete.distanceKm).toBeGreaterThan(1.5);
     expect(complete.distanceKm).toBeLessThan(1.7);
     expect(complete.ascentM).toBe(35);
+    const elevation = recordedElevationProfile(story, 0, complete.distanceKm)!;
+    expect(elevation.points).toHaveLength(4);
+    expect(elevation.totalDistanceKm).toBeCloseTo(complete.distanceKm);
+    expect(elevation.maxElevationM).toBe(1_120);
   });
 
   test("uses the destination time when the hike ends with a stationary pause", () => {

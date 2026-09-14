@@ -631,13 +631,19 @@
   left: 1rem;
   bottom: 2.25rem;
   z-index: 4;
-  width: min(52rem, calc(100% - 2rem));
-  padding: 0.7rem;
+  width: min(25rem, calc(100% - 2rem));
+  padding: 0.8rem;
   border: 1px solid var(--pj-line-strong);
   border-radius: calc(var(--pj-radius) + 0.2rem);
-  background: #05090bea;
-  box-shadow: 0 18px 48px #0008;
+  background: #05090bd9;
+  box-shadow: 0 18px 48px #0009;
   pointer-events: none;
+}
+.pj-trail-progress[data-compact="true"] {
+  bottom: 1rem;
+  width: min(19.5rem, calc(50% - 2rem));
+  padding: 0.65rem 0.7rem;
+  background: #05090bd1;
 }
 .pj-album .pj-viewport[data-route-only="true"] .pj-resume-follow {
   top: 1rem;
@@ -647,31 +653,71 @@
   max-width: min(20rem, 50%);
   transform: none;
 }
-.pj-trail-progress > .pj-label {
+.pj-elevation-profile {
   display: block;
-  margin: 0 0 0.5rem 0.1rem;
-  color: var(--pj-accent);
-  font-size: 0.65rem;
+  width: 100%;
+  height: 4.75rem;
+  margin-bottom: 0.5rem;
+  overflow: visible;
+}
+.pj-trail-progress[data-compact="true"] .pj-elevation-profile {
+  height: 3.35rem;
+  margin-bottom: 0.35rem;
+}
+.pj-elevation-profile-future {
+  fill: #90a1a51f;
+  stroke: #718187;
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+}
+.pj-elevation-profile-complete {
+  fill: color-mix(in srgb, #38bdf8 22%, transparent);
+  stroke: #38bdf8;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.pj-elevation-profile line {
+  stroke: #ffffff40;
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  vector-effect: non-scaling-stroke;
+}
+.pj-elevation-profile circle {
+  fill: var(--pj-accent);
+  stroke: var(--pj-bg-0);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.pj-elevation-profile text {
+  fill: var(--pj-muted);
+  font-size: 0.48rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 .pj-trail-progress dl {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 1px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem 0.75rem;
   margin: 0;
-  overflow: hidden;
-  border: 1px solid var(--pj-line);
-  border-radius: var(--pj-radius);
-  background: var(--pj-line);
 }
 .pj-trail-progress dl div {
   min-width: 0;
-  padding: 0.55rem 0.65rem;
-  background: var(--pj-bg-1);
+  padding: 0;
+}
+.pj-trail-progress[data-compact="true"] dl {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.pj-trail-progress[data-compact="true"]
+  :is(.pj-progress-local-time, .pj-progress-secondary) {
+  display: none;
 }
 .pj-trail-progress dt {
   color: var(--pj-muted);
-  font-size: 0.65rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
   line-height: 1.2;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 .pj-trail-progress dd {
@@ -685,6 +731,9 @@
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.pj-trail-progress .pj-progress-primary dd {
+  color: var(--pj-accent);
 }
 .pj-map {
   position: absolute;
@@ -1916,6 +1965,10 @@
     bottom: 3rem;
     width: auto;
     padding: 0.55rem;
+  }
+  .pj-trail-progress[data-compact="true"] {
+    bottom: 3rem;
+    width: auto;
   }
   .pj-album .pj-viewport[data-route-only="true"] .pj-resume-follow {
     top: 0.75rem;
