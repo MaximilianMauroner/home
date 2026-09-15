@@ -37,6 +37,10 @@ import {
 } from "./ingestion";
 import { mergeTracks, parseGpx, trackStats } from "./gpx";
 import {
+  inferJourneyOffsetMinutes,
+  inferJourneyTimezone,
+} from "./journey-timezone";
+import {
   buildBundle,
   buildScopedBundle,
   exportJourney,
@@ -386,6 +390,8 @@ export default function PhotoJourney() {
   const [fullscreen, setFullscreen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [recordings, setRecordings] = useState<JourneyRecording[]>([]);
+  const [timezoneManuallySelected, setTimezoneManuallySelected] =
+    useState(false);
   const [tripTimezone, setTripTimezone] = useState(() => {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -426,14 +432,39 @@ export default function PhotoJourney() {
       ? mergeTracks(included.map((recording) => recording.track))
       : undefined;
   }, [recordings]);
+  const inferredTripTimezone = useMemo(
+    () => inferJourneyTimezone(photos, recordings),
+    [photos, recordings],
+  );
+  const inferredTripOffsetMinutes = useMemo(
+    () => inferJourneyOffsetMinutes(photos),
+    [photos],
+  );
+  const automaticOffsetMinutes =
+    !timezoneManuallySelected && !inferredTripTimezone
+      ? inferredTripOffsetMinutes
+      : undefined;
+  useEffect(() => {
+    if (!timezoneManuallySelected && inferredTripTimezone)
+      setTripTimezone(inferredTripTimezone);
+  }, [inferredTripTimezone, timezoneManuallySelected]);
   const placements = useMemo(
     () =>
       resolvePlacementsForRecordings(photos, recordings, {
+        offsetMinutes: automaticOffsetMinutes,
         offsetMinutesByPhoto,
         choices: placementChoices,
         timezone: tripTimezone,
       }),
-    [photos, recordings, offsetMinutesByPhoto, placementChoices, tripTimezone],
+    [
+      photos,
+      recordings,
+      automaticOffsetMinutes,
+      offsetMinutesByPhoto,
+      placementChoices,
+      timezoneManuallySelected,
+      tripTimezone,
+    ],
   );
   const days = useMemo(
     () => deriveJourneyDays(photos, placements, recordings, tripTimezone),
@@ -939,6 +970,7 @@ export default function PhotoJourney() {
         nextPhotos = restored.photos;
         nextRecordings = restored.recordings;
         setTitle(restored.title);
+        setTimezoneManuallySelected(true);
         setTripTimezone(restored.timezone);
         setOrder(restored.order);
         setOffsetMinutesByPhoto(restored.offsetMinutesByPhoto);
@@ -1699,7 +1731,10 @@ export default function PhotoJourney() {
                     aria-label="Trip timezone"
                     list="pj-timezones"
                     value={tripTimezone}
-                    onChange={(event) => setTripTimezone(event.target.value)}
+                    onChange={(event) => {
+                      setTimezoneManuallySelected(true);
+                      setTripTimezone(event.target.value);
+                    }}
                     onBlur={() =>
                       setTripTimezone((value) => normalizeTimezone(value))
                     }
@@ -1769,9 +1804,11 @@ export default function PhotoJourney() {
                           <div>
                             <strong>Camera clocks use the trip timezone</strong>
                             <p>
-                              Untagged photos use {tripTimezone}, including
-                              daylight saving time. Set a minute offset only to
-                              override a camera whose clock was wrong.
+                              {automaticOffsetMinutes === undefined
+                                ? `Untagged photos use ${tripTimezone}, including daylight saving time. The zone is inferred from journey locations until you change it.`
+                                : `Untagged photos inherit the UTC offset from other photos (${automaticOffsetMinutes} minutes east).`}{" "}
+                              Set a minute offset only to override a camera
+                              whose clock was wrong.
                             </p>
                           </div>
                           <label>
@@ -1788,8 +1825,8 @@ export default function PhotoJourney() {
                               }
                               aria-invalid={Boolean(
                                 fallbackOffsetInput &&
-                                parseOffsetMinutes(fallbackOffsetInput) ===
-                                  undefined,
+                                  parseOffsetMinutes(fallbackOffsetInput) ===
+                                    undefined,
                               )}
                             />
                           </label>

@@ -152,6 +152,9 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+      tz-lookup:
+        specifier: ^6.1.25
+        version: 6.1.25
       unified:
         specifier: ^11.0.5
         version: 11.0.5
@@ -171,6 +174,9 @@ importers:
       '@types/mdast':
         specifier: ^4.0.4
         version: 4.0.4
+      '@types/tz-lookup':
+        specifier: ^6.1.2
+        version: 6.1.2
       jsdom:
         specifier: ^29.0.0
         version: 29.1.1
@@ -1296,6 +1302,9 @@ packages:
 
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
+
+  '@types/tz-lookup@6.1.2':
+    resolution: {integrity: sha512-9y31Xf/8FHXrCHjvVjGZLcsayAa6ABNc8bZlk6MPOQLLlr41tICSqW3TRPRIx2nodbzdKs5N7ipHWBrUsWUiAA==}
 
   '@types/unist@2.0.11':
     resolution: {integrity: sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA==}
@@ -3367,6 +3376,9 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  tz-lookup@6.1.25:
+    resolution: {integrity: sha512-fFewT9o1uDzsW1QnUU1ValqaihFnwiUiiHr1S79/fxOzKXYYvX+EHeRnpvQJ9B3Qg67wPXT6QF2Esc4pFOrvLg==}
+
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
 
@@ -4961,6 +4973,8 @@ snapshots:
   '@types/seedrandom@3.0.8': {}
 
   '@types/tough-cookie@4.0.5': {}
+
+  '@types/tz-lookup@6.1.2': {}
 
   '@types/unist@2.0.11': {}
 
@@ -7481,6 +7495,8 @@ snapshots:
       semver: 7.8.4
 
   typescript@5.9.3: {}
+
+  tz-lookup@6.1.25: {}
 
   ufo@1.6.4: {}
 
