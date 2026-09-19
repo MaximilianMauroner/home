@@ -66,22 +66,7 @@ const tags = frontmatter.tags ?? [];
   <ReadingProgress family="blog" client:load />
 
   <div class="blog-detail-page animate-fade-in mx-auto w-[min(72rem,calc(100%_-_2rem))] py-[clamp(2rem,6vw,4.5rem)] motion-reduce:animate-none max-[720px]:w-[min(72rem,calc(100%_-_1.25rem))] max-[720px]:pb-12 max-[720px]:pt-4">
-    <header class="blog-detail-map relative isolate flex min-h-[31rem] flex-col overflow-hidden rounded-[var(--radius-lg)] border bg-[var(--map)] p-[clamp(1.35rem,4vw,3rem)] text-[var(--ink)] max-[720px]:min-h-0 max-[720px]:p-[1.1rem]">
-      {
-        frontmatter.image && (
-          <figure
-            class="blog-detail-image absolute inset-[0_0_4.5rem_auto] -z-[3] m-0 w-[66%] overflow-hidden max-[720px]:bottom-[5.5rem] max-[720px]:w-[90%] max-[720px]:opacity-[0.42]"
-            aria-hidden="true"
-          >
-            <PostImageLoader
-              imagePath={frontmatter.image}
-              altText=""
-              className="blog-detail-image-source h-full w-full object-cover"
-            />
-          </figure>
-        )
-      }
-
+    <header class="blog-detail-map relative isolate flex flex-col overflow-hidden rounded-[var(--radius-lg)] border bg-[var(--map)] p-[clamp(1.35rem,4vw,3rem)] text-[var(--ink)] max-[720px]:p-[1.1rem]">
       <div
         class="blog-detail-contours pointer-events-none absolute right-[-4%] top-[47%] -z-[1] aspect-[1.2] w-[min(54%,34rem)] -translate-y-1/2 -rotate-[7deg] max-[720px]:-right-36 max-[720px]:w-[27rem] max-[720px]:opacity-[0.52]"
         aria-hidden="true"
@@ -102,13 +87,6 @@ const tags = frontmatter.tags ?? [];
         >
           {frontmatter.title}
         </h1>
-        {
-          frontmatter.description && (
-            <p class="m-0 max-w-[58ch] text-[clamp(0.95rem,1.7vw,1.15rem)] leading-[1.55] max-[720px]:text-[0.9rem] max-[720px]:leading-[1.48]">
-              {frontmatter.description}
-            </p>
-          )
-        }
       </div>
 
       <footer class="blog-detail-footer flex items-end justify-between gap-4 border-t pt-[0.8rem] font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.08em] max-[720px]:flex-col max-[720px]:items-stretch max-[720px]:gap-[0.8rem]">
@@ -143,6 +121,16 @@ const tags = frontmatter.tags ?? [];
         </div>
       </footer>
     </header>
+
+    {frontmatter.image && (
+      <figure class="mx-0 mb-0 mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[#172725]">
+        <PostImageLoader
+          imagePath={frontmatter.image}
+          altText={`Cover for ${frontmatter.title}`}
+          className="block h-auto w-full"
+        />
+      </figure>
+    )}
 
     <div class="blog-detail-body mx-auto mt-[clamp(2.5rem,7vw,5.5rem)] w-[min(54rem,calc(100%_-_clamp(0rem,4vw,4rem)))] overflow-hidden rounded-[var(--radius-lg)] border max-[720px]:mt-9 max-[720px]:w-full">
       <div

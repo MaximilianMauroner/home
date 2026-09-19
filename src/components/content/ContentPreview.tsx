@@ -5,7 +5,7 @@ import "./ContentPreview.css";
 export type ContentFamily = "blog" | "log" | "snack";
 
 interface ContentPreviewProps {
-  family: ContentFamily;
+  family: Exclude<ContentFamily, "log">;
   title: string;
   description: string;
   tags: string[];
@@ -18,11 +18,10 @@ interface ContentPreviewProps {
 }
 
 const familyDetails: Record<
-  ContentFamily,
+  ContentPreviewProps["family"],
   { label: string; code: string; action: string; mark: string }
 > = {
   blog: { label: "Blog", code: "BLG", action: "Follow trail", mark: "●" },
-  log: { label: "Dev log", code: "LOG", action: "Open entry", mark: ">_" },
   snack: { label: "Snack", code: "SNK", action: "See more", mark: "✦" },
 };
 
@@ -55,13 +54,7 @@ export default function ContentPreview({
   });
 
   return (
-    <article className={`content-preview content-preview--${family} group`}>
-      <div className="content-preview__hardware" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-        <i />
-      </div>
+    <article className={`content-preview content-preview--${family}${family === "blog" && (image || imageUrl) ? " content-preview--cover" : ""} group`}>
       <header className="content-preview__header">
         <span className="content-preview__family">
           <i aria-hidden="true" />
@@ -100,7 +93,7 @@ export default function ContentPreview({
             {title}
           </a>
         </h2>
-        <p>{description}</p>
+        {family !== "blog" && <p>{description}</p>}
       </div>
 
       <footer className="content-preview__footer">

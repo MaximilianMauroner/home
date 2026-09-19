@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-19T18:16:33.941Z",
+  "title": "Design System: Dev log and article covers",
+  "extensions": {
+    "breakpoints": [
+      {
+        "name": "stack",
+        "value": "760px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Latest-entry feature",
+      "kind": "card",
+      "refersTo": "feature",
+      "description": "Mint title panel beneath the latest-entry image. No subtitle.",
+      "html": "<article class=\"ds-sample ds-feature\"><time>30 April 2025</time><h2><a href=\"#entry\">Custom DynDNS for FritzBox</a></h2></article>",
+      "css": ".ds-feature{background:#c1d6b9;color:#172725;border-radius:.5rem;padding:2.125rem;font-family:Geist,sans-serif}.ds-feature time{font:.7rem/1.6 JetBrains_Mono,monospace}.ds-feature h2{font-size:2.625rem;line-height:1.12;letter-spacing:-.03em}.ds-feature a{color:inherit}.ds-sample a:hover{text-decoration:underline;text-underline-offset:.25em}.ds-sample a:focus-visible{outline:3px solid #ff855e;outline-offset:5px}"
+    },
+    {
+      "name": "Archive entry",
+      "kind": "custom",
+      "refersTo": "entry",
+      "description": "A compact chronological entry.",
+      "html": "<article class=\"ds-sample ds-entry\"><time>30 Apr 2025</time><h2><a href=\"#entry\">Custom DynDNS for FritzBox</a></h2><p>Connecting a changing home IP address to DNS.</p></article>",
+      "css": ".ds-entry{background:#172725;color:#edf5e9;padding:1.75rem;border-bottom:1px solid #405b50;font-family:Geist,sans-serif}.ds-entry time{color:#b3c6b8;font:.7rem/1.6 JetBrains_Mono,monospace}.ds-entry h2{font-size:1.5rem;line-height:1.2;letter-spacing:-.03em}.ds-entry a{color:inherit}.ds-entry p{color:#b3c6b8;font-size:.94rem;line-height:1.6}.ds-sample a:hover{text-decoration:underline;text-underline-offset:.25em}.ds-sample a:focus-visible{outline:3px solid #ff855e;outline-offset:5px}"
+    },
+    {
+      "name": "Tag",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "A quiet link to a tag archive.",
+      "html": "<div class=\"ds-sample ds-tags\"><a href=\"#tag\">cloudflare</a></div>",
+      "css": ".ds-tags{background:#172725;padding:1rem}.ds-tags a{color:#edf5e9;border-bottom:1px solid #405b50;padding:.2rem 0;font:.7rem/1.5 JetBrains_Mono,monospace;text-decoration:none}.ds-sample a:hover{text-decoration:underline;text-underline-offset:.25em}.ds-sample a:focus-visible{outline:3px solid #ff855e;outline-offset:5px}"
+    },
+    {
+      "name": "Section navigation",
+      "kind": "nav",
+      "refersTo": "section-navigation",
+      "description": "Links into the current entry.",
+      "html": "<nav class=\"ds-sample ds-outline\" aria-label=\"In this entry\"><strong>In this entry</strong><a href=\"#idea\">The idea</a><a href=\"#code\">The code</a></nav>",
+      "css": ".ds-outline{display:flex;flex-direction:column;gap:.75rem;background:#172725;padding:1rem;color:#edf5e9;font:.875rem Geist,sans-serif}.ds-outline a{color:#b3c6b8;text-decoration:none}.ds-sample a:hover{text-decoration:underline;text-underline-offset:.25em}.ds-sample a:focus-visible{outline:3px solid #ff855e;outline-offset:5px}"
+    },
+    {
+      "name": "Quote",
+      "kind": "custom",
+      "refersTo": "quote",
+      "description": "A flat tonal inset for a quotation.",
+      "html": "<blockquote class=\"ds-quote\">A small function connects the router to DNS.</blockquote>",
+      "css": ".ds-quote{background:#223d32;color:#edf5e9;padding:1.25rem 1.5rem;font:1.125rem/1.8 Geist,sans-serif;font-style:normal;border-left:4px solid #ff855e}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Editorial spread",
+    "overview": "This document covers the implemented dev-log surfaces and the shared blog and log cover direction. It records original A, selected by Max. It does not replace the design rules for unrelated site tools or pages.\n\nThe visual system uses clear type, forest surfaces, and direct graphic explanations. The accepted covers add site color to a simple editorial graphic style. They avoid the distressed print textures and generic AI illustration treatment rejected during exploration.",
+    "keyCharacteristics": [
+      "Forest surfaces with mint features and coral accents.",
+      "Clear reading hierarchy and compact dated entries.",
+      "Article graphics shown at their full aspect ratio."
+    ],
+    "rules": [],
+    "dos": [
+      "Do preserve original A for the dev-log archive and reading view.",
+      "Do base covers on the article content and the approved site palette.",
+      "Do preserve routes, tags, metadata, reading progress, and section links."
+    ],
+    "donts": [
+      "Don't restore hardware decoration or the starfield on dev-log pages.",
+      "Don't use distressed textures, glossy 3D scenes, or plain white title cards for this cover direction.",
+      "Don't turn this scoped system into rules for unrelated tools."
+    ]
+  }
+}

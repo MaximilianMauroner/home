@@ -27,25 +27,6 @@
   content: "";
 }
 
-.blog-detail-image::after {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, var(--map), transparent 52%),
-    linear-gradient(
-      0deg,
-      var(--map),
-      transparent 22%,
-      transparent 78%,
-      var(--map)
-    );
-  content: "";
-}
-
-.blog-detail-image-source {
-  filter: saturate(0.65) sepia(0.2) contrast(0.92);
-  opacity: 0.58;
-}
-
 .blog-detail-contours span {
   position: absolute;
   inset: calc(var(--ring-index, 0) * 7%);

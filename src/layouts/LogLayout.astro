@@ -6,7 +6,7 @@ import RelatedPosts from "@/components/content/RelatedPosts.astro";
 import TableOfContents from "@/components/content/TableOfContents";
 import { getArticleOgImageUrl, getArticleTrail } from "@/utils/server/content";
 import type { HeadingType } from "@/utils/types";
-import StarLayout from "./StarLayout.astro";
+import DefaultLayout from "./DefaultLayout.astro";
 import "./LogLayout.css";
 
 interface Props {
@@ -53,7 +53,7 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
 );
 ---
 
-<StarLayout
+<DefaultLayout
   description={frontmatter.description || ""}
   title={frontmatter.title}
   image={frontmatter.image}
@@ -63,115 +63,26 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
   articleAuthor="Maximilian Mauroner"
 >
   <ReadingProgress family="log" client:load />
-
-  <div class="detail-patchbay-shell animate-fade-in">
-    <header class="detail-patchbay">
-      <span class="detail-patchbay__screw detail-patchbay__screw--tl"></span>
-      <span class="detail-patchbay__screw detail-patchbay__screw--tr"></span>
-      <span class="detail-patchbay__screw detail-patchbay__screw--bl"></span>
-      <span class="detail-patchbay__screw detail-patchbay__screw--br"></span>
-
-      <div class="detail-patchbay__frame">
-        <div class="detail-patchbay__meta">
-          <span>DEV / {year}.{entryId}</span>
+  <div class="log-editorial">
+    <div class="log-shell log-reader">
+      <a class="log-back" href="/dev-log/">← All entries</a>
+      <header class="log-reading-head">
+        <div class="log-meta">
           <time datetime={releaseDate.toISOString()}>{publishedDateLabel}</time>
+          <span>{year} / {entryId}</span>
+          {frontmatter.minutesRead && <span>{frontmatter.minutesRead}</span>}
         </div>
-
-        <div
-          class:list={[
-            "detail-patchbay__hero-grid",
-            { "detail-patchbay__hero-grid--text-only": !frontmatter.image },
-          ]}
-        >
-          <div class="detail-patchbay__copy">
-            <span class="detail-patchbay__kicker">
-              <i aria-hidden="true"></i>
-              Modular studio panel
-            </span>
-
-            {
-              frontmatter.tags && frontmatter.tags.length > 0 && (
-                <div class="detail-patchbay__sockets">
-                  <FontmatterTagsList tags={frontmatter.tags} />
-                </div>
-              )
-            }
-
-            <h1 transition:name={titleTransitionName}>{frontmatter.title}</h1>
-
-            {
-              frontmatter.description && (
-                <p class="detail-patchbay__description">
-                  {frontmatter.description}
-                </p>
-              )
-            }
-
-            <dl class="detail-patchbay__facts">
-              <div>
-                <dt>Released</dt>
-                <dd>{publishedDateLabel}</dd>
-              </div>
-              {
-                frontmatter.minutesRead && (
-                  <div>
-                    <dt>Runtime</dt>
-                    <dd>{frontmatter.minutesRead}</dd>
-                  </div>
-                )
-              }
-              <div>
-                <dt>Serviced</dt>
-                <dd>{updatedDateLabel}</dd>
-              </div>
-            </dl>
-          </div>
-
-          {
-            frontmatter.image && (
-              <figure class="detail-patchbay__visual">
-                <PostImageLoader
-                  imagePath={frontmatter.image}
-                  altText={frontmatter.title}
-                  className="h-full w-full object-cover"
-                />
-                <figcaption>Field attachment / channel {entryId}</figcaption>
-              </figure>
-            )
-          }
-        </div>
-      </div>
-    </header>
-
-    <article class="detail-patchbay__article">
-      <span class="detail-patchbay__screw detail-patchbay__screw--tl"></span>
-      <span class="detail-patchbay__screw detail-patchbay__screw--tr"></span>
-      <span class="detail-patchbay__screw detail-patchbay__screw--bl"></span>
-      <span class="detail-patchbay__screw detail-patchbay__screw--br"></span>
-
-      <header class="detail-patchbay__article-header">
-        <span><i aria-hidden="true"></i> Article output</span>
-        <span>CHANNEL {entryId.padStart(2, "0")}</span>
+        <h1 transition:name={titleTransitionName}>{frontmatter.title}</h1>
+        {frontmatter.tags && frontmatter.tags.length > 0 && <div class="log-reading-tags"><FontmatterTagsList tags={frontmatter.tags} /></div>}
+        {articleModifiedTime !== releaseDate.toISOString() && <p class="log-updated">Updated <time datetime={articleModifiedTime}>{updatedDateLabel}</time></p>}
       </header>
-
-      <div class="detail-patchbay__article-panel">
-        <div class="detail-patchbay__prose prose prose-lg max-w-none dark:prose-invert">
-          <slot />
-        </div>
+      {frontmatter.image && <figure class="log-reading-image"><PostImageLoader imagePath={frontmatter.image} altText={frontmatter.title} /></figure>}
+      <div class="log-reading-columns">
+        {headings.length > 0 && <nav class="log-reading-outline" aria-label="In this entry"><h2>In this entry</h2>{headings.filter(heading => heading.depth === 2).map(heading => <a href={`#${heading.slug}`}>{heading.text}</a>)}</nav>}
+        <article class="log-prose prose prose-lg max-w-none"><slot /></article>
       </div>
-    </article>
-
-    {
-      headings.length > 0 && (
-        <TableOfContents headingsArr={headings} family="log" client:idle />
-      )
-    }
+      {headings.length > 0 && <TableOfContents headingsArr={headings} family="log" client:idle />}
+      <RelatedPosts family="log" previous={articleTrail.previous} next={articleTrail.next} items={articleTrail.related} />
+    </div>
   </div>
-
-  <RelatedPosts
-    family="log"
-    previous={articleTrail.previous}
-    next={articleTrail.next}
-    items={articleTrail.related}
-  />
-</StarLayout>
+</DefaultLayout>

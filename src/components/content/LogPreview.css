@@ -1,0 +1,98 @@
+.log-preview {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr) 1.5rem;
+  gap: 1.5rem;
+  padding: 1.75rem 0;
+  border-bottom: 1px solid var(--log-line, #a7baae);
+  color: var(--log-ink, #183f3a);
+}
+.log-preview__date {
+  padding-top: 0.3rem;
+  color: var(--log-muted, #536b60);
+  font:
+    0.7rem/1.6 "JetBrains_Mono",
+    monospace;
+}
+.log-preview__date span {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.65rem;
+}
+.log-preview__copy {
+  min-width: 0;
+}
+.log-preview__topic {
+  color: var(--log-accent, #a63821);
+  font:
+    0.7rem "JetBrains_Mono",
+    monospace;
+}
+.log-preview h2 {
+  margin: 0.4rem 0 0.55rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.log-preview p {
+  max-width: 70ch;
+  color: var(--log-muted, #536b60);
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+.log-preview__arrow {
+  align-self: center;
+  color: var(--log-accent, #a63821);
+  font-size: 1.5rem;
+}
+.log-preview__tags {
+  margin-top: 0.75rem;
+}
+.log-preview__tags .tags-scroll > a {
+  padding: 0.2rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--log-line, #a7baae);
+  border-radius: 0;
+  background: transparent;
+  color: var(--log-muted, #536b60);
+  font-size: 0.65rem;
+}
+.log-preview a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+.log-preview a:focus-visible {
+  outline: 3px solid var(--log-accent, #a63821);
+  outline-offset: 5px;
+}
+.dark .log-preview {
+  --log-ink: #edf5e9;
+  --log-muted: #b3c6b8;
+  --log-line: #405b50;
+  --log-accent: #ff855e;
+}
+@media (max-width: 760px) {
+  .log-preview {
+    grid-template-columns: minmax(0, 1fr) 1.5rem;
+    gap: 0.5rem;
+    padding: 1.4rem 0;
+  }
+  .log-preview__date {
+    display: flex;
+    gap: 0.75rem;
+  }
+  .log-preview__date span {
+    margin: 0;
+  }
+  .log-preview__copy {
+    grid-column: 1;
+  }
+  .log-preview__arrow {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+  .log-preview h2 {
+    font-size: 1.4rem;
+  }
+}
