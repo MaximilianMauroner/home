@@ -1,7 +1,7 @@
 ---
 import LogPreview from "@/components/content/LogPreview";
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
-import DefaultLayout from "@/layouts/DefaultLayout.astro";
+import StarLayout from "@/layouts/StarLayout.astro";
 import "@/layouts/LogLayout.css";
 import { serializeJsonLd } from "@/utils/server/seo";
 import { getLogs } from "@/utils/server/content";
@@ -18,7 +18,7 @@ const breadcrumbSchema = {
 };
 ---
 
-<DefaultLayout title="Dev log" description="Things I’m building. Things I’m figuring out. A development log by Max Mauroner.">
+<StarLayout title="Dev log" description="Things I’m building. Things I’m figuring out. A development log by Max Mauroner.">
   <script is:inline type="application/ld+json" set:html={serializeJsonLd(breadcrumbSchema)} />
   <section class="log-editorial">
     <div class="log-shell">
@@ -41,4 +41,4 @@ const breadcrumbSchema = {
       <footer class="log-archive-footer"><span>{logs.length} entries</span><a href="/rss.xml">Follow via RSS ↗</a></footer>
     </div>
   </section>
-</DefaultLayout>
+</StarLayout>

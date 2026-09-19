@@ -49,14 +49,14 @@
       "refersTo": "quote",
       "description": "A flat tonal inset for a quotation.",
       "html": "<blockquote class=\"ds-quote\">A small function connects the router to DNS.</blockquote>",
-      "css": ".ds-quote{background:#223d32;color:#edf5e9;padding:1.25rem 1.5rem;font:1.125rem/1.8 Geist,sans-serif;font-style:normal;border-left:4px solid #ff855e}"
+      "css": ".ds-quote{background:hsl(var(--muted));color:hsl(var(--foreground));padding:1.25rem 1.5rem;font:1.125rem/1.8 Geist,sans-serif;font-style:normal;border-left:4px solid var(--log-accent,#a9361c)}"
     }
   ],
   "narrative": {
     "northStar": "Editorial spread",
-    "overview": "This document covers the implemented dev-log surfaces and the shared blog and log cover direction. It records original A, selected by Max. It does not replace the design rules for unrelated site tools or pages.\n\nThe visual system uses clear type, forest surfaces, and direct graphic explanations. The accepted covers add site color to a simple editorial graphic style. They avoid the distressed print textures and generic AI illustration treatment rejected during exploration.",
+    "overview": "This document covers the implemented dev-log surfaces and the shared blog and log cover direction. It records original A, selected by Max. It does not replace the design rules for unrelated site tools or pages.\n\nThe visual system uses clear type, shared site backgrounds, and direct graphic explanations. Forest artwork and mint feature panels add site color. The covers avoid the distressed print textures and generic AI illustration treatment rejected during exploration.",
     "keyCharacteristics": [
-      "Forest surfaces with mint features and coral accents.",
+      "Shared page backgrounds with forest artwork, mint features, and coral accents.",
       "Clear reading hierarchy and compact dated entries.",
       "Article graphics shown at their full aspect ratio."
     ],
@@ -67,7 +67,7 @@
       "Do preserve routes, tags, metadata, reading progress, and section links."
     ],
     "donts": [
-      "Don't restore hardware decoration or the starfield on dev-log pages.",
+      "Don't restore hardware decoration or a separate solid-green page background.",
       "Don't use distressed textures, glossy 3D scenes, or plain white title cards for this cover direction.",
       "Don't turn this scoped system into rules for unrelated tools."
     ]

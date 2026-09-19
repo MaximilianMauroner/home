@@ -1,12 +1,15 @@
 .log-editorial {
-  --log-ink: #edf5e9;
-  --log-muted: #b3c6b8;
-  --log-accent: #ff855e;
-  --log-line: #405b50;
-  background: #172725;
+  --log-ink: hsl(var(--foreground));
+  --log-muted: hsl(var(--muted-foreground));
+  --log-accent: #a9361c;
+  --log-line: hsl(var(--border));
+  background: transparent;
   color: var(--log-ink);
   min-height: 70vh;
   font-family: "Geist", sans-serif;
+}
+.dark .log-editorial {
+  --log-accent: #ff855e;
 }
 .log-shell {
   width: min(100% - 3.5rem, 72.5rem);
@@ -200,17 +203,17 @@
   grid-column: 2;
   min-width: 0;
   color: var(--log-ink);
-  --tw-prose-body: #edf5e9;
-  --tw-prose-headings: #edf5e9;
-  --tw-prose-links: #ff855e;
-  --tw-prose-bold: #edf5e9;
-  --tw-prose-counters: #b3c6b8;
-  --tw-prose-bullets: #b3c6b8;
-  --tw-prose-quotes: #edf5e9;
-  --tw-prose-quote-borders: #ff855e;
-  --tw-prose-code: #edf5e9;
-  --tw-prose-th-borders: #405b50;
-  --tw-prose-td-borders: #405b50;
+  --tw-prose-body: var(--log-ink);
+  --tw-prose-headings: var(--log-ink);
+  --tw-prose-links: var(--log-accent);
+  --tw-prose-bold: var(--log-ink);
+  --tw-prose-counters: var(--log-muted);
+  --tw-prose-bullets: var(--log-muted);
+  --tw-prose-quotes: var(--log-ink);
+  --tw-prose-quote-borders: var(--log-accent);
+  --tw-prose-code: var(--log-ink);
+  --tw-prose-th-borders: var(--log-line);
+  --tw-prose-td-borders: var(--log-line);
 }
 .log-prose :is(h2, h3, h4) {
   color: var(--log-ink);
@@ -237,7 +240,7 @@
   overflow-wrap: anywhere;
 }
 .log-prose blockquote {
-  background: #223d32;
+  background: hsl(var(--muted));
   padding: 1.25rem 1.5rem;
   font-style: normal;
 }

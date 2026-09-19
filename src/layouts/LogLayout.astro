@@ -6,7 +6,7 @@ import RelatedPosts from "@/components/content/RelatedPosts.astro";
 import TableOfContents from "@/components/content/TableOfContents";
 import { getArticleOgImageUrl, getArticleTrail } from "@/utils/server/content";
 import type { HeadingType } from "@/utils/types";
-import DefaultLayout from "./DefaultLayout.astro";
+import StarLayout from "./StarLayout.astro";
 import "./LogLayout.css";
 
 interface Props {
@@ -53,7 +53,7 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
 );
 ---
 
-<DefaultLayout
+<StarLayout
   description={frontmatter.description || ""}
   title={frontmatter.title}
   image={frontmatter.image}
@@ -85,4 +85,4 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
       <RelatedPosts family="log" previous={articleTrail.previous} next={articleTrail.next} items={articleTrail.related} />
     </div>
   </div>
-</DefaultLayout>
+</StarLayout>
