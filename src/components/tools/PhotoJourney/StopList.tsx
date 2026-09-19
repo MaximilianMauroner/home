@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Fragment, memo } from "react";
 import { formatDistance, type journeySummary } from "./journey-data";
-import type { Placement } from "./track";
+import { placementIsLocated, type Placement } from "./track";
 import type { JourneyPhoto } from "./types";
 
 /**
@@ -50,7 +50,7 @@ function StopList({
           const dayKey = dayKeys[index];
           const previousDayKey = dayKeys[index - 1];
           const located = placement
-            ? placement.source === "photo" || placement.source === "track"
+            ? placementIsLocated(placement)
             : Boolean(photo.metadata.coordinates);
           const place = placement?.ambiguous
             ? "Choose a recording"
@@ -59,10 +59,13 @@ function StopList({
                 ? "Recording gap · last GPX position"
                 : "Matched to recording"
               : placement?.source === "carried"
-                ? "Previous position · not this photo"
-                : summary.track
-                  ? "Not matched to recording"
-                  : (photo.metadata.place ?? (located ? "Located" : "No GPS"));
+                ? "Nearby photo location · estimated"
+                : placement?.source === "photo"
+                  ? (photo.metadata.place ?? "Photo location")
+                  : summary.track
+                    ? "Not matched to recording"
+                    : (photo.metadata.place ??
+                      (located ? "Located" : "No GPS"));
           return (
             <Fragment key={photo.id}>
               {dayKey && dayKey !== previousDayKey && (

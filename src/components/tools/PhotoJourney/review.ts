@@ -1,5 +1,6 @@
 import {
   DISCREPANCY_LIMIT_M,
+  placementIsLocated,
   type Placement,
   type PlacementChoice,
 } from "./track";
@@ -28,8 +29,7 @@ export function reviewItems(
     const conflict = Boolean(
       placement?.ambiguous || placement?.choiceUnavailable,
     );
-    const unlocated =
-      placement?.source !== "photo" && placement?.source !== "track";
+    const unlocated = !placementIsLocated(placement);
     const time = placement?.instant === undefined;
     return {
       photo,

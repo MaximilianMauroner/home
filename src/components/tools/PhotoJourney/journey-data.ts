@@ -8,7 +8,12 @@ import {
   type TrackStats,
 } from "./gpx";
 import { distanceKm, routeSegments } from "./timeline";
-import { photoInstant, photoOffsetMinutes, type Placement } from "./track";
+import {
+  photoInstant,
+  photoOffsetMinutes,
+  placementIsLocated,
+  type Placement,
+} from "./track";
 import type { Coordinates, JourneyPhoto } from "./types";
 import {
   deriveJourneyDays,
@@ -75,9 +80,7 @@ export function journeySummary(
 ) {
   const located = placements
     ? placements.flatMap((placement) =>
-        placement.source === "photo" || placement.source === "track"
-          ? [placement.coordinates!]
-          : [],
+        placementIsLocated(placement) ? [placement.coordinates!] : [],
       )
     : photos.flatMap((photo) =>
         photo.metadata.coordinates ? [photo.metadata.coordinates] : [],
@@ -155,7 +158,7 @@ export function exportPlacement(photo: JourneyPhoto, placement?: Placement) {
     ? placement.coordinates
     : photo.metadata.coordinates;
   const placed = placement
-    ? placement.source === "photo" || placement.source === "track"
+    ? placementIsLocated(placement)
     : Boolean(coordinates);
   const instant = placement?.instant ?? photoInstant(photo.metadata);
   return {
@@ -602,8 +605,7 @@ export async function buildScopedBundle(options: ScopedBundleOptions) {
       );
   }
   const unresolved = options.placements.filter(
-    (placement) =>
-      placement.source === "none" || placement.source === "carried",
+    (placement) => !placementIsLocated(placement),
   ).length;
   const unresolvedTime = options.photos.filter(
     (photo, index) =>

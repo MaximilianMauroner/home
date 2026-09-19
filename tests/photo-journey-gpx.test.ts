@@ -574,7 +574,7 @@ describe("placing photos on the track", () => {
     );
   });
 
-  test("never uses camera GPS as route truth while a GPX is included", () => {
+  test("uses photo GPS outside GPX coverage while keeping a time match authoritative", () => {
     const placements = resolvePlacements(
       [
         photo("before", {
@@ -595,20 +595,20 @@ describe("placing photos on the track", () => {
       track,
     );
     expect(placements[0]).toMatchObject({
-      source: "none",
-      coordinates: undefined,
+      source: "photo",
+      coordinates: { latitude: 46.4, longitude: 11.5 },
     });
     expect(placements[1]).toMatchObject({
       source: "track",
       coordinates: { latitude: 46.47, longitude: 11.6014 },
     });
     expect(placements[2]).toMatchObject({
-      source: "none",
-      coordinates: undefined,
+      source: "photo",
+      coordinates: { latitude: 47, longitude: 12 },
     });
   });
 
-  test("does not use camera GPS to place an untimed photo on a GPX", () => {
+  test("uses camera GPS for an untimed photo when a GPX is loaded", () => {
     const [placement] = resolvePlacements(
       [
         photo("near-route", {
@@ -617,8 +617,11 @@ describe("placing photos on the track", () => {
       ],
       track,
     );
-    expect(placement.source).toBe("none");
-    expect(placement.coordinates).toBeUndefined();
+    expect(placement.source).toBe("photo");
+    expect(placement.coordinates).toEqual({
+      latitude: 46.4702,
+      longitude: 11.6014,
+    });
     expect(placement.trackCoordinates).toBeUndefined();
     expect(placement.discrepancyM).toBeUndefined();
   });
@@ -799,6 +802,45 @@ describe("placing photos on the track", () => {
     ]);
   });
 
+  test("estimates missing photo-only positions from the nearest photo GPS in both directions", () => {
+    const placements = resolvePlacements([
+      photo("before"),
+      photo("first-fix", { coordinates: { latitude: 1, longitude: 2 } }),
+      photo("between"),
+      photo("second-fix", { coordinates: { latitude: 3, longitude: 4 } }),
+      photo("after"),
+    ]);
+    expect(placements).toMatchObject([
+      { source: "carried", coordinates: { latitude: 1, longitude: 2 } },
+      { source: "photo", coordinates: { latitude: 1, longitude: 2 } },
+      { source: "carried", coordinates: { latitude: 1, longitude: 2 } },
+      { source: "photo", coordinates: { latitude: 3, longitude: 4 } },
+      { source: "carried", coordinates: { latitude: 3, longitude: 4 } },
+    ]);
+  });
+
+  test("estimates an out-of-range photo without GPS from a nearby photo fix", () => {
+    const placements = resolvePlacements(
+      [
+        photo("before", {
+          capturedAtWallClock: "2026-08-20T05:00:00",
+          utcOffsetMinutes: 0,
+        }),
+        photo("nearby", {
+          capturedAtWallClock: "2026-08-20T05:01:00",
+          utcOffsetMinutes: 0,
+          coordinates: { latitude: 45, longitude: 10 },
+        }),
+      ],
+      track,
+    );
+    expect(placements[0]).toMatchObject({
+      source: "carried",
+      coordinates: { latitude: 45, longitude: 10 },
+    });
+    expect(placements[1]).toMatchObject({ source: "photo" });
+  });
+
   test("uses photo GPS when every recording is excluded", () => {
     const recordings: JourneyRecording[] = [
       {
@@ -913,7 +955,7 @@ describe("clock handling", () => {
     expect(
       unresolved.every(
         (placement) =>
-          placement.source === "none" && placement.instant === undefined,
+          placement.source === "photo" && placement.instant === undefined,
       ),
     ).toBe(true);
     const placements = resolvePlacements(photos, track, { offsetMinutes: 120 });

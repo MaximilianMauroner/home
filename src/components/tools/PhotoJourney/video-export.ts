@@ -869,7 +869,11 @@ function drawInfo(
       ? placement.recordingGap
         ? "Recording gap · last GPX position"
         : "Matched to recording"
-      : "Not matched to recording";
+      : placement?.source === "photo"
+        ? "Photo location"
+        : placement?.source === "carried"
+          ? "Nearby photo location · estimated"
+          : "Location unknown";
   context.fillText(
     `${formatCapture(placement, photo, timezone)} · ${match}`,
     28,

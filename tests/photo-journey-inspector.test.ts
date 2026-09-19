@@ -115,7 +115,7 @@ describe("Photo Journey inspector", () => {
     });
   });
 
-  test("shows camera GPS as diagnostic data when a GPX photo cannot be matched", async () => {
+  test("shows an unmatched photo's own GPS when a GPX is loaded", async () => {
     const journeyPhoto = photo({
       coordinates: { latitude: 40, longitude: 10 },
       place: "Camera place",
@@ -130,21 +130,25 @@ describe("Photo Journey inspector", () => {
       root.render(
         createElement(Inspector, {
           photo: journeyPhoto,
-          placement: { photoId: journeyPhoto.id, source: "none" },
+          placement: {
+            photoId: journeyPhoto.id,
+            source: "photo",
+            coordinates: journeyPhoto.metadata.coordinates,
+          },
           index: 0,
           recordings: [recording("Route", 46)],
         }),
       ),
     );
 
-    expect(container.textContent).toContain("Not matched to recording");
+    expect(container.textContent).toContain("Camera place");
     expect(container.textContent).toContain(
-      "it stays unplaced while a GPX recording is included",
+      "its original GPS or a nearby photo location is used when available",
     );
     const facts = [...container.querySelectorAll(".pj-facts > div")].map(
       (entry) => entry.textContent,
     );
-    expect(facts).toContain("CoordinatesNo GPS in this photo");
+    expect(facts).toContain("Coordinates40.0000° N, 10.0000° E");
     expect(facts).toContain("Camera GPS40.0000° N, 10.0000° E");
   });
 });

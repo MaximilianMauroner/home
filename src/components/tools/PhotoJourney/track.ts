@@ -356,9 +356,7 @@ function resolve(
   options: PlacementOptions,
 ): Placement[] {
   const choices = options.choices ?? {};
-  const hasRecordingData = sources.length > 0;
-  let carried: Coordinates | undefined;
-  return photos.map((photo) => {
+  const placements: Placement[] = photos.map((photo): Placement => {
     const own = photo.metadata.coordinates;
     const explicitOffset = options.offsetMinutesByPhoto?.[photo.id];
     const fallbackOffset =
@@ -433,8 +431,7 @@ function resolve(
         choiceUnavailable,
       };
     }
-    if (!hasRecordingData && own) {
-      carried = own;
+    if (own) {
       return {
         photoId: photo.id,
         coordinates: own,
@@ -447,13 +444,47 @@ function resolve(
     }
     return {
       photoId: photo.id,
-      coordinates: hasRecordingData ? undefined : carried,
-      source: hasRecordingData ? "none" : carried ? "carried" : "none",
+      coordinates: undefined,
+      source: "none",
       instant,
       offsetMinutes,
       choiceUnavailable,
     };
   });
+
+  // A photo's own GPS remains useful outside a recording's time range. For photos without GPS,
+  // use the closest photo-owned fix in journey order as a transparent estimate. This works in
+  // both directions, so the first photos in a photo-only upload are not left behind simply
+  // because the first GPS-bearing image comes later.
+  const photoFixes = photos.flatMap((photo, index) =>
+    photo.metadata.coordinates
+      ? [{ index, coordinates: photo.metadata.coordinates }]
+      : [],
+  );
+  let nearestFixIndex = 0;
+  return placements.map((placement, index) => {
+    if (
+      placement.source !== "none" ||
+      placement.ambiguous ||
+      placement.choiceUnavailable
+    )
+      return placement;
+    while (
+      photoFixes[nearestFixIndex + 1] &&
+      Math.abs(photoFixes[nearestFixIndex + 1].index - index) <
+        Math.abs(photoFixes[nearestFixIndex].index - index)
+    )
+      nearestFixIndex += 1;
+    const nearest = photoFixes[nearestFixIndex];
+    return nearest
+      ? { ...placement, coordinates: nearest.coordinates, source: "carried" }
+      : placement;
+  });
+}
+
+/** True when presentation and exports can use the resolved or estimated position. */
+export function placementIsLocated(placement: Placement | undefined) {
+  return Boolean(placement?.coordinates && placement.source !== "none");
 }
 
 /** Resolves against one legacy/derived track. New callers should use recordings. */
@@ -503,7 +534,7 @@ export function journeyStops(placements: readonly Placement[]): JourneyStop[] {
   return placements.map((placement) => ({
     photoId: placement.photoId,
     coordinates: placement.coordinates,
-    located: placement.source === "photo" || placement.source === "track",
+    located: placementIsLocated(placement),
   }));
 }
 
@@ -518,10 +549,8 @@ export function placementSummary(placements: readonly Placement[]) {
       .length,
     fromPhoto: placements.filter((placement) => placement.source === "photo")
       .length,
-    unplaced: placements.filter(
-      (placement) =>
-        placement.source !== "track" && placement.source !== "photo",
-    ).length,
+    unplaced: placements.filter((placement) => !placementIsLocated(placement))
+      .length,
     conflictCount: conflicts.length,
     correctedCount: corrected.length,
     worstCorrectionM: corrected.reduce(
