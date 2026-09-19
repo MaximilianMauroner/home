@@ -4,6 +4,7 @@ import { formatCoordinates } from "./journey-data";
 import { groupMetadata, parseOffsetMinutes } from "./metadata";
 import {
   resolvePlacementsForRecordings,
+  placementIsLocated,
   type Placement,
   type PlacementChoice,
 } from "./track";
@@ -27,7 +28,7 @@ function placedBy(placement: Placement) {
   if (placement.source === "photo")
     return off ? `This photo's own GPS, ${off}.` : "This photo's own GPS.";
   if (placement.source === "carried")
-    return "Held at the previous stop. Nothing places this photo.";
+    return "Estimated from the nearest photo with GPS.";
   return "Not placed.";
 }
 
@@ -80,11 +81,9 @@ function Inspector({
   const hasRecordingData = Boolean(
     recordings?.some((recording) => recording.included),
   );
-  // A carried position belongs to the stop before this one, so it is not this photo's coordinates.
-  const located =
-    placement?.source === "photo" || placement?.source === "track";
+  const located = placementIsLocated(placement);
   const shown = located
-    ? placement.coordinates
+    ? placement?.coordinates
     : hasRecordingData
       ? undefined
       : metadata.coordinates;
@@ -95,9 +94,13 @@ function Inspector({
         : "Matched to recording"
       : placement?.ambiguous
         ? "Choose a recording"
-        : hasRecordingData
-          ? "Not matched to recording"
-          : metadata.place;
+        : placement?.source === "photo"
+          ? (metadata.place ?? "Photo location")
+          : placement?.source === "carried"
+            ? "Nearby photo location · estimated"
+            : hasRecordingData
+              ? "Not matched to recording"
+              : metadata.place;
   const unresolvedClock = Boolean(
     metadata.capturedAtWallClock && metadata.utcOffsetMinutes === undefined,
   );
@@ -169,9 +172,9 @@ function Inspector({
         <p className="pj-editor-note">
           No usable capture time was found. This photo cannot be matched to a
           recording by time
-          {hasRecordingData
-            ? "; it stays unplaced while a GPX recording is included."
-            : "; its original GPS is used when available."}
+          {
+            "; its original GPS or a nearby photo location is used when available."
+          }
         </p>
       )}
       {placement?.ambiguous && (

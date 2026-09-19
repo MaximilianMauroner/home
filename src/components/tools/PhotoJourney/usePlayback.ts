@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { Track } from "./gpx";
 import { buildRouteStory } from "./route-progress";
 import { buildTimeline, photoHoldTime, placementLegEligibility, timelineAt } from "./timeline";
-import type { Placement } from "./track";
+import { placementIsLocated, type Placement } from "./track";
 import type { JourneyPhoto } from "./types";
 
 const motionQuery = "(prefers-reduced-motion: reduce)";
@@ -25,7 +25,7 @@ export function usePlayback(
   track?: Track,
 ) {
   const positions = useMemo(
-    () => placements?.map((placement) => (placement.source === "photo" || placement.source === "track" ? placement.coordinates : undefined)),
+    () => placements?.map((placement) => placementIsLocated(placement) ? placement.coordinates : undefined),
     [placements],
   );
   const instants = useMemo(
@@ -53,7 +53,7 @@ export function usePlayback(
       recordingDistancesKm: placements?.map((placement) => placement.recordingDistanceKm),
       recordedLegDistancesKm: routeStory?.legs.map((leg) => leg?.distanceKm),
       departureLegDistancesKm: routeStory?.departureLegs.map((leg) => leg?.distanceKm),
-      located: placements?.map((placement) => placement.source === "photo" || placement.source === "track"),
+      located: placements?.map(placementIsLocated),
     }),
     [photos, positions, instants, dayOptions?.dayKeys, dayOptions?.dayLabels, legEligibility, placements, routeStory],
   );

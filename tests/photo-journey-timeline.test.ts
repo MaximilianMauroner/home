@@ -42,7 +42,7 @@ function photo(latitude?: number, longitude?: number): JourneyPhoto {
   };
 }
 
-/** Where the stops land with no track loaded: each photo's own fix, carried forward when missing. */
+/** Where stops land with no track loaded: own fixes plus nearest-photo estimates. */
 function stopsFor(photos: JourneyPhoto[]) {
   return journeyStops(resolvePlacements(photos));
 }
@@ -353,15 +353,20 @@ describe("Photo Journey timeline", () => {
     const stops = stopsFor([photo(48.2, 16.37), photo(), photo(40.71, -74)]);
     expect(stops[1]).toMatchObject({
       coordinates: { latitude: 48.2, longitude: 16.37 },
-      located: false,
+      located: true,
     });
     expect(stops[2]).toMatchObject({ located: true });
   });
 
-  test("leaves the map alone until the first position is known", () => {
+  test("uses the next photo GPS to estimate a leading photo", () => {
     const stops = stopsFor([photo(), photo(48.2, 16.37)]);
-    expect(stops[0].coordinates).toBeUndefined();
-    expect(cameraFor(stops, 0)).toBeUndefined();
+    expect(stops[0]).toMatchObject({
+      coordinates: { latitude: 48.2, longitude: 16.37 },
+      located: true,
+    });
+    expect(cameraFor(stops, 0)).toEqual({
+      center: { latitude: 48.2, longitude: 16.37 },
+    });
   });
 
   test("holds still rather than flying to 0°, 0° on a photo without GPS", () => {
@@ -395,16 +400,17 @@ describe("Photo Journey timeline", () => {
     ]);
   });
 
-  test("skips photos without GPS when drawing the route", () => {
+  test("includes estimated photo positions when drawing the route", () => {
     expect(
       locatedPoints(stopsFor([photo(1, 1), photo(), photo(2, 2)])),
     ).toEqual([
+      { latitude: 1, longitude: 1 },
       { latitude: 1, longitude: 1 },
       { latitude: 2, longitude: 2 },
     ]);
   });
 
-  test("splits inferred photo connections at missing fixes and day boundaries", () => {
+  test("keeps estimated positions in inferred connections and splits at day boundaries", () => {
     const stops = stopsFor([
       photo(1, 1),
       photo(2, 2),
@@ -419,8 +425,7 @@ describe("Photo Journey timeline", () => {
       [
         { latitude: 1, longitude: 1 },
         { latitude: 2, longitude: 2 },
-      ],
-      [
+        { latitude: 2, longitude: 2 },
         { latitude: 3, longitude: 3 },
         { latitude: 4, longitude: 4 },
       ],

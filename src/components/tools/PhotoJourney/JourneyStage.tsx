@@ -252,17 +252,19 @@ export default function JourneyStage({
       ? placement.recordingGap
         ? "Recording gap · last GPX position"
         : "Matched to recording"
-      : track?.points.length
-        ? "Not matched to recording"
-        : stops[presentationIndex]?.located
-          ? "Photo location"
-          : "Location unknown";
+      : placement?.source === "photo"
+        ? "Photo location"
+        : placement?.source === "carried"
+          ? "Nearby photo location · estimated"
+          : track?.points.length
+            ? "Not matched to recording"
+            : "Location unknown";
   const place =
     placement?.source === "track"
       ? placement.discrepancyM !== undefined && placement.discrepancyM <= 60
         ? photo?.metadata.place
         : undefined
-      : !track?.points.length && stops[presentationIndex]?.located
+      : placement?.source === "photo"
         ? photo?.metadata.place
         : undefined;
   const suspendFollow = useCallback(() => {

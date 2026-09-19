@@ -26,24 +26,32 @@ function photo(id: string): JourneyPhoto {
 describe("photo review queue", () => {
   test("separates small GPS differences, conflicts, inferred positions, and unresolved photos", () => {
     const photos = ["close", "far", "no-gps", "no-time", "missing"].map(photo);
+    const coordinates = { latitude: 46, longitude: 11 };
     const placements: Placement[] = [
-      { photoId: "close", source: "track", instant: 0, discrepancyM: 60 },
+      {
+        photoId: "close",
+        source: "track",
+        coordinates,
+        instant: 0,
+        discrepancyM: 60,
+      },
       {
         photoId: "far",
         source: "track",
+        coordinates,
         instant: 0,
         discrepancyM: 61,
         conflict: true,
       },
-      { photoId: "no-gps", source: "track", instant: 0 },
-      { photoId: "no-time", source: "photo" },
-      { photoId: "missing", source: "carried", instant: 0 },
+      { photoId: "no-gps", source: "track", coordinates, instant: 0 },
+      { photoId: "no-time", source: "photo", coordinates },
+      { photoId: "missing", source: "carried", coordinates, instant: 0 },
     ];
     expect(reviewCounts(reviewItems(photos, placements, {}))).toEqual({
-      "needs-review": 2,
+      "needs-review": 1,
       conflicts: 0,
       inferred: 3,
-      unlocated: 1,
+      unlocated: 0,
       time: 1,
       all: 5,
     });
@@ -55,6 +63,7 @@ describe("photo review queue", () => {
       {
         photoId: "a",
         source: "track",
+        coordinates: { latitude: 46, longitude: 11 },
         instant: 0,
         discrepancyM: 240,
         conflict: true,
