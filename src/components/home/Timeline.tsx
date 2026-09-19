@@ -901,7 +901,7 @@ export default function Timeline({
                 <section
                   key={chapter.key}
                   aria-labelledby={headingId}
-                  className="relative z-10 grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6"
+                  className="relative z-10 grid gap-5 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-6"
                 >
                   <div
                     aria-hidden="true"
@@ -920,7 +920,7 @@ export default function Timeline({
                     </p>
                     <h3
                       id={headingId}
-                      className="text-4xl font-extrabold leading-none tracking-[-0.05em] text-gray-900 dark:text-gray-100"
+                      className="text-[2.125rem] font-extrabold leading-[0.98] tracking-[-0.035em] text-gray-900 dark:text-gray-100"
                     >
                       {chapter.month}
                       <span className="mt-1 block text-2xl font-medium tracking-[-0.03em] text-gray-500 dark:text-gray-400">
