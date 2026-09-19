@@ -26,6 +26,7 @@
     "@astrojs/tailwind": "^6.0.2",
     "@astrojs/vercel": "11.0.3",
     "@auth/core": "^0.37.4",
+    "@mediapipe/tasks-vision": "1.0.1",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/typography": "^0.5.15",
     "@types/react": "^18.3.12",

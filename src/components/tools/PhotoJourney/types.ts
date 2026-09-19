@@ -25,6 +25,18 @@ export type PhotoMetadata = {
   details: Array<{ label: string; value: string }>;
 };
 
+/** Compact, browser-local measurements derived from the 320 px preview. */
+export type PhotoVisualFeatures = {
+  /** 64 luminance samples, normalized to 0–1, for near-duplicate matching. */
+  signature: number[];
+  /** Difference hash stored as 64 bits in a string so it is deterministic in every browser. */
+  differenceHash: string;
+  sharpness: number;
+  exposure: number;
+  composition: number;
+  colorfulness: number;
+};
+
 export type JourneyPhoto = {
   id: string;
   file: File;
@@ -33,6 +45,7 @@ export type JourneyPhoto = {
   /** Object URL for the downscaled preview used by the filmstrip and map markers. */
   thumbnailUrl: string;
   dominantColor?: string;
+  visualFeatures?: PhotoVisualFeatures;
   name: string;
   metadata: PhotoMetadata;
   importOrder: number;

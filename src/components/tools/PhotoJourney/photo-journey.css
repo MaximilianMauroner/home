@@ -2298,6 +2298,80 @@
   border-radius: var(--pj-radius);
   margin: 1rem 0;
 }
+.pj-similar {
+  display: grid;
+  gap: 1rem;
+}
+.pj-similar-summary,
+.pj-similar-group > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.pj-similar-summary {
+  padding: 1rem;
+  border: 1px solid var(--pj-line-strong);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-1);
+}
+.pj-similar-summary p,
+.pj-similar-group p {
+  margin: 0.25rem 0 0;
+  color: var(--pj-soft);
+  font-size: 0.8125rem;
+}
+.pj-similar-group {
+  padding: 1rem;
+  border: 1px solid var(--pj-line);
+  border-radius: var(--pj-radius);
+  background: var(--pj-bg-1);
+}
+.pj-similar-group h3 {
+  margin: 0;
+}
+.pj-similar-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.pj-similar-option {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(7rem, 1fr) auto;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  border: 1px solid var(--pj-line-strong);
+  border-radius: 0.65rem;
+  background: var(--pj-bg-2);
+}
+.pj-similar-option[aria-pressed="true"] {
+  border-color: var(--pj-accent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--pj-accent) 30%, transparent);
+}
+.pj-similar-option img {
+  width: 100%;
+  height: 9rem;
+  object-fit: cover;
+}
+.pj-similar-option span {
+  display: block;
+  padding: 0.65rem;
+  min-width: 0;
+}
+.pj-similar-option strong,
+.pj-similar-option small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.pj-similar-option small {
+  margin-top: 0.2rem;
+  color: var(--pj-soft);
+  line-height: 1.4;
+}
 .pj-export-all {
   margin-top: 1rem;
 }

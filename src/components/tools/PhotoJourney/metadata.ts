@@ -4,12 +4,23 @@ import { nearestPlace } from "./places";
 import { createPreview } from "./thumbnail";
 import type { JourneyPhoto, PhotoMetadata } from "./types";
 
-const SUPPORTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence"]);
+const SUPPORTED_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "image/heic-sequence",
+  "image/heif-sequence",
+]);
 export function isHeicFile(file: Pick<File, "name" | "type">) {
   return /image\/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
 }
 export function supportsPhoto(file: Pick<File, "name" | "type">) {
-  return SUPPORTED_TYPES.has(file.type) || (!file.type && /\.(jpe?g|png|webp|hei[cf])$/i.test(file.name));
+  return (
+    SUPPORTED_TYPES.has(file.type) ||
+    (!file.type && /\.(jpe?g|png|webp|hei[cf])$/i.test(file.name))
+  );
 }
 const EXIF_OPTIONS = {
   gps: true,
@@ -45,7 +56,10 @@ function date(value: unknown) {
 
 function wallClock(value: unknown, offsetMinutes?: number) {
   if (typeof value === "string") {
-    const match = /^(\d{4})[:\-](\d{2})[:\-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:[.,](\d+))?)?/.exec(value.trim());
+    const match =
+      /^(\d{4})[:\-](\d{2})[:\-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:[.,](\d+))?)?/.exec(
+        value.trim(),
+      );
     if (match) {
       const year = Number(match[1]);
       const month = Number(match[2]);
@@ -53,7 +67,9 @@ function wallClock(value: unknown, offsetMinutes?: number) {
       const hour = Number(match[4]);
       const minute = Number(match[5]);
       const second = Number(match[6] ?? "00");
-      const check = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+      const check = new Date(
+        Date.UTC(year, month - 1, day, hour, minute, second),
+      );
       if (
         check.getUTCFullYear() === year &&
         check.getUTCMonth() === month - 1 &&
@@ -90,7 +106,12 @@ function formatShutter(value: number) {
 
 /** Offsets are expressed in minutes east of UTC. */
 export function isValidUtcOffsetMinutes(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value >= -720 && value <= 840;
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= -720 &&
+    value <= 840
+  );
 }
 
 /** Parses the numeric value used by the explicit offset controls. */
@@ -147,7 +168,8 @@ export function normalizeMetadata(
   width: number,
   height: number,
 ): PhotoMetadata {
-  const captureValue = data.DateTimeOriginal ?? data.CreateDate ?? data.DateTimeDigitized;
+  const captureValue =
+    data.DateTimeOriginal ?? data.CreateDate ?? data.DateTimeDigitized;
   const offset = text(data.OffsetTimeOriginal ?? data.OffsetTime);
   const utcOffsetMinutes = parseUtcOffset(offset);
   const capturedAt = date(captureValue);
@@ -178,7 +200,14 @@ export function normalizeMetadata(
       timeStyle: "short",
     }).format(new Date(file.lastModified)),
     coordinates: validCoordinates(latitude, longitude),
-    altitude: number(data.GPSAltitude) === undefined ? undefined : number(data.GPSAltitude)! * (data.GPSAltitudeRef === 1 || data.GPSAltitudeRef === "Below sea level" ? -1 : 1),
+    altitude:
+      number(data.GPSAltitude) === undefined
+        ? undefined
+        : number(data.GPSAltitude)! *
+          (data.GPSAltitudeRef === 1 ||
+          data.GPSAltitudeRef === "Below sea level"
+            ? -1
+            : 1),
     camera,
     lens: text(data.LensModel ?? data.Lens),
     focalLength: focalLength ? `${focalLength} mm` : undefined,
@@ -187,7 +216,11 @@ export function normalizeMetadata(
     iso: iso ? `ISO ${iso}` : undefined,
     dimensions: `${width} × ${height}`,
     fileSize: formatBytes(file.size),
-    fileType: (file.type.replace("image/", "") || file.name.split(".").pop() || "Image").toUpperCase(),
+    fileType: (
+      file.type.replace("image/", "") ||
+      file.name.split(".").pop() ||
+      "Image"
+    ).toUpperCase(),
     details: visibleDetails(data),
   };
 }
@@ -196,8 +229,11 @@ export async function readPhoto(
   file: File,
   importOrder: number,
 ): Promise<JourneyPhoto> {
-  if (!supportsPhoto(file)) throw new Error("Use a JPEG, PNG, WebP, HEIC, or HEIF image.");
-  const display = isHeicFile(file) ? await (await import("./heic")).decodeHeic(file) : file;
+  if (!supportsPhoto(file))
+    throw new Error("Use a JPEG, PNG, WebP, HEIC, or HEIF image.");
+  const display = isHeicFile(file)
+    ? await (await import("./heic")).decodeHeic(file)
+    : file;
   const url = URL.createObjectURL(display);
   let preview: Awaited<ReturnType<typeof createPreview>> | undefined;
   try {
@@ -206,8 +242,14 @@ export async function readPhoto(
       extractMetadata(file),
     ]);
     preview = created;
-    const metadata = normalizeMetadata(file, data, created.width, created.height);
-    if (metadata.coordinates) metadata.place = await nearestPlace(metadata.coordinates);
+    const metadata = normalizeMetadata(
+      file,
+      data,
+      created.width,
+      created.height,
+    );
+    if (metadata.coordinates)
+      metadata.place = await nearestPlace(metadata.coordinates);
     return {
       id: `${importOrder}-${file.name}-${file.lastModified}`,
       file,
@@ -215,6 +257,7 @@ export async function readPhoto(
       thumbnailUrl: created.url,
       name: file.name.replace(/\.[^.]+$/, ""),
       dominantColor: created.dominantColor,
+      visualFeatures: created.visualFeatures,
       metadata,
       importOrder,
     };
@@ -226,7 +269,9 @@ export async function readPhoto(
 }
 
 /** A journey photo needs either a camera clock for track matching or its own GPS fix. */
-export function hasJourneyExif(metadata: Pick<PhotoMetadata, "capturedAtWallClock" | "coordinates">) {
+export function hasJourneyExif(
+  metadata: Pick<PhotoMetadata, "capturedAtWallClock" | "coordinates">,
+) {
   return Boolean(metadata.capturedAtWallClock || metadata.coordinates);
 }
 
@@ -252,19 +297,28 @@ export async function extractMetadata(input: Blob | ArrayBuffer | Uint8Array) {
   };
 }
 
-function metadataSortTime(metadata: Pick<PhotoMetadata, "capturedAt" | "capturedAtWallClock">) {
+function metadataSortTime(
+  metadata: Pick<PhotoMetadata, "capturedAt" | "capturedAtWallClock">,
+) {
   if (metadata.capturedAtWallClock) {
     const parsed = Date.parse(`${metadata.capturedAtWallClock}Z`);
     if (Number.isFinite(parsed)) return parsed;
   }
   const captured = metadata.capturedAt?.valueOf();
-  return captured !== undefined && Number.isFinite(captured) ? captured : undefined;
+  return captured !== undefined && Number.isFinite(captured)
+    ? captured
+    : undefined;
 }
 
-export function sortPhotos(photos: JourneyPhoto[], resolvedInstants?: readonly (number | undefined)[]) {
+export function sortPhotos(
+  photos: JourneyPhoto[],
+  resolvedInstants?: readonly (number | undefined)[],
+) {
   return [...photos].sort((a, b) => {
-    const aTime = resolvedInstants?.[photos.indexOf(a)] ?? metadataSortTime(a.metadata);
-    const bTime = resolvedInstants?.[photos.indexOf(b)] ?? metadataSortTime(b.metadata);
+    const aTime =
+      resolvedInstants?.[photos.indexOf(a)] ?? metadataSortTime(a.metadata);
+    const bTime =
+      resolvedInstants?.[photos.indexOf(b)] ?? metadataSortTime(b.metadata);
     if (aTime !== undefined && bTime !== undefined && aTime !== bTime)
       return aTime - bTime;
     if (aTime !== undefined && bTime === undefined) return -1;
@@ -273,17 +327,39 @@ export function sortPhotos(photos: JourneyPhoto[], resolvedInstants?: readonly (
   });
 }
 
-export function groupMetadata(details: PhotoMetadata['details']) {
-  const names = ['Camera', 'Exposure', 'Location', 'Time', 'Software', 'Other'];
-  const groups = names.map((name) => ({ name, details: [] as Array<{ label: string; rawLabel: string; value: string }> }));
+export function groupMetadata(details: PhotoMetadata["details"]) {
+  const names = ["Camera", "Exposure", "Location", "Time", "Software", "Other"];
+  const groups = names.map((name) => ({
+    name,
+    details: [] as Array<{ label: string; rawLabel: string; value: string }>,
+  }));
   for (const detail of details) {
     const rawLabel = detail.label;
-    const index = /^(Make|Model|Lens|Serial|Body|Camera)/i.test(rawLabel) ? 0
-      : /(Exposure|Aperture|FNumber|Focal|ISO|Flash|Metering|WhiteBalance|Shutter)/i.test(rawLabel) ? 1
-      : /^(GPS|latitude|longitude)/i.test(rawLabel) ? 2
-      : /(Date|Time|Offset)/i.test(rawLabel) ? 3
-      : /(Software|Processing|CreatorTool|Version)/i.test(rawLabel) ? 4 : 5;
-    groups[index].details.push({ ...detail, rawLabel, label: rawLabel.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') });
+    const index = /^(Make|Model|Lens|Serial|Body|Camera)/i.test(rawLabel)
+      ? 0
+      : /(Exposure|Aperture|FNumber|Focal|ISO|Flash|Metering|WhiteBalance|Shutter)/i.test(
+            rawLabel,
+          )
+        ? 1
+        : /^(GPS|latitude|longitude)/i.test(rawLabel)
+          ? 2
+          : /(Date|Time|Offset)/i.test(rawLabel)
+            ? 3
+            : /(Software|Processing|CreatorTool|Version)/i.test(rawLabel)
+              ? 4
+              : 5;
+    groups[index].details.push({
+      ...detail,
+      rawLabel,
+      label: rawLabel
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2"),
+    });
   }
-  return groups.filter((group) => group.details.length).map((group) => ({ ...group, details: group.details.sort((a, b) => a.label.localeCompare(b.label)) }));
+  return groups
+    .filter((group) => group.details.length)
+    .map((group) => ({
+      ...group,
+      details: group.details.sort((a, b) => a.label.localeCompare(b.label)),
+    }));
 }
