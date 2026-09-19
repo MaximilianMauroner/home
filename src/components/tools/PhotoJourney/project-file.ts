@@ -4,7 +4,7 @@ import type { PlacementChoice } from "./track";
 import type { JourneyPhoto, JourneyRecording } from "./types";
 
 export const PROJECT_MANIFEST_FILENAME = "photo-journey-project.json";
-export const PROJECT_SCHEMA_VERSION = 1 as const;
+export const PROJECT_SCHEMA_VERSION = 2 as const;
 
 export type ProjectPhotoIdentity = {
   fileName: string;
@@ -18,6 +18,8 @@ export type ProjectPhotoDecision = {
   clockOffsetMinutes?: number;
   /** Stable identity of the GPX selected when recordings overlap. */
   selectedRecordingDigest?: string;
+  /** Whether this original participates in the presented journey. */
+  shown?: boolean;
 };
 
 export type ProjectRecordingDecision = {
@@ -26,13 +28,14 @@ export type ProjectRecordingDecision = {
 };
 
 export type PhotoJourneyProjectManifest = {
-  schemaVersion: typeof PROJECT_SCHEMA_VERSION;
+  schemaVersion: 1 | typeof PROJECT_SCHEMA_VERSION;
   title: string;
   timezone: string;
   order: "capture" | "manual";
   /** Array order is the saved photo order. */
   photos: ProjectPhotoDecision[];
   recordings: ProjectRecordingDecision[];
+  photoSelectionMode?: "automatic" | "all";
 };
 
 export type CreateProjectManifestOptions = {
@@ -43,6 +46,8 @@ export type CreateProjectManifestOptions = {
   recordings: readonly JourneyRecording[];
   offsetMinutesByPhoto?: Readonly<Record<string, number | undefined>>;
   recordingChoices?: Readonly<Record<string, PlacementChoice | undefined>>;
+  shownByPhoto?: Readonly<Record<string, boolean | undefined>>;
+  showAllPhotos?: boolean;
 };
 
 function fileIdentityKey(file: Pick<File, "name" | "size">) {
@@ -78,6 +83,9 @@ export function createProjectManifest(
         ? { clockOffsetMinutes: offset }
         : {}),
       ...(selectedRecordingDigest ? { selectedRecordingDigest } : {}),
+      ...(options.shownByPhoto?.[photo.id] !== undefined
+        ? { shown: options.shownByPhoto[photo.id] }
+        : {}),
     };
   });
 
@@ -91,6 +99,7 @@ export function createProjectManifest(
       digest,
       included,
     })),
+    photoSelectionMode: options.showAllPhotos ? "all" : "automatic",
   };
 }
 
@@ -148,12 +157,15 @@ function parsePhotoDecision(value: unknown): ProjectPhotoDecision | undefined {
     !isBoundedString(selectedRecordingDigest, 256)
   )
     return undefined;
+  if (value.shown !== undefined && typeof value.shown !== "boolean")
+    return undefined;
   return {
     identity: { fileName, fileSize, occurrence },
     ...(offset !== undefined ? { clockOffsetMinutes: offset } : {}),
     ...(selectedRecordingDigest !== undefined
       ? { selectedRecordingDigest }
       : {}),
+    ...(value.shown !== undefined ? { shown: value.shown } : {}),
   };
 }
 
@@ -181,12 +193,22 @@ export function parseProjectManifest(
       return undefined;
     }
   }
-  if (!isRecord(value) || value.schemaVersion !== PROJECT_SCHEMA_VERSION)
+  if (
+    !isRecord(value) ||
+    (value.schemaVersion !== 1 &&
+      value.schemaVersion !== PROJECT_SCHEMA_VERSION)
+  )
     return undefined;
   if (!isBoundedString(value.title, 120, true) || !isTimezone(value.timezone))
     return undefined;
   if (value.order !== "capture" && value.order !== "manual") return undefined;
   if (!Array.isArray(value.photos) || !Array.isArray(value.recordings))
+    return undefined;
+  if (
+    value.photoSelectionMode !== undefined &&
+    value.photoSelectionMode !== "automatic" &&
+    value.photoSelectionMode !== "all"
+  )
     return undefined;
 
   const photos: ProjectPhotoDecision[] = [];
@@ -221,12 +243,15 @@ export function parseProjectManifest(
     return undefined;
 
   return {
-    schemaVersion: PROJECT_SCHEMA_VERSION,
+    schemaVersion: value.schemaVersion,
     title: value.title,
     timezone: value.timezone,
     order: value.order,
     photos,
     recordings,
+    ...(value.photoSelectionMode
+      ? { photoSelectionMode: value.photoSelectionMode }
+      : {}),
   };
 }
 
@@ -238,6 +263,8 @@ export type RestoredProjectManifest = {
   recordings: JourneyRecording[];
   offsetMinutesByPhoto: Record<string, number>;
   recordingChoices: Record<string, { source: "track"; recordingId: string }>;
+  shownByPhoto: Record<string, boolean>;
+  showAllPhotos: boolean;
   unmatchedPhotoCount: number;
   unmatchedRecordingCount: number;
 };
@@ -265,6 +292,7 @@ export function restoreProjectManifest(
   const restoredPhotos: JourneyPhoto[] = [];
   const offsetMinutesByPhoto: Record<string, number> = {};
   const recordingChoices: RestoredProjectManifest["recordingChoices"] = {};
+  const shownByPhoto: Record<string, boolean> = {};
   let unmatchedPhotoCount = 0;
 
   for (const decision of manifest.photos) {
@@ -281,6 +309,7 @@ export function restoreProjectManifest(
     restoredPhotos.push(photo);
     if (decision.clockOffsetMinutes !== undefined)
       offsetMinutesByPhoto[photo.id] = decision.clockOffsetMinutes;
+    if (decision.shown !== undefined) shownByPhoto[photo.id] = decision.shown;
     if (decision.selectedRecordingDigest) {
       const recording = recordingByDigest.get(decision.selectedRecordingDigest);
       if (recording)
@@ -307,6 +336,9 @@ export function restoreProjectManifest(
     }),
     offsetMinutesByPhoto,
     recordingChoices,
+    shownByPhoto,
+    showAllPhotos:
+      manifest.schemaVersion === 1 || manifest.photoSelectionMode === "all",
     unmatchedPhotoCount,
     unmatchedRecordingCount: manifest.recordings.filter(
       ({ digest }) => !recordingByDigest.has(digest),

@@ -226,7 +226,10 @@ describe("journey zip import", () => {
   });
 
   test("round-trips a restorable project manifest with original photos and recordings", async () => {
-    const photos = [photo("1", "2026:08:20 10:00:00")];
+    const photos = [
+      photo("1", "2026:08:20 10:00:00"),
+      photo("2", "2026:08:20 10:00:10"),
+    ];
     const source = recording(
       "walk",
       `<trk><trkseg>${point(1, 2, "2026-08-20T10:00:00Z")}${point(1, 2.1, "2026-08-20T10:01:00Z")}</trkseg></trk>`,
@@ -252,8 +255,9 @@ describe("journey zip import", () => {
     const bundle = await buildScopedBundle({
       title: "Restorable trip",
       timezone: "UTC",
-      photos,
-      placements,
+      photos: photos.slice(0, 1),
+      placements: placements.slice(0, 1),
+      sourcePhotos: photos,
       recordings: [source, excluded],
       includePhotos: true,
       projectManifest,
@@ -267,6 +271,7 @@ describe("journey zip import", () => {
     expect(expanded.projectManifest).toEqual(projectManifest);
     expect(expanded.files.map((file) => file.name).sort()).toEqual([
       "1.jpg",
+      "2.jpg",
       "paused.gpx",
       "walk.gpx",
     ]);

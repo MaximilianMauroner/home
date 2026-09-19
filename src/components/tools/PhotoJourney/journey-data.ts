@@ -444,6 +444,8 @@ export type ScopedBundleOptions = {
   title: string;
   timezone: string;
   photos: readonly JourneyPhoto[];
+  /** Full source library for restorable projects; generated journey files use `photos`. */
+  sourcePhotos?: readonly JourneyPhoto[];
   placements: readonly Placement[];
   recordings: readonly JourneyRecording[];
   track?: Track;
@@ -591,7 +593,9 @@ export async function buildScopedBundle(options: ScopedBundleOptions) {
 
   if (options.includePhotos) {
     const folder = zip.folder("photos")!;
-    for (const [index, photo] of options.photos.entries())
+    for (const [index, photo] of (
+      options.sourcePhotos ?? options.photos
+    ).entries())
       folder.file(
         `${String(index + 1).padStart(2, "0")}-${photo.file.name}`,
         await photo.file.arrayBuffer(),

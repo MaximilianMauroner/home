@@ -162,6 +162,54 @@ describe("Photo Journey project manifest", () => {
     });
   });
 
+  test("round-trips the presented-photo selection while keeping every original", () => {
+    const originals = [photo("a", "a.jpg"), photo("b", "b.jpg")];
+    const manifest = createProjectManifest({
+      title: "Curated",
+      timezone: "UTC",
+      order: "capture",
+      photos: originals,
+      recordings: [],
+      shownByPhoto: { a: false, b: true },
+      showAllPhotos: false,
+    });
+    expect(manifest).toMatchObject({
+      schemaVersion: 2,
+      photoSelectionMode: "automatic",
+      photos: [{ shown: false }, { shown: true }],
+    });
+    const restored = restoreProjectManifest(
+      parseProjectManifest(serializeProjectManifest(manifest))!,
+      [photo("new-a", "a.jpg"), photo("new-b", "b.jpg")],
+      [],
+    );
+    expect(restored.shownByPhoto).toEqual({ "new-a": false, "new-b": true });
+    expect(restored.showAllPhotos).toBe(false);
+    expect(restored.photos).toHaveLength(2);
+  });
+
+  test("opens version 1 projects with every photo visible", () => {
+    const current = createProjectManifest({
+      title: "Legacy",
+      timezone: "UTC",
+      order: "capture",
+      photos: [photo("a", "a.jpg")],
+      recordings: [],
+    });
+    const legacy = {
+      ...current,
+      schemaVersion: 1,
+      photoSelectionMode: undefined,
+      photos: current.photos.map(({ shown: _shown, ...entry }) => entry),
+    };
+    const parsed = parseProjectManifest(legacy)!;
+    expect(parsed.schemaVersion).toBe(1);
+    expect(
+      restoreProjectManifest(parsed, [photo("new-a", "a.jpg")], [])
+        .showAllPhotos,
+    ).toBe(true);
+  });
+
   test("keeps unmatched imports and reports missing saved files", () => {
     const manifest = createProjectManifest({
       title: "Partial",

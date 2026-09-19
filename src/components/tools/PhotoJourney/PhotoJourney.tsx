@@ -67,7 +67,15 @@ import {
 import JourneyStage from "./JourneyStage";
 import Inspector from "./Inspector";
 import ReviewPanel from "./ReviewPanel";
+import SimilarPhotosPanel from "./SimilarPhotosPanel";
 import { reviewItems, reviewCounts, type ReviewFilter } from "./review";
+import {
+  findSimilarPhotoGroups,
+  shownPhotoIds,
+  type SimilarPhotoGroup,
+  type SimilarPhotoOverride,
+} from "./photo-similarity";
+import { rankSimilarPhotoGroups } from "./photo-quality";
 import StopList from "./StopList";
 import RecordingList from "./RecordingList";
 import type { MapMode } from "./JourneyMap";
@@ -374,7 +382,7 @@ export default function PhotoJourney() {
   const [importProgress, setImportProgress] = useState("");
   const [importPercent, setImportPercent] = useState<number>();
   const [editorSection, setEditorSection] = useState<
-    "review" | "order" | "recordings" | "export"
+    "review" | "similar" | "order" | "recordings" | "export"
   >("review");
   const [reviewFilter, setReviewFilter] =
     useState<ReviewFilter>("needs-review");
@@ -407,6 +415,21 @@ export default function PhotoJourney() {
   const [placementChoices, setPlacementChoices] = useState<
     Record<string, PlacementChoice>
   >({});
+  const [similarGroups, setSimilarGroups] = useState<SimilarPhotoGroup[]>([]);
+  const [pendingSimilarGroups, setPendingSimilarGroups] =
+    useState<SimilarPhotoGroup[]>();
+  const [similarOverrides, setSimilarOverrides] = useState<
+    Record<string, SimilarPhotoOverride>
+  >({});
+  const [persistedPhotoVisibility, setPersistedPhotoVisibility] = useState<
+    Record<string, boolean>
+  >({});
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [curationStatus, setCurationStatus] = useState<
+    "idle" | "analyzing" | "ready" | "unavailable"
+  >("idle");
+  const curationGeneration = useRef(0);
+  const playbackPlayingRef = useRef(false);
   const [includePhotos, setIncludePhotos] = useState(false);
   const [packing, setPacking] = useState(false);
   const [savingProject, setSavingProject] = useState(false);
@@ -466,14 +489,93 @@ export default function PhotoJourney() {
       tripTimezone,
     ],
   );
+  const candidateGroups = useMemo(
+    () => findSimilarPhotoGroups(photos),
+    [photos],
+  );
+  useEffect(() => {
+    const generation = ++curationGeneration.current;
+    setSimilarGroups(candidateGroups);
+    if (!candidateGroups.length) {
+      setCurationStatus("ready");
+      return;
+    }
+    setCurationStatus("analyzing");
+    void rankSimilarPhotoGroups(photos, candidateGroups).then(
+      (ranked) => {
+        if (generation !== curationGeneration.current || !mounted.current)
+          return;
+        if (playbackPlayingRef.current) setPendingSimilarGroups(ranked);
+        else {
+          setSimilarGroups(ranked);
+          setCurationStatus("ready");
+        }
+      },
+      () => {
+        if (generation !== curationGeneration.current || !mounted.current)
+          return;
+        setSimilarGroups(candidateGroups);
+        setCurationStatus("unavailable");
+      },
+    );
+  }, [candidateGroups, photos]);
   const days = useMemo(
     () => deriveJourneyDays(photos, placements, recordings, tripTimezone),
     [photos, placements, recordings, tripTimezone],
   );
+  const shownIds = useMemo(
+    () =>
+      shownPhotoIds(
+        photos,
+        similarGroups,
+        similarOverrides,
+        persistedPhotoVisibility,
+        showAllPhotos,
+      ),
+    [
+      photos,
+      similarGroups,
+      similarOverrides,
+      persistedPhotoVisibility,
+      showAllPhotos,
+    ],
+  );
+  const presentedEntries = useMemo(
+    () =>
+      photos.flatMap((photo, index) =>
+        shownIds.has(photo.id) ? [{ photo, placement: placements[index] }] : [],
+      ),
+    [photos, placements, shownIds],
+  );
   const scopedEntries = useMemo(
+    () =>
+      scopedPhotos(
+        presentedEntries.map((entry) => entry.photo),
+        presentedEntries.map((entry) => entry.placement),
+        selectedDay,
+        tripTimezone,
+      ),
+    [presentedEntries, selectedDay, tripTimezone],
+  );
+  const libraryScopedEntries = useMemo(
     () => scopedPhotos(photos, placements, selectedDay, tripTimezone),
     [photos, placements, selectedDay, tripTimezone],
   );
+  const libraryPhotos = useMemo(
+    () => libraryScopedEntries.map((entry) => entry.photo),
+    [libraryScopedEntries],
+  );
+  const libraryPlacements = useMemo(
+    () => libraryScopedEntries.map((entry) => entry.placement),
+    [libraryScopedEntries],
+  );
+  const scopedSimilarGroups = useMemo(() => {
+    const ids = new Set(libraryPhotos.map((photo) => photo.id));
+    return similarGroups.flatMap((group) => {
+      const photoIds = group.photoIds.filter((id) => ids.has(id));
+      return photoIds.length > 1 ? [{ ...group, photoIds }] : [];
+    });
+  }, [libraryPhotos, similarGroups]);
   const visiblePhotos = useMemo(
     () => scopedEntries.map((entry) => entry.photo),
     [scopedEntries],
@@ -510,8 +612,8 @@ export default function PhotoJourney() {
     [visiblePlacements],
   );
   const review = useMemo(
-    () => reviewItems(visiblePhotos, visiblePlacements, placementChoices),
-    [visiblePhotos, visiblePlacements, placementChoices],
+    () => reviewItems(libraryPhotos, libraryPlacements, placementChoices),
+    [libraryPhotos, libraryPlacements, placementChoices],
   );
   const reviewTotals = useMemo(() => reviewCounts(review), [review]);
   const dayRecordings = useMemo(
@@ -569,6 +671,13 @@ export default function PhotoJourney() {
     { dayKeys: timelineDayKeys, dayLabels: timelineDayLabels },
     scopedTrack,
   );
+  playbackPlayingRef.current = playback.playing;
+  useEffect(() => {
+    if (playback.playing || !pendingSimilarGroups) return;
+    setSimilarGroups(pendingSimilarGroups);
+    setPendingSimilarGroups(undefined);
+    setCurationStatus("ready");
+  }, [pendingSimilarGroups, playback.playing]);
   const reducedMotion = useReducedMotion();
   const activeIndex = playback.state.photoIndex;
   const completedThrough =
@@ -975,6 +1084,8 @@ export default function PhotoJourney() {
         setOrder(restored.order);
         setOffsetMinutesByPhoto(restored.offsetMinutesByPhoto);
         setPlacementChoices(restored.recordingChoices);
+        setPersistedPhotoVisibility(restored.shownByPhoto);
+        setShowAllPhotos(restored.showAllPhotos);
         if (restored.unmatchedPhotoCount || restored.unmatchedRecordingCount) {
           failures.push(
             `Project opened with ${restored.unmatchedPhotoCount} missing photo${restored.unmatchedPhotoCount === 1 ? "" : "s"} and ${restored.unmatchedRecordingCount} missing recording${restored.unmatchedRecordingCount === 1 ? "" : "s"}.`,
@@ -998,6 +1109,11 @@ export default function PhotoJourney() {
       const removed = photos.find((photo) => photo.id === id);
       if (removed) revokePhoto(removed);
       setPhotos(photos.filter((photo) => photo.id !== id));
+      setPersistedPhotoVisibility((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
       seek(0);
     },
     [photos, seek],
@@ -1198,8 +1314,8 @@ export default function PhotoJourney() {
       const blob = await buildScopedBundle({
         title,
         timezone: tripTimezone,
-        photos,
-        placements,
+        photos: presentedEntries.map((entry) => entry.photo),
+        placements: presentedEntries.map((entry) => entry.placement),
         recordings,
         track,
         includePhotos,
@@ -1212,15 +1328,7 @@ export default function PhotoJourney() {
     } finally {
       setPacking(false);
     }
-  }, [
-    title,
-    tripTimezone,
-    photos,
-    placements,
-    recordings,
-    track,
-    includePhotos,
-  ]);
+  }, [title, tripTimezone, presentedEntries, recordings, track, includePhotos]);
 
   const saveProject = useCallback(async () => {
     setSavingProject(true);
@@ -1233,12 +1341,17 @@ export default function PhotoJourney() {
         recordings,
         offsetMinutesByPhoto,
         recordingChoices: placementChoices,
+        shownByPhoto: Object.fromEntries(
+          photos.map((photo) => [photo.id, shownIds.has(photo.id)]),
+        ),
+        showAllPhotos,
       });
       const blob = await buildScopedBundle({
         title,
         timezone: tripTimezone,
-        photos,
-        placements,
+        photos: presentedEntries.map((entry) => entry.photo),
+        placements: presentedEntries.map((entry) => entry.placement),
+        sourcePhotos: photos,
         recordings,
         track,
         includePhotos: true,
@@ -1260,7 +1373,9 @@ export default function PhotoJourney() {
     recordings,
     offsetMinutesByPhoto,
     placementChoices,
-    placements,
+    shownIds,
+    showAllPhotos,
+    presentedEntries,
     track,
   ]);
 
@@ -1278,6 +1393,39 @@ export default function PhotoJourney() {
         ?.querySelector<HTMLElement>(`[data-section='${section}']`)
         ?.focus({ preventScroll: true }),
     );
+  }
+
+  function chooseSimilarPhoto(groupId: string, photoId: string) {
+    pausePlayback();
+    const group = similarGroups.find((entry) => entry.id === groupId);
+    if (!group) return;
+    setSimilarOverrides((current) => ({
+      ...current,
+      [groupId]: { representativeId: photoId, keepAll: false },
+    }));
+    setPersistedPhotoVisibility((current) => ({
+      ...current,
+      ...Object.fromEntries(group.photoIds.map((id) => [id, id === photoId])),
+    }));
+    setShowAllPhotos(false);
+  }
+
+  function keepSimilarGroup(groupId: string, keepAll: boolean) {
+    pausePlayback();
+    const group = similarGroups.find((entry) => entry.id === groupId);
+    if (!group) return;
+    setSimilarOverrides((current) => ({
+      ...current,
+      [groupId]: { ...current[groupId], keepAll },
+    }));
+    setPersistedPhotoVisibility((current) => {
+      const next = { ...current };
+      for (const photoId of group.photoIds) {
+        if (keepAll) next[photoId] = true;
+        else delete next[photoId];
+      }
+      return next;
+    });
   }
 
   function openReview(filter: ReviewFilter) {
@@ -1687,8 +1835,30 @@ export default function PhotoJourney() {
                   remains authoritative.
                 </p>
               )}
+              {curationStatus === "analyzing" ? (
+                <p role="status">
+                  Comparing similar photos and choosing the best moments
+                  locally…
+                </p>
+              ) : similarGroups.length > 0 ? (
+                <p>
+                  {visiblePhotos.length} shown from {libraryPhotos.length}{" "}
+                  originals in this chapter. Similar alternatives remain
+                  available.
+                </p>
+              ) : null}
             </div>
             <div className="pj-bar-actions">
+              {similarGroups.length > 0 && (
+                <button
+                  className="pj-pill"
+                  data-tone="accent"
+                  disabled={busy}
+                  onClick={() => openEditor("similar")}
+                >
+                  Review similar photos
+                </button>
+              )}
               {reviewTotals.conflicts > 0 && (
                 <button
                   className="pj-pill"
@@ -1758,6 +1928,7 @@ export default function PhotoJourney() {
                 {(
                   [
                     ["review", "Review"],
+                    ["similar", "Similar photos"],
                     ["order", "Order"],
                     ["recordings", "Recordings"],
                     ["export", "Export"],
@@ -1778,17 +1949,22 @@ export default function PhotoJourney() {
                     {label}
                     {section === "review" && reviewTotals["needs-review"]
                       ? ` (${reviewTotals["needs-review"]})`
-                      : ""}
+                      : section === "similar" && scopedSimilarGroups.length
+                        ? ` (${scopedSimilarGroups.length})`
+                        : ""}
                   </button>
                 ))}
               </div>
               <div id="pj-editor-panel" aria-busy={busy}>
                 <p className="pj-editor-selection">
-                  {dayLabel(days, selectedDay)} · {visiblePhotos.length} photos
+                  {dayLabel(days, selectedDay)} · {visiblePhotos.length} shown
+                  {libraryPhotos.length !== visiblePhotos.length
+                    ? ` · ${libraryPhotos.length} originals`
+                    : ""}
                 </p>
                 {editorSection === "review" && (
                   <>
-                    {visiblePhotos.some(
+                    {libraryPhotos.some(
                       (photo) =>
                         photo.metadata.capturedAtWallClock &&
                         photo.metadata.utcOffsetMinutes === undefined,
@@ -1825,8 +2001,8 @@ export default function PhotoJourney() {
                               }
                               aria-invalid={Boolean(
                                 fallbackOffsetInput &&
-                                  parseOffsetMinutes(fallbackOffsetInput) ===
-                                    undefined,
+                                parseOffsetMinutes(fallbackOffsetInput) ===
+                                  undefined,
                               )}
                             />
                           </label>
@@ -1843,7 +2019,7 @@ export default function PhotoJourney() {
                               if (value !== undefined) {
                                 setOffsetMinutesByPhoto((current) => {
                                   const next = { ...current };
-                                  for (const photo of visiblePhotos)
+                                  for (const photo of libraryPhotos)
                                     if (
                                       photo.metadata.utcOffsetMinutes ===
                                         undefined &&
@@ -1857,7 +2033,7 @@ export default function PhotoJourney() {
                           >
                             Apply
                           </button>
-                          {visiblePhotos.some(
+                          {libraryPhotos.some(
                             (photo) =>
                               offsetMinutesByPhoto[photo.id] !== undefined,
                           ) && (
@@ -1866,7 +2042,7 @@ export default function PhotoJourney() {
                               onClick={() => {
                                 setOffsetMinutesByPhoto((current) => {
                                   const next = { ...current };
-                                  for (const photo of visiblePhotos)
+                                  for (const photo of libraryPhotos)
                                     delete next[photo.id];
                                   return next;
                                 });
@@ -1896,6 +2072,21 @@ export default function PhotoJourney() {
                       }}
                     />
                   </>
+                )}
+                {editorSection === "similar" && (
+                  <SimilarPhotosPanel
+                    photos={libraryPhotos}
+                    groups={scopedSimilarGroups}
+                    overrides={similarOverrides}
+                    status={curationStatus}
+                    showAll={showAllPhotos}
+                    onShowAll={(show) => {
+                      pausePlayback();
+                      setShowAllPhotos(show);
+                    }}
+                    onChoose={chooseSimilarPhoto}
+                    onKeepAll={keepSimilarGroup}
+                  />
                 )}
                 {editorSection === "order" && (
                   <>
