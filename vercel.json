@@ -37,9 +37,49 @@
   ],
   "redirects": [
     {
+      "source": "/blog",
+      "destination": "/blog/",
+      "permanent": true
+    },
+    {
+      "source": "/dev-log",
+      "destination": "/dev-log/",
+      "permanent": true
+    },
+    {
+      "source": "/dev-log/:year/:slug",
+      "destination": "/dev-log/:year/:slug/",
+      "permanent": true
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy/",
+      "permanent": true
+    },
+    {
+      "source": "/snacks",
+      "destination": "/snacks/",
+      "permanent": true
+    },
+    {
+      "source": "/tags",
+      "destination": "/tags/",
+      "permanent": true
+    },
+    {
+      "source": "/tools",
+      "destination": "/tools/",
+      "permanent": true
+    },
+    {
       "source": "/tools/malen-nach-zahlen",
       "destination": "/tools/",
       "permanent": false
+    },
+    {
+      "source": "/tools/:slug",
+      "destination": "/tools/:slug/",
+      "permanent": true
     },
     {
       "source": "/tools/malen-nach-zahlen/",

@@ -38,10 +38,6 @@ if (normalizedPathname !== "/" && !normalizedPathname.endsWith("/")) {
   normalizedPathname = normalizedPathname + "/";
 }
 const canonicalURL = new URL(normalizedPathname, Astro.site);
-// Preserve query parameters for search pages (tags page with q parameter)
-if (Astro.url.pathname === "/tags/" && Astro.url.searchParams.has("q")) {
-  canonicalURL.search = Astro.url.search;
-}
 
 const shouldNoindex =
   noindex ||
@@ -153,7 +149,7 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
     <!-- Robots meta tag -->
     {
       shouldNoindex ? (
-        <meta name="robots" content="noindex, nofollow" />
+        <meta name="robots" content="noindex, follow" />
       ) : (
         <meta name="robots" content="index, follow" />
       )

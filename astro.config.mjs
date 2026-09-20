@@ -38,7 +38,10 @@ export default defineConfig({
         const pathname = new URL(page).pathname;
         const isTagDetail = /^\/tags\/[^/]+\/?$/.test(pathname);
         return (
-          !page.includes("/admin") && !isInactiveToolUrl(page) && !isTagDetail
+          !pathname.startsWith("/admin/") &&
+          pathname !== "/design/" &&
+          !isInactiveToolUrl(page) &&
+          !isTagDetail
         );
       },
       serialize: (item) => {
