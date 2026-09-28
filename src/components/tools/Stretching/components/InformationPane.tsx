@@ -35,7 +35,12 @@ export function InformationPane({
       <header className="stretching-infopane__head">
         <h3>Information</h3>
       </header>
-      <div className="stretching-infoscroll">
+      <div
+        className="stretching-infoscroll"
+        role="region"
+        aria-label={`Guidance details for ${stretch.name}`}
+        tabIndex={0}
+      >
         <section>
           <h4>What to feel</h4>
           <p className="whitespace-pre-line">{stretch.lookFor}</p>

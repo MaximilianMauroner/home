@@ -53,19 +53,22 @@ export function ContentManager({
     currentStretches,
     customRoutines,
   );
+  const needsFirstStretch =
+    initialState.hasExternalRoutineIntent &&
+    initialState.stretches.length === 0;
   const [stretchMode, setStretchMode] = useState<StretchMode>("list");
   const [routineMode, setRoutineMode] = useState<RoutineMode>(
-    initialState.routineMode,
+    needsFirstStretch ? "list" : initialState.routineMode,
   );
   const [editingStretchId, setEditingStretchId] = useState<string | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<StretchRoutine | null>(
-    initialState.editingRoutine,
+    needsFirstStretch ? null : initialState.editingRoutine,
   );
   const [managedRoutineId, setManagedRoutineId] = useState(
     initialState.managedRoutineId,
   );
   const [hasExternalRoutineIntent, setHasExternalRoutineIntent] = useState(
-    initialState.hasExternalRoutineIntent,
+    needsFirstStretch ? false : initialState.hasExternalRoutineIntent,
   );
   const [draftStretches, setDraftStretches] = useState(initialState.stretches);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);

@@ -392,6 +392,11 @@
   scrollbar-width: thin;
 }
 
+.stretching-infoscroll:focus-visible {
+  outline: 2px solid var(--stretching-focus-ring);
+  outline-offset: -2px;
+}
+
 .stretching-infoscroll h4 {
   margin: 0 0 0.3rem;
   font-size: 0.82rem;
@@ -632,9 +637,9 @@
   }
 }
 
-@media (max-width: 659px) and (max-height: 760px) {
+@media (max-width: 659px) and (max-height: 820px) {
   .stretching-app[data-stretching-view="active"] .stretching-shell--focus {
-    --stretching-dock-clearance: 4.5rem;
+    --stretching-dock-clearance: 5.5rem;
     padding-block-start: 0.5rem;
   }
 
@@ -644,16 +649,25 @@
 
   .stretching-app[data-stretching-view="active"] .stretching-image-surface {
     width: 100%;
-    height: 10rem;
-    max-height: 10rem;
+    height: clamp(6rem, calc(100dvh - 32rem), 13rem);
+    max-height: clamp(6rem, calc(100dvh - 32rem), 13rem);
     aspect-ratio: auto;
   }
 }
 
 @media (max-width: 659px) and (max-height: 600px) {
   .stretching-app[data-stretching-view="active"] .stretching-shell--focus {
-    --stretching-dock-clearance: 3.5rem;
+    --stretching-dock-clearance: 5.5rem;
     padding-block-start: 0.5rem;
+  }
+
+  .stretching-app[data-stretching-view="active"] .stretching-session-frame {
+    padding: 0.5rem;
+  }
+
+  .stretching-app[data-stretching-view="active"] .stretching-session-body,
+  .stretching-app[data-stretching-view="active"] .stretching-cockpit {
+    gap: 0.5rem;
   }
 
   .stretching-app[data-stretching-view="active"] .stretching-infopane {

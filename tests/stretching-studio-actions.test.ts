@@ -126,4 +126,34 @@ describe("Routine Studio actions", () => {
     expect(onSaveRoutine).not.toHaveBeenCalled();
     expect(onUpdateRoutine).not.toHaveBeenCalled();
   });
+
+  it("opens an empty saved routine in Studio so it can be repaired", () => {
+    const emptyRoutine = { ...routine, totalDuration: 0, stretches: [] };
+    act(() => {
+      root.render(
+        createElement(ContentManager, {
+          key: "empty",
+          defaultRoutines: [],
+          customRoutines: [emptyRoutine],
+          selectedRoutineId: emptyRoutine.id,
+          currentStretches: [],
+          initialRoutineIntent: {
+            mode: "edit",
+            routineId: emptyRoutine.id,
+          },
+          onStartRoutine,
+          onSaveRoutine,
+          onUpdateRoutine,
+          onDeleteRoutine: vi.fn(),
+          onClose: vi.fn(),
+        }),
+      );
+    });
+
+    expect(button(container, "Start routine").disabled).toBe(true);
+    expect(button(container, "Add stretch")).toBeDefined();
+    expect(container.textContent).not.toContain("Save changes");
+    act(() => button(container, "Add stretch").click());
+    expect(container.textContent).toContain("Add stretch");
+  });
 });
