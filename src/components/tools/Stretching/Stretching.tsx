@@ -635,6 +635,9 @@ export default function Stretching() {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         (target instanceof HTMLElement && target.isContentEditable);
+      const isGuidanceScroll =
+        target instanceof HTMLElement &&
+        target.closest(".stretching-infoscroll") !== null;
 
       if (isEditable) return;
 
@@ -655,6 +658,8 @@ export default function Stretching() {
         }
         return;
       }
+
+      if (isGuidanceScroll) return;
 
       if (viewState !== "active" || isCompleted) return;
 

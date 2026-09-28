@@ -61,7 +61,8 @@ describe("stretching server-to-client restoration", () => {
       [STORAGE_KEY]: JSON.stringify(savedStretches),
       [TIME_BETWEEN_KEY]: "23",
     };
-    for (const [key, value] of Object.entries(saved)) localStorage.setItem(key, value);
+    for (const [key, value] of Object.entries(saved))
+      localStorage.setItem(key, value);
     window.history.replaceState({}, "", `/tools/stretching/${search}`);
     document.body.innerHTML = `<div id="root">${markup}</div>`;
     const container = document.getElementById("root")!;
@@ -77,26 +78,75 @@ describe("stretching server-to-client restoration", () => {
 
     expect(errors).toEqual([]);
     expect(consoleErrors).not.toHaveBeenCalled();
-    expect(new URLSearchParams(window.location.search).get("view")).toBe(expectedView);
-    expect(container.querySelector("[data-stretching-view]")?.getAttribute("data-stretching-view"))
-      .toBe(expectedView);
+    expect(new URLSearchParams(window.location.search).get("view")).toBe(
+      expectedView,
+    );
+    expect(
+      container
+        .querySelector("[data-stretching-view]")
+        ?.getAttribute("data-stretching-view"),
+    ).toBe(expectedView);
     for (const [key, value] of Object.entries(saved)) {
       expect(localStorage.getItem(key)).toBe(value);
-      expect(writes.mock.calls.filter(([writtenKey, writtenValue]) =>
-        writtenKey === key && writtenValue !== value))
-        .toEqual([]);
+      expect(
+        writes.mock.calls.filter(
+          ([writtenKey, writtenValue]) =>
+            writtenKey === key && writtenValue !== value,
+        ),
+      ).toEqual([]);
     }
-    if (expectedView === "preview") expect(container.textContent).toContain(savedRoutine.name);
-    expect(document.body.classList.contains("stretching-focus-mode"))
-      .toBe(expectedView === "active" || expectedView === "content-manager");
+    if (expectedView === "preview")
+      expect(container.textContent).toContain(savedRoutine.name);
+    expect(document.body.classList.contains("stretching-focus-mode")).toBe(
+      expectedView === "active" || expectedView === "content-manager",
+    );
 
     await act(async () => {
       window.history.pushState({}, "", "/tools/stretching/?view=browser");
       window.dispatchEvent(new PopStateEvent("popstate"));
     });
-    expect(container.querySelector("[data-stretching-view]")?.getAttribute("data-stretching-view"))
-      .toBe("browser");
-    expect(document.body.classList.contains("stretching-focus-mode")).toBe(false);
-    expect(container.querySelector('[data-stretching-shell="wide"]')).not.toBeNull();
+    expect(
+      container
+        .querySelector("[data-stretching-view]")
+        ?.getAttribute("data-stretching-view"),
+    ).toBe("browser");
+    expect(document.body.classList.contains("stretching-focus-mode")).toBe(
+      false,
+    );
+    expect(
+      container.querySelector('[data-stretching-shell="wide"]'),
+    ).not.toBeNull();
+  });
+
+  test("lets focused guidance use Space without starting the session", async () => {
+    window.history.replaceState({}, "", "/tools/stretching/?view=active");
+    document.body.innerHTML = `<div id="root">${renderToString(createElement(Stretching))}</div>`;
+    const container = document.getElementById("root")!;
+
+    await act(async () => {
+      root = hydrateRoot(container, createElement(Stretching));
+    });
+
+    const guidance = container.querySelector<HTMLElement>(
+      ".stretching-infoscroll",
+    )!;
+    guidance.focus();
+    const space = new KeyboardEvent("keydown", {
+      key: " ",
+      code: "Space",
+      bubbles: true,
+      cancelable: true,
+    });
+
+    await act(async () => {
+      guidance.dispatchEvent(space);
+    });
+
+    expect(space.defaultPrevented).toBe(false);
+    expect(
+      [...container.querySelectorAll("button")].some(
+        (button) => button.textContent?.trim() === "Start",
+      ),
+    ).toBe(true);
   });
 });
