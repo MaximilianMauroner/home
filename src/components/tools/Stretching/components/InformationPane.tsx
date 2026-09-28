@@ -37,15 +37,15 @@ export function InformationPane({
       </header>
       <div className="stretching-infoscroll">
         <section>
-          <h4>How to do it</h4>
-          <p className="whitespace-pre-line">{stretch.how}</p>
+          <h4>What to feel</h4>
+          <p className="whitespace-pre-line">{stretch.lookFor}</p>
         </section>
 
         <hr />
 
         <section>
-          <h4>What to feel</h4>
-          <p className="whitespace-pre-line">{stretch.lookFor}</p>
+          <h4>How to do it</h4>
+          <p className="whitespace-pre-line">{stretch.how}</p>
         </section>
 
         {progressions.length > 0 && (

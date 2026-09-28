@@ -562,6 +562,7 @@ export default function Stretching() {
     routineId: string,
     workingStretches: readonly Stretch[],
   ) => {
+    if (workingStretches.length === 0) return;
     const startState = createStudioSessionStartState(workingStretches);
     setSelectedRoutineId(routineId);
     setStretches(startState.stretches);

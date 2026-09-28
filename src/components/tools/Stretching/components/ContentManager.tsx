@@ -95,7 +95,7 @@ export function ContentManager({
 
   const beginRoutineEdit = (routine: StretchRoutine) => {
     if (!customRoutines.some((item) => item.id === routine.id)) return;
-    chooseRoutine(routine);
+    if (managedRoutineId !== routine.id) chooseRoutine(routine);
     setEditingRoutine(routine);
     setRoutineMode("edit");
     setHasExternalRoutineIntent(false);
@@ -113,6 +113,7 @@ export function ContentManager({
   };
 
   const submitRoutine = (routine: Omit<StretchRoutine, "id">) => {
+    if (routine.stretches.length === 0) return;
     if (editingRoutine) {
       onUpdateRoutine(editingRoutine.id, routine);
     } else {
@@ -438,12 +439,12 @@ export function ContentManager({
                       {routine.name}
                     </span>
                     {isCustom && (
-                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-foreground/75">
                         Custom
                       </span>
                     )}
                   </span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
+                  <span className="mt-1 block text-xs text-foreground/75">
                     {formatTime(routine.totalDuration)} ·{" "}
                     {routine.stretches.length} stretches
                   </span>
@@ -502,7 +503,7 @@ export function ContentManager({
                       <button
                         type="button"
                         onClick={() => deleteRoutine(managedRoutine)}
-                        className="min-h-11 rounded-xl bg-destructive/10 px-4 text-sm font-medium text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="min-h-11 rounded-xl bg-destructive/10 px-4 text-sm font-medium text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-red-300"
                       >
                         Delete
                       </button>
@@ -511,15 +512,22 @@ export function ContentManager({
                   {onStartRoutine && (
                     <button
                       type="button"
-                      onClick={() =>
-                        onStartRoutine(managedRoutine.id, draftStretches)
-                      }
-                      className="min-h-11 rounded-xl border border-primary px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      disabled={draftStretches.length === 0}
+                      onClick={() => {
+                        if (draftStretches.length > 0)
+                          onStartRoutine(managedRoutine.id, draftStretches);
+                      }}
+                      className="min-h-11 rounded-xl border border-primary px-4 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Start routine
                     </button>
                   )}
                 </div>
+                {draftStretches.length === 0 && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Add a stretch before starting or saving this routine.
+                  </p>
+                )}
                 {!onStartRoutine && (
                   <p className="mt-5 text-xs text-muted-foreground">
                     Choosing a routine here only manages it; starting a session

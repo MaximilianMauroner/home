@@ -37,7 +37,7 @@ export function RoutineForm({
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!name.trim() || !goal.trim()) return;
+    if (!name.trim() || !goal.trim() || stretches.length === 0) return;
     onSubmit(buildRoutineDraft(routine, { name, goal }, stretches));
   };
 
@@ -138,6 +138,11 @@ export function RoutineForm({
         </aside>
       </div>
 
+      {stretches.length === 0 && (
+        <p className="mt-5 text-sm text-muted-foreground" role="status">
+          Add a stretch in Routine Studio before saving this routine.
+        </p>
+      )}
       <div className="fixed inset-x-0 bottom-0 z-20 flex gap-3 border-t border-border bg-card/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mt-6 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0">
         <button
           type="button"
@@ -148,7 +153,8 @@ export function RoutineForm({
         </button>
         <button
           type="submit"
-          className="min-h-11 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none"
+          disabled={stretches.length === 0}
+          className="min-h-11 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
         >
           {routine ? "Save changes" : "Create routine"}
         </button>
