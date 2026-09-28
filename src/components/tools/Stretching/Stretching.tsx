@@ -629,6 +629,8 @@ export default function Stretching() {
 
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+
       const target = event.target;
       const isEditable =
         target instanceof HTMLInputElement ||

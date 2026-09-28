@@ -149,4 +149,37 @@ describe("stretching server-to-client restoration", () => {
       ),
     ).toBe(true);
   });
+
+  test("Escape closes rest settings without leaving the active session", async () => {
+    window.history.replaceState({}, "", "/tools/stretching/?view=active");
+    document.body.innerHTML = `<div id="root">${renderToString(createElement(Stretching))}</div>`;
+    const container = document.getElementById("root")!;
+
+    await act(async () => {
+      root = hydrateRoot(container, createElement(Stretching));
+    });
+
+    const settingsButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent?.includes("Rest between steps"),
+    )!;
+    await act(async () => settingsButton.click());
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+
+    const escape = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => {
+      document.activeElement?.dispatchEvent(escape);
+    });
+
+    expect(escape.defaultPrevented).toBe(true);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(
+      container
+        .querySelector("[data-stretching-view]")
+        ?.getAttribute("data-stretching-view"),
+    ).toBe("active");
+  });
 });
