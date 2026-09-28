@@ -562,6 +562,7 @@ export default function Stretching() {
     routineId: string,
     workingStretches: readonly Stretch[],
   ) => {
+    if (workingStretches.length === 0) return;
     const startState = createStudioSessionStartState(workingStretches);
     setSelectedRoutineId(routineId);
     setStretches(startState.stretches);
@@ -628,12 +629,17 @@ export default function Stretching() {
 
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+
       const target = event.target;
       const isEditable =
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         (target instanceof HTMLElement && target.isContentEditable);
+      const isGuidanceScroll =
+        target instanceof HTMLElement &&
+        target.closest(".stretching-infoscroll") !== null;
 
       if (isEditable) return;
 
@@ -654,6 +660,8 @@ export default function Stretching() {
         }
         return;
       }
+
+      if (isGuidanceScroll) return;
 
       if (viewState !== "active" || isCompleted) return;
 
