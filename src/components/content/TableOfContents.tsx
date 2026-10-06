@@ -29,9 +29,11 @@ const familyStyles: Record<
 export default function TableOfContents({
   headingsArr,
   family,
+  mobileInline = false,
 }: {
   headingsArr: HeadingType[];
   family: ContentFamily;
+  mobileInline?: boolean;
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
@@ -131,7 +133,7 @@ export default function TableOfContents({
           aria-expanded={isMobileOpen}
           aria-controls="mobile-table-of-contents"
           onClick={() => setIsMobileOpen(true)}
-          className={`fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex h-10 max-w-[80vw] -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/95 px-4 text-sm font-medium text-foreground shadow-lg backdrop-blur transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 ${theme.ring}`}
+          className={`flex min-h-11 items-center gap-2 border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 ${theme.ring} ${mobileInline ? "w-full rounded-md" : "fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-40 max-w-[80vw] -translate-x-1/2 rounded-full shadow-lg"}`}
         >
           <svg
             viewBox="0 0 24 24"
@@ -144,7 +146,9 @@ export default function TableOfContents({
             <path strokeLinecap="round" d="M9 6h11M9 12h11M9 18h11" />
             <path strokeLinecap="round" d="M4 6h.01M4 12h.01M4 18h.01" />
           </svg>
-          <span className="truncate">{currentHeadingText}</span>
+          <span className="truncate">
+            {mobileInline ? "On this page" : currentHeadingText}
+          </span>
         </button>
 
         {isMobileOpen && (

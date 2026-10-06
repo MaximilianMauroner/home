@@ -1,0 +1,325 @@
+.cheese-figure {
+  margin: 2rem 0;
+  padding: clamp(0.9rem, 3vw, 1.5rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--map);
+  color: var(--ink);
+  font-family: Geist, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+.cheese-figure * {
+  box-sizing: border-box;
+}
+.cheese-figure [hidden],
+.cheese-hidden {
+  display: none !important;
+}
+.cheese-figure p {
+  margin: 0 0 0.8rem;
+}
+.cheese-figure figcaption {
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+}
+.cheese-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.cheese-slice {
+  fill: color-mix(in srgb, var(--ink), var(--map) 80%);
+  stroke: color-mix(in srgb, var(--ink), var(--map) 30%);
+  stroke-width: 1.5;
+}
+.cheese-hole {
+  fill: var(--map);
+  stroke: color-mix(in srgb, var(--ink), var(--map) 30%);
+  stroke-width: 1;
+}
+.cheese-number {
+  fill: var(--ink);
+  font:
+    600 15px JetBrains_Mono,
+    monospace;
+}
+.cheese-svg-label {
+  fill: var(--ink);
+  font:
+    500 16px Geist,
+    sans-serif;
+}
+.cheese-defect-path {
+  fill: none;
+  stroke: var(--marker);
+  stroke-width: 3;
+}
+.cheese-defect {
+  fill: var(--marker);
+}
+.cheese-stop {
+  fill: none;
+  stroke: var(--marker);
+  stroke-width: 4;
+}
+.cheese-figure button {
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.cheese-figure button:disabled {
+  cursor: default;
+}
+.cheese-figure :is(button, input):focus-visible {
+  outline: 3px solid var(--marker);
+  outline-offset: 4px;
+}
+.cheese-layer-controls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.cheese-layer-controls button {
+  display: grid;
+  grid-template-rows: 118px minmax(2.6em, 1fr) auto auto;
+  justify-items: center;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 3px solid transparent;
+  border-radius: var(--radius-xs);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  text-align: center;
+}
+.cheese-layer-controls svg {
+  max-width: 82px;
+}
+.cheese-layer-controls button[aria-pressed="true"] {
+  border-color: var(--marker);
+  background: color-mix(in srgb, var(--ink), transparent 94%);
+}
+.cheese-layer-controls button[aria-pressed="true"] .cheese-slice {
+  stroke: var(--marker);
+}
+.cheese-runtime-layer {
+  border-left: 1px dashed var(--line);
+}
+.cheese-runtime-layer .cheese-slice {
+  fill: var(--line);
+}
+.cheese-phase {
+  font-size: 0.7rem;
+}
+.cheese-runtime-layer .cheese-phase {
+  color: var(--marker);
+}
+.cheese-rate {
+  font-family: JetBrains_Mono, monospace;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.cheese-hint {
+  font-size: 0.85rem;
+}
+.cheese-layer-controls + .cheese-hint {
+  margin-top: 0.8rem;
+}
+.cheese-layer-notes {
+  margin-top: 1.25rem;
+}
+.cheese-layer-notes h3 {
+  margin: 0 0 0.3rem;
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+.cheese-layer-notes section + section {
+  margin-top: 1.5rem;
+}
+.cheese-layer-notes dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 0.8rem 0 0;
+}
+.cheese-layer-notes dt {
+  font-weight: 650;
+}
+.cheese-layer-notes dd {
+  margin: 0.25rem 0 0;
+}
+.cheese-probability-row {
+  margin-top: 1.25rem;
+}
+.cheese-probability-row label {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+}
+.cheese-probability-row input {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  margin: 0.25rem 0;
+  accent-color: var(--line);
+  cursor: pointer;
+}
+.cheese-survival {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+.cheese-bar-track {
+  height: 16px;
+  background: color-mix(in srgb, var(--ink), transparent 88%);
+}
+.cheese-bar-track span {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+.cheese-runtime-row {
+  padding-top: 1.25rem;
+  border-top: 1px dashed var(--line);
+}
+.cheese-runtime-row .cheese-bar-track span {
+  background: var(--marker);
+}
+.cheese-runtime-row .cheese-hint {
+  margin-top: 0.4rem;
+}
+.cheese-results {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding-top: 1.25rem;
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+.cheese-results strong {
+  display: block;
+  color: var(--ink);
+  font-size: clamp(1.25rem, 5vw, 2.1rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cheese-results span {
+  display: block;
+  font-size: 0.8rem;
+}
+.cheese-equation {
+  font:
+    0.85rem/1.8 JetBrains_Mono,
+    monospace;
+  overflow-wrap: anywhere;
+}
+.cheese-button {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.cheese-button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--map);
+}
+.cheese-correlation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.cheese-correlation-svg {
+  margin: 1.25rem 0;
+}
+.cheese-correlation-result strong {
+  color: var(--ink);
+  font-size: clamp(1.8rem, 5vw, 2.4rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cheese-correlation-metric strong,
+.cheese-correlation-metric span {
+  display: block;
+}
+.cheese-correlation-metric span {
+  font-size: 0.8rem;
+}
+.cheese-correlation-labels {
+  display: none;
+}
+.blog-detail-prose div.cheese-equation {
+  margin-block: 1.5rem;
+}
+.blog-detail-prose div.cheese-equation p {
+  margin: 0;
+  font: inherit;
+}
+@media (hover: hover) and (pointer: fine) {
+  .cheese-button:not([aria-pressed="true"]):hover {
+    border-color: var(--marker);
+    background: color-mix(in srgb, var(--ink), transparent 94%);
+  }
+}
+@media (max-width: 540px) {
+  .cheese-layer-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+  }
+  .cheese-layer-controls button {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    grid-template-rows: auto auto auto;
+    justify-items: start;
+    text-align: left;
+    align-content: center;
+  }
+  .cheese-layer-controls svg {
+    grid-row: 1 / span 3;
+  }
+  .cheese-layer-notes dl {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .cheese-survival {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+  .cheese-number {
+    display: none;
+  }
+  .cheese-runtime-layer {
+    grid-column: 1 / -1;
+    width: 100%;
+    border-left: 0;
+    border-top: 1px dashed var(--line);
+    padding-top: 0.75rem;
+  }
+  .cheese-layer-name,
+  .cheese-phase,
+  .cheese-layer-controls .cheese-rate {
+    grid-column: 2;
+  }
+  .cheese-probability-row label {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .cheese-correlation-svg .cheese-svg-label {
+    display: none;
+  }
+  .cheese-correlation-svg {
+    margin-bottom: 0;
+  }
+  .cheese-correlation-labels {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding-left: 5%;
+    padding-right: 8%;
+    margin-bottom: 1rem;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+}

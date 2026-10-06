@@ -1,0 +1,136 @@
+---
+import { layers, percent, survivalProbabilities, formatProduct } from "./model";
+import "./visuals.css";
+const probabilities = survivalProbabilities(
+  layers.map((layer) => layer.catchRate),
+);
+---
+
+<figure
+  class="cheese-figure not-prose"
+  data-cheese-probability
+  aria-label="Independent layer probability calculator"
+>
+  <form>
+    <p class="cheese-hint">
+      Change the catch rates. Each bar shows how many of the original defects
+      are still left, assuming the misses are independent.
+    </p>
+    {
+      layers.map((layer, index) => (
+        <div
+          class:list={[
+            "cheese-probability-row",
+            { "cheese-runtime-row": index === 4 },
+          ]}
+        >
+          <label for={`catch-${layer.id}`}>
+            <span>{layer.name}</span>
+            <span class="cheese-rate">
+              <output for={`catch-${layer.id}`} data-catch-output>
+                {layer.catchRate}%
+              </output>{" "}
+              catch · <span data-miss-output>{100 - layer.catchRate}%</span>{" "}
+              miss
+            </span>
+          </label>
+          <input
+            id={`catch-${layer.id}`}
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={layer.catchRate}
+            disabled
+            aria-describedby="cheese-model-assumption"
+          />
+          <div class="cheese-survival">
+            <div class="cheese-bar-track" aria-hidden="true">
+              <span
+                data-survival-bar
+                style={`width: ${probabilities[index] * 100}%`}
+              />
+            </div>
+            <span class="cheese-rate" data-survival-output>
+              {percent(probabilities[index])} survive
+            </span>
+          </div>
+          {index === 4 && (
+            <p class="cheese-hint">
+              Already in production. This layer can only notice it and limit the damage.
+            </p>
+          )}
+        </div>
+      ))
+    }
+    <div class="cheese-results" aria-live="polite" aria-atomic="true">
+      <p>
+        <strong data-deploy-output>{percent(probabilities[3])}</strong><span
+          >reach deployment</span
+        >
+      </p>
+      <p>
+        <strong data-runtime-output>{percent(probabilities[4])}</strong><span
+          >remain after runtime checks</span
+        >
+      </p>
+    </div>
+    <p class="cheese-equation" data-product-output>
+      {formatProduct(layers.slice(0, 4).map((layer) => layer.catchRate))}
+    </p>
+    <button class="cheese-button" type="reset" disabled>Reset example</button>
+  </form>
+  <figcaption id="cheese-model-assumption">
+    Made-up rates for one imagined mix of defects. The sliders don't make the
+    layers independent, that is an assumption. And this is the chance that an
+    existing defect gets through, not the chance that a release has a bug.
+  </figcaption>
+</figure>
+
+<script>
+  import { percent, survivalProbabilities, formatProduct } from "./model";
+  for (const figure of document.querySelectorAll<HTMLElement>(
+    "[data-cheese-probability]",
+  )) {
+    const inputs = [
+      ...figure.querySelectorAll<HTMLInputElement>("input[type=range]"),
+    ];
+    const catches = [
+      ...figure.querySelectorAll<HTMLOutputElement>("[data-catch-output]"),
+    ];
+    const misses = [
+      ...figure.querySelectorAll<HTMLElement>("[data-miss-output]"),
+    ];
+    const bars = [
+      ...figure.querySelectorAll<HTMLElement>("[data-survival-bar]"),
+    ];
+    const outputs = [
+      ...figure.querySelectorAll<HTMLElement>("[data-survival-output]"),
+    ];
+    const deploy = figure.querySelector<HTMLElement>("[data-deploy-output]");
+    const runtime = figure.querySelector<HTMLElement>("[data-runtime-output]");
+    const product = figure.querySelector<HTMLElement>("[data-product-output]");
+    function update() {
+      const rates = inputs.map((input) => Number(input.value));
+      const probabilities = survivalProbabilities(rates);
+      rates.forEach((rate, index) => {
+        catches[index].value = `${rate}%`;
+        misses[index].textContent = `${100 - rate}%`;
+        bars[index].style.width = `${probabilities[index] * 100}%`;
+        outputs[index].textContent = `${percent(probabilities[index])} survive`;
+      });
+      if (deploy) deploy.textContent = percent(probabilities[3]);
+      if (runtime) runtime.textContent = percent(probabilities[4]);
+      if (product) product.textContent = formatProduct(rates.slice(0, 4));
+    }
+    inputs.forEach((input) => {
+      input.disabled = false;
+      input.addEventListener("input", update);
+    });
+    const reset = figure.querySelector<HTMLButtonElement>("button[type=reset]");
+    if (reset) reset.disabled = false;
+    figure
+      .querySelector("form")
+      ?.addEventListener("reset", () => setTimeout(update, 0));
+  }
+</script>

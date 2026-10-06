@@ -10,6 +10,7 @@ export const blogType = z.object({
   tags: z.array(z.string()),
   type: contentKindType.optional(),
   image: z.string().optional(),
+  imageAlt: z.string().optional(),
   published: z.boolean(),
   releaseDate: z.date(),
   lastModified: z.string().optional(), // Added by remark-modified-time plugin

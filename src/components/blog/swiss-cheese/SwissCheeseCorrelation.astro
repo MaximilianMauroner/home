@@ -1,0 +1,177 @@
+---
+import "./visuals.css";
+const positions = [104, 104, 66, 146];
+---
+
+<figure class="cheese-figure not-prose" data-cheese-correlation>
+  <div
+    class="cheese-correlation-controls"
+    role="group"
+    aria-label="Compare failure assumptions"
+  >
+    <button
+      class="cheese-button"
+      type="button"
+      disabled
+      aria-pressed="true"
+      data-aligned="false">Independent toy model</button
+    >
+    <button
+      class="cheese-button"
+      type="button"
+      disabled
+      aria-pressed="false"
+      data-aligned="true">Same blind spot</button
+    >
+  </div>
+  <svg
+    class="cheese-correlation-svg"
+    viewBox="0 10 430 205"
+    role="img"
+    aria-labelledby="cheese-correlation-title cheese-correlation-description"
+  >
+    <title id="cheese-correlation-title">
+      Different holes stop this defect path
+    </title>
+    <desc id="cheese-correlation-description"
+      >Four defensive layers. A defect passes through the first two holes and is
+      stopped by the third layer. Toggle the shared blind spot to align all four
+      holes.</desc
+    >
+    {
+      positions.map((cy, index) => (
+        <g>
+          <rect
+            class="cheese-slice"
+            x={35 + index * 95}
+            y="26"
+            width="65"
+            height="152"
+            rx="7"
+          />
+          <ellipse
+            class="cheese-hole"
+            data-main-hole
+            cx={67.5 + index * 95}
+            cy={cy}
+            rx="24"
+            ry="17"
+          />
+          <circle
+            class="cheese-hole"
+            cx={55 + index * 95}
+            cy={cy > 120 ? 65 : 149}
+            r="8"
+          />
+          <text
+            class="cheese-svg-label"
+            x={67.5 + index * 95}
+            y="203"
+            text-anchor="middle"
+          >
+            {["Types", "Tests", "Review", "Staging"][index]}
+          </text>
+        </g>
+      ))
+    }
+    <path class="cheese-defect-path" data-defect-path d="M8 104 H225"></path>
+    <circle class="cheese-defect" cx="8" cy="104" r="6"></circle>
+    <path class="cheese-stop" data-defect-stop d="M218 97 l14 14 m0 -14 l-14 14"
+    ></path>
+    <path
+      class="cheese-defect-path cheese-hidden"
+      data-defect-arrow
+      d="M401 97 l11 7 l-11 7"></path>
+  </svg>
+  <div class="cheese-correlation-labels" aria-hidden="true">
+    <span>Types</span><span>Tests</span><span>Review</span><span>Staging</span>
+  </div>
+  <div class="cheese-correlation-result" aria-live="polite" aria-atomic="true">
+    <p class="cheese-correlation-metric">
+      <strong data-correlation-value>2.56%</strong><span
+        >escape before deploy</span
+      >
+    </p>
+    <p data-correlation-result>
+      Each layer misses 40%. Independent misses: 0.4 × 0.4 × 0.4 × 0.4 = 0.0256.
+    </p>
+    <p data-correlation-note>
+      This defect gets stopped. Other defects can still find a path through all
+      four layers.
+    </p>
+  </div>
+  <noscript
+    ><p>
+      If all four layers miss exactly the same 40% of defects, 40% get through,
+      even though no single layer got any worse.
+    </p></noscript
+  >
+  <figcaption>
+    A toy example with equal miss rates. Lined-up holes are the same wrong
+    assumption in code, tests, review, and staging, or in three AI reviewers
+    with the same prompt. Perfect correlation is the extreme case, not an
+    estimate for your team.
+  </figcaption>
+</figure>
+
+<script>
+  for (const figure of document.querySelectorAll<HTMLElement>(
+    "[data-cheese-correlation]",
+  )) {
+    const buttons = [
+      ...figure.querySelectorAll<HTMLButtonElement>("[data-aligned]"),
+    ];
+    const holes = [
+      ...figure.querySelectorAll<SVGEllipseElement>("[data-main-hole]"),
+    ];
+    const positions = holes.map((hole) => hole.getAttribute("cy") ?? "104");
+    const path = figure.querySelector<SVGPathElement>("[data-defect-path]");
+    const stop = figure.querySelector<SVGPathElement>("[data-defect-stop]");
+    const arrow = figure.querySelector<SVGPathElement>("[data-defect-arrow]");
+    const title = figure.querySelector("title");
+    const description = figure.querySelector("desc");
+    const result = figure.querySelector<HTMLElement>(
+      "[data-correlation-result]",
+    );
+    const value = figure.querySelector<HTMLElement>("[data-correlation-value]");
+    const note = figure.querySelector<HTMLElement>("[data-correlation-note]");
+    function select(aligned: boolean) {
+      buttons.forEach((button) =>
+        button.setAttribute(
+          "aria-pressed",
+          String((button.dataset.aligned === "true") === aligned),
+        ),
+      );
+      holes.forEach((hole, index) =>
+        hole.setAttribute("cy", aligned ? "104" : positions[index]),
+      );
+      path?.setAttribute("d", aligned ? "M8 104 H412" : "M8 104 H225");
+      stop?.classList.toggle("cheese-hidden", aligned);
+      arrow?.classList.toggle("cheese-hidden", !aligned);
+      if (title)
+        title.textContent = aligned
+          ? "Aligned holes let the defect pass every layer"
+          : "Different holes stop this defect path";
+      if (description)
+        description.textContent = aligned
+          ? "All four layers share a hole on the defect's path. The defect reaches the other side."
+          : "A defect passes through the first two holes and is stopped by the third layer.";
+      if (value) value.textContent = aligned ? "40%" : "2.56%";
+      if (result)
+        result.textContent = aligned
+          ? "Each layer still misses 40%. All four miss exactly the same defects."
+          : "Each layer misses 40%. Independent misses: 0.4 × 0.4 × 0.4 × 0.4 = 0.0256.";
+      if (note)
+        note.textContent = aligned
+          ? "Four checks, one shared assumption. For that blind spot, the extra checks add nothing."
+          : "This defect gets stopped. Other defects can still find a path through all four layers.";
+    }
+    buttons.forEach((button) => {
+      button.disabled = false;
+      button.addEventListener("click", () =>
+        select(button.dataset.aligned === "true"),
+      );
+    });
+    select(false);
+  }
+</script>

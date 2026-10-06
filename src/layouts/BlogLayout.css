@@ -1,17 +1,39 @@
+/* Open night: ink and ember map. In dark mode the card surfaces are
+   translucent black so the StarLayout starfield shows through. --map stays
+   solid because article visuals use it for fills and text. */
 .blog-detail-page {
-  --map: #e8e2c9;
-  --ink: #183f3a;
-  --line: #6e8c78;
-  --marker: #a9361c;
-  --pin: #e86138;
+  --map: #f2ecdd;
+  --surface: var(--map);
+  --panel: color-mix(in srgb, var(--map), white 55%);
+  --ink: #1d2747;
+  --line: #8790b5;
+  --edge: color-mix(in srgb, var(--ink), transparent 60%);
+  --marker: #b93d14;
+  --pin: #e8592a;
+  --shadow: #1d2747;
+}
+
+.dark .blog-detail-page {
+  --map: #07080d;
+  --surface: rgb(4 5 9 / 0.7);
+  --panel: rgb(4 5 9 / 0.8);
+  --ink: #f1e8d4;
+  --line: #3d4a78;
+  --edge: color-mix(in srgb, var(--ink), transparent 80%);
+  --marker: #ff8a4c;
+  --pin: #ff8a4c;
+  --shadow: #000;
 }
 
 .blog-detail-map {
-  border-color: color-mix(in srgb, var(--ink), transparent 58%);
-  background-image: linear-gradient(rgb(24 63 58 / 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(24 63 58 / 0.07) 1px, transparent 1px);
+  border-color: var(--edge);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px);
   background-size: 2rem 2rem;
-  box-shadow: 0.45rem 0.55rem 0 color-mix(in srgb, var(--ink), transparent 84%);
+  box-shadow:
+    0 0.35rem 0.8rem -0.35rem color-mix(in srgb, var(--shadow) 28%, transparent),
+    0 1.6rem 3rem -1.4rem color-mix(in srgb, var(--shadow) 42%, transparent);
 }
 
 .blog-detail-map::after {
@@ -20,19 +42,21 @@
   inset: 0;
   background: linear-gradient(
     105deg,
-    var(--map) 8%,
-    rgb(232 226 201 / 0.93) 53%,
+    var(--surface) 8%,
+    color-mix(in srgb, var(--surface) 93%, transparent) 53%,
     transparent 76%
   );
   content: "";
 }
 
+/* Contour rings warm from the line colour to the pin, like elevation bands. */
 .blog-detail-contours span {
   position: absolute;
   inset: calc(var(--ring-index, 0) * 7%);
-  border: 2px solid var(--line);
+  border: 2px solid
+    color-mix(in oklab, var(--line), var(--pin) calc(var(--ring-index, 0) * 22%));
   border-radius: 47% 53% 61% 39% / 41% 35% 65% 59%;
-  opacity: 0.62;
+  opacity: 0.75;
 }
 
 .blog-detail-contours span:nth-child(1) {
@@ -64,7 +88,9 @@
   border: 0.24rem solid var(--map);
   border-radius: 50%;
   background: var(--pin);
-  box-shadow: 0 0 0 2px var(--pin);
+  box-shadow:
+    0 0 0 2px var(--pin),
+    0 0 0 0.75rem color-mix(in srgb, var(--pin) 16%, transparent);
 }
 
 .blog-detail-meta {
@@ -90,20 +116,38 @@
 }
 
 .blog-detail-body {
-  border-color: color-mix(in srgb, var(--ink), transparent 68%);
-  background: linear-gradient(rgb(24 63 58 / 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(24 63 58 / 0.035) 1px, transparent 1px),
-    color-mix(in srgb, var(--map), white 48%);
+  border-color: var(--edge);
+  background:
+    linear-gradient(color-mix(in srgb, var(--ink) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ink) 4%, transparent) 1px, transparent 1px),
+    var(--panel);
   background-size: 2rem 2rem;
-  box-shadow: 0.35rem 0.45rem 0 color-mix(in srgb, var(--ink), transparent 90%);
+  box-shadow:
+    0 0.3rem 0.7rem -0.3rem color-mix(in srgb, var(--shadow) 22%, transparent),
+    0 1.4rem 2.8rem -1.5rem color-mix(in srgb, var(--shadow) 36%, transparent);
 }
 
 .blog-detail-body-label {
   border-color: color-mix(in srgb, var(--ink), transparent 70%);
 }
 
+.blog-detail-page ::selection {
+  background: color-mix(in srgb, var(--marker) 30%, transparent);
+  color: inherit;
+}
+
+.blog-detail-page :focus-visible {
+  outline: 2px solid var(--marker);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
 .blog-detail-prose {
   color: color-mix(in srgb, var(--ink), black 8%);
+}
+
+.dark .blog-detail-prose {
+  color: color-mix(in srgb, var(--ink), transparent 10%);
 }
 
 .blog-detail-prose :where(h1, h2, h3, h4) {
@@ -118,10 +162,37 @@
   scroll-margin-top: 7rem;
 }
 
+/* Section headings are waypoints on the reading route. */
+.blog-detail-prose :where(h2)::before {
+  display: inline-block;
+  width: 0.42em;
+  height: 0.42em;
+  margin-right: 0.55em;
+  border-radius: 50%;
+  background: var(--marker);
+  box-shadow: 0 0 0 0.16em color-mix(in srgb, var(--marker) 22%, transparent);
+  vertical-align: 0.18em;
+  content: "";
+}
+
 .blog-detail-prose :where(a) {
-  color: color-mix(in srgb, var(--marker), var(--ink) 28%);
+  color: var(--marker);
+  text-decoration-color: color-mix(in srgb, var(--marker) 50%, transparent);
   text-decoration-thickness: 0.08em;
-  text-underline-offset: 0.18em;
+  text-underline-offset: 0.2em;
+}
+
+.blog-detail-prose :where(a):hover {
+  text-decoration-color: var(--marker);
+  text-decoration-thickness: 0.14em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .blog-detail-prose :where(a) {
+    transition:
+      text-decoration-color 160ms ease-out,
+      text-decoration-thickness 160ms ease-out;
+  }
 }
 
 .blog-detail-prose :where(strong) {
@@ -138,6 +209,10 @@
   border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--map), white 30%);
   color: var(--ink);
+}
+
+.dark .blog-detail-prose :where(code):not(:where(pre code)) {
+  background: color-mix(in srgb, var(--ink) 8%, var(--map));
 }
 
 .blog-detail-prose :where(hr) {
@@ -161,35 +236,4 @@
 
 .blog-detail-prose :where(img, video, iframe) {
   max-width: 100%;
-}
-
-.dark .blog-detail-page {
-  --map: #172725;
-  --ink: #dbe8da;
-  --line: #668778;
-  --marker: #ff855e;
-  --pin: #ff855e;
-}
-
-.dark .blog-detail-map::after {
-  background: linear-gradient(
-    105deg,
-    var(--map) 8%,
-    rgb(23 39 37 / 0.94) 53%,
-    transparent 76%
-  );
-}
-
-.dark .blog-detail-body {
-  background: linear-gradient(rgb(219 232 218 / 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(219 232 218 / 0.035) 1px, transparent 1px),
-    color-mix(in srgb, var(--map), black 18%);
-}
-
-.dark .blog-detail-prose {
-  color: color-mix(in srgb, var(--ink), transparent 10%);
-}
-
-.dark .blog-detail-prose :where(code):not(:where(pre code)) {
-  background: color-mix(in srgb, var(--map), black 20%);
 }

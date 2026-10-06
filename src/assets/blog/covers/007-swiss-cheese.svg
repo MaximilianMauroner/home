@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -22.5 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Different blind spots can stop the same defect</title>
+  <desc id="desc">A coral defect passes through holes in three defense layers and hits the solid part of a fourth. A dashed deployment boundary separates a fifth runtime layer.</desc>
+  <rect y="-22.5" width="1200" height="675" fill="#121521"/>
+  <g fill="#e8d6a8" stroke="#a3abc2" stroke-width="2">
+    <rect x="170" y="140" width="135" height="350" rx="12"/>
+    <rect x="355" y="140" width="135" height="350" rx="12"/>
+    <rect x="540" y="140" width="135" height="350" rx="12"/>
+    <rect x="725" y="140" width="135" height="350" rx="12"/>
+    <rect x="970" y="140" width="135" height="350" rx="12" fill="#4d6491"/>
+  </g>
+  <g fill="#121521">
+    <ellipse cx="237" cy="315" rx="47" ry="39"/>
+    <ellipse cx="422" cy="315" rx="43" ry="39"/>
+    <ellipse cx="607" cy="315" rx="45" ry="39"/>
+    <ellipse cx="792" cy="220" rx="40" ry="34"/>
+    <ellipse cx="1037" cy="380" rx="43" ry="35"/>
+    <circle cx="211" cy="201" r="23"/><ellipse cx="261" cy="434" rx="19" ry="26"/>
+    <ellipse cx="450" cy="212" rx="19" ry="24"/><circle cx="393" cy="442" r="25"/>
+    <circle cx="579" cy="207" r="20"/><ellipse cx="630" cy="442" rx="22" ry="27"/>
+    <circle cx="766" cy="425" r="23"/><circle cx="829" cy="373" r="13"/>
+    <ellipse cx="1018" cy="214" rx="25" ry="30"/><circle cx="1064" cy="475" r="10"/>
+  </g>
+  <path d="M64 315H725" fill="none" stroke="#ff855e" stroke-width="7"/>
+  <circle cx="64" cy="315" r="13" fill="#ff855e"/>
+  <path d="m712 302 26 26m0-26-26 26" fill="none" stroke="#ff855e" stroke-width="7"/>
+  <path d="M913 100v430" fill="none" stroke="#a3abc2" stroke-width="2" stroke-dasharray="7 9"/>
+  <g font-family="Geist" font-size="40" text-anchor="middle" fill="#ece4d0">
+    <text x="237" y="548">Types</text><text x="422" y="548">Tests</text>
+    <text x="607" y="548">Review</text><text x="792" y="548">Staging</text>
+    <text x="1037" y="548">Runtime</text>
+    <text x="913" y="77" font-size="36" fill="#a3abc2">Deploy</text>
+  </g>
+</svg>

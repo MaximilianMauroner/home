@@ -1,0 +1,167 @@
+---
+import { layers } from "./model";
+import "./visuals.css";
+const holes = [
+  [
+    { x: 50, y: 37 },
+    { x: 32, y: 84 },
+    { x: 61, y: 108 },
+  ],
+  [
+    { x: 39, y: 32 },
+    { x: 55, y: 79 },
+    { x: 28, y: 109 },
+  ],
+  [
+    { x: 55, y: 42 },
+    { x: 34, y: 98 },
+    { x: 25, y: 68 },
+  ],
+  [
+    { x: 33, y: 47 },
+    { x: 53, y: 87 },
+    { x: 62, y: 22 },
+  ],
+  [
+    { x: 48, y: 29 },
+    { x: 30, y: 83 },
+    { x: 62, y: 111 },
+  ],
+];
+---
+
+<figure
+  class="cheese-figure not-prose"
+  data-cheese-layers
+  aria-label="Explore the five defensive layers"
+>
+  <div
+    class="cheese-layer-controls"
+    role="group"
+    aria-label="Choose a defensive layer"
+  >
+    {
+      layers.map((layer, index) => (
+        <button
+          type="button"
+          class:list={{ "cheese-runtime-layer": index === 4 }}
+          disabled
+          aria-pressed={index === 0 ? "true" : "false"}
+          aria-controls={`cheese-notes-${layer.id}`}
+          data-layer-index={index}
+        >
+          <svg viewBox="0 0 90 130" aria-hidden="true">
+            <rect
+              class="cheese-slice"
+              x="13"
+              y="7"
+              width="64"
+              height="116"
+              rx="7"
+            />
+            <ellipse
+              class="cheese-hole"
+              cx={holes[index][0].x}
+              cy={holes[index][0].y}
+              rx="13"
+              ry="11"
+            />
+            <ellipse
+              class="cheese-hole"
+              cx={holes[index][1].x}
+              cy={holes[index][1].y}
+              rx="10"
+              ry="14"
+            />
+            <circle
+              class="cheese-hole"
+              cx={holes[index][2].x}
+              cy={holes[index][2].y}
+              r="5"
+            />
+            <text class="cheese-number" x="45" y="66" text-anchor="middle">
+              {index + 1}
+            </text>
+          </svg>
+          <span class="cheese-layer-name">{layer.name}</span>
+          <span class="cheese-phase">{layer.phase}</span>
+          <span class="cheese-rate">{layer.catchRate}% catch</span>
+        </button>
+      ))
+    }
+  </div>
+  <p class="cheese-hint" data-layer-hint hidden>
+    Hover, focus, or tap a layer. The rates are made up, not measured.
+  </p>
+  <div class="cheese-layer-notes">
+    {
+      layers.map((layer) => (
+        <section
+          id={`cheese-notes-${layer.id}`}
+          data-layer-notes
+          aria-label={layer.name}
+        >
+          <h3>{layer.name}</h3>
+          <p class="cheese-rate">
+            {layer.phase} · d = {layer.catchRate}% · q = {100 - layer.catchRate}
+            %
+          </p>
+          <dl>
+            <div>
+              <>
+                <dt>Can catch</dt>
+                <dd>{layer.catches}</dd>
+              </>
+            </div>
+            <div>
+              <>
+                <dt>Can miss</dt>
+                <dd>{layer.misses}</dd>
+              </>
+            </div>
+          </dl>
+        </section>
+      ))
+    }
+  </div>
+  <figcaption>
+    Each slice has different gaps. Where the holes sit is just a sketch, and
+    their size doesn't mean anything.
+  </figcaption>
+</figure>
+
+<script>
+  for (const figure of document.querySelectorAll<HTMLElement>(
+    "[data-cheese-layers]",
+  )) {
+    const buttons = [
+      ...figure.querySelectorAll<HTMLButtonElement>("[data-layer-index]"),
+    ];
+    const notes = [
+      ...figure.querySelectorAll<HTMLElement>("[data-layer-notes]"),
+    ];
+    function select(index: number) {
+      buttons.forEach((button, i) =>
+        button.setAttribute("aria-pressed", String(i === index)),
+      );
+      notes.forEach((note, i) => {
+        note.hidden = i !== index;
+      });
+    }
+    buttons.forEach((button, index) => {
+      button.disabled = false;
+      button.addEventListener("pointerenter", (event) => {
+        if (
+          event.pointerType === "mouse" &&
+          !figure.contains(document.activeElement)
+        )
+          select(index);
+      });
+      button.addEventListener("focus", () => select(index));
+      button.addEventListener("click", () => select(index));
+    });
+    const hint = figure.querySelector<HTMLElement>("[data-layer-hint]");
+    if (hint) hint.hidden = false;
+    select(0);
+  }
+</script>

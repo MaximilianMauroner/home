@@ -112,11 +112,11 @@ const hasRelated = items.length > 0;
   }
 
   .content-related--blog {
-    --trail-accent: #a9361c;
-    --trail-surface: rgb(232 226 201 / 0.78);
-    --trail-ink: #183f3a;
-    --trail-muted: #45615a;
-    --trail-line: rgb(24 63 58 / 0.32);
+    --trail-accent: #b93d14;
+    --trail-surface: rgb(242 236 221 / 0.88);
+    --trail-ink: #1d2747;
+    --trail-muted: #4a5375;
+    --trail-line: rgb(29 39 71 / 0.22);
   }
 
   .content-related--log {
@@ -168,11 +168,17 @@ const hasRelated = items.length > 0;
   .content-related__card:hover .content-related__title { color: var(--trail-accent); }
 
   :global(.dark) .content-related--blog {
-    --trail-surface: rgb(23 39 37 / 0.88);
-    --trail-ink: #dbe8da;
-    --trail-muted: #9cb7aa;
-    --trail-line: rgb(219 232 218 / 0.25);
-    --trail-accent: #ff855e;
+    --trail-surface: rgb(4 5 9 / 0.78);
+    --trail-ink: #f1e8d4;
+    --trail-muted: #a6aecb;
+    --trail-line: rgb(241 232 212 / 0.2);
+    --trail-accent: #ff8a4c;
+  }
+
+  .content-related--blog .content-related__card:hover,
+  .content-related--blog .content-related__card:focus-visible {
+    box-shadow: 0 1rem 2rem -1.2rem
+      color-mix(in srgb, var(--trail-accent), transparent 55%);
   }
 
   :global(.dark) .content-related--log {

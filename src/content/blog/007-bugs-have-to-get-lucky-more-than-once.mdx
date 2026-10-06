@@ -1,0 +1,152 @@
+---
+layout: "@/layouts/BlogLayout.astro"
+title: "Bugs have to get lucky more than once"
+description: "Every check misses stuff. A bug only reaches production if all of them miss it, which is why I think AI code review needs different models with different prompts."
+tags: ["ai", "code-review", "software-quality", "testing", "developer-workflow"]
+type: "essay"
+published: true
+image: "/src/assets/blog/covers/007-swiss-cheese.webp"
+imageAlt: "A defect crosses holes in three defensive slices, then hits a solid fourth slice. A fifth runtime layer sits beyond the deployment boundary."
+releaseDate: 2026-10-06
+---
+
+import SwissCheeseLayers from "@/components/blog/swiss-cheese/SwissCheeseLayers.astro";
+import SwissCheeseProbability from "@/components/blog/swiss-cheese/SwissCheeseProbability.astro";
+import SwissCheeseCorrelation from "@/components/blog/swiss-cheese/SwissCheeseCorrelation.astro";
+
+I don't think the right question is “how do I make this check catch every bug?” No check does that. The question I care about is how many **different** chances a bug has to get caught before it reaches users.
+
+A type checker misses things. So do tests, code review, and staging. That's fine, as long as they miss different things, because a bug has to get past every single one of them to reach production. One layer catching it is enough.
+
+I've been thinking about this a lot with AI coding, because it's basically the reason I think AI code review only works when you use more than one: different models, different prompts, each one looking for different stuff. One model will miss things. That's expected. They just shouldn't all miss the same things.
+
+The idea isn't mine. It's the Swiss cheese model. In [James Reason's 2000 paper on human error](https://doi.org/10.1136/bmj.320.7237.768), defenses are slices with holes in them, and an accident happens when the holes line up and leave a path through the whole stack. I'm borrowing that picture for software. The math below is my own simplification, not a theorem about how real teams ship code.
+
+## The math
+
+Say we already have a defect. For layer _i_, **dᵢ** is the probability that it catches the defect and **qᵢ** the probability that it misses it:
+
+<div className="cheese-equation">qᵢ = 1 − dᵢ</div>
+
+If the misses are independent, the probability that the defect survives every layer before deployment is just the product:
+
+<div className="cheese-equation">
+  P(prod escape | defect exists) = ∏ᵢ qᵢ = q₁ × q₂ × … × qₙ
+</div>
+
+This only covers the layers **before** production. It's not the probability that a release contains a bug. That also depends on how many defects we introduce, what kind they are, and which checks even apply to them.
+
+The rates below are made up for one particular mix of defects. Plausible enough to think with, not benchmarks. A type checker catches basically none of a business-rule bug and almost all of a type mismatch, so there's no universal “tests catch 60%” number.
+
+| Layer                                 | Catch dᵢ | Miss qᵢ | Defects left of 10,000 |
+| :------------------------------------ | -------: | ------: | ---------------------: |
+| Types / static analysis               |      20% |     80% |                  8,000 |
+| Unit / integration tests              |      60% |     40% |                  3,200 |
+| Code review                           |      30% |     70% |                  2,240 |
+| Staging / end-to-end checks           |      50% |     50% |                  1,120 |
+| Canary / runtime checks, after deploy |      70% |     30% |                    336 |
+
+Before deployment, that gives:
+
+<div className="cheese-equation">
+  0.8 × 0.4 × 0.7 × 0.5 = 0.112 = <strong>11.2%</strong>
+</div>
+
+So 1,120 of the 10,000 defects reach deployment. Those are expected values for an imagined population, not a promise about your next 10,000 changes.
+
+Say a runtime check then detects 70% of the survivors within some observation window. That leaves 336 undetected: **0.112 × 0.3 = 3.36%** of the starting defects. But all 1,120 already reached production. Monitoring didn't prevent anything here. If someone actually acts on the alert, it limits how long the problem lasts and how many users see it. Still useful, just a different job.
+
+<SwissCheeseProbability />
+
+The part I like is what multiplication does to bad layers. A layer that misses half of everything still halves whatever the earlier layers let through. It doesn't need to be good. It needs to be there.
+
+Under this model the order doesn't matter for the final number either. In practice it does, because catching something earlier is usually less work and fewer people see it.
+
+## A bug that gets through anyway
+
+Here's a small one. A coupon is valid through 5 October in the customer's timezone. A customer in Los Angeles uses it at 20:00 on 5 October, with a UTC offset of −07:00. The server sees 03:00 UTC on 6 October.
+
+The code compares the UTC date with the coupon's last valid date and rejects the coupon. Every value is well formed and nothing crashes, which is exactly what makes it annoying. It just answers the wrong question.
+
+It's a made-up bug, but I can easily see it passing a pretty respectable set of checks.
+
+<SwissCheeseLayers />
+
+If both dates are plain strings, the type checker has nothing to say. If customer-local dates and timestamps are different types, it can catch the wrong value crossing that boundary. It still can't know what the product means by “valid through today”, though.
+
+A unit test can catch it with exactly that 20:00 checkout. Unless I calculate the expected value with the same UTC conversion as the code, in which case the test just agrees with my mistake. An integration test can then prove that the rejection reaches the checkout correctly, and still miss that the rejection is wrong.
+
+A human reviewer might trace the comparison back to the customer's rule and spot it right away. Or they see a clean helper, good names, green tests, and the same meaning of “today” that I had in my head.
+
+An AI reviewer has the same problem. If it only gets the diff and the helper looks clean, it will probably say the change looks fine. If I ask it specifically which timezone each date in this change belongs to, it has a much better chance. Same model, very different hole.
+
+Staging gets another chance if it has a non-UTC customer and a controlled clock near midnight. A smoke test at lunchtime on a UTC account tells us basically nothing about this bug.
+
+A canary might see more rejected coupons than usual. But only if it includes affected customers and someone looks at that number. A dashboard of successful HTTP responses can stay completely green while checkout does the wrong thing.
+
+And that last layer only helps if someone can act on it. An alert nobody responds to is evidence, not containment. Depending on the system that means stopping the rollout, disabling the broken coupon check, or rolling back (which also won't fix the orders that were already rejected).
+
+## Are the layers actually independent?
+
+Usually not, and that's the weak point of the math. In practice we often carry the same wrong assumption through every layer.
+
+For this coupon, “a day ends at UTC midnight” might be in the implementation, the test helper, the reviewer's head, and every staging account. Then four green checks are really one mistake confirmed four times.
+
+The exact rule uses **conditional** misses:
+
+<div className="cheese-equation">
+  P(all miss) = P(M₁) × P(M₂ | M₁) × P(M₃ | M₁, M₂) × …
+</div>
+
+Mᵢ means “layer _i_ misses the defect”. Multiplying the plain qᵢ values only works if independence makes these conditional probabilities equal to them. And once a defect has gotten past the first check, the ones that are left are often exactly the ones the next check is also bad at.
+
+A toy example: four layers that each miss 40% of defects. With independent misses, **0.4⁴ = 2.56%** get through. If every layer misses exactly the same 40%, **40%** get through.
+
+None of the individual rates changed. Only how their failures relate to each other.
+
+<SwissCheeseCorrelation />
+
+Real teams are somewhere in between. But shared assumptions can make the simple product way too optimistic, so I wouldn't take the slider result and call it a reliability number. What it's good for is making the assumption visible. After a bug escapes, the useful questions are which shared assumption let it through, and which layer could have questioned it.
+
+## Where AI review fits
+
+This is the part I actually care about.
+
+Having the same model that wrote the code also review it, with the same context, is basically asking it to grade its own homework. I don't think that's a second layer. It's the same slice looked at twice. Whatever wrong assumption the code has, the review probably has too, because it came from the same place.
+
+Running the same model three times with the same prompt isn't much better. You get some variation from sampling, but it's still the same model reading the same diff with the same instructions. That's a lot closer to the “same blind spot” case than to three independent checks.
+
+Different models and different prompts are where it starts to look like actual Swiss cheese. For example:
+
+- one pass checks the change against the ticket or spec, and nothing else
+- one only hunts for edge cases: timezones, rounding, money, permissions, empty states
+- one reviews only the tests and asks where every expected value came from
+- and a different model on top, because it was trained and tuned differently and will probably trip over different things
+
+With made-up numbers again: say one AI review pass catches 40% of the defects that are still there when it runs. One pass lets **60%** through. Three passes with different models and prompts, if their misses were independent, let **0.6³ = 21.6%** through. Three passes that share the same blind spot still let **60%** through.
+
+So how independent are different models really? Honest answer: I don't know, and I don't have a number for it. I'm pretty sure it isn't zero. A lot of them learned from similar code and similar docs. And if the ticket just says “valid through today” without a timezone, every reviewer that reads that ticket inherits the same hole, no matter which model it is. So the layering is the ideal case, not a guarantee.
+
+I still think it's the right setup. If you take the Swiss cheese idea seriously, AI review with different models and different prompts shouldn't be an optional extra. It should be a required layer, especially now that agents write more and more of the code. I already wrote a [short snack](/snacks/004-ai-coding/) about this: once agents write the code, reviewing it is what really matters.
+
+It doesn't replace human review either. It's more slices in front of it.
+
+The catch is noise. If every pass leaves twenty comments, people stop reading them (honestly, I would too), and then that slice is basically gone. So each prompt needs a narrow job, and a human still decides what actually matters.
+
+## What I would actually add
+
+Back to the first example. Making tests catch 65% instead of 60% moves the pre-deploy escape rate from **11.2% to 9.8%**:
+
+<div className="cheese-equation">0.8 × 0.35 × 0.7 × 0.5 = 0.098</div>
+
+Adding a different pre-deploy check that catches half of whatever is left takes it from **11.2% to 5.6%**. In this model that's a much bigger change. It's also a bigger claim, though: the new check has to catch half of the survivors, not half of some easier set of bugs it was measured on. And the numbers say nothing about what it costs.
+
+Same argument for AI review: I'd rather add a second reviewer with a different prompt than keep making the first prompt longer.
+
+For the coupon bug, I would rather add one boundary test whose expected result comes straight from the customer's rule than fifty more tests around the same UTC helper. What makes it different is where the expected answer comes from, not whether the test is called end-to-end.
+
+Some of this also happens before any check runs. If it's clear which timezone owns the expiry rule, conversions happen at obvious boundaries, and a date is stored as a date when that's what the rule means, the bug probably never gets written. That's prevention. Types, tests, review, and staging detect bugs before deployment. Canaries and monitoring detect and contain them after. Different jobs, so for any new layer I want to know which one it's supposed to do.
+
+More tooling doesn't answer that on its own. Two test suites with the same fixtures share the fixtures' blind spot. Two AI reviewers with the same prompt and the same context share most of theirs. Another layer is only worth it if it can stop something the others let through.
+
+So yeah, I don't need any of these layers to be perfect. I need them to be wrong about different things.

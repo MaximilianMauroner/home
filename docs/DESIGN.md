@@ -1,6 +1,6 @@
 ---
-name: Mauroner dev log and article covers
-description: Shared site backgrounds with forest article graphics and mint features.
+name: Mauroner dev log, blog pages, and article covers
+description: Shared site backgrounds. Dev log uses forest graphics and mint features; blog pages and blog covers use Open night ink and ember.
 colors:
   forest: "#172725"
   cream: "#edf5e9"
@@ -10,6 +10,15 @@ colors:
   mint: "#c1d6b9"
   image-field: "#234333"
   quote-field: "hsl(var(--muted))"
+  blog-paper: "#f2ecdd"
+  blog-ink: "#1d2747"
+  blog-contour: "#8790b5"
+  blog-marker: "#b93d14"
+  night-surface: "rgb(4 5 9 / 0.7)"
+  night-ink: "#f1e8d4"
+  night-contour: "#3d4a78"
+  ember: "#ff8a4c"
+  cover-ink: "#121521"
 typography:
   display:
     fontFamily: "Geist, sans-serif"
@@ -65,7 +74,7 @@ components:
 
 **Creative North Star: "Editorial spread"**
 
-This document covers the implemented dev-log surfaces and the shared blog and log cover direction. It records original A, selected by Max. It does not replace the design rules for unrelated site tools or pages.
+This document covers the implemented dev-log surfaces, the blog pages, and the blog and log cover direction. For the dev log it records original A, selected by Max. For blog pages and blog covers it records Open night (exploration `blog-spark`, node B2), selected by Max on 2026-10-06. Max rejected the forest green in dark mode and found a neutral grey boring. It does not replace the design rules for unrelated site tools or pages.
 
 The visual system uses clear type, shared site backgrounds, and direct graphic explanations. Forest artwork and mint feature panels add site color. The covers avoid the distressed print textures and generic AI illustration treatment rejected during exploration.
 
@@ -90,6 +99,17 @@ Mint identifies the latest-entry title panel. The image field and quote field se
 Cream carries headings and reading text. Sage carries metadata and descriptions. Divider separates archive rows.
 
 The dev-log archive and reading pages use the same StarLayout background as the blog. Their outer surface is transparent. Reading text, muted text, dividers, and quote backgrounds follow the shared light/dark theme tokens. Coral links use a darker rust tone in light mode. Forest stays within cover artwork and mint-panel text, not the page background.
+
+### Blog pages: Open night
+
+Blog pages keep the topographic map idea: a header card with contour rings and a pin, a reading panel on a fine grid, and a related trail. The goal is "polished with a little spark".
+
+- Light mode: navy ink on cream paper, periwinkle contours, rust-ember marker.
+- Dark mode: translucent near-black surfaces, so the StarLayout starfield shows faintly through the cards. Thin cream borders at 20% define the edges. Cream ink, blue contours, ember marker.
+- The spark: contour rings step from the contour colour to the pin colour, like elevation bands. The pin has a static halo. Each section heading (h2) has a small marker waypoint dot.
+- Polish: soft offset shadows with blur, not zero-blur block shadows. Text selection, link underlines, and focus rings use the marker colour. Card hover lifts slightly and gains an ember shadow.
+- `--map` stays solid because article visuals use it for fills and text. Translucent card backgrounds use `--surface` and `--panel`.
+- No continuous animation. Link and card transitions respect reduced motion.
 
 ## Typography
 
@@ -133,7 +153,7 @@ Use the quote field with inset padding. Keep quotation text upright and readable
 
 ### Article covers
 
-Use a simple diagram or graphic based on the article, forest backgrounds, cream panels, and coral accents. Brand logos and essential diagram labels are allowed when they explain the subject accurately. Do not put article headlines, subtitles, slogans, or footer branding inside the artwork. Use the full canvas for the visual.
+Use a simple diagram or graphic based on the article, with cream panels and coral accents. Blog covers use the cover-ink background (`#121521`) with slate-blue linework. Dev-log covers keep forest backgrounds. Brand logos and essential diagram labels are allowed when they explain the subject accurately. Do not put article headlines, subtitles, slogans, or footer branding inside the artwork. Use the full canvas for the visual.
 
 Show the real article title once as HTML: below the image in previews and above it on reading pages. Cover treatments have no subtitle. Descriptions remain available in content metadata, search data, and compact text-only archive rows. Show the whole cover without color filters or decorative overlays.
 
@@ -145,10 +165,12 @@ Store optimized WebP covers in `src/assets/blog/covers/` and `src/assets/log/cov
 
 - Do preserve original A for the dev-log archive and reading view.
 - Do base covers on the article content and the approved site palette.
+- Do use Open night for blog pages and blog covers in both themes.
 - Do preserve routes, tags, metadata, reading progress, and section links.
 
 ### Don't:
 
 - Don't restore hardware decoration or a separate solid-green page background.
+- Don't use forest green on blog pages, and don't replace it with a flat neutral grey.
 - Don't use distressed textures, glossy 3D scenes, or plain white title cards for this cover direction.
 - Don't turn this scoped system into rules for unrelated tools.
