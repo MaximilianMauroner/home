@@ -356,7 +356,7 @@ const PostList = ({
             </button>
           )}
           {selectedTag && (
-            <a href="/tags/">
+            <a href={tagHref(null)}>
               Browse all topics <Arrow />
             </a>
           )}
