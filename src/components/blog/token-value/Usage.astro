@@ -371,6 +371,7 @@ const tableRows = usage.map((row) => ({ ...row, price: effectivePrice(row) }));
         if (intelligence) {
           number.setAttribute("aria-describedby", "tv-value-units");
           if (data.tvIntelligenceExact) number.title = data.tvIntelligenceExact;
+          else number.removeAttribute("title");
         } else {
           number.removeAttribute("aria-describedby");
           number.removeAttribute("title");

@@ -91,13 +91,13 @@ for (const [path, load] of Object.entries(routes)) {
   });
 }
 
-toolPages.sort(
+const sortedTools = toolPages.toSorted(
   (first, second) =>
     second.featured - first.featured || first.title.localeCompare(second.title),
 );
 const sections = groups.map((group) => ({
   ...group,
-  tools: toolPages.filter((tool) => group.categories.includes(tool.category)),
+  tools: sortedTools.filter((tool) => group.categories.includes(tool.category)),
 }));
 const breadcrumbSchema = {
   "@context": "https://schema.org",

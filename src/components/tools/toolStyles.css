@@ -233,12 +233,6 @@
   --tool-accent-text: oklch(0.78 0.09 150);
 }
 
-.tool-accent-mark {
-  @apply block h-2.5 w-2.5;
-  border-radius: var(--radius-xs);
-  background-color: var(--tool-accent);
-}
-
 .tool-accent-text {
   color: var(--tool-accent-text);
 }

@@ -25,6 +25,7 @@ export const metrics = [
   ...individualMetrics,
 ] as const;
 export type Metric = (typeof metrics)[number]["id"];
+type BenchmarkScores = Record<(typeof individualMetrics)[number]["id"], number | null>;
 const referenceBenchmarks = benchmarks.filter((benchmark) =>
   mainModels.some((row) => row.id === benchmark.id),
 );
@@ -33,7 +34,7 @@ const scoreScales = individualMetrics.map((metric) => ({
   top: Math.max(...referenceBenchmarks.map((row) => row[metric.id] ?? 0)),
 }));
 
-export function benchmarkScore(row: (typeof benchmarks)[number], metric: Metric) {
+export function benchmarkScore(row: BenchmarkScores, metric: Metric) {
   if (metric !== "combined") return row[metric];
   let total = 0;
   for (const scale of scoreScales) {
