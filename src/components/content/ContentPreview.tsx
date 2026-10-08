@@ -46,6 +46,9 @@ export default function ContentPreview({
   imageUrl,
 }: ContentPreviewProps) {
   const details = familyDetails[family];
+  const coverStyle = family === "blog"
+    ? { viewTransitionName: `${titleTransitionId}-cover` }
+    : undefined;
   const date = releaseDate.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -67,9 +70,9 @@ export default function ContentPreview({
 
       <div className="content-preview__visual" aria-hidden="true">
         {image ? (
-          <div className="content-preview__image">{image}</div>
+          <div className="content-preview__image" style={coverStyle}>{image}</div>
         ) : imageUrl ? (
-          <img className="content-preview__image" src={imageUrl} alt="" />
+          <img className="content-preview__image" style={coverStyle} src={imageUrl} alt="" />
         ) : null}
         <div className="content-preview__motif" />
         <div className="content-preview__contours">

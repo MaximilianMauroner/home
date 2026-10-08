@@ -72,7 +72,7 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
           <span>{year} / {entryId}</span>
           {frontmatter.minutesRead && <span>{frontmatter.minutesRead}</span>}
         </div>
-        <h1 transition:name={titleTransitionName}>{frontmatter.title}</h1>
+        <h1 style={`view-transition-name: ${titleTransitionName};`}>{frontmatter.title}</h1>
         {frontmatter.tags && frontmatter.tags.length > 0 && <div class="log-reading-tags"><FontmatterTagsList tags={frontmatter.tags} /></div>}
         {articleModifiedTime !== releaseDate.toISOString() && <p class="log-updated">Updated <time datetime={articleModifiedTime}>{updatedDateLabel}</time></p>}
       </header>

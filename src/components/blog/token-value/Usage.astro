@@ -1,0 +1,398 @@
+---
+import {
+  mainModels,
+  usage,
+  totalTokens,
+  pricedValue,
+  billions,
+  percent,
+  money,
+  effectivePrice,
+  benchmarkValue,
+  metrics,
+} from "./model";
+import "./visuals.css";
+const pricedModels = mainModels.flatMap((row) => {
+  const price = effectivePrice(row);
+  const priceHigh = effectivePrice(row, "high");
+  return row.valueLow === null || price === null || priceHigh === null
+    ? [] : [{ ...row, valueLow: row.valueLow, price, priceHigh, intelligence: benchmarkValue(row) }];
+});
+const max = mainModels[0].total;
+const priceCeiling = Math.ceil(Math.max(...pricedModels.map((row) => row.priceHigh)) * 2) / 2;
+const largestValues = pricedModels.toSorted((a, b) => b.valueLow - a.valueLow).slice(0, 3);
+const valueBreakdown = [
+  ...largestValues.map((row) => ({ label: row.label, value: row.valueLow })),
+  { label: "All other priced entries", value: pricedValue - largestValues.reduce((sum, row) => sum + row.valueLow, 0) },
+];
+const scoredModels = pricedModels.flatMap((row) => row.intelligence === null ? [] : [{ ...row, intelligence: row.intelligence }]);
+const valueKing = scoredModels.toSorted((a, b) => a.intelligence.low - b.intelligence.low)[0];
+const valueInsight = valueKing
+  ? `${valueKing.label} has the lowest cost per combined score point among ${scoredModels.length} models with all six scores.`
+  : "No model has a recorded price and all six scores.";
+const comparisons = metrics.map((metric) => {
+  const rows = pricedModels.map((row) => ({ ...row, value: benchmarkValue(row, metric.id) }));
+  const scored = rows.flatMap((row) => row.value ? [{ ...row, value: row.value }] : []);
+  const winner = scored.toSorted((a, b) => a.value.low - b.value.low)[0];
+  return {
+    ...metric, rows, winner,
+    insight: winner
+      ? `${winner.label} has the lowest cost per ${metric.unit} among ${scored.length} scored models.`
+      : "No model has a recorded price and a score for this comparison.",
+  };
+});
+const tableRows = usage.map((row) => ({ ...row, price: effectivePrice(row) }));
+---
+
+<figure class="tv-figure not-prose" data-tv-usage data-tv-mode="tokens" data-tv-intelligence-insight={valueInsight} aria-label="Recorded token use by model">
+  <h3>Compare nine models in four views</h3>
+  <div class="tv-view-buttons" role="group" aria-label="Compare models by" data-tv-controls hidden>
+    <button type="button" data-tv-view="tokens" aria-pressed="true">Tokens<span>Recorded volume</span></button>
+    <button type="button" data-tv-view="value" aria-pressed="false">API dollars<span>Modeled total</span></button>
+    <button type="button" data-tv-view="price" aria-pressed="false">Cost / million<span>Recorded mix</span></button>
+    <button type="button" data-tv-view="intelligence" aria-pressed="false">Value / score<span>Combined or individual</span></button>
+  </div>
+  <div class="tv-control" data-tv-score-controls hidden>
+    <label for="tv-value-benchmark">Value benchmark</label>
+    <select id="tv-value-benchmark">
+      {metrics.map((metric) => <option value={metric.id}>{metric.label}</option>)}
+    </select>
+  </div>
+  {comparisons.map((comparison) => <template data-tv-comparison={comparison.id}
+    data-tv-unit={comparison.unit} data-tv-label={comparison.label}
+    data-tv-winner={comparison.winner?.id} data-tv-insight={comparison.insight}>
+    {comparison.rows.map((row) => <span data-tv-model-id={row.id}
+      data-tv-label={row.value ? money(row.value.low * 1000) : "—"}
+      data-tv-exact={row.value ? `$${row.value.low.toFixed(6)} per million tokens per ${comparison.unit}` : undefined}
+      data-tv-sort={row.value?.low ?? Infinity} data-tv-score={row.value?.score}>
+      {row.value ? `$${row.price.toFixed(3)} / M tokens ÷ ${comparison.shortLabel} ${row.value.score.toFixed(2)}` : "Missing benchmark scores"}
+    </span>)}
+  </template>)}
+  <div class="tv-budget" data-tv-value-breakdown hidden>
+    <div class="tv-budget-total"><strong class="tv-number">{money(pricedValue)}</strong><span>API-equivalent value, low bound.<br />All priced entries, including the smaller models.</span></div>
+    <div class="tv-budget-strip" aria-hidden="true">
+      {valueBreakdown.map((part, index) => <span class={`tv-budget-part-${index}`} style={`width:${part.value / pricedValue * 100}%`} />)}
+    </div>
+    <dl class="tv-budget-key">
+      {valueBreakdown.map((part, index) => <div><dt><i class={`tv-budget-part-${index}`} aria-hidden="true" />{part.label}</dt><dd>{money(part.value)} · {percent(part.value / pricedValue * 100)}</dd></div>)}
+    </dl>
+  </div>
+  <p class="tv-note" data-tv-rank-context aria-live="polite" aria-atomic="true" hidden></p>
+  <div class="tv-legend" data-tv-token-legend aria-hidden="true">
+    <span><i class="tv-key"></i>Cache reads</span>
+    <span><i class="tv-key tv-key-fresh"></i>Fresh input</span>
+    <span><i class="tv-key tv-key-write"></i>Cache writes</span>
+    <span>Output is too small to see at this scale</span>
+  </div>
+  <div class="tv-legend" data-tv-price-legend hidden>
+    <span><i class="tv-key tv-key-costlier" aria-hidden="true"></i>Up: costlier rank</span>
+    <span><i class="tv-key tv-key-cheaper" aria-hidden="true"></i>Down: cheaper rank</span>
+    <span>Lower cost per million is better.</span>
+  </div>
+  <div class="tv-legend" data-tv-intelligence-legend hidden>
+    <span><i class="tv-key tv-key-cheaper" aria-hidden="true"></i>Up: better value rank</span>
+    <span><i class="tv-key tv-key-costlier" aria-hidden="true"></i>Down: worse value rank</span>
+    <span>Best first. Lower ratio is better.</span>
+  </div>
+  <p class="tv-value-units" id="tv-value-units" data-tv-intelligence-units hidden>
+    Dollars per <strong>BILLION tokens</strong>
+    <span data-tv-score-unit>per combined score point</span>
+  </p>
+  <div data-tv-rows>
+  {
+    pricedModels.map((row) => (
+      <div class:list={["tv-usage-row", { "tv-value-king": row.id === valueKing?.id }]}
+        data-tv-model-id={row.id}
+        data-tv-token-label={`${billions(row.total)} · ${percent((row.total / totalTokens) * 100)}`}
+        data-tv-value-label={`${money(row.valueLow)} · ${percent((row.valueLow / pricedValue) * 100)}`}
+        data-tv-price-label={`$${row.price.toFixed(3)}${row.priceHigh.toFixed(3) !== row.price.toFixed(3) ? `–$${row.priceHigh.toFixed(3)}` : ""} / M tokens`}
+        data-tv-intelligence-label={row.intelligence ? money(row.intelligence.low * 1000) : "—"}
+        data-tv-intelligence-exact={row.intelligence ? `$${row.intelligence.low.toFixed(6)} per million tokens per combined score point` : undefined}
+        data-tv-token-width={(row.total / max) * 100}
+        data-tv-value-sort={row.valueLow}
+        data-tv-price-sort={row.price}
+        data-tv-intelligence-sort={row.intelligence?.low ?? Infinity}
+        data-tv-intelligence-score={row.intelligence?.score}
+      >
+        <div class="tv-row-label">
+          <div class="tv-model-label">
+            <span class="tv-row-rank" data-tv-row-rank hidden></span>
+            <strong>{row.label}</strong>
+            <span class="tv-value-king-label" data-tv-value-king hidden>VALUE KING</span>
+            <span class="tv-rank-change" data-tv-rank-change hidden></span>
+          </div>
+            <span class="tv-number" data-tv-row-number>
+              {billions(row.total)} · {percent((row.total / totalTokens) * 100)}
+            </span>
+        </div>
+        <p class="tv-value-inputs" data-tv-intelligence-inputs hidden>
+          {row.intelligence ? `$${row.price.toFixed(3)} / M tokens ÷ Combined ${row.intelligence.score.toFixed(2)}` : "Missing benchmark scores"}
+        </p>
+        <div class="tv-track" data-tv-token-track aria-hidden="true">
+          <div class="tv-stack" data-tv-stack style={`width:${(row.total / max) * 100}%`}>
+            <span
+              class="tv-cached"
+              style={`width:${(row.cached / row.total) * 100}%`}
+            />
+            <span
+              class="tv-uncached"
+              style={`width:${(row.uncached / row.total) * 100}%`}
+            />
+            <span
+              class="tv-write"
+              style={`width:${((row.write5m + row.write1h + row.writeUnknown) / row.total) * 100}%`}
+            />
+            <span
+              class="tv-output"
+              style={`width:${(row.output / row.total) * 100}%`}
+            />
+          </div>
+        </div>
+        <div class="tv-price-plot" data-tv-price-plot hidden aria-hidden="true">
+          <span class="tv-price-range" style={`left:${row.price / priceCeiling * 100}%;width:${(row.priceHigh - row.price) / priceCeiling * 100}%`} />
+          <i class="tv-price-dot" style={`left:${row.price / priceCeiling * 100}%`} />
+        </div>
+      </div>
+    ))
+  }
+  </div>
+  <div class="tv-price-axis tv-number" data-tv-price-axis hidden aria-hidden="true">
+    {[0, 1, 2, 3].map((step) => <span>${(priceCeiling * step / 3).toFixed(2)}</span>)}
+  </div>
+  <p class="tv-insight" data-tv-usage-insight aria-live="polite" aria-atomic="true">
+    Luna accounts for 12.9% of all recorded tokens and 0.8% of the low-bound API estimate.
+  </p>
+  <p class="tv-note" data-tv-value-note hidden>
+    The dollar strip shows the three largest low-bound API estimates and groups
+    all other priced entries together. The list ranks the nine main models.
+    Both use all priced entries to calculate their shares.
+    Three unpriced entries stay in the token total. Token and total-dollar views sort from largest to smallest.
+  </p>
+  <p class="tv-note" data-tv-price-note hidden>
+    Cost per million = low-bound API-equivalent value ÷ recorded tokens × 1,000,000.
+    Includes the recorded mix of cached input, fresh input, cache writes, and output.
+    Sorted from highest to lowest; these are workload prices, not advertised input rates.
+    Every dot uses the same zero-based dollar scale. Dots mark the low price bound; short lines retain the high bound.
+    Movement compares rankings between views, not changes to model prices.
+  </p>
+  <details data-tv-intelligence-note hidden>
+    <summary>How the value ranking is calculated</summary>
+    <p class="tv-note">
+      Recorded cost per million tokens ÷ selected score. The display uses <strong>BILLION tokens</strong>
+      so the numbers are easier to read. VALUE KING marks the lowest low-bound ratio.
+      Combined scores average six measures after setting each measure’s highest score in this group to 100.
+      All six scores are required. Individual views use the original benchmark points.
+      Scores and price ranges are in the <a href="#comparing-model-prices-and-benchmark-scores">benchmark section</a>.
+    </p>
+  </details>
+  <details>
+    <summary>Exact counts and API-equivalent values</summary>
+    <div
+      class="tv-table-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="Token use and price data"
+    >
+      <table>
+        <thead
+          ><tr
+            ><th scope="col">Model</th><th scope="col">Tokens</th><th
+              scope="col">Cache reads</th
+            ><th scope="col">API value</th><th scope="col">$/M tokens</th></tr
+          ></thead
+        >
+        <tbody
+          >{
+            tableRows.map((row) => (
+              <tr>
+                  <th scope="row">{row.label}</th>
+                  <td>{row.total.toLocaleString("en-US")}</td>
+                  <td>{percent((row.cached / row.total) * 100)}</td>
+                  <td>
+                    {row.valueLow === null
+                      ? "Unpriced"
+                      : `${money(row.valueLow)}–${money(row.valueHigh)}`}
+                  </td>
+                  <td>
+                    {row.price === null ? "—" : money(row.price)}
+                  </td>
+              </tr>
+            ))
+          }</tbody
+        >
+      </table>
+    </div>
+  </details>
+</figure>
+
+<script>
+  const figure = document.querySelector<HTMLElement>("[data-tv-usage]");
+  const buttons = figure?.querySelectorAll<HTMLButtonElement>("[data-tv-view]");
+  if (figure && buttons?.length) {
+    const rows = Array.from(figure.querySelectorAll<HTMLElement>(".tv-usage-row"));
+    const rowsContainer = figure.querySelector<HTMLElement>("[data-tv-rows]")!;
+    const insight = figure.querySelector<HTMLElement>("[data-tv-usage-insight]");
+    const rankContext = figure.querySelector<HTMLElement>("[data-tv-rank-context]")!;
+    const scoreChoice = figure.querySelector<HTMLSelectElement>("#tv-value-benchmark")!;
+    const comparisons = new Map(Array.from(figure.querySelectorAll<HTMLTemplateElement>("[data-tv-comparison]"))
+      .map((template) => [template.dataset.tvComparison!, template]));
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const timing = { duration: 280, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" };
+    const views = new Map([
+      ["tokens", {
+        label: "Recorded token use by model", rankLabel: "token",
+        numberKey: "tvTokenLabel",
+        sortKey: "tvTokenWidth", sortOrder: -1,
+        insight: "Luna accounts for 12.9% of all recorded tokens and 0.8% of the low-bound API estimate.",
+      }],
+      ["value", {
+        label: "API-equivalent value by model", rankLabel: "dollar",
+        numberKey: "tvValueLabel",
+        sortKey: "tvValueSort", sortOrder: -1,
+        insight: "Luna accounts for 12.9% of all recorded tokens and 0.8% of the low-bound API estimate.",
+      }],
+      ["price", {
+        label: "Cost per million recorded tokens by model", rankLabel: "price",
+        numberKey: "tvPriceLabel",
+        sortKey: "tvPriceSort", sortOrder: -1,
+        insight: "Astra costs about seven times as much per million recorded tokens as GPT-6.1 Sol. This view removes volume from the comparison, but each model still has its own token mix.",
+      }],
+      ["intelligence", {
+        label: "Recorded token cost relative to benchmark scores, best value first", rankLabel: "value ratio",
+        numberKey: "tvIntelligenceLabel",
+        sortKey: "tvIntelligenceSort", sortOrder: 1,
+        insight: figure.dataset.tvIntelligenceInsight!,
+      }],
+    ]);
+    let currentMode = "tokens";
+    let previousOrder = "token";
+    const capturePositions = () => new Map(rows.map((row) => [row, row.getBoundingClientRect().top]));
+    const cancelAnimations = () => {
+      rows.forEach((row) => {
+        row.getAnimations?.().forEach((animation) => animation.cancel());
+      });
+    };
+    const applyComparison = (comparison: HTMLTemplateElement) => {
+      comparison.content.querySelectorAll<HTMLElement>("[data-tv-model-id]").forEach((value) => {
+        const row = rows.find((row) => row.dataset.tvModelId === value.dataset.tvModelId)!;
+        row.dataset.tvIntelligenceLabel = value.dataset.tvLabel!;
+        row.dataset.tvIntelligenceSort = value.dataset.tvSort!;
+        if (value.dataset.tvScore === undefined) {
+          delete row.dataset.tvIntelligenceScore;
+          delete row.dataset.tvIntelligenceExact;
+        } else {
+          row.dataset.tvIntelligenceScore = value.dataset.tvScore;
+          row.dataset.tvIntelligenceExact = value.dataset.tvExact;
+        }
+        row.classList.toggle("tv-value-king", row.dataset.tvModelId === comparison.dataset.tvWinner);
+        row.querySelector<HTMLElement>("[data-tv-value-king]")!.hidden = row.dataset.tvModelId !== comparison.dataset.tvWinner;
+        const inputs = row.querySelector<HTMLElement>("[data-tv-intelligence-inputs]")!;
+        inputs.textContent = value.textContent!.trim();
+        inputs.hidden = value.dataset.tvScore === undefined;
+      });
+      figure.querySelector<HTMLElement>("[data-tv-score-unit]")!.textContent = `per ${comparison.dataset.tvUnit}`;
+    };
+    const update = (mode: string, scoreChanged = false) => {
+      const view = views.get(mode);
+      if (!view || (mode === currentMode && !scoreChanged)) return;
+      // Capture the current visual position before cancelling an interrupted move.
+      const before = capturePositions();
+      cancelAnimations();
+      const previousRanks = new Map(Array.from(rowsContainer.children).map((row, index) => [row, index]));
+      const previouslyUnranked = new Set(currentMode === "intelligence"
+        ? rows.filter((row) => row.dataset.tvIntelligenceScore === undefined) : []);
+      const intelligence = mode === "intelligence";
+      const comparison = comparisons.get(scoreChoice.value)!;
+      if (intelligence) {
+        applyComparison(comparison);
+      } else {
+        figure.querySelectorAll<HTMLElement>("[data-tv-value-king], [data-tv-intelligence-inputs]").forEach((element) => { element.hidden = true; });
+      }
+      figure.dataset.tvMode = mode;
+      buttons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.tvView === mode)));
+      figure.setAttribute("aria-label", view.label);
+      figure.querySelector<HTMLElement>("[data-tv-token-legend]")!.hidden = mode !== "tokens";
+      figure.querySelector<HTMLElement>("[data-tv-price-legend]")!.hidden = mode !== "price";
+      figure.querySelector<HTMLElement>("[data-tv-intelligence-legend]")!.hidden = !intelligence;
+      figure.querySelector<HTMLElement>("[data-tv-value-note]")!.hidden = mode !== "value";
+      figure.querySelector<HTMLElement>("[data-tv-price-note]")!.hidden = mode !== "price";
+      figure.querySelector<HTMLElement>("[data-tv-intelligence-note]")!.hidden = !intelligence;
+      figure.querySelector<HTMLElement>("[data-tv-intelligence-units]")!.hidden = !intelligence;
+      figure.querySelector<HTMLElement>("[data-tv-score-controls]")!.hidden = !intelligence;
+      figure.querySelector<HTMLElement>("[data-tv-value-breakdown]")!.hidden = mode !== "value";
+      figure.querySelector<HTMLElement>("[data-tv-price-axis]")!.hidden = mode !== "price";
+      figure.querySelectorAll<HTMLElement>("[data-tv-token-track]").forEach((track) => { track.hidden = mode !== "tokens"; });
+      figure.querySelectorAll<HTMLElement>("[data-tv-price-plot]").forEach((plot) => { plot.hidden = mode !== "price"; });
+      const sortedRows = rows.toSorted((a, b) => view.sortOrder * (Number(a.dataset[view.sortKey]) - Number(b.dataset[view.sortKey])));
+      rowsContainer.append(...sortedRows);
+      sortedRows.forEach((row, index) => {
+        const rank = row.querySelector<HTMLElement>("[data-tv-row-rank]")!;
+        rank.textContent = String(index + 1);
+        rank.hidden = !intelligence || row.dataset.tvIntelligenceScore === undefined;
+        const previousRank = previousRanks.get(row)!;
+        const movement = previousRank - index;
+        const badge = row.querySelector<HTMLElement>("[data-tv-rank-change]")!;
+        const direction = movement > 0 ? "up" : "down";
+        badge.textContent = movement === 0 ? "Same rank" : `${movement > 0 ? "Up" : "Down"} ${Math.abs(movement)}`;
+        let outcome = "neutral";
+        let interpretation = "";
+        if ((mode === "price" || intelligence) && movement !== 0) {
+          const better = intelligence ? movement > 0 : movement < 0;
+          outcome = better ? "better" : "worse";
+          interpretation = intelligence
+            ? `, toward the ${better ? "better" : "worse"} value end`
+            : `, toward the ${better ? "cheaper" : "more expensive"} end`;
+        }
+        const unranked = intelligence && row.dataset.tvIntelligenceScore === undefined;
+        const newlyRanked = intelligence && !unranked && previouslyUnranked.has(row);
+        if (unranked) {
+          badge.textContent = "Unranked";
+          outcome = "neutral";
+        } else if (newlyRanked) {
+          badge.textContent = "Now ranked";
+          outcome = "neutral";
+        }
+        badge.dataset.outcome = outcome;
+        badge.setAttribute("aria-label", movement === 0
+          ? `Unchanged at rank ${index + 1}`
+          : `Moved ${direction} ${Math.abs(movement)} ${Math.abs(movement) === 1 ? "place" : "places"}, from rank ${previousRank + 1} to rank ${index + 1}${interpretation}`);
+        if (unranked) badge.setAttribute("aria-label", "Unranked: missing scores for this comparison");
+        if (newlyRanked) badge.setAttribute("aria-label", `Now ranked at ${index + 1}; the previous comparison was missing scores`);
+        badge.hidden = false;
+      });
+      rankContext.textContent = `Rank changes compared with the ${previousOrder} order.`;
+      rankContext.hidden = false;
+      previousOrder = intelligence ? `${comparison.dataset.tvLabel} value` : view.rankLabel;
+      currentMode = mode;
+      rows.forEach((row) => {
+        const data = row.dataset;
+        const number = row.querySelector<HTMLElement>("[data-tv-row-number]")!;
+        number.textContent = data[view.numberKey]!;
+        if (intelligence) {
+          number.setAttribute("aria-describedby", "tv-value-units");
+          if (data.tvIntelligenceExact) number.title = data.tvIntelligenceExact;
+          else number.removeAttribute("title");
+        } else {
+          number.removeAttribute("aria-describedby");
+          number.removeAttribute("title");
+        }
+      });
+      if (insight) insight.textContent = intelligence ? comparison.dataset.tvInsight! : view.insight;
+      // Read all final positions together, then animate transforms only.
+      const after = capturePositions();
+      if (!reducedMotion.matches) rows.forEach((row) => {
+        const distance = before.get(row)! - after.get(row)!;
+        if (distance !== 0) row.animate?.([
+          { transform: `translateY(${distance}px)` },
+          { transform: "translateY(0)" },
+        ], timing);
+      });
+    };
+    reducedMotion.addEventListener("change", () => { if (reducedMotion.matches) cancelAnimations(); });
+    figure.querySelector<HTMLElement>("[data-tv-controls]")!.hidden = false;
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => update(button.dataset.tvView!));
+    });
+    scoreChoice.addEventListener("change", () => update("intelligence", true));
+  }
+</script>

@@ -1,0 +1,68 @@
+---
+import { mainModels, effectivePrice, uncachedPrice, money } from "./model";
+import "./visuals.css";
+const rows = mainModels.flatMap((row) => {
+  const advertised = uncachedPrice(row);
+  const low = effectivePrice(row);
+  const high = effectivePrice(row, "high");
+  if (advertised === null || low === null || high === null) return [];
+  const savingLow = Math.round((1 - high / advertised) * 100);
+  const savingHigh = Math.round((1 - low / advertised) * 100);
+  return [{ label: row.label, advertised, low, high, savingLow, savingHigh }];
+});
+const priceCeiling = Math.ceil(Math.max(...rows.map((row) => row.advertised)) / 4) * 4;
+---
+
+<figure
+  class="tv-figure tv-real-work not-prose"
+  aria-label="Uncached list price versus effective price for the recorded workload"
+>
+  <h3>Prices with and without cache</h3>
+  <p>
+    Dollars per <strong>MILLION total tokens</strong>. Both prices keep each model’s recorded
+    input/output proportions.
+  </p>
+  <div class="tv-legend">
+    <span><i class="tv-dot-key tv-dot-key-uncached" aria-hidden="true"></i>All input uncached</span>
+    <span><i class="tv-dot-key" aria-hidden="true"></i>Recorded mix · low/high bounds</span>
+  </div>
+  <p class="tv-note">Every row uses the same dollar scale, from $0 to {money(priceCeiling)}. The gap joins two modeled prices for the same token mix.</p>
+  {
+    rows.map((row) => (
+        <div class="tv-cost-row">
+          <div class="tv-row-label">
+              <strong>{row.label}</strong>
+              <span class="tv-cost-reduction">
+                {row.savingLow}
+                {row.savingHigh !== row.savingLow && `–${row.savingHigh}`}% lower
+              </span>
+          </div>
+          <dl class="tv-cost-prices">
+            <div><dt>Uncached</dt><dd class="tv-number">{money(row.advertised)}</dd></div>
+            <div><dt>Recorded mix</dt><dd class="tv-number">{money(row.low)}{money(row.high) !== money(row.low) && `–${money(row.high)}`}</dd></div>
+          </dl>
+          <div class="tv-dumbbell" aria-hidden="true">
+            <span class="tv-dumbbell-line" style={`left:${row.low / priceCeiling * 100}%;width:${(row.advertised - row.low) / priceCeiling * 100}%`} />
+            <span class="tv-dumbbell-range" style={`left:${row.low / priceCeiling * 100}%;width:${(row.high - row.low) / priceCeiling * 100}%`} />
+            <i class="tv-dumbbell-dot tv-dumbbell-recorded" style={`left:${row.low / priceCeiling * 100}%`} />
+            <i class="tv-dumbbell-dot tv-dumbbell-uncached" style={`left:${row.advertised / priceCeiling * 100}%`} />
+          </div>
+        </div>
+    ))
+  }
+  <div class="tv-price-axis tv-number" aria-hidden="true">
+    {[0, 1, 2, 3, 4].map((step) => <span>{money(priceCeiling * step / 4)}</span>)}
+  </div>
+  <details>
+    <summary>Prices and calculation</summary>
+    <p class="tv-note">
+      The uncached comparison uses base input and output list prices from the CSV.
+      The recorded mix uses its API-value low/high bounds, including reported
+      cache writes and recoverable long-context premiums. Ember dots mark the low bound;
+      the heavier ember marks extend to the high bound.
+      Missing Codex cache-write uplift, speed premiums, residency uplifts, and
+      tool fees are excluded. These are modeled API prices, not subscription
+      charges or measured savings against a real uncached run.
+    </p>
+  </details>
+</figure>

@@ -1,67 +1,109 @@
 ---
-import "@/components/tools/toolStyles.css";
 import StarLayout from "@/layouts/StarLayout.astro";
+import DirectoryArt from "@/components/tools/DirectoryArt.astro";
+import "@/components/tools/directory.css";
 import { serializeJsonLd } from "@/utils/server/seo";
 import {
   requireToolMetadata,
   isToolActive,
 } from "@/components/tools/toolCatalog";
-import { getToolThemeClass } from "@/components/tools/toolTheme";
 
-const tools = import.meta.glob("./*/*.astro");
+const groups = [
+  {
+    id: "music",
+    title: "Music & sound",
+    description: "Playlists, listening habits, and audio checks.",
+    categories: ["music", "audio"],
+  },
+  {
+    id: "visual",
+    title: "Photos & design",
+    description: "Photo routes and colour perception.",
+    categories: ["photo", "design"],
+  },
+  {
+    id: "data",
+    title: "Data & reading",
+    description: "Chat habits and a tidier reading library.",
+    categories: ["data", "reading"],
+  },
+  {
+    id: "movement",
+    title: "Movement",
+    description: "Running calculations and stretching routines.",
+    categories: ["fitness"],
+  },
+  {
+    id: "ai",
+    title: "AI experiments",
+    description: "Explore opinions and the effects of AI on work.",
+    categories: ["reflection", "simulation"],
+  },
+];
+
+const routes = import.meta.glob<{
+  title: string;
+  description: string;
+  active?: boolean;
+}>("./*/*.astro");
 const toolPages = [];
+const accountLabels: Record<string, string> = {
+  leaveify: "Spotify + TIDAL accounts",
+  "readwise-tags-mapper": "Readwise token",
+  "spotify-stats": "Spotify account · export file",
+};
 
-for (const path in tools) {
-  const tool = (await tools[path]()) as {
-    title: string;
-    description: string;
-    active?: boolean;
-  };
-  const url = path.replace("src/pages", "").replace("/index.astro", "");
-  const slug = url.split("/").filter(Boolean).pop() ?? "";
+for (const [path, load] of Object.entries(routes)) {
+  const tool = await load();
+  const slug = path.split("/")[1];
   if (tool.active === false || !isToolActive(slug)) continue;
   const metadata = requireToolMetadata(slug);
-  const chips = Array.from(
-    new Set(
-      [
-        metadata.category,
-        metadata.privacy === "account"
-          ? "account required"
-          : metadata.privacy === "local"
-            ? "local"
-            : metadata.privacy,
-        metadata.access !== "local" ? metadata.access : undefined,
-        ...metadata.labels,
-      ].filter((label): label is string => Boolean(label)),
-    ),
+  const group = groups.find((group) =>
+    group.categories.includes(metadata.category),
   );
+  if (!group) {
+    throw new Error(`Missing directory group for "${slug}".`);
+  }
+  const access =
+    metadata.privacy === "account"
+      ? (accountLabels[slug] ?? metadata.access)
+      : metadata.labels.includes("microphone permission")
+        ? "Microphone permission · no account"
+        : metadata.access.includes("file")
+          ? "Local files · no account"
+          : "No account needed";
   toolPages.push({
-    title: tool.title,
-    description: tool.description,
-    url: `/tools/${slug}/`,
-    slug,
+    ...tool,
     ...metadata,
-    chips,
+    slug,
+    url: `/tools/${slug}/`,
+    access,
+    search: [
+      tool.title,
+      tool.description,
+      group.title,
+      metadata.category,
+      ...metadata.tags,
+      ...metadata.labels,
+    ]
+      .join(" ")
+      .toLocaleLowerCase(),
   });
 }
 
-toolPages.sort((first, second) => {
-  if (second.featured !== first.featured) {
-    return second.featured - first.featured;
-  }
-  return first.title.localeCompare(second.title);
-});
-
+const sortedTools = toolPages.toSorted(
+  (first, second) =>
+    second.featured - first.featured || first.title.localeCompare(second.title),
+);
+const sections = groups.map((group) => ({
+  ...group,
+  tools: sortedTools.filter((tool) => group.categories.includes(tool.category)),
+}));
 const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   itemListElement: [
-    {
-      "@type": "ListItem",
-      position: 1,
-      name: "Home",
-      item: Astro.site,
-    },
+    { "@type": "ListItem", position: 1, name: "Home", item: Astro.site },
     {
       "@type": "ListItem",
       position: 2,
@@ -70,81 +112,146 @@ const breadcrumbSchema = {
     },
   ],
 };
-
-const toolCount = toolPages.length;
-const categories = Array.from(new Set(toolPages.map((tool) => tool.category)));
 ---
 
-<StarLayout
-  title="Tools"
-  description="A collection of useful tools and utilities I've built"
->
-  <script
-    slot="head"
-    is:inline
-    type="application/ld+json"
-    set:html={serializeJsonLd(breadcrumbSchema)}
-  />
-  <section class="tools-shell">
-    <div class="tool-page-header">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div class="space-y-2">
-          <h1 class="tool-page-title">Tools</h1>
-          <p class="tool-page-description">
-            Small utilities and experiments built for repeat use.
-          </p>
+<StarLayout title="Tools" description="Tools I've built for music, photos, personal data, movement, and AI experiments.">
+  <script slot="head" is:inline type="application/ld+json" set:html={serializeJsonLd(breadcrumbSchema)} />
+  <div class="tool-directory" data-tool-directory>
+    <header class="directory-heading">
+      <div>
+        <h1>Tools<span class="directory-title-mark" aria-hidden="true">.</span></h1>
+        <p>Small utilities and experiments built for repeat use.</p>
+      </div>
+      <div class="directory-search" data-search-controls hidden>
+        <label for="tool-search">Find a tool</label>
+        <div class="directory-search-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
+          <input id="tool-search" type="search" placeholder="Photos, Spotify, running…" autocomplete="off" aria-controls="directory-groups" />
         </div>
-        <p class="text-sm font-medium text-muted-foreground">
-          {toolCount} tool{toolCount === 1 ? "" : "s"}
-        </p>
+        <label class="directory-account-filter"><input type="checkbox" data-no-account /> No account needed</label>
       </div>
-      <div class="mt-4 flex flex-wrap gap-2">
-        {
-          categories.map((category) => (
-            <span class="rounded-full border border-border/70 px-3 py-1 font-mono text-xs uppercase tracking-wider text-muted-foreground">
-              {category}
-            </span>
-          ))
-        }
-      </div>
+    </header>
+
+    <div class="directory-browse">
+      <nav aria-label="Tool categories">
+        {sections.map((group) => (
+          <a href={`#${group.id}`} class={`directory-category-link directory-${group.id}`} data-category-link={group.id}>
+            <span class="directory-dot" aria-hidden="true" />
+            <span>{group.title}</span>
+            <span class="directory-nav-count" data-nav-count>{group.tools.length}</span>
+          </a>
+        ))}
+      </nav>
+      <p class="directory-result-count" role="status" aria-live="polite" aria-atomic="true" data-result-count>{toolPages.length} tools</p>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {
-        toolPages.map((tool) => (
-          <a
-            href={tool.url}
-            class={`tool-card tool-theme group ${getToolThemeClass(tool.slug)}`}
-          >
-            <div class="space-y-3">
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex min-w-0 items-center gap-3">
-                  <span class="tool-accent-mark" aria-hidden="true" />
-                  <h2 class="text-lg font-semibold leading-tight text-foreground">
-                    {tool.title}
-                  </h2>
-                </div>
-                {tool.status !== "stable" && (
-                  <span class="shrink-0 rounded-full bg-muted px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground">
-                    {tool.status}
-                  </span>
-                )}
-              </div>
-              <div class="flex flex-wrap gap-2">
-                {tool.chips.map((label: string) => (
-                  <span class="tool-catalog-pill">{label}</span>
-                ))}
-              </div>
-              <p class="line-clamp-3 text-sm leading-6 text-muted-foreground">
-                {tool.description}
-              </p>
+    <div id="directory-groups" class="directory-groups">
+      {sections.map((group) => (
+        <section id={group.id} class={`directory-group directory-${group.id}`} aria-labelledby={`${group.id}-title`} data-directory-group={group.id}>
+          <header class="directory-group-heading">
+            <div>
+              <h2 id={`${group.id}-title`}>{group.title}</h2>
+              <p>{group.description}</p>
             </div>
-            <div class="tool-accent-text mt-6 text-sm font-medium">
-              Open tool <span aria-hidden="true">→</span>
-            </div>
-          </a>
-        ))
-      }
+            <DirectoryArt group={group.id} />
+          </header>
+          <ul class="directory-tool-list">
+            {group.tools.map((tool) => (
+              <li data-tool data-search={tool.search} data-privacy={tool.privacy}>
+                <a href={tool.url} class="directory-tool">
+                  <div class="directory-tool-title">
+                    <h3>{tool.title}</h3>
+                    <svg class="directory-open-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg>
+                  </div>
+                  <p class="directory-tool-description">{tool.description}</p>
+                  {tool.slug === "colour-game" && (
+                    <div class="directory-tool-sample" aria-hidden="true">
+                      <span class="directory-contrast-board">{Array.from({ length: 9 }, () => <span />)}</span>
+                      <span>Spot the lighter square</span>
+                    </div>
+                  )}
+                  <div class="directory-tool-details">
+                    <span>{tool.access}</span>
+                    {tool.status !== "stable" && <span class="directory-tool-status">{tool.status}</span>}
+                  </div>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
-  </section>
+    <div class="directory-empty" data-empty hidden>
+      <h2>No tools match these filters.</h2>
+      <p>Try a different search or include tools that need an account.</p>
+      <button type="button" data-reset>Show all tools</button>
+    </div>
+    <div class="directory-note">
+      <button type="button" data-reset data-clear hidden>Clear filters</button>
+    </div>
+  </div>
 </StarLayout>
+
+<script>
+  const directory = document.querySelector<HTMLElement>("[data-tool-directory]");
+  if (directory) {
+    const search = directory.querySelector<HTMLInputElement>("#tool-search")!;
+    const noAccount =
+      directory.querySelector<HTMLInputElement>("[data-no-account]")!;
+    const sections = [
+      ...directory.querySelectorAll<HTMLElement>("[data-directory-group]"),
+    ];
+    const count = directory.querySelector<HTMLElement>("[data-result-count]")!;
+    const empty = directory.querySelector<HTMLElement>("[data-empty]")!;
+    const clear = directory.querySelector<HTMLElement>("[data-clear]")!;
+    const categoryLinks = [
+      ...directory.querySelectorAll<HTMLAnchorElement>("[data-category-link]"),
+    ];
+
+    function filterTools() {
+      const terms = search.value
+        .trim()
+        .toLocaleLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+      let visibleCount = 0;
+      for (const section of sections) {
+        let groupCount = 0;
+        for (const tool of section.querySelectorAll<HTMLElement>("[data-tool]")) {
+          const matches =
+            terms.every((term) => tool.dataset.search?.includes(term)) &&
+            (!noAccount.checked || tool.dataset.privacy === "local");
+          tool.hidden = !matches;
+          if (matches) groupCount++;
+        }
+        section.hidden = groupCount === 0;
+        visibleCount += groupCount;
+        const link = categoryLinks.find(
+          (link) => link.dataset.categoryLink === section.dataset.directoryGroup,
+        )!;
+        link.hidden = groupCount === 0;
+        link.querySelector("[data-nav-count]")!.textContent = String(groupCount);
+      }
+      count.textContent = `${visibleCount} tool${visibleCount === 1 ? "" : "s"}`;
+      empty.hidden = visibleCount !== 0;
+      clear.hidden = terms.length === 0 && !noAccount.checked;
+      directory!.dataset.filtered = String(!clear.hidden);
+    }
+
+    search.addEventListener("input", filterTools);
+    noAccount.addEventListener("change", filterTools);
+    directory.querySelectorAll("[data-reset]").forEach((button) => {
+      button.addEventListener("click", () => {
+        search.value = "";
+        noAccount.checked = false;
+        filterTools();
+        search.focus();
+      });
+    });
+    directory.querySelector<HTMLElement>("[data-search-controls]")!.hidden =
+      false;
+    // The browser can restore inputs after Back navigation.
+    window.addEventListener("pageshow", filterTools);
+    filterTools();
+  }
+</script>
