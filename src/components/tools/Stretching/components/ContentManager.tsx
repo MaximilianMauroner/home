@@ -169,6 +169,19 @@ export function ContentManager({
     }
   };
 
+  if (routineMode !== "list") {
+    return (
+      <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-6">
+        <RoutineForm
+          routine={editingRoutine}
+          stretches={draftStretches}
+          onSubmit={submitRoutine}
+          onCancel={cancelRoutineForm}
+        />
+      </div>
+    );
+  }
+
   if (stretchMode !== "list") {
     return (
       <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-6">
@@ -466,14 +479,10 @@ export function ContentManager({
                   key={routine.id}
                   type="button"
                   role="listitem"
-                  disabled={routineMode !== "list"}
                   aria-current={
                     managedRoutineId === routine.id ? "true" : undefined
                   }
-                  onClick={() => {
-                    chooseRoutine(routine);
-                    setRoutineMode("list");
-                  }}
+                  onClick={() => chooseRoutine(routine)}
                   className={`min-h-11 w-full min-w-0 rounded-xl border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${managedRoutineId === routine.id ? "border-primary bg-primary/10" : "border-border/60 hover:bg-muted/50"}`}
                 >
                   <span className="flex items-center justify-between gap-2">
@@ -495,17 +504,8 @@ export function ContentManager({
             })}
           </div>
 
-          <div
-            className={`${routineMode !== "list" ? "fixed inset-0 z-40 overflow-y-auto bg-card p-4 sm:p-6 lg:static lg:z-auto lg:overflow-visible lg:bg-transparent lg:p-0" : ""} min-w-0`}
-          >
-            {routineMode !== "list" ? (
-              <RoutineForm
-                routine={editingRoutine}
-                stretches={draftStretches}
-                onSubmit={submitRoutine}
-                onCancel={cancelRoutineForm}
-              />
-            ) : managedRoutine ? (
+          <div className="min-w-0">
+            {managedRoutine ? (
               <article className="rounded-2xl border border-border/60 p-5 sm:p-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                   Selected for management

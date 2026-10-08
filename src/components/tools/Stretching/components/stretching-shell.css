@@ -75,7 +75,7 @@
 .stretching-sheet,
 .stretching-popover {
   border: 1px solid hsl(var(--border));
-  background: var(--stretching-sheet-background);
+  background: var(--stretching-sheet-background, hsl(var(--card)));
   color: hsl(var(--foreground));
   box-shadow: 0 1rem 3rem hsl(var(--foreground) / 0.12);
 }
