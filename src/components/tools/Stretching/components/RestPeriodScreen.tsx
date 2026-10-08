@@ -33,7 +33,7 @@ export function RestPeriodScreen({
     nextStretchIndex !== null ? stretches[nextStretchIndex] : null;
 
   return (
-    <section className="grid gap-4 min-[660px]:grid-cols-2 min-[660px]:items-stretch">
+    <section className="stretching-rest-body grid gap-4 min-[660px]:grid-cols-2 min-[660px]:items-stretch">
       {nextStretch && (
         <div className="stretching-image-surface relative aspect-[4/3] shadow-sm">
           <StretchImage
@@ -63,17 +63,13 @@ export function RestPeriodScreen({
           </div>
         </div>
       )}
-      <div className="flex flex-col justify-center space-y-4 rounded-2xl border border-border bg-card p-5 text-center shadow-sm sm:p-8">
+      <div className="stretching-rest-coach flex flex-col justify-center space-y-4 rounded-2xl border border-border bg-card p-5 text-center shadow-sm sm:p-8">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-3 py-1 text-sm font-semibold text-teal-600 dark:bg-teal-400/10 dark:text-teal-400">
-            <span className="h-2 w-2 rounded-full bg-teal-500 motion-safe:animate-pulse dark:bg-teal-400" />
-            Rest
-          </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Take a breath
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Settle your breathing and prepare for the next position.
+            {totalDuration}s between steps. Prepare for the next position.
           </p>
         </div>
         <div className="flex justify-center">
@@ -87,7 +83,7 @@ export function RestPeriodScreen({
           />
         </div>
         {nextStretch && (
-          <p className="text-sm text-muted-foreground">
+          <p className="stretching-rest-description text-sm text-muted-foreground">
             {nextStretch.description}
           </p>
         )}

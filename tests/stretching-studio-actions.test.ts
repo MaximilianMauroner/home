@@ -112,6 +112,93 @@ describe("Routine Studio actions", () => {
     expect(onUpdateRoutine.mock.calls[0]?.[1].stretches[0].id).toBe("one");
   });
 
+  it.each([
+    ["Edit routine", "Save changes"],
+    ["New routine", "Create routine"],
+  ])("protects unsaved metadata in %s", (entry, save) => {
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[aria-label="Move Stretch one down"]',
+        )!
+        .click(),
+    );
+    act(() => button(container, entry).click());
+
+    expect(
+      container.querySelector('[aria-label="Close Routine Studio"]'),
+    ).toBeNull();
+    expect(container.querySelector('[aria-label="Routines"]')).toBeNull();
+    expect(
+      container.querySelector('summary[aria-label^="Actions for"]'),
+    ).toBeNull();
+    expect(
+      [...container.querySelectorAll("button")].some((element) =>
+        [
+          "Add stretch",
+          "New routine",
+          "Edit routine",
+          "Reset to saved stretches",
+        ].includes(element.textContent?.trim() ?? ""),
+      ),
+    ).toBe(false);
+
+    const name = container.querySelector<HTMLInputElement>("#routine-name")!;
+    const goal = container.querySelector<HTMLTextAreaElement>("#routine-goal")!;
+    act(() => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(name, "Unsaved routine");
+      name.dispatchEvent(new Event("input", { bubbles: true }));
+      Object.getOwnPropertyDescriptor(
+        HTMLTextAreaElement.prototype,
+        "value",
+      )!.set!.call(goal, "Unsaved goal");
+      goal.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    vi.mocked(window.confirm).mockReturnValue(false);
+    for (const exit of [
+      button(container, "Cancel"),
+      container.querySelector<HTMLButtonElement>(
+        '[aria-label="Close routine form"]',
+      )!,
+    ]) {
+      act(() => exit.click());
+      expect(window.confirm).toHaveBeenLastCalledWith(
+        "Discard your unsaved routine changes?",
+      );
+      expect(name.value).toBe("Unsaved routine");
+      expect(goal.value).toBe("Unsaved goal");
+      expect(container.contains(name)).toBe(true);
+    }
+
+    act(() => button(container, save).click());
+    const saved =
+      entry === "Edit routine"
+        ? onUpdateRoutine.mock.calls[0]?.[1]
+        : onSaveRoutine.mock.calls[0]?.[0];
+    expect(saved?.name).toBe("Unsaved routine");
+    expect(saved?.goal).toBe("Unsaved goal");
+    expect(saved?.stretches.map(({ id }) => id)).toEqual(["two", "one"]);
+    expect(container.querySelector("#routine-name")).toBeNull();
+    expect(button(container, "Add stretch")).toBeDefined();
+  });
+
+  it("returns from metadata Cancel with the working sequence intact", () => {
+    deleteStretch("two");
+    act(() => button(container, "Edit routine").click());
+    act(() => button(container, "Cancel").click());
+
+    expect(container.querySelector("#routine-name")).toBeNull();
+    act(() => button(container, "Edit routine").click());
+    act(() => button(container, "Save changes").click());
+    expect(
+      onUpdateRoutine.mock.calls[0]?.[1].stretches.map(({ id }) => id),
+    ).toEqual(["one"]);
+  });
+
   it("blocks Start, Create, and Save for an empty draft", () => {
     deleteStretch("one");
     deleteStretch("two");
@@ -125,6 +212,34 @@ describe("Routine Studio actions", () => {
     expect(onStartRoutine).not.toHaveBeenCalled();
     expect(onSaveRoutine).not.toHaveBeenCalled();
     expect(onUpdateRoutine).not.toHaveBeenCalled();
+  });
+
+  it("keeps a reordered draft when closing is cancelled", () => {
+    const down = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Move Stretch one down"]',
+    )!;
+    act(() => down.click());
+    expect(
+      container.querySelector("ol")?.textContent?.indexOf("Stretch two"),
+    ).toBeLessThan(
+      container.querySelector("ol")?.textContent?.indexOf("Stretch one") ?? 0,
+    );
+    vi.mocked(window.confirm).mockReturnValue(false);
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[aria-label="Close Routine Studio"]',
+        )!
+        .click(),
+    );
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Discard your unsaved Studio changes?",
+    );
+    act(() => button(container, "Edit routine").click());
+    act(() => button(container, "Save changes").click());
+    expect(
+      onUpdateRoutine.mock.calls[0]?.[1].stretches.map(({ id }) => id),
+    ).toEqual(["two", "one"]);
   });
 
   it("opens an empty saved routine in Studio so it can be repaired", () => {

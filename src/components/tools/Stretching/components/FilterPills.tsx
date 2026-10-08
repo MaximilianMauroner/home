@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useModalDialog } from "@/utils/useModalDialog";
 import type {
   RoutineCategoryFilter,
   RoutineDifficultyFilter,
 } from "../routineDiscovery";
-import {
-  ROUTINE_CATEGORIES,
-  ROUTINE_DIFFICULTIES,
-} from "../routineDiscovery";
+import { ROUTINE_CATEGORIES, ROUTINE_DIFFICULTIES } from "../routineDiscovery";
 
 interface FilterPillsProps {
   activeFilterCount: number;
@@ -36,7 +35,6 @@ export function FilterPills({
 }: FilterPillsProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const titleId = useId();
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const sheetRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -45,34 +43,12 @@ export function FilterPills({
     window.requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
 
-  useEffect(() => {
-    if (!isSheetOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeSheet();
-
-      if (event.key === "Tab") {
-        const controls = sheetRef.current?.querySelectorAll<HTMLElement>(
-          "button:not([disabled])",
-        );
-        const firstControl = controls?.[0];
-        const lastControl = controls
-          ? controls[controls.length - 1]
-          : undefined;
-
-        if (event.shiftKey && document.activeElement === firstControl) {
-          event.preventDefault();
-          lastControl?.focus();
-        } else if (!event.shiftKey && document.activeElement === lastControl) {
-          event.preventDefault();
-          firstControl?.focus();
-        }
-      }
-    };
-    closeButtonRef.current?.focus();
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeSheet, isSheetOpen]);
+  useModalDialog({
+    dialogRef: sheetRef,
+    initialFocusSelector: "[data-dialog-initial-focus]",
+    isOpen: isSheetOpen,
+    onClose: closeSheet,
+  });
 
   return (
     <div className="space-y-3">
@@ -105,7 +81,10 @@ export function FilterPills({
         <span className="font-medium text-foreground">
           Difficulty
           {selectedDifficulty !== "all" && (
-            <span className="font-normal text-muted-foreground"> · {selectedDifficulty}</span>
+            <span className="font-normal text-muted-foreground">
+              {" "}
+              · {selectedDifficulty}
+            </span>
           )}
         </span>
         <span className="text-sm text-muted-foreground">
@@ -114,7 +93,11 @@ export function FilterPills({
       </button>
 
       <div className="hidden space-y-3 sm:block">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Routine category">
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Routine category"
+        >
           {ROUTINE_CATEGORIES.map((category) => (
             <button
               type="button"
@@ -127,7 +110,11 @@ export function FilterPills({
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Difficulty level">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Difficulty level"
+        >
           {ROUTINE_DIFFICULTIES.map((difficulty) => (
             <button
               type="button"
@@ -139,73 +126,109 @@ export function FilterPills({
               {difficulty.label}
             </button>
           ))}
-          <span className="ml-auto text-sm text-muted-foreground" aria-live="polite">
+          <span
+            className="ml-auto text-sm text-muted-foreground"
+            aria-live="polite"
+          >
             {resultCount} {resultCount === 1 ? "routine" : "routines"}
           </span>
         </div>
       </div>
 
-      {isSheetOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:hidden">
-          <button
-            type="button"
-            aria-label="Close difficulty filters"
-            className="absolute inset-0 h-full w-full bg-foreground/30 backdrop-blur-[1px]"
-            onClick={closeSheet}
-          />
-          <section
-            ref={sheetRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            className="stretching-sheet relative z-10 w-full rounded-b-none p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 id={titleId} className="text-lg font-semibold text-foreground">Difficulty</h3>
-                <p className="text-sm text-muted-foreground">
-                  {resultCount} {resultCount === 1 ? "routine matches" : "routines match"}
-                </p>
+      {isSheetOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
+            <button
+              type="button"
+              aria-label="Close difficulty filters"
+              className="absolute inset-0 h-full w-full bg-foreground/30 backdrop-blur-[1px]"
+              onClick={closeSheet}
+            />
+            <section
+              ref={sheetRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              className="stretching-sheet relative z-10 max-h-[100dvh] w-full overflow-y-auto rounded-b-none p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-lg sm:rounded-2xl"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3
+                    id={titleId}
+                    className="text-lg font-semibold text-foreground"
+                  >
+                    Difficulty
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {resultCount}{" "}
+                    {resultCount === 1 ? "routine matches" : "routines match"}
+                  </p>
+                </div>
+                <button
+                  data-dialog-initial-focus
+                  type="button"
+                  onClick={closeSheet}
+                  aria-label="Close difficulty filters"
+                  className="grid h-11 w-11 place-items-center rounded-full hover:bg-muted"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
               </div>
-              <button
-                ref={closeButtonRef}
-                type="button"
-                onClick={closeSheet}
-                aria-label="Close difficulty filters"
-                className="grid h-11 w-11 place-items-center rounded-full hover:bg-muted"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
 
-            <div className="mt-5 grid gap-2" role="group" aria-label="Difficulty level">
-              {ROUTINE_DIFFICULTIES.map((difficulty) => (
+              <div
+                className="mt-5 grid gap-2"
+                role="group"
+                aria-label="Difficulty level"
+              >
+                {ROUTINE_DIFFICULTIES.map((difficulty) => (
+                  <button
+                    type="button"
+                    key={difficulty.value}
+                    onClick={() => onDifficultyChange(difficulty.value)}
+                    aria-pressed={selectedDifficulty === difficulty.value}
+                    className="flex min-h-11 items-center justify-between rounded-xl border border-border px-4 py-3 text-left font-medium text-foreground hover:bg-muted"
+                  >
+                    {difficulty.label}
+                    {selectedDifficulty === difficulty.value && (
+                      <span aria-hidden="true">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  key={difficulty.value}
-                  onClick={() => onDifficultyChange(difficulty.value)}
-                  aria-pressed={selectedDifficulty === difficulty.value}
-                  className="flex min-h-11 items-center justify-between rounded-xl border border-border px-4 py-3 text-left font-medium text-foreground hover:bg-muted"
+                  onClick={onReset}
+                  className="tool-button-secondary !min-h-11"
                 >
-                  {difficulty.label}
-                  {selectedDifficulty === difficulty.value && <span aria-hidden="true">✓</span>}
+                  Reset all
                 </button>
-              ))}
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <button type="button" onClick={onReset} className="tool-button-secondary !min-h-11">
-                Reset all
-              </button>
-              <button type="button" onClick={closeSheet} className="tool-button !min-h-11">
-                Show {resultCount}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
+                <button
+                  type="button"
+                  onClick={closeSheet}
+                  className="tool-button !min-h-11"
+                >
+                  Show {resultCount}
+                </button>
+              </div>
+            </section>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -32,24 +32,9 @@ export function BreathingTimer({
   const bgColor = isResting
     ? "rgba(20, 184, 166, 0.1)" // teal
     : "rgba(16, 185, 129, 0.1)"; // emerald
-  const glowColor = isResting
-    ? "rgba(20, 184, 166, 0.3)"
-    : "rgba(16, 185, 129, 0.3)";
 
   return (
     <div className="stretching-breathing-timer relative flex items-center justify-center">
-      {/* Outer glow ring */}
-      <div
-        className={`absolute rounded-full transition-colors duration-1000 ${compact ? "h-36 w-36" : "h-52 w-52"} ${
-          isRunning && !isPaused
-            ? "animate-breathe-glow motion-reduce:animate-none"
-            : ""
-        }`}
-        style={{
-          background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)`,
-        }}
-      />
-
       {/* SVG Progress Ring */}
       <svg
         aria-hidden="true"
@@ -95,13 +80,7 @@ export function BreathingTimer({
       </svg>
 
       {/* Center content */}
-      <div
-        className={`absolute flex flex-col items-center justify-center transition-transform duration-1000 ${
-          isRunning && !isPaused
-            ? "animate-breathe motion-reduce:animate-none"
-            : ""
-        }`}
-      >
+      <div className="absolute flex flex-col items-center justify-center">
         {/* Timer display */}
         <div
           aria-label={`${formatTime(timeRemaining)} remaining`}
@@ -115,7 +94,7 @@ export function BreathingTimer({
         <div className="mt-2 flex items-center gap-2">
           {isRunning && !isPaused && (
             <div
-              className={`h-2 w-2 animate-pulse rounded-full motion-reduce:animate-none ${
+              className={`h-2 w-2 rounded-full ${
                 isResting
                   ? "bg-teal-500 dark:bg-teal-400"
                   : "bg-emerald-500 dark:bg-emerald-400"
@@ -139,43 +118,6 @@ export function BreathingTimer({
           </span>
         </div>
       </div>
-
-      <style>{`
-        @keyframes breathe {
-          0%, 100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.03);
-          }
-        }
-
-        @keyframes breathe-glow {
-          0%, 100% {
-            opacity: 0.5;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.05);
-          }
-        }
-
-        .animate-breathe {
-          animation: breathe 4s ease-in-out infinite;
-        }
-
-        .animate-breathe-glow {
-          animation: breathe-glow 4s ease-in-out infinite;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .animate-breathe,
-          .animate-breathe-glow {
-            animation: none;
-          }
-        }
-      `}</style>
     </div>
   );
 }

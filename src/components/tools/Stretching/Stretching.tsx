@@ -615,7 +615,7 @@ export default function Stretching() {
   const phaseAnnouncement = isCompleted
     ? "Routine complete."
     : isResting
-      ? `Rest period. ${nextStretchIndex !== null ? (stretches[nextStretchIndex]?.name ?? "Next stretch") : "Next stretch"} is up next.`
+      ? `${isPaused ? "Rest paused" : "Rest period"}. ${nextStretchIndex !== null ? (stretches[nextStretchIndex]?.name ?? "Next stretch") : "Next stretch"} is up next.`
       : isPaused
         ? `Paused on ${currentStretch?.name ?? "the current stretch"}.`
         : isRunning
@@ -661,6 +661,12 @@ export default function Stretching() {
         return;
       }
 
+      if (showTimeBetweenSettings || showRoutineMenu) return;
+      if (
+        target instanceof HTMLElement &&
+        target.closest('button, a, summary, [role="dialog"]')
+      )
+        return;
       if (isGuidanceScroll) return;
 
       if (viewState !== "active" || isCompleted) return;
@@ -768,7 +774,7 @@ export default function Stretching() {
 
       {/* Active Stretching View */}
       {viewState === "active" && (
-        <StretchingShell variant="focus" className="space-y-3 sm:space-y-5">
+        <StretchingShell variant="focus">
           <p className="sr-only" aria-live="polite" aria-atomic="true">
             {phaseAnnouncement}
           </p>
@@ -801,12 +807,19 @@ export default function Stretching() {
                 {currentRoutine?.goal}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowTimeBetweenSettings(true)}
+              aria-haspopup="dialog"
+              className="shrink-0 rounded-xl bg-muted px-3 text-sm font-medium"
+            >
+              Rest {timeBetween}s
+            </button>
             <div ref={routineMenuRef} className="relative">
               <button
                 type="button"
                 onClick={() => setShowRoutineMenu((open) => !open)}
                 aria-expanded={showRoutineMenu}
-                aria-haspopup="menu"
                 aria-label="Routine menu"
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
@@ -815,7 +828,8 @@ export default function Stretching() {
               {showRoutineMenu && (
                 <div
                   className="stretching-popover absolute right-0 z-20 mt-2 w-52 space-y-1 p-2"
-                  role="menu"
+                  role="group"
+                  aria-label="Routine actions"
                 >
                   <button
                     type="button"
@@ -824,7 +838,6 @@ export default function Stretching() {
                       openStudio("active");
                     }}
                     className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-muted"
-                    role="menuitem"
                   >
                     Edit routine
                   </button>
@@ -835,7 +848,6 @@ export default function Stretching() {
                       reset();
                     }}
                     className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                    role="menuitem"
                   >
                     Reset routine
                   </button>
@@ -880,10 +892,7 @@ export default function Stretching() {
                     </span>
                   )}
                 </span>
-                <span>
-                  {currentRoutine?.name ?? "Your routine"} ·{" "}
-                  {Math.round(progress)}%
-                </span>
+                <span>{Math.round(progress)}% complete</span>
               </div>
               <DurationRail
                 segments={railSegments}
@@ -894,7 +903,7 @@ export default function Stretching() {
             </div>
 
             {isCompleted ? (
-              <section className="mx-auto flex min-h-[65dvh] max-w-2xl flex-col items-center justify-center rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-10">
+              <section className="stretching-completion mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col items-center justify-center rounded-2xl bg-card p-4 text-center">
                 <div
                   className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-3xl text-emerald-600 dark:text-emerald-400"
                   aria-hidden="true"

@@ -18,3 +18,42 @@ A map does not establish a completed live audit.
 
 Account/device/browser gaps must be reported per row. Source/unit proof does not
 establish browser imports, rendering, permission prompts or export correctness.
+
+## H6 responsive stretching matrix
+
+Use a fresh owned origin. Check direct URLs for `?view=browser`,
+`?view=preview&routine=routine_1`, `?view=active`, and
+`?view=content-manager` after hydration. Require no hydration errors.
+
+- Check overview, browser, preview, active, rest, completion, Studio, routine
+  form, stretch form, image picker, preview dialog, and settings at 320×568,
+  375×667, 390×844, 412×915, 844×390, 768×1024, 1024×768, and 1440×1000.
+  Require no horizontal page overflow. Active essentials and controls must fit
+  the viewport. Guidance can scroll in its own panel. Long sequence rails can
+  scroll horizontally within their own control. Repeat light and dark themes.
+- Scroll discovery: search stays visible and categories remain in one scrollable
+  mobile row. Combine a search, category, and difficulty; inspect expected
+  results and the empty state, then reset. Check image fallbacks.
+- Scroll preview through the movement order. Begin stays reachable on phone
+  and tablet and in the desktop summary. Open a movement preview and close
+  with Escape; focus returns to its trigger.
+- Start, pause, resume, advance through repetition/rest, skip rest, finish,
+  restart, and exit. Check timer pause and automatic transitions with short
+  fabricated durations. Phase announcements change without announcing every tick.
+- Settings: choose a preset, cancel, and reopen; no change was applied. Choose
+  and apply another preset; it persists. Space and arrows in settings must not
+  start or advance the session. Keyboard activation of buttons remains native.
+- Studio: use Move up/down by pointer and keyboard, and desktop drag. Check
+  sequence order and the move announcement. Cancel a close or routine switch
+  after changing a draft; changes remain. Save a fabricated custom routine,
+  reopen it, check metadata, start it, and confirm deletion. Reject deletion
+  once and confirm it once. Built-in routines remain unchanged.
+- Edit a stretch, cancel a dirty form and reject discard, open the image picker,
+  filter/search, select then cancel, confirm another choice, remove an image,
+  and try a custom URL and failed-image fallback. Form text survives picker use.
+  Check modal focus containment and restoration. Check reduced motion.
+
+Record browser engine, viewport evidence, pointer/keyboard evidence, and touch
+input evidence separately. Resizing Chromium does not verify physical iOS,
+Android, Safari, Firefox, or a touch gesture. Report unavailable hardware/engines
+as gaps. No inaccessible device is counted as passed.
