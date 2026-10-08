@@ -48,7 +48,7 @@ export function RoutineCard({
         type="button"
         onClick={onSelect}
         aria-pressed={isSelected}
-        className="block h-full w-full min-w-0 text-left"
+        className="block w-full min-w-0 text-left"
       >
         <div className="stretching-image-surface relative aspect-[4/3] rounded-none">
           <StretchImage
@@ -101,7 +101,7 @@ export function RoutineCard({
       </button>
 
       {isCustom && onEdit && onDelete && (
-        <div className="absolute right-2 top-2 flex gap-1 rounded-xl bg-card/90 p-1 opacity-100 shadow-sm backdrop-blur sm:opacity-0 sm:transition-opacity sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+        <div className="flex justify-end gap-2 border-t border-border p-2">
           <button
             type="button"
             aria-label={`Edit ${routine.name}`}

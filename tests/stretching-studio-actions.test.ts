@@ -127,6 +127,34 @@ describe("Routine Studio actions", () => {
     expect(onUpdateRoutine).not.toHaveBeenCalled();
   });
 
+  it("keeps a reordered draft when closing is cancelled", () => {
+    const down = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Move Stretch one down"]',
+    )!;
+    act(() => down.click());
+    expect(
+      container.querySelector("ol")?.textContent?.indexOf("Stretch two"),
+    ).toBeLessThan(
+      container.querySelector("ol")?.textContent?.indexOf("Stretch one") ?? 0,
+    );
+    vi.mocked(window.confirm).mockReturnValue(false);
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[aria-label="Close Routine Studio"]',
+        )!
+        .click(),
+    );
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Discard your unsaved Studio changes?",
+    );
+    act(() => button(container, "Edit routine").click());
+    act(() => button(container, "Save changes").click());
+    expect(
+      onUpdateRoutine.mock.calls[0]?.[1].stretches.map(({ id }) => id),
+    ).toEqual(["two", "one"]);
+  });
+
   it("opens an empty saved routine in Studio so it can be repaired", () => {
     const emptyRoutine = { ...routine, totalDuration: 0, stretches: [] };
     act(() => {

@@ -37,7 +37,7 @@ export function TimeBetweenSettings({
           aria-describedby="rest-settings-description"
           aria-labelledby="rest-settings-title"
           aria-modal="true"
-          className="stretching-sheet pointer-events-auto relative w-full rounded-b-none p-5 focus:outline-none sm:w-[24rem] sm:rounded-xl sm:p-6"
+          className="stretching-sheet pointer-events-auto relative max-h-[100dvh] w-full overflow-y-auto rounded-b-none p-5 focus:outline-none sm:w-[24rem] sm:rounded-xl sm:p-6"
           role="dialog"
           tabIndex={-1}
         >

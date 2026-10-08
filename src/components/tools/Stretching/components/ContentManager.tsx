@@ -71,6 +71,10 @@ export function ContentManager({
     needsFirstStretch ? false : initialState.hasExternalRoutineIntent,
   );
   const [draftStretches, setDraftStretches] = useState(initialState.stretches);
+  const [savedDraft, setSavedDraft] = useState(
+    JSON.stringify(initialState.stretches),
+  );
+  const [reorderAnnouncement, setReorderAnnouncement] = useState("");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const routines = [...defaultRoutines, ...customRoutines];
@@ -91,9 +95,21 @@ export function ContentManager({
     isCompleted: false,
   });
 
+  const confirmDiscardDraft = () =>
+    JSON.stringify(draftStretches) === savedDraft ||
+    window.confirm("Discard your unsaved Studio changes?");
+
+  const closeStudio = () => {
+    if (confirmDiscardDraft()) onClose();
+  };
+
   const chooseRoutine = (routine: StretchRoutine) => {
+    if (routine.id === managedRoutineId) return;
+    if (!confirmDiscardDraft()) return;
     setManagedRoutineId(routine.id);
-    setDraftStretches(createRoutineWorkingStretches(routine));
+    const nextDraft = createRoutineWorkingStretches(routine);
+    setDraftStretches(nextDraft);
+    setSavedDraft(JSON.stringify(nextDraft));
   };
 
   const beginRoutineEdit = (routine: StretchRoutine) => {
@@ -111,7 +127,11 @@ export function ContentManager({
     if (managedRoutineId === routine.id) {
       const fallback = defaultRoutines[0] ?? null;
       setManagedRoutineId(fallback?.id ?? "");
-      if (fallback) setDraftStretches(createRoutineWorkingStretches(fallback));
+      const fallbackDraft = fallback
+        ? createRoutineWorkingStretches(fallback)
+        : [];
+      setDraftStretches(fallbackDraft);
+      setSavedDraft(JSON.stringify(fallbackDraft));
     }
   };
 
@@ -124,6 +144,7 @@ export function ContentManager({
       onSaveRoutine({ ...routine, id });
       setManagedRoutineId(id);
     }
+    setSavedDraft(JSON.stringify(draftStretches));
     setEditingRoutine(null);
     setRoutineMode("list");
     setHasExternalRoutineIntent(false);
@@ -131,7 +152,7 @@ export function ContentManager({
 
   const cancelRoutineForm = () => {
     if (hasExternalRoutineIntent) {
-      onClose();
+      closeStudio();
       return;
     }
     setRoutineMode("list");
@@ -142,6 +163,9 @@ export function ContentManager({
     const target = getMoveTarget(index, direction, draftStretches.length);
     if (target !== null) {
       setDraftStretches((current) => reorderItems(current, index, target));
+      setReorderAnnouncement(
+        `${draftStretches[index].name} moved to position ${target + 1}.`,
+      );
     }
   };
 
@@ -182,6 +206,9 @@ export function ContentManager({
       className="min-w-0 overflow-x-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-6"
       aria-labelledby="routine-studio-title"
     >
+      <p className="sr-only" role="status">
+        {reorderAnnouncement}
+      </p>
       <header className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -196,7 +223,7 @@ export function ContentManager({
         </div>
         <button
           type="button"
-          onClick={onClose}
+          onClick={closeStudio}
           aria-label="Close Routine Studio"
           className="min-h-11 min-w-11 rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
@@ -280,9 +307,20 @@ export function ContentManager({
                       onDragEnd={() => setDraggedIndex(null)}
                       aria-label={`Drag ${stretch.name} to reorder`}
                       title="Drag to reorder"
-                      className="min-h-11 min-w-11 cursor-grab touch-none rounded-xl text-lg text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:cursor-grabbing"
+                      className="min-h-11 min-w-11 cursor-grab rounded-xl text-lg text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:cursor-grabbing"
                     >
-                      ⠿
+                      <svg
+                        aria-hidden="true"
+                        className="mx-auto h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        {[6, 12, 18].flatMap((y) =>
+                          [9, 15].map((x) => (
+                            <circle key={`${x}-${y}`} cx={x} cy={y} r="1.5" />
+                          )),
+                        )}
+                      </svg>
                     </button>
                     <div className="aspect-[4/3] w-16 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-20">
                       <StretchImage
@@ -428,6 +466,7 @@ export function ContentManager({
                   key={routine.id}
                   type="button"
                   role="listitem"
+                  disabled={routineMode !== "list"}
                   aria-current={
                     managedRoutineId === routine.id ? "true" : undefined
                   }

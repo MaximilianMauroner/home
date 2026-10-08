@@ -176,7 +176,7 @@ export function ImagePicker({ value, onChange, onClose }: ImagePickerProps) {
                         >
                           {!loadedImages.has(image.url) &&
                             !failedImages.has(image.url) && (
-                              <div className="absolute inset-0 animate-pulse bg-muted" />
+                              <div className="absolute inset-0 bg-muted" />
                             )}
                           <StretchImage
                             src={

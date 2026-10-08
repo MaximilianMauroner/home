@@ -44,7 +44,7 @@ export function StretchPreview({
   };
 
   return (
-    <div className="min-w-0 space-y-6 pb-28 sm:pb-0">
+    <div className="min-w-0 space-y-6 pb-28 lg:pb-0">
       <header className="flex min-w-0 items-start gap-3">
         <button
           type="button"
@@ -144,7 +144,7 @@ export function StretchPreview({
             <button
               type="button"
               onClick={onBegin}
-              className="tool-button hidden w-full py-3 text-base sm:inline-flex"
+              className="tool-button hidden w-full py-3 text-base lg:inline-flex"
             >
               Begin routine
             </button>
@@ -249,7 +249,7 @@ export function StretchPreview({
         />
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-[max(1rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] backdrop-blur sm:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-[max(1rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_hsl(var(--foreground)/0.08)] lg:hidden">
         <button
           type="button"
           onClick={onBegin}

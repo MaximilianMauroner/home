@@ -150,6 +150,63 @@ describe("stretching server-to-client restoration", () => {
     ).toBe(true);
   });
 
+  test("settings keep a draft and isolate shortcuts from the session", async () => {
+    window.history.replaceState({}, "", "/tools/stretching/?view=active");
+    document.body.innerHTML = `<div id="root">${renderToString(createElement(Stretching))}</div>`;
+    const container = document.getElementById("root")!;
+    await act(async () => {
+      root = hydrateRoot(container, createElement(Stretching));
+    });
+    const restButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Rest 10s",
+    )!;
+    await act(async () => restButton.click());
+    const preset = [
+      ...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button'),
+    ].find((button) => button.textContent === "20s")!;
+    await act(async () => preset.click());
+    expect(restButton.textContent).toBe("Rest 10s");
+    await act(async () =>
+      preset.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowRight",
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+    expect(container.querySelector("h1")?.textContent).toBe(
+      DEFAULT_ROUTINES[0].stretches[0].name,
+    );
+    const apply = [
+      ...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button'),
+    ].find((button) => button.textContent?.includes("Apply"))!;
+    await act(async () => apply.click());
+    expect(restButton.textContent).toBe("Rest 20s");
+    expect(localStorage.getItem(TIME_BETWEEN_KEY)).toBe("20");
+    await act(async () => restButton.click());
+    const cancel = [
+      ...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button'),
+    ].find((button) => button.textContent === "Cancel")!;
+    await act(async () =>
+      cancel.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: " ",
+          code: "Space",
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
+    expect(
+      [...container.querySelectorAll("button")].some(
+        (button) => button.textContent?.trim() === "Start",
+      ),
+    ).toBe(true);
+    await act(async () => cancel.click());
+    expect(restButton.textContent).toBe("Rest 20s");
+  });
+
   test("Escape closes rest settings without leaving the active session", async () => {
     window.history.replaceState({}, "", "/tools/stretching/?view=active");
     document.body.innerHTML = `<div id="root">${renderToString(createElement(Stretching))}</div>`;

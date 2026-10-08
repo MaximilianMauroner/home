@@ -62,7 +62,7 @@ export function RoutineForm({
         </button>
       </header>
 
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid min-w-0 gap-5">
         <fieldset className="min-w-0 space-y-5 rounded-2xl border border-border/60 p-4 sm:p-5">
           <legend className="px-2 text-sm font-semibold text-foreground">
             Basics

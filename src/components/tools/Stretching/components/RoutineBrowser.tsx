@@ -99,40 +99,42 @@ export function RoutineBrowser({
         </div>
       </header>
 
-      <div className="relative">
-        <svg
-          className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+      <div className="stretching-discovery-controls space-y-3">
+        <div className="relative">
+          <svg
+            className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            aria-label="Search routines by name, goal, or tag"
+            type="search"
+            placeholder="Search by name, goal, or tag"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
-        </svg>
-        <input
-          aria-label="Search routines by name, goal, or tag"
-          type="search"
-          placeholder="Search by name, goal, or tag"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+        </div>
+
+        <FilterPills
+          selectedCategory={selectedCategory}
+          selectedDifficulty={selectedDifficulty}
+          activeFilterCount={activeFilterCount}
+          resultCount={filteredRoutines.length}
+          onCategoryChange={setSelectedCategory}
+          onDifficultyChange={setSelectedDifficulty}
+          onReset={resetFilters}
         />
       </div>
-
-      <FilterPills
-        selectedCategory={selectedCategory}
-        selectedDifficulty={selectedDifficulty}
-        activeFilterCount={activeFilterCount}
-        resultCount={filteredRoutines.length}
-        onCategoryChange={setSelectedCategory}
-        onDifficultyChange={setSelectedDifficulty}
-        onReset={resetFilters}
-      />
 
       {filteredRoutines.length === 0 ? (
         <section
@@ -155,7 +157,7 @@ export function RoutineBrowser({
         </section>
       ) : (
         <div
-          className="grid min-w-0 grid-cols-2 gap-3 min-[660px]:grid-cols-3 min-[660px]:gap-4 min-[1000px]:grid-cols-5"
+          className="grid min-w-0 grid-cols-1 gap-3 min-[660px]:grid-cols-3 min-[660px]:gap-4 min-[1000px]:grid-cols-5"
           aria-live="polite"
         >
           {filteredRoutines.map((routine) => {
