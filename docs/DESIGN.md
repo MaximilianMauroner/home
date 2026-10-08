@@ -18,7 +18,7 @@ colors:
   night-ink: "#f1e8d4"
   night-contour: "#3d4a78"
   ember: "#ff8a4c"
-  cover-ink: "#121521"
+  cover-ink: "#101629"
 typography:
   display:
     fontFamily: "Geist, sans-serif"
@@ -153,7 +153,7 @@ Use the quote field with inset padding. Keep quotation text upright and readable
 
 ### Article covers
 
-Use a simple diagram or graphic based on the article, with cream panels and coral accents. Blog covers use the cover-ink background (`#121521`) with slate-blue linework. Dev-log covers keep forest backgrounds. Brand logos and essential diagram labels are allowed when they explain the subject accurately. Do not put article headlines, subtitles, slogans, or footer branding inside the artwork. Use the full canvas for the visual.
+Use a simple diagram or graphic based on the article, with cream panels and coral accents. Blog covers use a deep navy background (`#101629`) with slate-blue linework. Keep the fine coordinate grid, corner contour rings, and restrained coral waypoints consistent across the cover series. Dev-log covers keep forest backgrounds. Brand logos and essential diagram labels are allowed when they explain the subject accurately. Do not put article headlines, subtitles, slogans, or footer branding inside the artwork. Use the full canvas for the visual.
 
 Show the real article title once as HTML: below the image in previews and in the title header on reading pages. Cover treatments have no subtitle. Descriptions remain available in content metadata, search data, and compact text-only archive rows. Show the whole cover without color filters or decorative overlays.
 
@@ -207,3 +207,18 @@ reduced motion. Navigation uses the shared native View Transitions.
 - Don't use forest green on blog pages, and don't replace it with a flat neutral grey.
 - Don't use distressed textures, glossy 3D scenes, or plain white title cards for this cover direction.
 - Don't turn this scoped system into rules for unrelated tools.
+
+## Topic atlas
+
+The tags index and individual tag archives use the blog’s Open night palette,
+shared starfield, Geist headings, and compact mono dates and counts. Keep tag
+URLs and page metadata. Show an alphabetical topic index with real post counts,
+and an atlas panel with six frequent topics on the index or six related topics
+on a tag archive. Rank related topics by the number of posts shared with the
+selected tag; use alphabetical order to break ties.
+
+Show writing as open rows with collection, date, title, description, and topic
+links. Full-text search keeps relevance order and shows the matching passage.
+Topic links retain the current search query. Native links and the collapsible
+topic index work before hydration; full-text search loads on demand. On phones,
+use a bounded two-column topic index and stack the atlas above the writing.

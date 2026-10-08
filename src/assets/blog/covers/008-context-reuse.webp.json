@@ -1,16 +1,10 @@
 {
   "tool": "built-in image_gen",
-  "sourceNode": "S",
-  "prompt": "Use case: illustration-story.\nAsset type: landscape editorial blog cover for a technical essay \"The price tag isn't the cost of AI\"; the article title is HTML outside this artwork.\nPrimary request: original thoughtful graphic illustration conveying that AI agent workloads are cheaper than headline token prices suggest because repeated context is cached, and successive capable models offer better value. This is a conceptual cover, not a measured statistical chart.\nApproved visual world: Open night, deep ink #121521 background, warm cream #f1e8d4 shapes, slate blue #3d4a78 and #8790b5 thin linework, ember #ff8a4c emphasis. Flat editorial graphic, crisp refined edges, no distressed print texture, no glossy 3D, no photorealistic metal or studio props, no gradients or glow. Landscape approximately 3:2, full-canvas visual, generous spacing, clear dominant subject, bold enough to read at a small blog-card size. Limited graphic vocabulary, polished and memorable, not a generic AI stock illustration.\nArticle facts to guide metaphor: cached input is 96.4% of recovered token volume; token volume isn't a bill or completed work; capabilities and workload price are separate; a human still reviews delegated work.\nText: no words, no title, no subtitle, no footer branding, no model names, no fake numbers, no axes, no chart labels.\nAvoid: robots, brains, circuit-brain icons, floating chat bubbles, stock financial charts, cash piles, laptop scenes, decorative random glyphs, logos, watermarks. Don't imply more token volume proves better intelligence or more completed tasks.\nComposition and metaphor: three identical cream context sheets with simple short slate-blue code-like line marks appear in a calm row across the canvas. The first sheet passes through a large ember outline price tag, representing fresh input. A single slate-blue curved return path connects the sheet to two later reused copies. These same-sized later sheets have very small ember tag outlines, representing cheaper repeated reads. Make it unambiguous that the sheets contain the same information: identical line patterns, same-sized pages, different-sized empty tags. A restrained clear looping line communicates reuse. One strong visual story: same context, smaller price. Refined two-dimensional diagrammatic editorial illustration, not a text-heavy explanatory slide. No letters or numbers inside the sheets or tags. Include just these three sheets and their tags, no additional icons.",
-  "selectedBy": "Parent agent, as requested by user, after two independent subagent reviews",
-  "reviewRanking": [
-    "S",
-    "U",
-    "T"
-  ],
-  "sourceArtifact": ".agents/artifacts/design/token-value-interactive/S/cover.png",
-  "width": 1536,
-  "height": 1024,
+  "editTarget": "008-context-reuse.webp",
+  "styleReference": "006-ai-predictions-from-2019.webp",
+  "prompt": "Restyle the three-document cached-context illustration to match the approved technical atlas diagram series. Preserve three same-sized cream context sheets, first large coral price tag, later small coral tags, and slate reuse arrows. Landscape 16:9. Deep navy #101629 background, fine coordinate grid, delicate concentric topographic circles from opposite corners, coral waypoint dots, thin registration crosses. Cream #f1e8d4, periwinkle #8790b5, coral #ff855e. Crisp flat diagram, generous margins, no crop, no words, dates, numbers, headline, subtitle, branding or watermark.",
+  "width": 1672,
+  "height": 941,
   "format": "webp",
   "quality": 88
 }

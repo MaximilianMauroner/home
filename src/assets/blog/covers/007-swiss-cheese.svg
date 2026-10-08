@@ -1,15 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -22.5 1200 675" role="img" aria-labelledby="title desc">
   <title id="title">Different blind spots can stop the same defect</title>
   <desc id="desc">A coral defect passes through holes in three defense layers and hits the solid part of a fourth. A dashed deployment boundary separates a fifth runtime layer.</desc>
-  <rect y="-22.5" width="1200" height="675" fill="#121521"/>
-  <g fill="#e8d6a8" stroke="#a3abc2" stroke-width="2">
-    <rect x="170" y="140" width="135" height="350" rx="12"/>
-    <rect x="355" y="140" width="135" height="350" rx="12"/>
-    <rect x="540" y="140" width="135" height="350" rx="12"/>
-    <rect x="725" y="140" width="135" height="350" rx="12"/>
-    <rect x="970" y="140" width="135" height="350" rx="12" fill="#4d6491"/>
+  <defs>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M60 0H0V60" fill="none" stroke="#8790b5" stroke-width="1" opacity="0.23"/>
+    </pattern>
+  </defs>
+  <rect y="-22.5" width="1200" height="675" fill="#101629"/>
+  <rect y="-22.5" width="1200" height="675" fill="url(#grid)"/>
+  <g fill="none" stroke="#8790b5" stroke-width="1" opacity="0.5">
+    <circle cx="30" cy="25" r="45"/><circle cx="30" cy="25" r="88"/>
+    <circle cx="30" cy="25" r="131"/><circle cx="30" cy="25" r="174"/>
+    <circle cx="1150" cy="630" r="58"/><circle cx="1150" cy="630" r="101"/>
+    <circle cx="1150" cy="630" r="144"/><circle cx="1150" cy="630" r="187"/>
+    <path d="M40 83v24m-12-12h24M1140 38v24m-12-12h24M50 564v24m-12-12h24"/>
   </g>
-  <g fill="#121521">
+  <g fill="#ff855e"><circle cx="155" cy="84" r="5"/><circle cx="1140" cy="564" r="5"/></g>
+  <g fill="#f1e8d4" stroke="#8790b5" stroke-width="2">
+    <rect x="170" y="140" width="135" height="350" rx="8"/>
+    <rect x="355" y="140" width="135" height="350" rx="8"/>
+    <rect x="540" y="140" width="135" height="350" rx="8"/>
+    <rect x="725" y="140" width="135" height="350" rx="8"/>
+    <rect x="970" y="140" width="135" height="350" rx="8" fill="#667399"/>
+  </g>
+  <g fill="#101629">
     <ellipse cx="237" cy="315" rx="47" ry="39"/>
     <ellipse cx="422" cy="315" rx="43" ry="39"/>
     <ellipse cx="607" cy="315" rx="45" ry="39"/>
@@ -24,11 +38,11 @@
   <path d="M64 315H725" fill="none" stroke="#ff855e" stroke-width="7"/>
   <circle cx="64" cy="315" r="13" fill="#ff855e"/>
   <path d="m712 302 26 26m0-26-26 26" fill="none" stroke="#ff855e" stroke-width="7"/>
-  <path d="M913 100v430" fill="none" stroke="#a3abc2" stroke-width="2" stroke-dasharray="7 9"/>
-  <g font-family="Geist" font-size="40" text-anchor="middle" fill="#ece4d0">
+  <path d="M913 100v430" fill="none" stroke="#8790b5" stroke-width="2" stroke-dasharray="7 9"/>
+  <g font-family="JetBrains Mono, monospace" font-size="30" text-anchor="middle" fill="#ece4d0">
     <text x="237" y="548">Types</text><text x="422" y="548">Tests</text>
     <text x="607" y="548">Review</text><text x="792" y="548">Staging</text>
     <text x="1037" y="548">Runtime</text>
-    <text x="913" y="77" font-size="36" fill="#a3abc2">Deploy</text>
+    <text x="913" y="77" font-size="27" fill="#8790b5">Deploy</text>
   </g>
 </svg>
