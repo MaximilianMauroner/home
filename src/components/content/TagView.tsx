@@ -6,10 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ReactNode } from "react";
-import BlogPreview from "./BlogPreview";
-import LogPreview from "./LogPreview";
-import SnackPreview from "./SnackPreview";
+import "./TagView.css";
 import type { TaggedPreviewEntry } from "./previewTypes";
 import type { PostSearch } from "./postSearchClient";
 import type { PostSearchMatch } from "@/utils/postSearch";
@@ -44,9 +41,7 @@ export default function TagView({
   preSelectedTag,
   initialSearchQuery = "",
 }: TagViewProps) {
-  const [selectedTag, setSelectedTag] = useState<string | null>(
-    preSelectedTag ?? null,
-  );
+  const selectedTag = preSelectedTag ?? null;
 
   // Read search from URL on client side to ensure it's correct after hydration
   const [search, setSearch] = useState(initialSearchQuery);
@@ -169,9 +164,29 @@ export default function TagView({
     window.history.replaceState({}, "", url.toString());
   }, [search]);
 
+  const topicPosts = selectedTag
+    ? posts.filter((post) => post.data.tags.includes(selectedTag))
+    : posts;
+  const connections = new Map<string, number>();
+  for (const post of topicPosts) {
+    for (const tag of new Set(post.data.tags)) {
+      if (tag !== selectedTag)
+        connections.set(tag, (connections.get(tag) ?? 0) + 1);
+    }
+  }
+  const nearbyTopics = [...connections]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 6);
+  const tagHref = (tag: string | null) => {
+    const path = tag ? `/tags/${encodeURIComponent(tag)}/` : "/tags/";
+    return search.trim()
+      ? `${path}?${new URLSearchParams({ q: search })}`
+      : path;
+  };
+
   return (
-    <>
-      <div className="sticky top-[4.5rem] z-30 bg-background/95 p-4 backdrop-blur lg:static lg:bg-transparent lg:backdrop-blur-none">
+    <div className="topic-atlas">
+      <div className="topic-atlas__search">
         <Search
           search={search}
           searchIndexStatus={searchIndexStatus}
@@ -179,157 +194,131 @@ export default function TagView({
           onSearchIntent={() => void loadSearchIndex()}
         />
       </div>
-      <div className="grid grid-cols-6 gap-4 px-4 pb-4">
-        <div className="col-span-6 md:col-span-2">
-          <TagList
-            tags={tags}
-            selectedTag={selectedTag}
-            setSelectedTag={setSelectedTag}
-          />
-        </div>
-        <div className="col-span-6 md:col-span-4">
+      <div className="topic-atlas__layout">
+        <aside className="topic-atlas__index">
+          <details open>
+            <summary>
+              Topic index <span>{tags.length}</span>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </summary>
+            <nav aria-label="Topics">
+              <a
+                href={tagHref(null)}
+                aria-current={!selectedTag ? "page" : undefined}
+              >
+                <span>All topics</span>
+                <span>{totalPostCount}</span>
+              </a>
+              {[...tags]
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([tag, count]) => (
+                  <a
+                    key={tag}
+                    href={tagHref(tag)}
+                    aria-current={selectedTag === tag ? "page" : undefined}
+                  >
+                    <span>{tag}</span>
+                    <span>{count}</span>
+                  </a>
+                ))}
+            </nav>
+          </details>
+        </aside>
+        <section className="topic-atlas__results" aria-label="Posts by topic">
+          <div className="topic-atlas__map">
+            <div className="topic-atlas__scope">
+              <h2>{selectedTag ?? "All topics"}</h2>
+              <a href="#topic-posts">
+                {topicPosts.length} posts <Arrow />
+              </a>
+            </div>
+            <p>
+              {selectedTag
+                ? "Connected topics, ranked by shared posts."
+                : "Pick a starting point. See where it takes you."}
+            </p>
+            {nearbyTopics.length > 0 && (
+              <nav
+                className="topic-atlas__connections"
+                aria-label={selectedTag ? "Related topics" : "Frequent topics"}
+              >
+                {nearbyTopics.map(([tag, count]) => (
+                  <a href={tagHref(tag)} key={tag}>
+                    <i aria-hidden="true" />
+                    <span>{tag}</span>
+                    <span className="topic-atlas__connection-count">
+                      {count}
+                      <span className="sr-only">
+                        {" "}
+                        {selectedTag ? "shared posts" : "posts"}
+                      </span>
+                    </span>
+                  </a>
+                ))}
+              </nav>
+            )}
+          </div>
           <PostList
+            tagHref={tagHref}
             posts={selectedPosts}
             activePostCount={activePostCount}
-            totalPostCount={totalPostCount}
             search={search}
             selectedTag={selectedTag}
             onClearSearch={clearSearch}
             matchByPostKey={matchByPostKey}
             preserveOrder={hasCurrentFullTextResults && Boolean(deferredSearch)}
           />
-        </div>
+        </section>
       </div>
-    </>
+    </div>
   );
 }
 
-const TagList = ({
-  tags,
-  selectedTag,
-  setSelectedTag,
-}: {
-  tags: Array<[string, number]>;
-  selectedTag: string | null;
-  setSelectedTag: (tag: string | null) => void;
-}) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
+function Arrow() {
   return (
-    <div className="sticky top-28">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <h2 className="text-2xl font-bold">Tags:</h2>
-          <span className="font-mono text-2xl text-muted-foreground">
-            ({tags.length})
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsExpanded((prev) => !prev)}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
-          aria-label={isExpanded ? "Collapse tag list" : "Expand tag list"}
-          aria-expanded={isExpanded}
-          aria-controls="tag-list"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.5"
-            stroke="currentColor"
-            className={
-              "size-4 transition-transform " + (isExpanded ? "rotate-180" : "")
-            }
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="m19.5 8.25-7.5 7.5-7.5-7.5"
-            />
-          </svg>
-        </button>
-      </div>
-      <ul
-        id="tag-list"
-        className="flex flex-wrap gap-2 sm:gap-6 md:gap-3 lg:gap-4"
-        aria-label="All tags with blog post counts"
-      >
-        {tags
-          .sort((a, b) => {
-            return a[0].localeCompare(b[0]);
-          })
-          .map(([tagName, count]) => (
-            <li
-              key={tagName}
-              className={
-                isExpanded || tagName === selectedTag
-                  ? ""
-                  : "hidden lg:list-item"
-              }
-            >
-              <button
-                type="button"
-                aria-pressed={selectedTag === tagName}
-                onClick={() => {
-                  if (selectedTag === tagName) {
-                    setSelectedTag(null);
-                    window.location.href = "/tags/";
-                  } else {
-                    setSelectedTag(tagName);
-                    window.location.href = `/tags/${tagName}/`;
-                  }
-                }}
-                className={
-                  "relative inline-flex min-h-11 w-fit items-center whitespace-nowrap rounded-full border px-3 py-2 text-sm font-semibold text-foreground md:min-h-0 md:px-2.5 md:py-0.5" +
-                  (selectedTag === tagName
-                    ? " outline-none ring-2 ring-ring"
-                    : "")
-                }
-              >
-                <span>{tagName}</span>
-                <span className="pl-1 text-sm text-muted-foreground">
-                  {count}
-                </span>
-                {selectedTag === tagName && (
-                  <span className="absolute right-0 top-0 -translate-y-[50%] translate-x-[50%] rounded-full bg-black text-white">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth="1.5"
-                      stroke="currentColor"
-                      className="size-4"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M6 18 18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
-      </ul>
-    </div>
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <path d="M5 19 19 5M5 5h14v14" />
+    </svg>
   );
+}
+
+const collectionDetails = {
+  blog: { label: "Blog", path: "blog", transition: "blog" },
+  log: { label: "Dev log", path: "dev-log", transition: "devlog" },
+  snacks: { label: "Snack", path: "snacks", transition: "snack" },
 };
 
 const PostList = ({
+  tagHref,
   posts,
   activePostCount,
-  totalPostCount,
   search,
   selectedTag,
   onClearSearch,
   matchByPostKey,
   preserveOrder,
 }: {
+  tagHref: (tag: string | null) => string;
   posts: TaggedPreviewEntry[];
   activePostCount: number;
-  totalPostCount: number;
   search: string;
   selectedTag: string | null;
   onClearSearch: () => void;
@@ -338,80 +327,106 @@ const PostList = ({
 }) => {
   const items = [...posts];
   if (!preserveOrder) {
-    items.sort((a, b) => {
-      return (
+    items.sort(
+      (a, b) =>
         new Date(b.data.releaseDate).getTime() -
-        new Date(a.data.releaseDate).getTime()
-      );
-    });
+        new Date(a.data.releaseDate).getTime(),
+    );
   }
   return (
-    <>
-      <div className="mb-4 flex justify-between gap-2">
-        <div className="flex items-center">
-          <h2 className="text-2xl font-bold">Posts:</h2>
-          <span
-            className="font-mono text-2xl text-muted-foreground"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            ({activePostCount + "/" + totalPostCount})
-          </span>
+    <div id="topic-posts" className="topic-posts">
+      <div className="topic-posts__header">
+        <h3>{search.trim() ? "Search results" : "Latest writing"}</h3>
+        <span role="status" aria-live="polite" aria-atomic="true">
+          {activePostCount} {activePostCount === 1 ? "post" : "posts"}
+          {search.trim() ? ` for “${search.trim()}”` : ""}
+        </span>
+      </div>
+      {items.length === 0 && (
+        <div className="topic-posts__empty">
+          <h3>No matching posts</h3>
+          <p>
+            {search.trim()
+              ? `No posts match “${search.trim()}”${selectedTag ? ` in “${selectedTag}”` : ""}.`
+              : `There are no posts tagged “${selectedTag}”.`}
+          </p>
+          {search.trim() && (
+            <button type="button" onClick={onClearSearch}>
+              Clear search
+            </button>
+          )}
+          {selectedTag && (
+            <a href="/tags/">
+              Browse all topics <Arrow />
+            </a>
+          )}
         </div>
-      </div>
-      <div className="space-y-4">
-        {items.length === 0 && (
-          <div className="rounded-lg border border-dashed border-border bg-muted/40 p-6 text-center">
-            <h3 className="text-lg font-semibold">No matching posts</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {search.trim()
-                ? `No posts match “${search.trim()}”${selectedTag ? ` in “${selectedTag}”` : ""}.`
-                : `There are no posts tagged “${selectedTag}”.`}
-            </p>
-            {search.trim() && (
-              <button
-                type="button"
-                onClick={onClearSearch}
-                className="mt-4 inline-flex min-h-11 items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-semibold hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                Clear search
-              </button>
-            )}
-          </div>
-        )}
-        {items.map((item) => {
-          const postKey = postKeyFor(item);
-          const match = matchByPostKey.get(postKey);
-          let preview: ReactNode;
-          if (item.collection === "blog") {
-            preview = <BlogPreview blog={item} />;
-          } else if (item.collection === "log") {
-            preview = <LogPreview log={item} />;
-          } else {
-            preview = <SnackPreview snack={item} />;
-          }
-
-          return (
-            <div key={`${postKey}-post-list`} className="space-y-2">
-              {match && (
-                <div className="rounded-lg border border-border/70 bg-muted/35 px-4 py-3 text-sm">
-                  <p className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {match.heading
-                      ? `Found in ${match.heading}`
-                      : "Found in post text"}
-                  </p>
-                  <p className="mt-1 leading-6 text-foreground/80">
-                    {match.excerpt}
-                  </p>
-                </div>
-              )}
-              {preview}
+      )}
+      {items.map((item) => {
+        const postKey = postKeyFor(item);
+        const match = matchByPostKey.get(postKey);
+        const collection = collectionDetails[item.collection];
+        const href = `/${collection.path}/${item.id}/`;
+        const date = new Date(item.data.releaseDate);
+        return (
+          <article
+            key={postKey}
+            className={`topic-post topic-post--${item.collection}`}
+          >
+            <div className="topic-post__meta">
+              <span>
+                <i aria-hidden="true" />
+                {collection.label}
+              </span>
+              <time dateTime={date.toISOString()}>
+                {date.toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  timeZone: "UTC",
+                })}
+              </time>
             </div>
-          );
-        })}
-      </div>
-    </>
+            <h4>
+              <a
+                href={href}
+                style={{
+                  viewTransitionName: `${collection.transition}-title-${item.id.replaceAll("/", "-")}`,
+                }}
+              >
+                {item.data.title}
+                <Arrow />
+              </a>
+            </h4>
+            <p>{item.data.description}</p>
+            {match && (
+              <div className="topic-post__match">
+                <span>
+                  {match.heading
+                    ? `Found in ${match.heading}`
+                    : "Found in post text"}
+                </span>
+                <p>{match.excerpt}</p>
+              </div>
+            )}
+            <nav
+              aria-label={`Topics for ${item.data.title}`}
+              className="topic-post__tags"
+            >
+              {item.data.tags.map((tag) => (
+                <a
+                  key={tag}
+                  href={tagHref(tag)}
+                  aria-current={selectedTag === tag ? "page" : undefined}
+                >
+                  {tag}
+                </a>
+              ))}
+            </nav>
+          </article>
+        );
+      })}
+    </div>
   );
 };
 
@@ -435,8 +450,8 @@ const Search = ({
         : "Searching titles, descriptions, tags, headings, URLs, and full post text.";
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl">
-      <label htmlFor="tag-search" className="mb-2 block text-sm font-medium">
+    <form className="topic-search" role="search" method="get">
+      <label htmlFor="tag-search" className="topic-search__label">
         Search posts
       </label>
       <div className="relative">
@@ -449,8 +464,9 @@ const Search = ({
           onPointerDown={onSearchIntent}
           aria-busy={searchIndexStatus === "loading"}
           aria-describedby={isSearching ? "tag-search-status" : undefined}
-          className="flex min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 pl-11 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder="Search titles, tags, headings, and full post text"
+          name="q"
+          className="topic-search__input"
+          placeholder="Search all the writing…"
         />
         <span
           className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
@@ -483,6 +499,6 @@ const Search = ({
           {statusMessage}
         </p>
       )}
-    </div>
+    </form>
   );
 };
