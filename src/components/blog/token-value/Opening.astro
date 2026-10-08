@@ -1,0 +1,42 @@
+---
+import { totalTokens, cachedTokens, billions, percent } from "./model";
+import "./visuals.css";
+const fresh = totalTokens - cachedTokens;
+---
+
+<figure class="tv-opening not-prose" data-tv-opening data-tv-total={totalTokens} data-tv-cached={cachedTokens}>
+  <h3>76.85 billion recorded tokens</h3>
+  <div class="tv-mosaic" aria-hidden="true">
+    {Array.from({ length: 100 }, (_, i) => <span class:list={{ "tv-read-again": i < 96 }} />)}
+  </div>
+  <p class="tv-note">One square ≈ 1% of the recorded tokens. Ember is cached input.</p>
+  <div class="tv-opening-answer" aria-live="polite" aria-atomic="true">
+    <strong data-tv-opening-count>{billions(totalTokens)}</strong>
+    <span data-tv-opening-label>tokens, including repeated context</span>
+  </div>
+  <button type="button" class="tv-button" data-tv-remove-cache aria-pressed="false" hidden>Exclude cache reads</button>
+  <figcaption>
+    {percent(cachedTokens / totalTokens * 100)} are cache reads. The remaining {billions(fresh)} are fresh input, cache writes, and output.
+  </figcaption>
+</figure>
+
+<script>
+  import { billions } from "./format";
+  const figure = document.querySelector<HTMLElement>("[data-tv-opening]");
+  const button = figure?.querySelector<HTMLButtonElement>("button");
+  const count = figure?.querySelector<HTMLElement>("[data-tv-opening-count]");
+  const label = figure?.querySelector<HTMLElement>("[data-tv-opening-label]");
+  if (figure && button && count && label) {
+    const totalTokens = Number(figure.dataset.tvTotal);
+    const cachedTokens = Number(figure.dataset.tvCached);
+    button.hidden = false;
+    button.addEventListener("click", () => {
+      const removed = button.getAttribute("aria-pressed") !== "true";
+      button.setAttribute("aria-pressed", String(removed));
+      figure.classList.toggle("tv-cache-removed", removed);
+      count.textContent = billions(removed ? totalTokens - cachedTokens : totalTokens);
+      label.textContent = removed ? "tokens after excluding cache reads" : "tokens, including repeated context";
+      button.textContent = removed ? "Include cache reads" : "Exclude cache reads";
+    });
+  }
+</script>

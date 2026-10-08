@@ -1,0 +1,56 @@
+/* Native document navigation keeps page scripts and browser-local tools intact. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-group(*) {
+  z-index: 1;
+  animation-duration: 200ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 160ms;
+  animation-timing-function: ease-out;
+}
+
+/* Keep the shell still and fade content without stretching the whole page. */
+::view-transition-group(root),
+::view-transition-group(page-content),
+::view-transition-group(site-header),
+::view-transition-group(site-footer) {
+  animation: none;
+}
+
+::view-transition-old(root),
+::view-transition-old(site-header),
+::view-transition-old(site-footer) {
+  display: none;
+}
+
+::view-transition-new(root),
+::view-transition-new(site-header),
+::view-transition-new(site-footer) {
+  animation: none;
+}
+
+::view-transition-group(root) {
+  z-index: 0;
+}
+
+::view-transition-group(site-header) {
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}

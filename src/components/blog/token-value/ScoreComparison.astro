@@ -1,0 +1,23 @@
+---
+import { benchmarks, benchmarkScore, metrics } from "./model";
+import "./visuals.css";
+const models = ["gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol"].flatMap((id) => {
+  const model = benchmarks.find((row) => row.id === id);
+  return model ? [model] : [];
+});
+---
+
+<figure class="tv-figure tv-score-comparison not-prose" aria-label="Sol benchmark score comparison">
+  <h3>Sol scores across the benchmarks</h3>
+  <div class="tv-table-scroll" tabindex="0" role="region" aria-label="Sol scores">
+    <table>
+      <thead><tr><th scope="col">Measure</th>{models.map((model) => <th scope="col">{model.label.replace("GPT-", "")}</th>)}</tr></thead>
+      <tbody>
+        {metrics.map((metric) => <tr class:list={{ "tv-combined-score": metric.id === "combined" }}>
+          <th scope="row" title={metric.label}>{metric.id === "combined" ? "Combined" : metric.shortLabel}</th>
+          {models.map((model) => <td>{benchmarkScore(model, metric.id)?.toFixed(1) ?? "—"}{metric.id !== "combined" && metric.id !== "intelligence" && "%"}</td>)}
+        </tr>)}
+      </tbody>
+    </table>
+  </div>
+</figure>

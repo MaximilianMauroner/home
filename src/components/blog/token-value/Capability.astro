@@ -1,0 +1,238 @@
+---
+import { metrics, individualMetrics, families, trend, benchmarks, money } from "./model";
+import "./visuals.css";
+// Release steps keep near-simultaneous launches readable; dates remain explicit.
+const views = [
+  { id: "value", label: "Cost per score", maximum: 140, direction: "lower is better" },
+  { id: "score", label: "Benchmark score", maximum: 100, direction: "higher is better" },
+] as const;
+const y = (value: number, maximum: number) => 156 - (value / maximum) * 116;
+const releaseDate = (date: string) => new Intl.DateTimeFormat("en-GB", {
+  day: "numeric", month: "short", timeZone: "UTC",
+}).format(new Date(date));
+const changeLabel = (change: number, view: (typeof views)[number]["id"]) => {
+  if (change === 0) return "No change";
+  const higher = view === "score" ? change > 0 : change < 0;
+  return Math.abs(change).toFixed(1) + (view === "score" ? " points " : "% ") + (higher ? "higher" : "lower");
+};
+const charts = metrics.flatMap((metric) => views.map((view) => ({
+  ...metric,
+  view,
+  series: families.map((family) => {
+    const points = trend(family.ids, metric.id).map((point, index, all) => ({
+      ...point,
+      x: ((index + 0.5) / all.length) * 100,
+      hasTrend: all.length > 1,
+      displayLow: view.id === "score" ? point.score : point.low,
+      displayHigh: view.id === "score" ? point.score : point.high,
+      lowY: y(view.id === "score" ? point.score : point.low, view.maximum),
+      highY: y(view.id === "score" ? point.score : point.high, view.maximum),
+      releaseLabel: point.label.replace(/^GPT-/, ""),
+    }));
+    return {
+      label: family.label,
+      className: family.className,
+      points,
+      polyline: points.map((point) => point.x + "," + point.lowY).join(" "),
+    };
+  }),
+})));
+---
+
+<figure
+  class="tv-figure tv-capability not-prose"
+  data-tv-capability
+  aria-label="Model benchmark scores and recorded token costs across releases"
+>
+  <h3>Model scores and token costs across releases</h3>
+  <p>
+    Compare Sol, Luna, Astra, and Opus. Switch views to see benchmark scores
+    or what each score point costs with my recorded token mix.
+  </p>
+  <div class="tv-control" data-tv-controls hidden>
+    <label for="tv-benchmark">Benchmark</label>
+    <select id="tv-benchmark">
+      {metrics.map((metric) => <option value={metric.id}>{metric.label}</option>)}
+    </select>
+    <label for="tv-comparison-view">View</label>
+    <select id="tv-comparison-view">
+      {views.map((view) => <option value={view.id}>{view.label}</option>)}
+    </select>
+  </div>
+  <p class="tv-note">
+    Releases are evenly spaced in order, not by elapsed time. Dates are shown below.
+    Vertical ranges in the cost view show the CSV’s low/high price bounds.
+  </p>
+  {charts.map((metric) => (
+    <section data-tv-metric={metric.id} data-tv-comparison-view={metric.view.id} aria-label={metric.label + ", " + metric.view.label}>
+      <p class="tv-note"><strong>{metric.label}</strong> · {metric.view.id === "value" ? "cost per score, first release = 100" : "benchmark score"} · {metric.view.direction}.</p>
+      {metric.series.map((series) => {
+        const first = series.points[0];
+        const last = series.points.at(-1);
+        if (!first || !last) return null;
+        const hasTrend = series.points.length > 1;
+        const change = Number((metric.view.id === "score" ? last.score - first.score : 100 - last.low).toFixed(1));
+        const outcome = change > 0 ? "better" : change < 0 ? "worse" : "neutral";
+        return <div class:list={["tv-family-trend", series.className]}>
+          <div class="tv-family-heading">
+            <h4>{series.label}</h4>
+            <p>
+              <strong data-outcome={hasTrend ? outcome : "neutral"}>{hasTrend ? changeLabel(change, metric.view.id) : "One recorded release"}</strong>
+              <span>{hasTrend
+                ? first.displayLow.toFixed(1) + " → " + last.displayLow.toFixed(1) + (metric.view.id === "value" ? " · low bound" : "")
+                : last.releaseLabel + " · " + releaseDate(last.releaseDate) + " " + last.releaseDate.slice(0, 4)}</span>
+            </p>
+          </div>
+          {!hasTrend && metric.view.id === "value" ? (
+            <dl class="tv-single-release">
+              <div><dt>{metric.id === "combined" ? "Combined score" : "Benchmark score"}</dt><dd>{last.score.toFixed(1)}</dd></div>
+              <div><dt>Recorded $/million tokens</dt><dd>{money(last.priceLow)}</dd></div>
+              <div><dt>$/<strong>BILLION</strong> tokens / score point</dt><dd>{money(last.priceLow / last.score * 1000)}</dd></div>
+            </dl>
+          ) : <>
+            <div class="tv-release-chart" role="img" aria-label={series.label + ", " + metric.label + ": " + series.points.map((point) => point.label + ", " + point.releaseDate + ": " + point.displayLow.toFixed(1) + " to " + point.displayHigh.toFixed(1)).join("; ") + ". " + (metric.view.id === "value" ? "Each family starts at 100. " : "Absolute benchmark scores. ") + metric.view.direction + "."}>
+              <div class="tv-release-axis" aria-hidden="true">
+                {[0, 50, 100].map((tick) => <span style={"top:" + y(tick, metric.view.maximum) + "px"}>{tick}</span>)}
+              </div>
+              <div class="tv-release-plot" aria-hidden="true">
+                <svg viewBox="0 0 100 180" preserveAspectRatio="none">
+                  {[0, 50, 100].map((tick) => <line class="tv-grid" x1="0" x2="100" y1={y(tick, metric.view.maximum)} y2={y(tick, metric.view.maximum)} />)}
+                  {hasTrend && <polyline class="tv-line" points={series.polyline} />}
+                  {series.points.map((point) => <line class="tv-range" x1={point.x} x2={point.x} y1={point.lowY} y2={point.highY} />)}
+                </svg>
+                {series.points.map((point) => <>
+                  <span class="tv-release-value tv-number" style={"left:" + point.x + "%;top:" + (point.highY - 27) + "px"}>{point.displayLow.toFixed(1)}</span>
+                  <span class="tv-release-point" data-tv-point={point.id} style={"left:" + point.x + "%;top:" + point.lowY + "px"} title={point.variant + ": score " + point.score.toFixed(2) + ", " + money(point.priceLow) + " per million recorded tokens"} />
+                </>)}
+              </div>
+            </div>
+            <div class="tv-release-labels" style={"--tv-release-count:" + series.points.length}>
+              {series.points.map((point) => <div>
+                <strong>{point.releaseLabel}</strong>
+                <time datetime={point.releaseDate}><span>{releaseDate(point.releaseDate)}</span><span>{point.releaseDate.slice(0, 4)}</span></time>
+              </div>)}
+            </div>
+          </>}
+        </div>;
+      })}
+      <div class="tv-control" data-tv-controls hidden>
+        <label for={"tv-release-" + metric.id + "-" + metric.view.id}>Inspect a release</label>
+        <select id={"tv-release-" + metric.id + "-" + metric.view.id} data-tv-release>
+          {metric.series.flatMap((series) => series.points).map((point) =>
+            <option value={point.id} selected={point.id === "gpt-6.1-sol"}>{point.label}</option>
+          )}
+        </select>
+      </div>
+      <div data-tv-inspector aria-live="polite" aria-atomic="true" hidden>
+        {metric.series.flatMap((series) => series.points).map((point) =>
+          <div class="tv-inspection" data-tv-release-info={point.id} hidden>
+            <p><strong>{point.variant}</strong> · released {point.releaseDate}</p>
+            <dl>
+              <div><dt>{metric.id === "combined" ? "Combined score" : "Benchmark score"}</dt><dd>{point.score.toFixed(2)}</dd></div>
+              <div><dt>Recorded $/M tokens</dt><dd>{money(point.priceLow)}{money(point.priceHigh) !== money(point.priceLow) && "–" + money(point.priceHigh)}</dd></div>
+              <div><dt>{point.hasTrend ? "Normalized cost per score" : "$/BILLION tokens / score point"}</dt><dd>{point.hasTrend ? point.low.toFixed(1) : money(point.priceLow / point.score * 1000)}{point.hasTrend && point.high.toFixed(1) !== point.low.toFixed(1) && "–" + point.high.toFixed(1)}</dd></div>
+            </dl>
+            {point.id === "gpt-6.1-sol" && metric.id === "scicode" && (
+              <p class="tv-note">Its SciCode score fell from 57.64 to 54.17, but the lower token price still improves the price-to-score ratio.</p>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  ))}
+  <details>
+    <summary>Benchmark scores, model settings, and calculation</summary>
+    <p class="tv-note">
+      Scores retrieved from Artificial Analysis on 8 October 2026.
+      The combined view gives six measures equal weight: AA Index v4.3.2,
+      Terminal-Bench 4.0, SciCode, Humanity’s Last Exam, CRITPt, and long-context reasoning.
+      Each measure’s highest score among the nine main models is set to 100,
+      then those six normalized scores are averaged. All six scores are required.
+      AA Index already combines evaluations; this is my own comparison.
+      GPT-6 Luna adds a second Luna release without changing that nine-model reference.
+    </p>
+    <p class="tv-note">
+      Ratio = API-equivalent dollars per million recorded tokens ÷ benchmark
+      score. Within each family and benchmark, divide by the first available
+      low-bound ratio and multiply by 100. Whiskers retain the CSV’s price
+      range. The score view uses absolute scores on a shared zero-based scale.
+      Lines join evenly spaced releases.
+    </p>
+    <p class="tv-note">
+      Opus 4.5 and 4.6 have no Terminal-Bench 4.0 or SciCode score in this snapshot.
+      Their combined scores are also unavailable. Those three Opus lines start at Opus 5.
+      The other comparisons start at Opus 4.5. Astra has one recorded release,
+      so its cost view shows absolute values and its score view has a single point.
+    </p>
+    <div class="tv-table-scroll" tabindex="0" role="region" aria-label="Source benchmark scores">
+      <table>
+        <thead><tr>
+          <th scope="col">Evaluated model setting</th>
+          {individualMetrics.map((metric) => <th scope="col" title={metric.label}>
+            <a href={metric.source}>{metric.shortLabel}</a>{metric.id !== "intelligence" && " %"}
+          </th>)}
+        </tr></thead>
+        <tbody>{benchmarks.map((row) => <tr>
+          <th scope="row"><a href={row.source}>{row.variant}</a></th>
+          {individualMetrics.map((metric) => <td>{row[metric.id]?.toFixed(2) ?? "—"}</td>)}
+        </tr>)}</tbody>
+      </table>
+    </div>
+  </details>
+</figure>
+<script>
+  const figure = document.querySelector<HTMLElement>("[data-tv-capability]");
+  const benchmark = figure?.querySelector<HTMLSelectElement>("#tv-benchmark");
+  const view = figure?.querySelector<HTMLSelectElement>("#tv-comparison-view");
+  if (figure && benchmark && view) {
+    const panels = figure.querySelectorAll<HTMLElement>("[data-tv-metric]");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const cancelFeedback = () => {
+      figure.querySelectorAll<HTMLElement>("[data-tv-metric], [data-tv-release-info]").forEach((element) => {
+        element.getAnimations?.().forEach((animation) => animation.cancel());
+      });
+    };
+    const showFeedback = (element: HTMLElement) => {
+      element.getAnimations?.().forEach((animation) => animation.cancel());
+      if (!reducedMotion.matches) element.animate?.([{ opacity: 0.72 }, { opacity: 1 }], {
+        duration: 160, easing: "ease-out",
+      });
+    };
+    const updateComparison = (animate = false) => {
+      const active = Array.from(panels).find((panel) => !panel.hidden);
+      const selected = active?.querySelector<HTMLSelectElement>("[data-tv-release]")?.value;
+      cancelFeedback();
+      panels.forEach((panel) => {
+        panel.hidden = panel.dataset.tvMetric !== benchmark.value || panel.dataset.tvComparisonView !== view.value;
+        if (panel.hidden) return;
+        const release = panel.querySelector<HTMLSelectElement>("[data-tv-release]")!;
+        if (selected && Array.from(release.options).some((option) => option.value === selected)) {
+          release.value = selected;
+          release.dispatchEvent(new Event("change"));
+        }
+        if (animate) showFeedback(panel);
+      });
+    };
+    panels.forEach((panel) => {
+      const release = panel.querySelector<HTMLSelectElement>("[data-tv-release]")!;
+      const updateRelease = (animate = false) => {
+        cancelFeedback();
+        panel.querySelectorAll<HTMLElement>("[data-tv-release-info]").forEach((info) => {
+          info.hidden = info.dataset.tvReleaseInfo !== release.value;
+          if (!info.hidden && animate) showFeedback(info);
+        });
+        panel.querySelectorAll<HTMLElement>("[data-tv-point]").forEach((point) => {
+          point.classList.toggle("tv-selected-point", point.dataset.tvPoint === release.value);
+        });
+      };
+      panel.querySelector<HTMLElement>("[data-tv-inspector]")!.hidden = false;
+      release.addEventListener("change", () => updateRelease(true));
+      updateRelease();
+    });
+    figure.querySelectorAll<HTMLElement>("[data-tv-controls]").forEach((control) => { control.hidden = false; });
+    benchmark.addEventListener("change", () => updateComparison(true));
+    view.addEventListener("change", () => updateComparison(true));
+    updateComparison();
+    reducedMotion.addEventListener("change", () => { if (reducedMotion.matches) cancelFeedback(); });
+  }
+</script>

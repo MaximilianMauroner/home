@@ -1,0 +1,98 @@
+---
+layout: "@/layouts/BlogLayout.astro"
+title: "The price tag isn't the cost of AI"
+description: "My recovered AI history contains 76.85 billion tokens. Most are cached input, which changes what the models cost and how much capability I get for the money."
+tags: ["ai", "agents", "pricing", "benchmarks", "developer-workflow"]
+type: "essay"
+published: true
+image: "/src/assets/blog/covers/008-context-reuse.webp"
+imageAlt: "Three matching context sheets linked by reuse arrows. The first has a large price tag; the repeated reads have smaller tags."
+releaseDate: 2026-10-08
+---
+
+import Opening from "@/components/blog/token-value/Opening.astro";
+import CacheReceipt from "@/components/blog/token-value/CacheReceipt.astro";
+import Usage from "@/components/blog/token-value/Usage.astro";
+import Capability from "@/components/blog/token-value/Capability.astro";
+import ScoreComparison from "@/components/blog/token-value/ScoreComparison.astro";
+import RealWork from "@/components/blog/token-value/RealWork.astro";
+
+My recovered AI history adds up to **76.85 billion tokens**. Honestly, that's kind of ridiculous. But most of those tokens are the models reading the same context again.
+
+Pricing pages make that easy to miss. An agent working in a codebase keeps coming back to the instructions, files, and conversation. Those repeat reads can be much cheaper than the first read.
+
+I wanted to put an API price on that history and see which models gave me better value.
+
+<Opening />
+
+Remove the cache reads and the number gets a lot less dramatic. What's left includes fresh input, cache writes, and output, so it isn't a count of new code either. Neither number tells me how many tasks actually worked.
+
+**This is not my bill**. The [CSV behind this post](/data/ai-token-value/all-model-token-value.csv) applies API rates checked on 8 October 2026 to recorded usage. The priced entries come to an API estimate of **$39,363–$40,865**, with three entries left unpriced. That helps me understand the workload. It doesn't say what I paid for subscriptions or mean I spent forty thousand dollars.
+
+## The models that mattered
+
+The top nine models account for **96% of the recorded tokens**. Those are the ones I want to look at; the smaller entries are still in the source table.
+
+<Usage />
+
+GPT-5.6 Sol is the obvious one: **41.93 billion tokens**, or **54.6%** of the total. GPT-5.6 Luna comes next, with 9.91 billion. Together they account for about two thirds of the recovered history.
+
+Luna accounts for **12.9% of the tokens and only 0.8% of the priced value** at the low bound. Counting tokens without looking at which model served them doesn't tell me much about the cost.
+
+Across the whole dataset, **96.4% of recorded tokens are cached input**. I used all tokens, including output, as the denominator.
+
+There is a coverage catch. The recovered Claude history starts on 4 January 2026, has a gap from 6 to 16 June, and runs through 7 October. The recovered Codex history only starts on 6 July. Deleted history may be missing too. So this is a picture of what survived, not a clean comparison of how much I used each provider over the same nine months.
+
+The CSV is also aggregated by model. I can't turn it into an honest daily usage chart, because the dates of individual requests aren't there.
+
+## Comparing model prices and benchmark scores
+
+The interesting question for me is whether I'm getting more capable models for less money. A cheaper model that needs three attempts and still gets the task wrong isn't necessarily cheaper in the way I care about.
+
+For a rough comparison, I used six measures from [Artificial Analysis](https://artificialanalysis.ai/models): its Intelligence Index, [Terminal-Bench 4.0](https://www.tbench.ai/leaderboard/terminal-bench/4.0), [SciCode](https://scicode-bench.github.io/), [Humanity’s Last Exam](https://artificialanalysis.ai/evaluations/humanitys-last-exam), [CRITPt](https://artificialanalysis.ai/evaluations/critpt), and [long-context reasoning](https://artificialanalysis.ai/evaluations/artificial-analysis-long-context-reasoning). They cover terminal work, scientific coding, expert questions, research problems, and reasoning over long inputs. I want to see more than one score when comparing models.
+
+The default view combines them. I set the highest score on each measure among these nine models to 100, then average the six normalized scores with equal weight. A model needs all six scores to enter that comparison. You can switch to any individual benchmark in both the value ranking above and the release chart below.
+
+For each view, I divide **API-equivalent dollars per million recorded tokens by the score**. The release charts then set the first available model in each family to 100. The ranking uses the price-to-score ratios directly, with the lowest first. The combined score is my own comparison; AA Index already includes several evaluations, so these six measures aren't independent tests.
+
+I had the “good phones are getting cheap, and cheap phones are getting good” comparison in mind. Switch the chart to **Benchmark score** to see whether the scores themselves improve, alongside the cost-per-score view.
+
+<Capability />
+
+For the Sol models, the effective token price goes from roughly **$0.56** per million for GPT-5.6 Sol to **$0.27** for GPT-6 Sol and **$0.20** for GPT-6.1 Sol. Their combined scores are **85.6**, **85.8**, and **91.3**. The price-to-score ratio falls by about **66.3%** from the first to the last, or **67.5%** using AA Index alone.
+
+<ScoreComparison />
+
+For Opus, the combined comparison starts at Opus 5, because Opus 4.5 and 4.6 are missing Terminal-Bench and SciCode scores. From Opus 5 to Opus 5.5, the low-bound ratio falls by **54.2%**. On AA Index alone, I can compare Opus 4.5 with Opus 5.5, and the drop is **76.3%**. The price ranges in the chart matter here: some older Claude records have cache-write counts without a known cache lifetime, so there isn't one exact price to put on them.
+
+From GPT-5.6 Luna to GPT-6 Luna, AA Index rises from **37.3 to 38.1**. Terminal-Bench and SciCode also improve, while HLE, CRITPt, and long-context reasoning fall slightly. The combined score goes from **65.2 to 65.1**, so I wouldn't call that a clear improvement across the board.
+
+Luna's recorded token cost falls from about **$0.033 to $0.016 per million**, which brings cost per combined score down **51.3%**. Those prices use each model's own workload: GPT-6 Luna has 67.5 million recorded tokens here, compared with 9.91 billion for GPT-5.6 Luna.
+
+GPT-6 Astra has an AA Index score of about 52.7, close to GPT-6.1 Sol's 51.8, but its effective token price in this history is about seven times higher. The chart includes its score and cost. There is only one Astra release in the CSV, so I can't show a trend for that family.
+
+GPT-6.1 Sol's SciCode score is slightly below GPT-6 Sol's. Its token price falls enough that the price-to-score ratio still improves.
+
+I used the same version of the AA Index, v4.3.2, for all the models. The evaluated settings are listed under the graph, but my CSV doesn't record the reasoning setting for each request. Each model also has its own token mix. I'm pairing benchmark scores with observed workloads, rather than testing every model on the same job.
+
+And benchmark points aren't units of intelligence. A model scoring 50 isn't “twice as intelligent” as one scoring 25. The ratio helps me think about direction. It doesn't tell me how much a correct, reviewed pull request costs.
+
+## The price of outsourcing the work
+
+If I hand an agent a task in a repository, it may read the instructions, files, and conversation many times. Those reads still count as tokens. But when they qualify as cache hits, charging all of them at the fresh-input price gives me a pretty misleading idea of what the work costs.
+
+GPT-6.1 Sol is a good example. Its base rates in this snapshot are $2 per million input tokens and $10 per million output tokens. If I keep my recorded input/output proportions but price **all input as uncached**, that works out to **$2.03 per million total tokens**. With the recorded cache mix, it is **$0.20**, about **90% lower**.
+
+Try taking the cache away below. The model and output share stay the same. A $100 API budget buys roughly **50 million total tokens without cache, or 502 million with my recorded mix**.
+
+<CacheReceipt />
+
+The final graph applies the same uncached comparison to the nine main models. Their API estimates come out roughly **80–91% below** the uncached prices, depending on the model and the price bound.
+
+Cheaper attempts and reviews are useful. I still have to check the work, as I wrote about in [my post on layers of code review](/blog/007-bugs-have-to-get-lucky-more-than-once/). Cheap tokens don't fix a bad task description or make an incorrect change useful.
+
+The API estimates here include reported cache writes and recoverable long-context premiums. They leave out missing Codex cache-write uplift, speed premiums, residency uplifts, and tool fees. The comparison also doesn't measure retries, human review time, or completed tasks. So I wouldn't call the gap below my savings. It shows how much the token mix changes the price of the same recorded workload.
+
+When I think about outsourcing work to a model, I want to price the workload I actually send it.
+
+<RealWork />

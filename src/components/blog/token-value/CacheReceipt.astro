@@ -1,0 +1,96 @@
+---
+import { usage, money, percent } from "./model";
+import { cachePrice } from "./cache";
+import "./visuals.css";
+const row = usage.find((row) => row.id === "gpt-6.1-sol")!;
+const outputShare = row.output / row.total;
+const recordedShare = row.cached / (row.total - row.output);
+// These base rates are retained from the CSV, not inferred from value totals.
+const inputRate = 2;
+const cachedRate = 0.1;
+const outputRate = 10;
+const price = cachePrice(recordedShare, outputShare, inputRate, cachedRate, outputRate);
+const advertised = cachePrice(0, outputShare, inputRate, cachedRate, outputRate);
+---
+
+<figure class="tv-receipt not-prose" data-tv-receipt
+  data-output-share={outputShare} data-recorded-share={recordedShare}
+  data-input-rate={inputRate} data-cached-rate={cachedRate} data-output-rate={outputRate}>
+  <h3>What if the cache disappeared?</h3>
+  <p>Price one billion total tokens with GPT-6.1 Sol. Keep the output share fixed and change how much input comes from cache.</p>
+  <div class="tv-receipt-controls" data-tv-controls hidden>
+    <label for="tv-cache-share">Input served from cache <output for="tv-cache-share" data-tv-cache-share>{percent(recordedShare * 100)}</output></label>
+    <input id="tv-cache-share" type="range" min="0" max="100" step="0.1" value={recordedShare * 100} aria-describedby="tv-receipt-method" />
+    <div class="tv-presets">
+      <button type="button" class="tv-button" data-tv-cache-preset="0" aria-pressed="false">No cache</button>
+      <button type="button" class="tv-button" data-tv-cache-preset={recordedShare * 100} aria-pressed="true">My recorded mix</button>
+      <button type="button" class="tv-button" data-tv-cache-preset="100" aria-pressed="false">All input cached</button>
+    </div>
+  </div>
+  <div class="tv-receipt-paper">
+    <div class="tv-row-label"><strong>GPT-6.1 Sol</strong><span class="tv-number">1,000M tokens</span></div>
+    <div class="tv-receipt-line"><span>All input uncached</span><span class="tv-number">{money(advertised * 1000)}</span></div>
+    <div class="tv-receipt-line"><span data-tv-scenario-label>Recorded cache mix</span><strong class="tv-receipt-total" data-tv-scenario-cost>{money(price * 1000)}</strong></div>
+    <div class="tv-meter" aria-hidden="true"><span data-tv-scenario-bar style={`width:${price / advertised * 100}%`} /></div>
+    <p class="tv-receipt-verdict" aria-live="polite" aria-atomic="true" data-tv-scenario-verdict>
+      {money(price)} per million total tokens. A $100 API budget buys roughly {(100 / price).toFixed(0)}M tokens at this mix.
+    </p>
+  </div>
+  <details>
+    <summary>Rates and calculation</summary>
+    <p class="tv-note" id="tv-receipt-method">
+      A pricing scenario, not a completed-task estimate. Base rates: $2/M fresh input, $0.10/M cached input, $10/M output.
+      Output stays at {percent(outputShare * 100)} of total tokens. “My recorded mix” uses the exact input cache-read share, {percent(recordedShare * 100)};
+      the slider’s manual steps are 0.1 percentage points. Cache writes, long-context premiums, tool fees, and other uplifts are excluded.
+      Cache eligibility is not guaranteed by the slider.
+    </p>
+  </details>
+</figure>
+
+<script>
+  import { cachePrice } from "./cache";
+  import { money, percent } from "./format";
+  const figure = document.querySelector<HTMLElement>("[data-tv-receipt]");
+  const input = figure?.querySelector<HTMLInputElement>("input");
+  if (figure && input) {
+    const { outputShare, recordedShare, inputRate, cachedRate, outputRate } = figure.dataset;
+    const priceAt = (share: number) => cachePrice(share, Number(outputShare), Number(inputRate), Number(cachedRate), Number(outputRate));
+    const advertised = priceAt(0);
+    const bar = figure.querySelector<HTMLElement>("[data-tv-scenario-bar]")!;
+    const presets = figure.querySelectorAll<HTMLButtonElement>("[data-tv-cache-preset]");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const cancelAnimation = () => bar.getAnimations?.().forEach((animation) => animation.cancel());
+    const update = (share: number, animate = false) => {
+      const previousWidth = animate && !reducedMotion.matches ? bar.getBoundingClientRect().width : 0;
+      cancelAnimation();
+      const price = priceAt(share);
+      figure.querySelector<HTMLOutputElement>("[data-tv-cache-share]")!.textContent = percent(share * 100);
+      figure.querySelector<HTMLElement>("[data-tv-scenario-cost]")!.textContent = money(price * 1000);
+      bar.style.width = `${price / advertised * 100}%`;
+      figure.querySelector<HTMLElement>("[data-tv-scenario-label]")!.textContent = Math.abs(share - Number(recordedShare)) < 0.000001 ? "Recorded cache mix" : "Your cache scenario";
+      figure.querySelector<HTMLElement>("[data-tv-scenario-verdict]")!.textContent = `${money(price)} per million total tokens. A $100 API budget buys roughly ${(100 / price).toFixed(0)}M tokens at this mix.`;
+      presets.forEach((button) => {
+        const selected = Math.abs(share - Number(button.dataset.tvCachePreset) / 100) < 0.000001;
+        button.setAttribute("aria-pressed", String(selected));
+      });
+      if (previousWidth > 0) {
+        const nextWidth = bar.getBoundingClientRect().width;
+        if (nextWidth > 0 && previousWidth !== nextWidth) bar.animate?.([
+          { transform: `scaleX(${previousWidth / nextWidth})` },
+          { transform: "scaleX(1)" },
+        ], { duration: 240, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" });
+      }
+    };
+    figure.querySelector<HTMLElement>("[data-tv-controls]")!.hidden = false;
+    input.addEventListener("input", () => update(Number(input.value) / 100));
+    presets.forEach((button) => {
+      button.addEventListener("click", () => {
+        const share = Number(button.dataset.tvCachePreset) / 100;
+        input.value = String(share * 100);
+        // Preserve the source's exact share for the recorded-mix preset.
+        update(share, true);
+      });
+    });
+    reducedMotion.addEventListener("change", () => { if (reducedMotion.matches) cancelAnimation(); });
+  }
+</script>

@@ -115,6 +115,47 @@
   content: "/";
 }
 
+.blog-detail-intro-with-artwork {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.blog-detail-intro-with-artwork h1 {
+  max-width: 12ch;
+  margin-bottom: 0;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+}
+
+.blog-detail-artwork {
+  min-width: 0;
+  margin: 0;
+}
+
+.blog-detail-artwork-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+@media (max-width: 720px) {
+  .blog-detail-intro-with-artwork {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .blog-detail-intro-with-artwork h1 {
+    max-width: 14ch;
+    font-size: clamp(2.35rem, 11.5vw, 3.3rem);
+  }
+
+  .blog-detail-artwork {
+    order: -1;
+  }
+}
+
 .blog-detail-body {
   border-color: var(--edge);
   background:

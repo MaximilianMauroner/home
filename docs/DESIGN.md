@@ -155,9 +155,42 @@ Use the quote field with inset padding. Keep quotation text upright and readable
 
 Use a simple diagram or graphic based on the article, with cream panels and coral accents. Blog covers use the cover-ink background (`#121521`) with slate-blue linework. Dev-log covers keep forest backgrounds. Brand logos and essential diagram labels are allowed when they explain the subject accurately. Do not put article headlines, subtitles, slogans, or footer branding inside the artwork. Use the full canvas for the visual.
 
-Show the real article title once as HTML: below the image in previews and above it on reading pages. Cover treatments have no subtitle. Descriptions remain available in content metadata, search data, and compact text-only archive rows. Show the whole cover without color filters or decorative overlays.
+Show the real article title once as HTML: below the image in previews and in the title header on reading pages. Cover treatments have no subtitle. Descriptions remain available in content metadata, search data, and compact text-only archive rows. Show the whole cover without color filters or decorative overlays.
+
+Blog reading pages integrate the full cover into the title header. On desktop, the headline and artwork sit beside each other; at 720px and below, the artwork sits above the headline. Both appear before the topics and reading details. Preserve the whole image and descriptive alt text. Keep the writing directly after the header. Archive and related-post covers keep their existing presentation.
 
 Store optimized WebP covers in `src/assets/blog/covers/` and `src/assets/log/covers/`. Reference them through content frontmatter and the existing image loader. Keep instructional screenshots inside articles unchanged.
+
+## Navigation motion
+
+Public pages use native cross-document View Transitions with normal document
+navigation. Fade the main content for 160 ms. Shared archive and reading titles,
+plus blog covers, change position and size over 200 ms. Keep the header, footer,
+and starfield still during navigation. Use unique names derived from the content
+family and full entry ID, with `/` replaced by `-`.
+
+Disable navigation transitions for `prefers-reduced-motion: reduce`. Browsers
+without support use normal navigation. Keep chart state changes on their existing
+CSS and Web Animations paths. The admin layout retains its active Astro router;
+the native navigation stylesheet belongs to the public DefaultLayout.
+
+## Tools directory
+
+The `/tools/` directory groups tools into Music & sound, Photos & design,
+Data & reading, Movement, and AI experiments. Use a wide asymmetric grid on
+desktop, two columns on tablets, and a single column on phones. The individual
+tools are open rows within each group, with one access label and an optional
+status label. The route exports and tool catalog remain the inventory.
+
+Keep the shared starfield and site header. Group headers use muted mint, gold,
+blue, coral, and violet fields with simple diagrams based on the tools. Use Geist
+and the shared light/dark theme. Give Leaveify and Photo Journey larger titles.
+The contrast trainer includes a small visual sample of its challenge.
+
+Category links jump to the group. Search and the account filter are progressive
+enhancements; the full directory and links work without JavaScript. Filtered
+groups fill the available width. Keep hover movement short and stop it under
+reduced motion. Navigation uses the shared native View Transitions.
 
 ## Do's and Don'ts
 

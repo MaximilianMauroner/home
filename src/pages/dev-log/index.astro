@@ -31,7 +31,7 @@ const breadcrumbSchema = {
           {latest.data.image && <a class="log-feature__image" href={`/dev-log/${latest.id}/`} aria-label={`Read ${latest.data.title}`}><PostImageLoader imagePath={latest.data.image} altText={latest.data.title} /></a>}
           <div class="log-feature__copy">
             <div class="log-meta"><time datetime={new Date(latest.data.releaseDate).toISOString()}>{new Date(latest.data.releaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</time><span>{latest.id.replace("/", " / ")}</span></div>
-            <h2><a href={`/dev-log/${latest.id}/`} transition:name={`devlog-title-${latest.id.replaceAll("/", "-")}`}>{latest.data.title}</a></h2>
+            <h2><a href={`/dev-log/${latest.id}/`} style={`view-transition-name: devlog-title-${latest.id.replaceAll("/", "-")};`}>{latest.data.title}</a></h2>
             <a class="log-feature__link" href={`/dev-log/${latest.id}/`}>Read this entry <span aria-hidden="true">↗</span></a>
           </div>
         </article>

@@ -1,0 +1,43 @@
+---
+interface Props {
+  group: string;
+}
+const { group } = Astro.props;
+---
+
+<svg class="directory-art" viewBox="0 0 180 100" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+  {group === "music" && <>
+    <rect x="9" y="19" width="49" height="64" rx="7" />
+    <path d="M20 34h25M20 44h20M20 54h25M20 64h17" />
+    <path class="directory-art-flow" d="M67 36h44m-8-7 8 7-8 7M67 64h44m-8-7 8 7-8 7" />
+    <g fill="currentColor" stroke="none"><path d="m141 24 8 8-8 8-8-8zm-16 16 8 8-8 8-8-8zm16 0 8 8-8 8-8-8zm16 0 8 8-8 8-8-8zm-16 16 8 8-8 8-8-8" /></g>
+  </>}
+  {group === "visual" && <>
+    <path d="M14 79c27 0 16-47 51-47s22 45 54 27 32-39 47-39" stroke-dasharray="3 5" />
+    <rect x="15" y="53" width="30" height="23" rx="3" />
+    <rect x="66" y="12" width="30" height="23" rx="3" />
+    <rect x="119" y="56" width="30" height="23" rx="3" />
+    <g fill="currentColor" stroke="none"><circle cx="30" cy="65" r="3" /><circle cx="81" cy="23" r="3" /><circle cx="134" cy="67" r="3" /></g>
+    <path d="M35 86h10m42-42h10m53-34h10" />
+  </>}
+  {group === "data" && <>
+    <path d="M15 22h56v34H41L29 68V56H15z" />
+    <path d="M27 33h32M27 43h23M83 39h19m-6-5 6 5-6 5" />
+    <rect x="113" y="18" width="52" height="64" rx="4" />
+    <path d="M125 31h27M125 40h19M125 49h24" />
+    <rect x="125" y="60" width="27" height="10" rx="5" fill="currentColor" fill-opacity=".25" />
+  </>}
+  {group === "movement" && <>
+    <circle cx="48" cy="48" r="28" />
+    <path d="M48 48V30m0 18 13 8M39 11h18M48 11v9m23 3 7 7M97 72h68m-68-15v15m17-9v9m17-15v15m17-9v9m17-15v15M101 36h60m-8-8 8 8-8 8" />
+    <circle cx="48" cy="48" r="3" fill="currentColor" stroke="none" />
+  </>}
+  {group === "ai" && <>
+    <rect x="16" y="35" width="30" height="30" rx="4" />
+    <rect x="80" y="12" width="26" height="26" rx="4" />
+    <rect x="80" y="62" width="26" height="26" rx="4" />
+    <rect x="144" y="36" width="24" height="28" rx="4" />
+    <path d="M46 50h16V25h18M62 50v25h18m26-50h17v25h21m-38 25h17V50" />
+    <g fill="currentColor" stroke="none"><circle cx="31" cy="50" r="4" /><circle cx="93" cy="25" r="3" /><circle cx="93" cy="75" r="3" /><circle cx="156" cy="50" r="3" /></g>
+  </>}
+</svg>

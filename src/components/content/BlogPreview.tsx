@@ -15,7 +15,7 @@ export default function BlogPreview({
   image?: ReactNode;
 }) {
   const href = `/blog/${blog.id}/`;
-  const titleTransitionId = `blog-title-${blog.id}`;
+  const titleTransitionId = `blog-title-${blog.id.replaceAll("/", "-")}`;
   const releaseDate = new Date(blog.data.releaseDate);
   const imageUrl =
     blog._imageUrl ??

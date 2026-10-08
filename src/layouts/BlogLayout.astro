@@ -68,26 +68,40 @@ const tags = frontmatter.tags ?? [];
 
   <div class="blog-detail-page animate-fade-in mx-auto w-[min(53.125rem,calc(100%_-_2rem))] py-[clamp(2rem,6vw,4.5rem)] motion-reduce:animate-none max-[720px]:w-[min(53.125rem,calc(100%_-_1.25rem))] max-[720px]:pb-12 max-[720px]:pt-4">
     <header class="blog-detail-map relative isolate flex flex-col overflow-hidden rounded-[var(--radius-lg)] border bg-[var(--surface)] p-[clamp(1.35rem,4vw,3rem)] text-[var(--ink)] max-[720px]:p-[1.1rem]">
-      <div
-        class="blog-detail-contours pointer-events-none absolute right-[-4%] top-[47%] -z-[1] aspect-[1.2] w-[min(54%,34rem)] -translate-y-1/2 -rotate-[7deg] max-[720px]:-right-36 max-[720px]:w-[27rem] max-[720px]:opacity-[0.52]"
-        aria-hidden="true"
-      >
-        <span></span><span></span><span></span><span></span><span></span>
-        <i></i>
-      </div>
+      {!frontmatter.image && (
+        <div
+          class="blog-detail-contours pointer-events-none absolute right-[-4%] top-[47%] -z-[1] aspect-[1.2] w-[min(54%,34rem)] -translate-y-1/2 -rotate-[7deg] max-[720px]:-right-36 max-[720px]:w-[27rem] max-[720px]:opacity-[0.52]"
+          aria-hidden="true"
+        >
+          <span></span><span></span><span></span><span></span><span></span>
+          <i></i>
+        </div>
+      )}
 
       <div class="blog-detail-meta flex items-center justify-between gap-4 border-b pb-[0.7rem] font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.08em] text-[var(--marker)] max-[720px]:pb-2">
         <time datetime={releaseDate.toISOString()}>{publishedDateLabel}</time>
         <span>{frontmatter.type ?? "Essay"}</span>
       </div>
 
-      <div class="blog-detail-intro flex flex-1 flex-col justify-center pb-8 pt-6 max-[720px]:pb-6 max-[720px]:pt-[1.35rem]">
+      <div class:list={[
+        "blog-detail-intro flex flex-1 flex-col justify-center pb-8 pt-6 max-[720px]:pb-6 max-[720px]:pt-[1.35rem]",
+        { "blog-detail-intro-with-artwork": Boolean(frontmatter.image) },
+      ]}>
         <h1
           class="mb-[1.2rem] max-w-[14ch] text-balance text-[clamp(3rem,7vw,6.4rem)] font-[780] leading-[0.88] tracking-[-0.065em] text-inherit max-[720px]:mb-[0.8rem] max-[720px]:text-[clamp(2.35rem,11.5vw,3.3rem)] max-[720px]:leading-[0.9]"
-          transition:name={titleTransitionName}
+          style={`view-transition-name: ${titleTransitionName};`}
         >
           {frontmatter.title}
         </h1>
+        {frontmatter.image && (
+          <figure class="blog-detail-artwork" style={`view-transition-name: ${titleTransitionName}-cover;`}>
+            <PostImageLoader
+              imagePath={frontmatter.image}
+              altText={frontmatter.imageAlt ?? `Cover for ${frontmatter.title}`}
+              className="blog-detail-artwork-image"
+            />
+          </figure>
+        )}
       </div>
 
       <footer class="blog-detail-footer flex items-end justify-between gap-4 border-t pt-[0.8rem] font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.08em] max-[720px]:flex-col max-[720px]:items-stretch max-[720px]:gap-[0.8rem]">
@@ -123,16 +137,6 @@ const tags = frontmatter.tags ?? [];
       </footer>
     </header>
 
-    {frontmatter.image && (
-      <figure class="mx-0 mb-0 mt-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[var(--map)]">
-        <PostImageLoader
-          imagePath={frontmatter.image}
-          altText={frontmatter.imageAlt ?? `Cover for ${frontmatter.title}`}
-          className="block h-auto w-full"
-        />
-      </figure>
-    )}
-
     {headings.length > 0 && (
       <div class="blog-detail-outline mt-6 sm:mt-0">
         <TableOfContents headingsArr={headings} family="blog" mobileInline client:idle />
@@ -154,7 +158,7 @@ const tags = frontmatter.tags ?? [];
 
   </div>
 
-  <div class="blog-detail-related">
+  <div class="blog-detail-related pb-12 sm:pb-16">
     <RelatedPosts
       family="blog"
       previous={articleTrail.previous}

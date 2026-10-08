@@ -97,7 +97,7 @@ const tags = frontmatter.tags ?? [];
           <time datetime={releaseDate.toISOString()}>{publishedDateLabel}</time>
           <span>{timeAgo(releaseDate)}</span>
         </div>
-        <h1 transition:name={titleTransitionName}>{frontmatter.title}</h1>
+        <h1 style={`view-transition-name: ${titleTransitionName};`}>{frontmatter.title}</h1>
         {
           frontmatter.description && (
             <p>{frontmatter.description}</p>

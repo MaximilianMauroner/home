@@ -30,6 +30,7 @@ const {
   noindex = false,
 } = Astro.props;
 import "@/styles/globals.css";
+import "@/styles/navigation-transitions.css";
 import Posthog from "@/components/layout/Posthog.astro";
 
 // Normalize trailing slashes - ensure all URLs end with trailing slash (except root)
@@ -73,6 +74,8 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
   <>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Capture the complete layout when starting a native navigation transition. -->
+    <link rel="expect" href="#site-footer" blocking="render" />
     <link rel="canonical" href={canonicalURL} />
     <link rel="sitemap" href="/sitemap-index.xml" />
 
@@ -262,7 +265,7 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
   <body lang="en" class="flex min-h-dvh flex-col">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <Header />
-    <main id="main-content" class="min-w-0 flex-1" tabindex="-1">
+    <main id="main-content" class="min-w-0 flex-1" tabindex="-1" style="view-transition-name: page-content;">
       <slot />
     </main>
     <Footer />
