@@ -29,7 +29,10 @@ const {
   ogImageType = "image/png",
   noindex = false,
 } = Astro.props;
-import "@/styles/globals.css";
+import globalStyles from "@/styles/globals.css?url";
+import homepageStyles from "@/styles/homepage.css?url";
+// Import URLs so Astro does not attach both utility bundles to every page.
+const stylesheet = Astro.url.pathname === "/" ? homepageStyles : globalStyles;
 import "@/styles/navigation-transitions.css";
 import Posthog from "@/components/layout/Posthog.astro";
 
@@ -74,6 +77,7 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
   <>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href={stylesheet} />
     <!-- Capture the complete layout when starting a native navigation transition. -->
     <link rel="expect" href="#site-footer" blocking="render" />
     <link rel="canonical" href={canonicalURL} />
