@@ -531,12 +531,16 @@
 .tv-receipt [hidden] {
   display: none !important;
 }
-.tv-opening h3 {
+.tv-opening h2 {
   margin: 0 0 1.25rem;
   font-size: clamp(1.6rem, 4vw, 2.7rem);
   font-weight: 650;
   letter-spacing: -0.03em;
   line-height: 1.12;
+}
+/* The opening is not a section waypoint, so it skips the prose h2 marker. */
+.tv-opening h2::before {
+  content: none;
 }
 .tv-mosaic {
   display: grid;

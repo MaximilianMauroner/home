@@ -1,8 +1,11 @@
 ---
+import ArticleAuthor from "@/components/content/ArticleAuthor.astro";
+import ArticleJsonLd from "@/components/content/ArticleJsonLd.astro";
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
 import ReadingProgress from "@/components/content/ReadingProgress";
 import RelatedPosts from "@/components/content/RelatedPosts.astro";
 import TableOfContents from "@/components/content/TableOfContents";
+import { getArticleDates } from "@/utils/server/articleDates";
 import { getArticleOgImageUrl, getArticleTrail } from "@/utils/server/content";
 import { type HeadingType } from "@/utils/types";
 import StarLayout from "./StarLayout.astro";
@@ -25,16 +28,17 @@ interface Props {
 
 const { frontmatter, headings = [] } = Astro.props;
 const releaseDate = new Date(frontmatter.releaseDate);
-const articleModifiedTime = frontmatter.lastModified
-  ? new Date(frontmatter.lastModified).toISOString()
-  : releaseDate.toISOString();
+const { publishedAt, modifiedAt, updatedAt } = getArticleDates(
+  frontmatter.releaseDate,
+  frontmatter.lastModified,
+);
 const publishedDateLabel = releaseDate.toLocaleDateString("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
   timeZone: "UTC",
 });
-const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
+const updatedDateLabel = new Date(updatedAt).toLocaleDateString(
   "en-US",
   {
     month: "short",
@@ -60,10 +64,20 @@ const tags = frontmatter.tags ?? [];
   title={frontmatter.title}
   image={frontmatter.image}
   ogImageUrl={ogImageUrl}
-  articlePublishedTime={releaseDate.toISOString()}
-  articleModifiedTime={articleModifiedTime}
+  articlePublishedTime={publishedAt}
+  articleModifiedTime={modifiedAt}
   articleAuthor="Maximilian Mauroner"
 >
+  <ArticleJsonLd
+    slot="head"
+    title={frontmatter.title}
+    description={frontmatter.description}
+    publishedAt={publishedAt}
+    modifiedAt={modifiedAt}
+    sectionName="Blog"
+    sectionPath="/blog/"
+    tags={frontmatter.tags ?? []}
+  />
   <ReadingProgress family="blog" client:load />
 
   <div class="blog-detail-page animate-fade-in mx-auto w-[min(53.125rem,calc(100%_-_2rem))] py-[clamp(2rem,6vw,4.5rem)] motion-reduce:animate-none max-[720px]:w-[min(53.125rem,calc(100%_-_1.25rem))] max-[720px]:pb-12 max-[720px]:pt-4">
@@ -131,6 +145,7 @@ const tags = frontmatter.tags ?? [];
           class="blog-detail-reading-meta flex shrink-0 flex-wrap justify-end gap-x-[0.8rem] gap-y-[0.35rem] text-[var(--marker)] max-[720px]:justify-start max-[720px]:text-[0.64rem]"
           aria-label="Article details"
         >
+          <ArticleAuthor />
           {frontmatter.minutesRead && <span>{frontmatter.minutesRead}</span>}
           <span>Updated {updatedDateLabel}</span>
         </div>

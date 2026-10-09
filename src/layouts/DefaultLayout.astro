@@ -3,6 +3,8 @@ import Header from "@/components/layout/Header.astro";
 import Footer from "@/components/layout/Footer.astro";
 import type { ImageMetadata } from "astro";
 import { getImage } from "astro:assets";
+import { serializeJsonLd } from "@/utils/server/seo";
+import { authorPerson } from "@/utils/authorIdentity";
 interface Props {
   title: string;
   description: string;
@@ -74,7 +76,7 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
 ---
 
 <html lang="en">
-  <>
+  <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href={stylesheet} />
@@ -162,6 +164,7 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
       )
     }
     {import.meta.env.PROD && <Posthog />}
+    <slot name="head" />
 
     <!-- Website Schema for Sitelinks Optimization -->
     {
@@ -169,26 +172,14 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
         <script
           is:inline
           type="application/ld+json"
-          set:html={JSON.stringify({
+          set:html={serializeJsonLd({
             "@context": "https://schema.org",
             "@type": "WebSite",
             name: "Maximilian Mauroner",
             url: Astro.site,
             description:
               "Software developer studying at TU Wien, sharing open-source tools, engineering notes, experiments, and practical articles.",
-            publisher: {
-              "@type": "Person",
-              name: "Maximilian Mauroner",
-              url: Astro.site,
-            },
-            potentialAction: {
-              "@type": "SearchAction",
-              target: {
-                "@type": "EntryPoint",
-                urlTemplate: `${new URL("/tags/", Astro.site).href}?q={search_term_string}`,
-              },
-              "query-input": "required name=search_term_string",
-            },
+            publisher: authorPerson,
             mainEntity: {
               "@type": "ItemList",
               itemListElement: [
@@ -265,7 +256,7 @@ const siteHostname = new URL(Astro.site ?? Astro.url.origin).hostname.replace(
         }
       });
     </script>
-  </>
+  </head>
   <body lang="en" class="flex min-h-dvh flex-col">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <Header />

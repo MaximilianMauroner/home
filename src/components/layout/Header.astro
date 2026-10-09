@@ -10,12 +10,9 @@ const navigation = [
   { name: "blog", href: "/blog/", regex: "^/blog/", current: false },
   { name: "snacks", href: "/snacks/", regex: "^/snacks/", current: false },
   { name: "tools", href: "/tools/", regex: "^/tools/", current: false },
-  {
-    name: "tags",
-    href: "/tags/",
-    regex: "^/tags",
-    current: false,
-  },
+  // "topics & search" wraps at the 768px tablet breakpoint, so the header uses
+  // the short label. The footer uses "Topics & search".
+  { name: "search", href: "/tags/", regex: "^/tags", current: false },
 ];
 
 const socials = [
@@ -44,7 +41,7 @@ const currentNavigation = navigation.filter((item) => item.current);
   data-menu-open="false"
 >
   <div class="site-header-shell">
-    <a href="/" class="brand-home" aria-label="Maximilian Mauroner home">
+    <a href="/" class="brand-home" aria-label="MM, Maximilian Mauroner home">
       <span class="brand-orbit" aria-hidden="true">
         <span class="brand-fallback">MM</span>
         <Image

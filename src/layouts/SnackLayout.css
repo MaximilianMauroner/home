@@ -256,8 +256,8 @@
   color: var(--snack-accent);
 }
 
-.snack-detail__reading-meta span + span::before {
-  margin-right: 0.8rem;
+.snack-detail__reading-meta > span:not(:last-child)::after {
+  margin-left: 0.8rem;
   content: "/";
 }
 

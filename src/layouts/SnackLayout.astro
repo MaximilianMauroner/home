@@ -1,10 +1,13 @@
 ---
+import ArticleAuthor from "@/components/content/ArticleAuthor.astro";
+import ArticleJsonLd from "@/components/content/ArticleJsonLd.astro";
 import FontmatterTagsList from "@/components/content/FontmatterTagsList.astro";
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
 import ReadingProgress from "@/components/content/ReadingProgress";
 import RelatedPosts from "@/components/content/RelatedPosts.astro";
 import TableOfContents from "@/components/content/TableOfContents";
 import { timeAgo } from "@/utils/helpers";
+import { getArticleDates } from "@/utils/server/articleDates";
 import { getArticleOgImageUrl, getArticleTrail } from "@/utils/server/content";
 import type { HeadingType } from "@/utils/types";
 import StarLayout from "./StarLayout.astro";
@@ -25,16 +28,17 @@ interface Props {
 
 const { frontmatter, headings = [] } = Astro.props;
 const releaseDate = new Date(frontmatter.releaseDate);
-const articleModifiedTime = frontmatter.lastModified
-  ? new Date(frontmatter.lastModified).toISOString()
-  : releaseDate.toISOString();
+const { publishedAt, modifiedAt, updatedAt } = getArticleDates(
+  frontmatter.releaseDate,
+  frontmatter.lastModified,
+);
 const publishedDateLabel = releaseDate.toLocaleDateString("en-US", {
   month: "long",
   day: "numeric",
   year: "numeric",
   timeZone: "UTC",
 });
-const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
+const updatedDateLabel = new Date(updatedAt).toLocaleDateString(
   "en-US",
   {
     month: "long",
@@ -63,10 +67,20 @@ const tags = frontmatter.tags ?? [];
   title={frontmatter.title}
   image={frontmatter.image}
   ogImageUrl={ogImageUrl}
-  articlePublishedTime={releaseDate.toISOString()}
-  articleModifiedTime={articleModifiedTime}
+  articlePublishedTime={publishedAt}
+  articleModifiedTime={modifiedAt}
   articleAuthor="Maximilian Mauroner"
 >
+  <ArticleJsonLd
+    slot="head"
+    title={frontmatter.title}
+    description={frontmatter.description}
+    publishedAt={publishedAt}
+    modifiedAt={modifiedAt}
+    sectionName="Snacks"
+    sectionPath="/snacks/"
+    tags={frontmatter.tags ?? []}
+  />
   <ReadingProgress family="snack" client:load />
 
   <div class="snack-detail animate-fade-in motion-reduce:animate-none">
@@ -114,6 +128,7 @@ const tags = frontmatter.tags ?? [];
           )
         }
         <div class="snack-detail__reading-meta" aria-label="Article details">
+          <ArticleAuthor />
           {frontmatter.minutesRead && <span>{frontmatter.minutesRead}</span>}
           <span>Updated {updatedDateLabel}</span>
         </div>

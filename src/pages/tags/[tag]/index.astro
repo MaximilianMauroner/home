@@ -4,6 +4,7 @@ import TagView from "@/components/content/TagView";
 import type { TaggedPreviewEntry } from "@/components/content/previewTypes";
 import StarLayout from "@/layouts/StarLayout.astro";
 import { getBlogs, getLogs, getSnacks, getTags } from "@/utils/server/content";
+import { getTopicHub } from "@/utils/topicHubs";
 
 interface Props {
   tag: string;
@@ -49,6 +50,9 @@ const posts: TaggedPreviewEntry[] = [
     },
   })),
 ];
+const hub = tag ? getTopicHub(tag, posts) : undefined;
+const intro =
+  hub?.intro ?? `Explore ${tag} across blog posts, dev logs, and snacks.`;
 
 export async function getStaticPaths() {
   const blogs = await getBlogs();
@@ -62,21 +66,20 @@ export async function getStaticPaths() {
 
 <StarLayout
   title={`Posts tagged “${tag}”`}
-  description={`Browse blog posts, dev logs, and snacks about ${tag}.`}
+  description={hub?.intro ?? `Browse blog posts, dev logs, and snacks about ${tag}.`}
   noindex={tagCount < 3}
 >
   <div class="mx-auto max-w-screen-xl px-4 pt-8 lg:px-6 lg:pt-16">
     <header class="topic-page-header">
       <h1 class="topic-page-title">topic atlas</h1>
-      <p class="topic-page-description">
-        Explore {tag} across blog posts, dev logs, and snacks.
-      </p>
+      <p class="topic-page-description">{intro}</p>
     </header>
   </div>
   <TagView
     tags={[...tags.entries()]}
     posts={posts}
     preSelectedTag={tag}
+    startHere={hub?.startHere}
     client:load
   />
 </StarLayout>

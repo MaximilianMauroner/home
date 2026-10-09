@@ -14,8 +14,13 @@ if (tagParam) {
   return Astro.redirect(`/tags/${tagParam}/`, 301);
 }
 
-// Get search query parameter for Google search integration
 const searchQuery = Astro.url.searchParams.get('q') || '';
+
+// A removed SearchAction template got crawled as a literal query. Send only
+// that exact URL to the plain topic page; real searches stay untouched.
+if (searchQuery === '{search_term_string}') {
+  return Astro.redirect('/tags/', 301);
+}
 
 const blogs = await getBlogs();
 const logs = await getLogs();
