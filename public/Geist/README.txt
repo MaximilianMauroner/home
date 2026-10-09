@@ -7,7 +7,7 @@ Geist is a variable font with this axis:
   wght
 
 This means all the styles are contained in a single file:
-  Geist/Geist-VariableFont_wght.ttf
+  Geist/Geist-VariableFont_wght.woff2
 
 If your app fully supports variable fonts, you can now pick intermediate styles
 that aren’t available as static fonts. Not all apps support variable fonts, and
@@ -69,3 +69,6 @@ commercial or otherwise.
 
 This isn't legal advice, please consider consulting a lawyer and see the full
 license for all details.
+
+The upright variable font was converted to WOFF2 without subsetting.
+All original characters and variable weight axes are retained.

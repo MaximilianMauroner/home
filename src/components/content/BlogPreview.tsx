@@ -2,11 +2,6 @@ import type { ReactNode } from "react";
 import ContentPreview from "./ContentPreview";
 import type { PreviewEntry } from "./previewTypes";
 
-const localImageUrls = import.meta.glob<string>(
-  "/src/assets/**/*.{jpeg,jpg,png,gif,webp,avif}",
-  { eager: true, import: "default", query: "?url" },
-);
-
 export default function BlogPreview({
   blog,
   image,
@@ -17,9 +12,7 @@ export default function BlogPreview({
   const href = `/blog/${blog.id}/`;
   const titleTransitionId = `blog-title-${blog.id.replaceAll("/", "-")}`;
   const releaseDate = new Date(blog.data.releaseDate);
-  const imageUrl =
-    blog._imageUrl ??
-    (blog.data.image ? localImageUrls[blog.data.image] : undefined);
+  const imageUrl = blog._imageUrl;
   return (
     <ContentPreview
       family="blog"
@@ -32,6 +25,7 @@ export default function BlogPreview({
       titleTransitionId={titleTransitionId}
       image={image}
       imageUrl={imageUrl ?? undefined}
+      imageAttributes={blog._imageAttributes}
     />
   );
 }

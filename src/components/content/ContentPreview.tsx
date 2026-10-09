@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import TagsList from "./TagsList";
 import "./ContentPreview.css";
+import type { PreviewEntry } from "./previewTypes";
 
 export type ContentFamily = "blog" | "log" | "snack";
 
@@ -15,6 +16,7 @@ interface ContentPreviewProps {
   titleTransitionId: string;
   image?: ReactNode;
   imageUrl?: string;
+  imageAttributes?: PreviewEntry["_imageAttributes"];
 }
 
 const familyDetails: Record<
@@ -44,11 +46,13 @@ export default function ContentPreview({
   titleTransitionId,
   image,
   imageUrl,
+  imageAttributes,
 }: ContentPreviewProps) {
   const details = familyDetails[family];
-  const coverStyle = family === "blog"
-    ? { viewTransitionName: `${titleTransitionId}-cover` }
-    : undefined;
+  const coverStyle =
+    family === "blog"
+      ? { viewTransitionName: `${titleTransitionId}-cover` }
+      : undefined;
   const date = releaseDate.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -57,7 +61,9 @@ export default function ContentPreview({
   });
 
   return (
-    <article className={`content-preview content-preview--${family}${family === "blog" && (image || imageUrl) ? " content-preview--cover" : ""} group`}>
+    <article
+      className={`content-preview content-preview--${family}${family === "blog" && (image || imageUrl) ? "content-preview--cover" : ""} group`}
+    >
       <header className="content-preview__header">
         <span className="content-preview__family">
           <i aria-hidden="true" />
@@ -70,9 +76,19 @@ export default function ContentPreview({
 
       <div className="content-preview__visual" aria-hidden="true">
         {image ? (
-          <div className="content-preview__image" style={coverStyle}>{image}</div>
+          <div className="content-preview__image" style={coverStyle}>
+            {image}
+          </div>
         ) : imageUrl ? (
-          <img className="content-preview__image" style={coverStyle} src={imageUrl} alt="" />
+          <img
+            className="content-preview__image"
+            style={coverStyle}
+            src={imageUrl}
+            {...imageAttributes}
+            loading={imageAttributes ? "lazy" : undefined}
+            decoding={imageAttributes ? "async" : undefined}
+            alt=""
+          />
         ) : null}
         <div className="content-preview__motif" />
         <div className="content-preview__contours">

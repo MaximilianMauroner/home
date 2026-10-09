@@ -7,7 +7,7 @@ JetBrains Mono is a variable font with this axis:
   wght
 
 This means all the styles are contained in these files:
-  JetBrains_Mono/JetBrainsMono-VariableFont_wght.ttf
+  JetBrains_Mono/JetBrainsMono-VariableFont_wght.woff2
   JetBrains_Mono/JetBrainsMono-Italic-VariableFont_wght.ttf
 
 If your app fully supports variable fonts, you can now pick intermediate styles
@@ -77,3 +77,6 @@ commercial or otherwise.
 
 This isn't legal advice, please consider consulting a lawyer and see the full
 license for all details.
+
+The upright variable font was converted to WOFF2 without subsetting.
+All original characters and variable weight axes are retained.

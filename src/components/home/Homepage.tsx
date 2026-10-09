@@ -1,15 +1,11 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-  useRef,
-} from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 dayjs.extend(weekOfYear);
 import type { PreviewEntry } from "@/components/content/previewTypes";
 import { Queue } from "@/utils/queue";
-import Timeline, { TimelineSpaceshipGlyph } from "./Timeline";
+import Timeline from "./Timeline";
+import { beginTimelineScroll } from "./scrollToTimeline";
 import {
   clampLetterCardPosition,
   getLetterCardWidth,
@@ -48,35 +44,6 @@ interface HomepageProps {
   snacks: PreviewEntry[];
   initialAge: string;
 }
-
-interface TimelineLaunchOrigin {
-  height: number;
-  initialTransform?: string;
-  left: number;
-  top: number;
-  width: number;
-}
-
-const waitForScrollToSettle = () =>
-  new Promise<void>((resolve) => {
-    let settleTimer = 0;
-    let maximumTimer = 0;
-
-    const finish = () => {
-      window.clearTimeout(settleTimer);
-      window.clearTimeout(maximumTimer);
-      window.removeEventListener("scroll", handleScroll);
-      resolve();
-    };
-    const handleScroll = () => {
-      window.clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(finish, 140);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    settleTimer = window.setTimeout(finish, 140);
-    maximumTimer = window.setTimeout(finish, 1400);
-  });
 
 const LetterCard = ({
   position,
@@ -175,7 +142,7 @@ const LetterCard = ({
     if (isDragging) {
       window.addEventListener("mousemove", handleDragMove);
       window.addEventListener("mouseup", handleDragEnd);
-      window.addEventListener("touchmove", handleDragMove);
+      window.addEventListener("touchmove", handleDragMove, { passive: true });
       window.addEventListener("touchend", handleDragEnd);
       return () => {
         window.removeEventListener("mousemove", handleDragMove);
@@ -305,31 +272,11 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
   const [showHint, setShowHint] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
-  const [timelineLaunchOrigin, setTimelineLaunchOrigin] =
-    useState<TimelineLaunchOrigin | null>(null);
-  const [timelineSpaceshipLaunching, setTimelineSpaceshipLaunching] =
-    useState(false);
-  const [timelineSpaceshipDocked, setTimelineSpaceshipDocked] = useState(true);
   const timelineRef = useRef<HTMLDivElement>(null);
-  const timelineButtonSpaceshipRef = useRef<SVGSVGElement>(null);
-  const timelineLaunchSpaceshipRef = useRef<SVGSVGElement>(null);
-  const timelineSpaceshipDockedRef = useRef(true);
-  const timelineSpaceshipLaunchingRef = useRef(false);
-  const timelineScrollHandoffRef = useRef(0);
+  const cancelTimelineScroll = useRef<() => void>(() => undefined);
   const letterButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  const updateTimelineSpaceshipDocked = useCallback((docked: boolean) => {
-    timelineSpaceshipDockedRef.current = docked;
-    setTimelineSpaceshipDocked(docked);
-  }, []);
-
-  const updateTimelineSpaceshipLaunching = useCallback(
-    (launching: boolean) => {
-      timelineSpaceshipLaunchingRef.current = launching;
-      setTimelineSpaceshipLaunching(launching);
-    },
-    [],
-  );
+  useEffect(() => () => cancelTimelineScroll.current(), []);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -384,35 +331,34 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
       const rect = event.currentTarget.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const cardWidth = getLetterCardWidth(viewportWidth);
-      let activeCard = items[0];
+      let selectedContent = items[0];
 
       if (index < items.length) {
-        activeCard = items[index];
+        selectedContent = items[index];
       } else {
         const randomItem = items[Math.floor(Math.random() * items.length)];
-        activeCard = randomItem;
+        selectedContent = randomItem;
       }
 
-      setActiveCard((current) => {
-        if (current?.triggerIndex === index) {
-          requestAnimationFrame(() => event.currentTarget.focus());
-          return null;
-        }
+      if (activeCard?.triggerIndex === index) {
+        setActiveCard(null);
+        event.currentTarget.focus();
+        return;
+      }
 
-        return {
-          content: activeCard,
-          position: clampLetterCardPosition({
-            cardWidth,
-            left: rect.left,
-            top: rect.top,
-            viewportHeight: window.innerHeight,
-            viewportWidth,
-          }),
-          triggerIndex: index,
-        };
+      setActiveCard({
+        content: selectedContent,
+        position: clampLetterCardPosition({
+          cardWidth,
+          left: rect.left,
+          top: rect.top,
+          viewportHeight: window.innerHeight,
+          viewportWidth,
+        }),
+        triggerIndex: index,
       });
     },
-    [items],
+    [items, activeCard?.triggerIndex],
   );
 
   const closeActiveCard = useCallback(() => {
@@ -521,322 +467,17 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
     [],
   );
 
-  const animateTimelineScrollHandoff = useCallback(
-    async (dockAtButton: boolean) => {
-      if (prefersReducedMotion) {
-        updateTimelineSpaceshipDocked(dockAtButton);
-        return;
-      }
-      if (timelineSpaceshipLaunchingRef.current) return;
-
-      const routeSpaceship = document.querySelector<SVGGElement>(
-        "[data-timeline-route-ship]",
-      );
-      const buttonDock = document.querySelector<HTMLElement>(
-        "[data-timeline-button-dock]",
-      );
-      const source = dockAtButton
-        ? routeSpaceship
-        : timelineButtonSpaceshipRef.current;
-      const target = dockAtButton ? buttonDock : routeSpaceship;
-      if (!source || !target) {
-        updateTimelineSpaceshipDocked(dockAtButton);
-        return;
-      }
-
-      const sourceBounds = source.getBoundingClientRect();
-      const size = 28;
-      const sourceCenter = {
-        x: sourceBounds.left + sourceBounds.width / 2,
-        y: sourceBounds.top + sourceBounds.height / 2,
-      };
-      const routeAngle = Number.parseFloat(
-        routeSpaceship
-          ?.getAttribute("transform")
-          ?.match(/rotate\(([-\d.]+)/)?.[1] ?? "90",
-      );
-      const initialRotation = dockAtButton ? routeAngle - 90 : 0;
-      const initialScale = dockAtButton ? 1.2 : 1;
-      const handoff = timelineScrollHandoffRef.current + 1;
-      timelineScrollHandoffRef.current = handoff;
-
-      setTimelineLaunchOrigin({
-        height: size,
-        initialTransform: `rotate(${initialRotation}deg) scale(${initialScale})`,
-        left: sourceCenter.x - size / 2,
-        top: sourceCenter.y - size / 2,
-        width: size,
-      });
-      updateTimelineSpaceshipLaunching(true);
-
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      );
-      const launchSpaceship = timelineLaunchSpaceshipRef.current;
-      if (!launchSpaceship || timelineScrollHandoffRef.current !== handoff) {
-        updateTimelineSpaceshipLaunching(false);
-        setTimelineLaunchOrigin(null);
-        return;
-      }
-
-      await new Promise<void>((resolve) => {
-        const startedAt = performance.now();
-        const duration = 560;
-
-        const animate = (timestamp: number) => {
-          if (timelineScrollHandoffRef.current !== handoff) {
-            resolve();
-            return;
-          }
-
-          const liveTarget = dockAtButton
-            ? document.querySelector<HTMLElement>(
-                "[data-timeline-button-dock]",
-              )
-            : document.querySelector<SVGGElement>(
-                "[data-timeline-route-ship]",
-              );
-          if (!liveTarget) {
-            resolve();
-            return;
-          }
-
-          const targetBounds = liveTarget.getBoundingClientRect();
-          const targetCenter = {
-            x: targetBounds.left + targetBounds.width / 2,
-            y: targetBounds.top + targetBounds.height / 2,
-          };
-          const progress = Math.min(1, (timestamp - startedAt) / duration);
-          const eased = 1 - (1 - progress) ** 3;
-          const wobble = Math.sin(progress * Math.PI * 2.5) * (1 - progress);
-          const targetRotation = dockAtButton
-            ? 0
-            : Number.parseFloat(
-                document
-                  .querySelector<SVGGElement>("[data-timeline-route-ship]")
-                  ?.getAttribute("transform")
-                  ?.match(/rotate\(([-\d.]+)/)?.[1] ?? "90",
-              ) - 90;
-          const targetScale = dockAtButton ? 1 : 1.2;
-          const translateX =
-            (targetCenter.x - sourceCenter.x) * eased + wobble * 18;
-          const translateY =
-            (targetCenter.y - sourceCenter.y) * eased -
-            Math.sin(progress * Math.PI) * 24;
-          const rotation =
-            initialRotation +
-            (targetRotation - initialRotation) * eased +
-            wobble * 7;
-          const scale =
-            initialScale + (targetScale - initialScale) * eased;
-
-          launchSpaceship.style.transform = `translate(${translateX}px, ${translateY}px) rotate(${rotation}deg) scale(${scale})`;
-
-          if (progress < 1) {
-            requestAnimationFrame(animate);
-          } else {
-            resolve();
-          }
-        };
-
-        requestAnimationFrame(animate);
-      });
-
-      if (timelineScrollHandoffRef.current !== handoff) return;
-      updateTimelineSpaceshipDocked(dockAtButton);
-      updateTimelineSpaceshipLaunching(false);
-      setTimelineLaunchOrigin(null);
-    },
-    [
-      prefersReducedMotion,
-      updateTimelineSpaceshipDocked,
-      updateTimelineSpaceshipLaunching,
-    ],
-  );
-
-  const handleTimelineSpaceshipDockedChange = useCallback(
-    (docked: boolean) => {
-      if (
-        docked === timelineSpaceshipDockedRef.current ||
-        timelineSpaceshipLaunchingRef.current
-      ) {
-        return;
-      }
-      void animateTimelineScrollHandoff(docked);
-    },
-    [animateTimelineScrollHandoff],
-  );
-
-  const scrollToTimeline = useCallback(async () => {
-    if (timelineSpaceshipLaunching) return;
-
-    if (timelineExpanded && !timelineSpaceshipDocked) {
-      timelineRef.current?.scrollIntoView({
-        behavior: prefersReducedMotion ? "auto" : "smooth",
-        block: "start",
-      });
-      return;
-    }
-
-    if (prefersReducedMotion) {
-      setTimelineExpanded(true);
-      updateTimelineSpaceshipDocked(false);
-      requestAnimationFrame(() =>
-        timelineRef.current?.scrollIntoView({
-          behavior: "auto",
-          block: "start",
-        }),
-      );
-      return;
-    }
-
-    const buttonSpaceship = timelineButtonSpaceshipRef.current;
-    if (!buttonSpaceship) return;
-    const origin = buttonSpaceship.getBoundingClientRect();
-    setTimelineLaunchOrigin({
-      height: origin.height,
-      left: origin.left,
-      top: origin.top,
-      width: origin.width,
-    });
-    updateTimelineSpaceshipLaunching(true);
-
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-    );
-    const launchSpaceship = timelineLaunchSpaceshipRef.current;
-    if (!launchSpaceship) {
-      updateTimelineSpaceshipLaunching(false);
-      setTimelineLaunchOrigin(null);
-      return;
-    }
-
-    await launchSpaceship
-      .animate(
-        [
-          { offset: 0, transform: "translate(0, 0) rotate(0deg) scale(1)" },
-          {
-            offset: 0.22,
-            transform: "translate(0, -40px) rotate(-3deg) scale(1.35)",
-          },
-          {
-            offset: 0.4,
-            transform: "translate(-11px, -70px) rotate(-17deg) scale(1.38)",
-          },
-          {
-            offset: 0.57,
-            transform: "translate(9px, -64px) rotate(14deg) scale(1.34)",
-          },
-          {
-            offset: 0.73,
-            transform: "translate(-6px, -68px) rotate(-9deg) scale(1.37)",
-          },
-          {
-            offset: 0.86,
-            transform: "translate(4px, -62px) rotate(6deg) scale(1.34)",
-          },
-          {
-            offset: 1,
-            transform: "translate(0, -64px) rotate(-2deg) scale(1.35)",
-          },
-        ],
-        {
-          duration: 820,
-          easing: "cubic-bezier(0.22, 0.8, 0.3, 1)",
-          fill: "forwards",
-        },
-      )
-      .finished.catch(() => undefined);
-
+  const scrollToTimeline = () => {
+    cancelTimelineScroll.current();
     setTimelineExpanded(true);
-    const scrollFinished = waitForScrollToSettle();
-    requestAnimationFrame(() =>
-      timelineRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      }),
+    cancelTimelineScroll.current = beginTimelineScroll(
+      timelineRef.current?.querySelector<HTMLElement>("#home-timeline") ?? null,
+      prefersReducedMotion,
     );
-    await scrollFinished;
-
-    const routeSpaceship = document.querySelector<SVGGElement>(
-      "[data-timeline-route-ship]",
-    );
-    if (routeSpaceship) {
-      const target = routeSpaceship.getBoundingClientRect();
-      const deltaX =
-        target.left + target.width / 2 - (origin.left + origin.width / 2);
-      const deltaY =
-        target.top + target.height / 2 - (origin.top + origin.height / 2);
-      const routeRotation = Number.parseFloat(
-        routeSpaceship
-          .getAttribute("transform")
-          ?.match(/rotate\(([-\d.]+)/)?.[1] ?? "90",
-      );
-
-      await launchSpaceship
-        .animate(
-          [
-            {
-              offset: 0,
-              transform: "translate(0, -64px) rotate(-2deg) scale(1.35)",
-            },
-            {
-              offset: 0.48,
-              transform: `translate(${deltaX * 0.42 - 28}px, ${deltaY * 0.42}px) rotate(18deg) scale(1.3)`,
-            },
-            {
-              offset: 0.78,
-              transform: `translate(${deltaX * 0.8 + 12}px, ${deltaY * 0.8 - 18}px) rotate(-8deg) scale(1.24)`,
-            },
-            {
-              offset: 1,
-              transform: `translate(${deltaX}px, ${deltaY}px) rotate(${routeRotation - 90}deg) scale(1.2)`,
-            },
-          ],
-          {
-            duration: 720,
-            easing: "cubic-bezier(0.2, 0.75, 0.25, 1)",
-            fill: "forwards",
-          },
-        )
-        .finished.catch(() => undefined);
-    }
-
-    updateTimelineSpaceshipLaunching(false);
-    updateTimelineSpaceshipDocked(false);
-    setTimelineLaunchOrigin(null);
-  }, [
-    prefersReducedMotion,
-    timelineExpanded,
-    timelineSpaceshipDocked,
-    timelineSpaceshipLaunching,
-    updateTimelineSpaceshipDocked,
-    updateTimelineSpaceshipLaunching,
-  ]);
+  };
 
   return (
     <div className="relative min-h-screen bg-transparent text-indigo-700 dark:text-indigo-300">
-      {timelineLaunchOrigin && (
-        <svg
-          ref={timelineLaunchSpaceshipRef}
-          data-timeline-launch-spaceship
-          aria-hidden="true"
-          viewBox="-16 -13 32 26"
-          className="pointer-events-none fixed z-[100] overflow-visible text-indigo-600 drop-shadow-lg dark:text-indigo-300"
-          style={{
-            height: timelineLaunchOrigin.height,
-            left: timelineLaunchOrigin.left,
-            top: timelineLaunchOrigin.top,
-            transform: timelineLaunchOrigin.initialTransform,
-            transformOrigin: "center",
-            width: timelineLaunchOrigin.width,
-          }}
-        >
-          <g transform="rotate(90)">
-            <TimelineSpaceshipGlyph />
-          </g>
-        </svg>
-      )}
       {activeCard && (
         <LetterCard
           content={activeCard.content}
@@ -845,13 +486,13 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
           onPositionChange={handlePositionChange}
         />
       )}
-      <div className="relative z-10 mx-auto max-w-7xl px-4">
-        <div className="py-1" aria-hidden="true">
+      <div className="relative mx-auto max-w-7xl px-4">
+        <div className="py-1">
           <div className="my-10 grid w-full grid-flow-col grid-cols-5 grid-rows-2 items-center justify-center gap-y-3 text-center font-mono text-4xl font-extrabold [text-shadow:_0_0_10px_#818cf8] sm:text-6xl md:text-8xl">
             {firstname.split("").map((letter, index) => (
               <span
                 key={index}
-                className="relative text-center transition-all hover:text-indigo-200"
+                className="relative text-center transition-colors hover:text-indigo-200"
               >
                 <button
                   ref={(element) => {
@@ -865,7 +506,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
                     handleLetterClick(index, e);
                     setShowHint(false);
                   }}
-                  className={`relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-all hover:scale-110 hover:text-violet-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400 ${
+                  className={`relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors hover:scale-110 hover:text-violet-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400 ${
                     index === 0 && showHint && !prefersReducedMotion
                       ? "relative before:absolute before:-inset-6 before:animate-wave-pulse-delayed before:rounded-full before:border before:border-violet-400/10 after:absolute after:-inset-3 after:animate-wave-pulse after:rounded-full after:border after:border-violet-400/20"
                       : ""
@@ -895,7 +536,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
             {lastname.split("").map((letter, index) => (
               <span
                 key={index}
-                className="relative text-center transition-all hover:text-indigo-200"
+                className="relative text-center transition-colors hover:text-indigo-200"
               >
                 <button
                   ref={(element) => {
@@ -911,7 +552,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
                   onClick={(e) =>
                     handleLetterClick(firstname.length + index, e)
                   }
-                  className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-all hover:scale-110 hover:text-violet-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400"
+                  className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md transition-colors hover:scale-110 hover:text-violet-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400"
                 >
                   {letter}
                 </button>
@@ -946,8 +587,9 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
                 <span className="animate-terminal-blink absolute -left-3">
                   ▌
                 </span>
-                hi, i'm a <AgeCalculator initialAge={initialAge} />-year-old
-                developer. currently studying software engineering at the&nbsp;
+                hi, i'm a <AgeCalculator initialAge={initialAge} />
+                -year-old developer. currently studying software engineering at
+                the&nbsp;
                 <TechStackItem href="https://tuwien.at/" name="TU Wien" />.
               </p>
               <p className="typing-animation-delayed">
@@ -974,11 +616,9 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
             type="button"
             data-timeline-launch-button
             onClick={scrollToTimeline}
-            disabled={timelineSpaceshipLaunching}
-            aria-busy={timelineSpaceshipLaunching}
             aria-expanded={timelineExpanded}
             aria-controls="home-timeline"
-            className="group flex flex-col items-center gap-2 rounded-xl border border-indigo-500/30 bg-white/50 px-6 py-4 text-indigo-700 transition-all duration-300 hover:border-indigo-500/60 hover:bg-white/80 hover:shadow-lg dark:border-indigo-500/40 dark:bg-black/50 dark:text-indigo-300 dark:hover:border-indigo-500/70 dark:hover:bg-black/70"
+            className="group flex min-w-[10.25rem] flex-col items-center gap-2 rounded-xl border border-indigo-500/30 bg-white/50 px-6 py-4 text-indigo-700 transition-[background-color,border-color,box-shadow] duration-300 hover:border-indigo-500/60 hover:bg-white/80 hover:shadow-lg dark:border-indigo-500/40 dark:bg-black/50 dark:text-indigo-300 dark:hover:border-indigo-500/70 dark:hover:bg-black/70"
           >
             <span className="text-sm font-medium">
               {timelineExpanded ? "Go to timeline" : "View full timeline"}
@@ -986,21 +626,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
             <span
               data-timeline-button-dock
               className="relative block h-7 w-7"
-            >
-              {timelineSpaceshipDocked && !timelineSpaceshipLaunching && (
-                <svg
-                  ref={timelineButtonSpaceshipRef}
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="-16 -13 32 26"
-                  className={`absolute inset-0 h-7 w-7 overflow-visible drop-shadow-sm ${prefersReducedMotion ? "" : "animate-bounce"}`}
-                  aria-hidden="true"
-                >
-                  <g transform="rotate(90)">
-                    <TimelineSpaceshipGlyph />
-                  </g>
-                </svg>
-              )}
-            </span>
+            ></span>
           </button>
         </div>
       </div>
@@ -1013,9 +639,6 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
           snacks={snacks}
           expanded={timelineExpanded}
           onExpand={() => setTimelineExpanded(true)}
-          onSpaceshipDockedChange={handleTimelineSpaceshipDockedChange}
-          spaceshipDocked={timelineSpaceshipDocked}
-          spaceshipLaunching={timelineSpaceshipLaunching}
         />
       </div>
     </div>
@@ -1048,7 +671,7 @@ const TechStackItem = ({ name, href }: { name: string; href: string }) => {
     >
       <span className="group relative inline-block whitespace-nowrap font-bold text-violet-600 transition-colors hover:text-indigo-500 dark:text-violet-300 dark:hover:text-indigo-200">
         {name}
-        <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-gradient-to-r from-violet-700 via-indigo-500 to-purple-500 transition-all duration-300 group-hover:w-full"></span>
+        <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-gradient-to-r from-violet-700 via-indigo-500 to-purple-500 transition-[width] duration-300 group-hover:w-full"></span>
       </span>
     </a>
   );

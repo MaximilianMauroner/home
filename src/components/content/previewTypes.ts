@@ -2,6 +2,12 @@ import type { ContentKind } from "@/utils/types";
 
 export interface PreviewEntry {
   _imageUrl?: string | null;
+  _imageAttributes?: {
+    width: number;
+    height: number;
+    srcSet: string;
+    sizes: string;
+  };
   data: {
     description: string;
     image?: string;

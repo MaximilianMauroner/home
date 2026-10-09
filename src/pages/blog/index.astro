@@ -2,8 +2,13 @@
 import BlogPreview from "@/components/content/BlogPreview";
 import StarLayout from "@/layouts/StarLayout.astro";
 import { getBlogs } from "@/utils/server/content";
+import { resolvePreviewImageUrl } from "@/utils/server/previewImages";
 
 const blogs = await getBlogs();
+const blogPreviews = await Promise.all(blogs.map(async (blog) => ({
+  ...blog,
+  _imageUrl: await resolvePreviewImageUrl(blog.data.image),
+})));
 
 const breadcrumbSchema = {
   "@context": "https://schema.org",
@@ -47,7 +52,7 @@ const breadcrumbSchema = {
       </div>
       <div class="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
         {
-          blogs.map((blog, index) => (
+          blogPreviews.map((blog, index) => (
             <div
               class="min-w-0 animate-fade-in"
               style={`animation-delay: ${index * 50}ms;`}

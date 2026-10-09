@@ -3,7 +3,7 @@ import type { PreviewEntry } from "@/components/content/previewTypes";
 import BlogPreview from "@/components/content/BlogPreview";
 import LogPreview from "@/components/content/LogPreview";
 import SnackPreview from "@/components/content/SnackPreview";
-import { Pattern } from "@/components/layout/Pattern";
+import { useTimelineFlight } from "./useTimelineFlight";
 
 interface TimelineProps {
   blogs: PreviewEntry[];
@@ -11,9 +11,6 @@ interface TimelineProps {
   snacks: PreviewEntry[];
   expanded: boolean;
   onExpand: () => void;
-  onSpaceshipDockedChange: (docked: boolean) => void;
-  spaceshipDocked: boolean;
-  spaceshipLaunching: boolean;
 }
 
 type TimelineItem = {
@@ -26,18 +23,7 @@ type TimelineChapter = {
   key: string;
   month: string;
   year: number;
-  items: Array<TimelineItem & { index: number }>;
-};
-
-type TimelineFlightPath = {
-  height: number;
-  path: string;
-  ship: {
-    angle: number;
-    x: number;
-    y: number;
-  };
-  width: number;
+  items: TimelineItem[];
 };
 
 const months = [
@@ -53,17 +39,6 @@ const months = [
   "October",
   "November",
   "December",
-];
-
-const colors = [
-  "text-amber-400",
-  "text-orange-300",
-  "text-yellow-300",
-  "text-pink-300",
-  "text-rose-300",
-  "text-fuchsia-300",
-  "text-purple-300",
-  "text-indigo-300",
 ];
 
 const monthAccents = [
@@ -94,8 +69,6 @@ const monthAccents = [
 ];
 
 const monthIcons = ["✦", "●", "✷", "◆"];
-
-const dynamicColor = (index: number) => colors[index % colors.length];
 
 export const TimelineSpaceshipGlyph = () => (
   <>
@@ -194,13 +167,7 @@ const TimelineStation = () => (
   </div>
 );
 
-const TimelineEntry = ({
-  timelineItem,
-  index,
-}: {
-  timelineItem: TimelineItem;
-  index: number;
-}) => {
+const TimelineEntry = ({ timelineItem }: { timelineItem: TimelineItem }) => {
   const hasImage = Boolean(
     timelineItem.item._imageUrl || timelineItem.item.data.image,
   );
@@ -214,24 +181,7 @@ const TimelineEntry = ({
       return <LogPreview log={timelineItem.item} />;
     }
 
-    return (
-      <SnackPreview
-        snack={timelineItem.item}
-        image={
-          <div className="absolute inset-0 overflow-hidden opacity-[0.06]">
-            <Pattern
-              seed={timelineItem.item.data.title}
-              colorClass={dynamicColor(index)}
-              opacity="0.12"
-              gridSize={6 + (index % 3) * 1.5}
-              spacing={20 + (index % 4) * 5}
-              lineVariance={2 + (index % 2) * 1.5}
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-amber-50/20 to-transparent dark:via-amber-950/5" />
-          </div>
-        }
-      />
-    );
+    return <SnackPreview snack={timelineItem.item} />;
   };
 
   return (
@@ -309,13 +259,121 @@ const TimelineMasonry = ({ items }: { items: TimelineChapter["items"] }) => {
           className="relative z-10 min-w-0"
           data-timeline-entry
         >
-          <TimelineEntry
-            timelineItem={timelineItem}
-            index={timelineItem.index}
-          />
+          <TimelineEntry timelineItem={timelineItem} />
         </li>
       ))}
     </ol>
+  );
+};
+
+const TimelineFlight = ({
+  flightPath,
+  spaceshipRef,
+  shipDocked,
+  isVisible,
+  prefersReducedMotion,
+}: ReturnType<typeof useTimelineFlight> & {
+  isVisible: boolean;
+  prefersReducedMotion: boolean;
+}) => (
+  <>
+    {flightPath && (
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 top-0 z-0 overflow-visible"
+        focusable="false"
+        height={flightPath.height}
+        viewBox={`0 0 ${flightPath.width} ${flightPath.height}`}
+        width={flightPath.width}
+      >
+        <path
+          className="timeline-flight-path fill-none stroke-indigo-300/70 dark:stroke-indigo-700/70"
+          d={flightPath.path}
+          pathLength="1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="3"
+          vectorEffect="non-scaling-stroke"
+          style={{
+            animation:
+              isVisible && !prefersReducedMotion
+                ? "drawFlightPath 1.4s ease-out both"
+                : "none",
+          }}
+        />
+      </svg>
+    )}
+    {flightPath && (
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 top-0 z-20 overflow-visible"
+        focusable="false"
+        height={flightPath.height}
+        viewBox={`0 0 ${flightPath.width} ${flightPath.height}`}
+        width={flightPath.width}
+      >
+        <g
+          ref={spaceshipRef}
+          data-timeline-route-ship
+          className="text-indigo-600 drop-shadow-sm dark:text-indigo-300"
+        >
+          <g
+            className={
+              shipDocked && !prefersReducedMotion
+                ? "timeline-docked-ship"
+                : undefined
+            }
+          >
+            <TimelineSpaceshipGlyph />
+          </g>
+        </g>
+      </svg>
+    )}
+  </>
+);
+
+const TimelineChapterSection = ({
+  chapter,
+  index,
+}: {
+  chapter: TimelineChapter;
+  index: number;
+}) => {
+  const accent = monthAccents[index % monthAccents.length];
+  const icon = monthIcons[index % monthIcons.length];
+  const headingId = `timeline-${chapter.key}`;
+  return (
+    <section
+      aria-labelledby={headingId}
+      className="relative z-10 grid gap-5 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-6"
+    >
+      <div
+        aria-hidden="true"
+        className={`absolute -left-8 top-5 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border ${accent.node} shadow-sm sm:-left-10`}
+      >
+        <span className="text-sm leading-none">{icon}</span>
+      </div>
+      <div
+        className={`flex flex-col rounded-2xl border p-5 lg:p-6 ${accent.panel}`}
+      >
+        <p
+          className={`mb-3 font-mono text-xs font-bold uppercase tracking-[0.18em] ${accent.text}`}
+        >
+          {chapter.items.length} {chapter.items.length === 1 ? "post" : "posts"}
+        </p>
+        <h3
+          id={headingId}
+          className="text-[2.125rem] font-extrabold leading-[0.98] tracking-[-0.035em] text-gray-900 dark:text-gray-100"
+        >
+          {chapter.month}
+          <span className="mt-1 block text-2xl font-medium tracking-[-0.03em] text-gray-500 dark:text-gray-400">
+            {chapter.year}
+          </span>
+        </h3>
+      </div>
+
+      <TimelineMasonry items={chapter.items} />
+    </section>
   );
 };
 
@@ -325,9 +383,6 @@ export default function Timeline({
   snacks,
   expanded,
   onExpand,
-  onSpaceshipDockedChange,
-  spaceshipDocked,
-  spaceshipLaunching,
 }: TimelineProps) {
   const allItems = useMemo<TimelineItem[]>(
     () =>
@@ -352,11 +407,8 @@ export default function Timeline({
   );
   const [isVisible, setIsVisible] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [flightPath, setFlightPath] = useState<TimelineFlightPath | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const chaptersRef = useRef<HTMLDivElement>(null);
-  const flightPathRef = useRef<SVGPathElement>(null);
-  const spaceshipRef = useRef<SVGGElement>(null);
   const visibleItems = useMemo(
     () => (expanded ? allItems : allItems.slice(0, 6)),
     [allItems, expanded],
@@ -366,20 +418,20 @@ export default function Timeline({
     .join("|");
   const chapters = useMemo(
     () =>
-      visibleItems.reduce<TimelineChapter[]>((groups, item, index) => {
+      visibleItems.reduce<TimelineChapter[]>((groups, item) => {
         const year = item.date.getUTCFullYear();
         const monthIndex = item.date.getUTCMonth();
         const key = `${year}-${monthIndex}`;
         const current = groups.at(-1);
 
         if (current?.key === key) {
-          current.items.push({ ...item, index });
+          current.items.push(item);
         } else {
           groups.push({
             key,
             month: months[monthIndex],
             year,
-            items: [{ ...item, index }],
+            items: [item],
           });
         }
 
@@ -387,16 +439,15 @@ export default function Timeline({
       }, []),
     [visibleItems],
   );
+  const { flightPath, spaceshipRef, shipDocked } = useTimelineFlight(
+    chaptersRef,
+    visibleItemKey,
+    prefersReducedMotion,
+  );
+
   const expandTimeline = () => {
-    const scrollPosition = window.scrollY;
     onExpand();
-    requestAnimationFrame(() => {
-      window.scrollTo({ behavior: "instant", top: scrollPosition });
-      timelineRef.current?.focus({ preventScroll: true });
-      requestAnimationFrame(() =>
-        window.scrollTo({ behavior: "instant", top: scrollPosition }),
-      );
-    });
+    timelineRef.current?.focus({ preventScroll: true });
   };
 
   useEffect(() => {
@@ -416,6 +467,7 @@ export default function Timeline({
       return;
     }
 
+    const timeline = timelineRef.current;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -425,368 +477,19 @@ export default function Timeline({
       { threshold: 0.1 },
     );
 
-    if (timelineRef.current) {
-      observer.observe(timelineRef.current);
-    }
+    if (timeline) observer.observe(timeline);
 
     return () => {
-      if (timelineRef.current) {
-        observer.unobserve(timelineRef.current);
-      }
+      if (timeline) observer.unobserve(timeline);
     };
   }, [prefersReducedMotion]);
-
-  useEffect(() => {
-    const container = chaptersRef.current;
-    if (!container) return;
-
-    let frame = 0;
-    const updateFlightPath = () => {
-      const containerBounds = container.getBoundingClientRect();
-      const entries = Array.from(
-        container.querySelectorAll<HTMLElement>("[data-timeline-entry]"),
-      );
-      const destination = container.querySelector<HTMLElement>(
-        "[data-flight-destination]",
-      );
-      const launchButton = document.querySelector<HTMLElement>(
-        "[data-timeline-launch-button]",
-      );
-
-      if (entries.length === 0) {
-        setFlightPath(null);
-        return;
-      }
-
-      const points = entries
-        .map((entry) => {
-          const bounds = entry.getBoundingClientRect();
-          return {
-            top: bounds.top - containerBounds.top,
-            x: bounds.left - containerBounds.left + bounds.width / 2,
-            y: bounds.top - containerBounds.top + bounds.height / 2,
-          };
-        })
-        .sort((a, b) => a.top - b.top || a.x - b.x);
-
-      const firstPoint = points[0];
-      const launchBounds = launchButton?.getBoundingClientRect();
-      const routeStart = launchBounds
-        ? {
-            x:
-              launchBounds.left -
-              containerBounds.left +
-              launchBounds.width / 2,
-            y: launchBounds.bottom - containerBounds.top,
-          }
-        : { x: 12, y: firstPoint.top + 20 };
-      const routePoints = [
-        ...(launchBounds ? [routeStart] : []),
-        { x: 12, y: firstPoint.top + 20 },
-        ...points.map(({ x, y }) => ({ x, y })),
-        ...(destination
-          ? [
-              {
-                x:
-                  destination.getBoundingClientRect().left -
-                  containerBounds.left +
-                  destination.getBoundingClientRect().width / 2,
-                y:
-                  destination.getBoundingClientRect().top -
-                  containerBounds.top +
-                  destination.getBoundingClientRect().height / 2,
-              },
-            ]
-          : []),
-      ];
-      let path = `M ${routePoints[0].x} ${routePoints[0].y}`;
-
-      for (let index = 1; index < routePoints.length; index += 1) {
-        const previous = routePoints[index - 1];
-        const current = routePoints[index];
-        const deltaX = current.x - previous.x;
-        const deltaY = current.y - previous.y;
-
-        if (Math.abs(deltaY) < 32) {
-          const bend = index % 2 === 0 ? 18 : -18;
-          path += ` C ${previous.x + deltaX * 0.34} ${previous.y + bend}, ${current.x - deltaX * 0.34} ${current.y + bend}, ${current.x} ${current.y}`;
-        } else {
-          const middleY = previous.y + deltaY / 2;
-          const direction = index === 1 || index % 2 === 0 ? 1 : -1;
-          const curve = Math.min(72, Math.max(24, Math.abs(deltaY) * 0.12));
-          path += ` C ${previous.x + curve * direction} ${middleY}, ${current.x - curve * direction} ${middleY}, ${current.x} ${current.y}`;
-        }
-      }
-
-      const shipTarget = routePoints[1];
-      const nextFlightPath: TimelineFlightPath = {
-        height: containerBounds.height,
-        path,
-        ship: {
-          angle:
-            (Math.atan2(
-              shipTarget.y - routePoints[0].y,
-              shipTarget.x - routePoints[0].x,
-            ) *
-              180) /
-            Math.PI,
-          x: routePoints[0].x,
-          y: routePoints[0].y,
-        },
-        width: containerBounds.width,
-      };
-      setFlightPath((current) =>
-        current?.height === nextFlightPath.height &&
-        current.path === nextFlightPath.path &&
-        current.ship.angle === nextFlightPath.ship.angle &&
-        current.ship.x === nextFlightPath.ship.x &&
-        current.ship.y === nextFlightPath.ship.y &&
-        current.width === nextFlightPath.width
-          ? current
-          : nextFlightPath,
-      );
-    };
-
-    const scheduleUpdate = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(updateFlightPath);
-    };
-    const observer = new ResizeObserver(scheduleUpdate);
-    observer.observe(container);
-    container
-      .querySelectorAll<HTMLElement>("[data-timeline-entry]")
-      .forEach((entry) => observer.observe(entry));
-    const destination = container.querySelector<HTMLElement>(
-      "[data-flight-destination]",
-    );
-    if (destination) observer.observe(destination);
-    const launchButton = document.querySelector<HTMLElement>(
-      "[data-timeline-launch-button]",
-    );
-    if (launchButton) observer.observe(launchButton);
-    window.addEventListener("resize", scheduleUpdate);
-    scheduleUpdate();
-
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-      window.removeEventListener("resize", scheduleUpdate);
-    };
-  }, [visibleItemKey]);
-
-  useEffect(() => {
-    const container = chaptersRef.current;
-    const path = flightPathRef.current;
-    const spaceship = spaceshipRef.current;
-    if (!container || !path || !spaceship || !flightPath) return;
-
-    const pathLength = path.getTotalLength();
-    if (pathLength === 0) return;
-    const pathSamples: Array<{ distance: number; y: number }> = [];
-    for (let index = 0; index <= 400; index += 1) {
-      const distance = (pathLength * index) / 400;
-      const point = path.getPointAtLength(distance);
-      const previous = pathSamples.at(-1);
-      if (!previous || point.y > previous.y) {
-        pathSamples.push({ distance, y: point.y });
-      }
-    }
-
-    const getDistanceForY = (targetY: number) => {
-      let lowerIndex = 0;
-      let upperIndex = pathSamples.length - 1;
-      while (lowerIndex < upperIndex) {
-        const middleIndex = Math.floor((lowerIndex + upperIndex) / 2);
-        if (pathSamples[middleIndex].y < targetY) {
-          lowerIndex = middleIndex + 1;
-        } else {
-          upperIndex = middleIndex;
-        }
-      }
-
-      const upper = pathSamples[lowerIndex];
-      const lower = pathSamples[Math.max(0, lowerIndex - 1)];
-      const segmentHeight = upper.y - lower.y;
-      const interpolation =
-        segmentHeight === 0
-          ? 0
-          : Math.max(0, Math.min(1, (targetY - lower.y) / segmentHeight));
-      return lower.distance + (upper.distance - lower.distance) * interpolation;
-    };
-
-    let frame = 0;
-    let currentDistance: number | null = null;
-    let targetDistance = 0;
-    let minimumDistance = 0;
-    let maximumDistance = pathLength;
-    let velocity = 0;
-    let previousTimestamp = 0;
-    let reportedDocked: boolean | null = null;
-
-    const reportDocked = (docked: boolean) => {
-      if (reportedDocked === docked) return;
-      reportedDocked = docked;
-      onSpaceshipDockedChange(docked);
-    };
-
-    const renderSpaceship = (distance: number) => {
-      const progress = Math.max(0, Math.min(1, distance / pathLength));
-      const point = path.getPointAtLength(distance);
-      const nextPoint = path.getPointAtLength(
-        Math.min(pathLength, distance + 2),
-      );
-      const angle =
-        (Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x) * 180) /
-        Math.PI;
-
-      spaceship.setAttribute(
-        "transform",
-        `translate(${point.x} ${point.y}) rotate(${angle}) scale(1.2)`,
-      );
-      spaceship.dataset.flightProgress = progress.toFixed(4);
-      if (
-        targetDistance <= pathLength * 0.001 &&
-        distance <= pathLength * 0.0015
-      ) {
-        reportDocked(true);
-      }
-    };
-
-    const updateTarget = () => {
-      const containerBounds = container.getBoundingClientRect();
-      const viewportGuide = window.innerHeight * 0.45;
-      const travelRange = Math.max(
-        1,
-        containerBounds.height - window.innerHeight + viewportGuide,
-      );
-      const scrollProgress = Math.max(
-        0,
-        Math.min(1, (viewportGuide - containerBounds.top) / travelRange),
-      );
-      const pacedDistance = pathLength * scrollProgress;
-      minimumDistance = getDistanceForY(
-        window.innerHeight * 0.18 - containerBounds.top,
-      );
-      maximumDistance = getDistanceForY(
-        window.innerHeight * 0.72 - containerBounds.top,
-      );
-      targetDistance = Math.max(
-        minimumDistance,
-        Math.min(maximumDistance, pacedDistance),
-      );
-      if (targetDistance > pathLength * 0.001) reportDocked(false);
-      spaceship.dataset.flightTargetProgress = Math.max(
-        0,
-        Math.min(1, targetDistance / pathLength),
-      ).toFixed(4);
-
-      if (currentDistance === null) {
-        currentDistance = targetDistance;
-        renderSpaceship(currentDistance);
-        return;
-      }
-
-      const constrainedDistance = Math.max(
-        minimumDistance,
-        Math.min(maximumDistance, currentDistance),
-      );
-      if (constrainedDistance !== currentDistance) {
-        currentDistance = constrainedDistance;
-        velocity *= 0.25;
-      }
-
-      if (frame === 0) {
-        previousTimestamp = performance.now();
-        frame = requestAnimationFrame(animateSpaceship);
-      }
-    };
-
-    const animateSpaceship = (timestamp: number) => {
-      frame = 0;
-      if (currentDistance === null) return;
-
-      const deltaTime = Math.min(0.032, (timestamp - previousTimestamp) / 1000);
-      previousTimestamp = timestamp;
-      const displacement = targetDistance - currentDistance;
-      const acceleration = displacement * 90 - velocity * 13;
-      velocity = Math.max(
-        -1000,
-        Math.min(1000, velocity + acceleration * deltaTime),
-      );
-      currentDistance += velocity * deltaTime;
-
-      if (
-        currentDistance < minimumDistance ||
-        currentDistance > maximumDistance
-      ) {
-        currentDistance = Math.max(
-          minimumDistance,
-          Math.min(maximumDistance, currentDistance),
-        );
-        velocity *= -0.12;
-      }
-
-      const remainingDistance = targetDistance - currentDistance;
-      if (Math.abs(remainingDistance) < 0.35 && Math.abs(velocity) < 2) {
-        currentDistance = targetDistance;
-        velocity = 0;
-        renderSpaceship(currentDistance);
-        return;
-      }
-
-      renderSpaceship(currentDistance);
-      frame = requestAnimationFrame(animateSpaceship);
-    };
-    const scheduleUpdate = () => {
-      updateTarget();
-    };
-
-    if (prefersReducedMotion) {
-      spaceship.setAttribute(
-        "transform",
-        `translate(${flightPath.ship.x} ${flightPath.ship.y}) rotate(${flightPath.ship.angle}) scale(1.2)`,
-      );
-      spaceship.dataset.flightProgress = "0.0000";
-      const updateReducedMotionDock = () => {
-        reportDocked(
-          container.getBoundingClientRect().top >= window.innerHeight * 0.45,
-        );
-      };
-      window.addEventListener("scroll", updateReducedMotionDock, {
-        passive: true,
-      });
-      window.addEventListener("resize", updateReducedMotionDock);
-      updateReducedMotionDock();
-      return () => {
-        window.removeEventListener("scroll", updateReducedMotionDock);
-        window.removeEventListener("resize", updateReducedMotionDock);
-      };
-    }
-
-    window.addEventListener("scroll", scheduleUpdate, { passive: true });
-    const handleResize = () => {
-      currentDistance = null;
-      velocity = 0;
-      cancelAnimationFrame(frame);
-      frame = 0;
-      scheduleUpdate();
-    };
-    window.addEventListener("resize", handleResize);
-    scheduleUpdate();
-
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", scheduleUpdate);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [flightPath, onSpaceshipDockedChange, prefersReducedMotion]);
 
   return (
     <section
       id="home-timeline"
       ref={timelineRef}
       tabIndex={-1}
-      className="relative min-h-[100vh] overflow-x-clip bg-gradient-to-b from-transparent via-indigo-50/20 to-indigo-100/30 py-24 outline-none lg:py-28 dark:via-indigo-950/20 dark:to-indigo-950/30"
+      className="relative min-h-[100vh] overflow-x-clip bg-gradient-to-b from-transparent via-indigo-50/20 to-indigo-100/30 py-24 outline-none [overflow-anchor:none] lg:py-28 dark:via-indigo-950/20 dark:to-indigo-950/30"
     >
       {/* Decorative background elements */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -834,54 +537,13 @@ export default function Timeline({
           ref={chaptersRef}
           className="relative pl-8 [overflow-anchor:none] sm:pl-10"
         >
-          {flightPath && (
-            <svg
-              aria-hidden="true"
-              className="pointer-events-none absolute left-0 top-0 z-0 overflow-visible"
-              focusable="false"
-              height={flightPath.height}
-              viewBox={`0 0 ${flightPath.width} ${flightPath.height}`}
-              width={flightPath.width}
-            >
-              <path
-                ref={flightPathRef}
-                className="timeline-flight-path fill-none stroke-indigo-300/70 dark:stroke-indigo-700/70"
-                d={flightPath.path}
-                pathLength="1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="3"
-                vectorEffect="non-scaling-stroke"
-                style={{
-                  animation:
-                    isVisible && !prefersReducedMotion
-                      ? "drawFlightPath 1.4s ease-out both"
-                      : "none",
-                }}
-              />
-            </svg>
-          )}
-          {flightPath && (
-            <svg
-              aria-hidden="true"
-              className="pointer-events-none absolute left-0 top-0 z-20 overflow-visible"
-              focusable="false"
-              height={flightPath.height}
-              viewBox={`0 0 ${flightPath.width} ${flightPath.height}`}
-              width={flightPath.width}
-            >
-              <g
-                ref={spaceshipRef}
-                data-timeline-route-ship
-                className="text-indigo-600 drop-shadow-sm dark:text-indigo-300"
-                style={{
-                  opacity: spaceshipLaunching || spaceshipDocked ? 0 : 1,
-                }}
-              >
-                <TimelineSpaceshipGlyph />
-              </g>
-            </svg>
-          )}
+          <TimelineFlight
+            flightPath={flightPath}
+            spaceshipRef={spaceshipRef}
+            shipDocked={shipDocked}
+            isVisible={isVisible}
+            prefersReducedMotion={prefersReducedMotion}
+          />
 
           {allItems.length === 0 && (
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -892,47 +554,13 @@ export default function Timeline({
           )}
 
           <div className="space-y-16 lg:space-y-20">
-            {chapters.map((chapter, chapterIndex) => {
-              const accent = monthAccents[chapterIndex % monthAccents.length];
-              const icon = monthIcons[chapterIndex % monthIcons.length];
-              const headingId = `timeline-${chapter.key}`;
-
-              return (
-                <section
-                  key={chapter.key}
-                  aria-labelledby={headingId}
-                  className="relative z-10 grid gap-5 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-6"
-                >
-                  <div
-                    aria-hidden="true"
-                    className={`absolute -left-8 top-5 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border ${accent.node} shadow-sm sm:-left-10`}
-                  >
-                    <span className="text-sm leading-none">{icon}</span>
-                  </div>
-                  <div
-                    className={`flex flex-col rounded-2xl border p-5 lg:p-6 ${accent.panel}`}
-                  >
-                    <p
-                      className={`mb-3 font-mono text-xs font-bold uppercase tracking-[0.18em] ${accent.text}`}
-                    >
-                      {chapter.items.length}{" "}
-                      {chapter.items.length === 1 ? "post" : "posts"}
-                    </p>
-                    <h3
-                      id={headingId}
-                      className="text-[2.125rem] font-extrabold leading-[0.98] tracking-[-0.035em] text-gray-900 dark:text-gray-100"
-                    >
-                      {chapter.month}
-                      <span className="mt-1 block text-2xl font-medium tracking-[-0.03em] text-gray-500 dark:text-gray-400">
-                        {chapter.year}
-                      </span>
-                    </h3>
-                  </div>
-
-                  <TimelineMasonry items={chapter.items} />
-                </section>
-              );
-            })}
+            {chapters.map((chapter, chapterIndex) => (
+              <TimelineChapterSection
+                key={chapter.key}
+                chapter={chapter}
+                index={chapterIndex}
+              />
+            ))}
           </div>
 
           {!expanded && allItems.length > visibleItems.length && (
@@ -969,6 +597,14 @@ export default function Timeline({
       </div>
 
       <style>{`
+        @keyframes bobDockedShip {
+          0%, 100% { transform: translateX(0); }
+          50% { transform: translateX(-5px); }
+        }
+        .timeline-docked-ship {
+          animation: bobDockedShip 1s ease-in-out infinite;
+        }
+
         @media (min-width: 768px) {
           #home-timeline .timeline-masonry--ready {
             grid-auto-flow: dense;
