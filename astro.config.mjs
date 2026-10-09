@@ -13,9 +13,12 @@ import expressiveCode from "astro-expressive-code";
 import { unified } from "@astrojs/markdown-remark";
 import { remarkReadingTime } from "./plugins/remark-reading-time.mjs";
 import { remarkModifiedTime } from "./plugins/remark-modified-time.mjs";
+import { createSitemapPageMetadata } from "./plugins/sitemap-page-metadata.mjs";
 import { isInactiveToolUrl } from "./src/components/tools/toolCatalog.ts";
 
 import vercel from "@astrojs/vercel";
+
+const pageMetadata = createSitemapPageMetadata();
 
 // https://astro.build/config
 export default defineConfig({
@@ -33,18 +36,20 @@ export default defineConfig({
     react(),
     expressiveCode(),
     mdx(),
+    pageMetadata.integration,
     sitemap({
       filter: (page) => {
         const pathname = new URL(page).pathname;
-        const isTagDetail = /^\/tags\/[^/]+\/?$/.test(pathname);
         return (
           !pathname.startsWith("/admin/") &&
           pathname !== "/design/" &&
           !isInactiveToolUrl(page) &&
-          !isTagDetail
+          pageMetadata.isIndexable(page)
         );
       },
       serialize: (item) => {
+        const lastmod = pageMetadata.lastmodFor(item.url);
+        if (lastmod) item = { ...item, lastmod };
         if (item.url.includes("/tags/")) {
           return { ...item, priority: 0.3 };
         }

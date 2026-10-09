@@ -1,0 +1,255 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Geist";
+  src: url("/Geist/Geist-VariableFont_wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/JetBrains_Mono/JetBrainsMono-VariableFont_wght.woff2")
+    format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius-xs: 0.22rem;
+    --radius-sm: 0.34rem 0.28rem 0.32rem 0.26rem;
+    --radius-md: 0.52rem 0.4rem 0.48rem 0.34rem;
+    --radius-lg: 0.72rem 0.54rem 0.68rem 0.44rem;
+    --radius-xl: 0.98rem 0.72rem 0.9rem 0.58rem;
+    --radius: 0.5rem;
+    @apply transition-colors duration-300;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+@layer base {
+  .theme-changing *,
+  .theme-changing *::before,
+  .theme-changing *::after {
+    transition: none !important;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .site-page-header {
+    @apply mx-auto mb-8 max-w-screen-sm text-center lg:mb-16;
+  }
+
+  .site-page-title {
+    @apply mb-4 text-3xl font-extrabold tracking-tight text-gray-900 lg:text-4xl dark:text-gray-400;
+  }
+
+  .site-page-description {
+    @apply font-light text-gray-600 sm:text-xl dark:text-gray-300;
+  }
+
+  .site-chip {
+    @apply inline-flex min-h-11 items-center justify-center rounded-md px-3 py-2 text-sm font-semibold no-underline md:min-h-0 md:px-2.5 md:py-1 md:text-xs;
+  }
+
+  .site-action {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 px-2 py-2 text-sm font-semibold no-underline;
+  }
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  scroll-margin-top: calc(80px + 8px + 8px);
+}
+
+@layer utilities {
+  .grid-cols-53 {
+    grid-template-columns: repeat(53, minmax(0, 1fr));
+  }
+}
+
+@keyframes typing {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.typing-animation {
+  opacity: 0;
+  animation: typing 0.5s forwards;
+}
+
+.typing-animation-delayed {
+  opacity: 0;
+  animation: typing 0.5s forwards;
+  animation-delay: 0.5s;
+}
+
+@keyframes terminal-cursor {
+  0% {
+    transform: translate(10%, 10%);
+  }
+  25% {
+    transform: translate(90%, 20%);
+  }
+  50% {
+    transform: translate(90%, 80%);
+  }
+  75% {
+    transform: translate(10%, 90%);
+  }
+  100% {
+    transform: translate(10%, 10%);
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-terminal-cursor {
+  animation: terminal-cursor 15s infinite linear;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+}
+
+.animate-blink {
+  animation: blink 1s infinite ease-in-out;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes terminal-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-terminal-blink {
+  animation: terminal-blink 1s infinite step-end;
+  color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .typing-animation,
+  .typing-animation-delayed {
+    opacity: 1;
+    animation: none !important;
+  }
+
+  .animate-terminal-cursor,
+  .animate-blink,
+  .animate-terminal-blink,
+  .animate-bounce,
+  .animate-pulse,
+  .animate-fade-in {
+    animation: none !important;
+  }
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+}

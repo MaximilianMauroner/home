@@ -109,8 +109,8 @@
   border-color: color-mix(in srgb, var(--ink), transparent 65%);
 }
 
-.blog-detail-reading-meta span + span::before {
-  margin-right: 0.8rem;
+.blog-detail-reading-meta > span:not(:last-child)::after {
+  margin-left: 0.8rem;
   color: color-mix(in srgb, var(--ink), transparent 48%);
   content: "/";
 }

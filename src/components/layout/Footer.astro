@@ -5,7 +5,7 @@ const navigation = [
   { name: "Blog", href: "/blog/" },
   { name: "Snacks", href: "/snacks/" },
   { name: "Tools", href: "/tools/" },
-  { name: "Tags", href: "/tags/" },
+  { name: "Topics & search", href: "/tags/" },
   { name: "Privacy", href: "/privacy/" },
 ];
 
@@ -38,6 +38,7 @@ const linkClass =
     </div>
 
     <div class="flex flex-wrap items-center gap-x-1 text-sm">
+      <a href="/rss.xml" class={linkClass}>Follow via RSS</a>
       <a href="mailto:home@relay.mauroner.net" rel="nofollow" class={linkClass}>
         Email
       </a>

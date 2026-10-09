@@ -1,12 +1,10 @@
-import { execSync } from "child_process";
+import { getGitModifiedDate } from "./git-modified-date.mjs";
 
+// Leaves lastModified unset when neither frontmatter nor git history gives a
+// reliable date, so pages can omit modification metadata instead of guessing.
 export function remarkModifiedTime() {
   return function (_, file) {
     const filepath = file.history[0];
-    const result = execSync(`git log -1 --pretty="format:%cI" "${filepath}"`)
-      .toString()
-      .trim();
-    file.data.astro.frontmatter.lastModified ||=
-      result || file.data.astro.frontmatter.releaseDate;
+    file.data.astro.frontmatter.lastModified ||= getGitModifiedDate(filepath);
   };
 }

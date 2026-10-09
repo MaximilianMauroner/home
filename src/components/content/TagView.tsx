@@ -16,6 +16,8 @@ type TagViewProps = {
   tags: Array<[string, number]>;
   preSelectedTag?: string;
   initialSearchQuery?: string;
+  /** Curated reading path for the selected topic, in reading order. */
+  startHere?: TaggedPreviewEntry[];
 };
 
 const searchQueryInPost = (search: string, post: TaggedPreviewEntry) => {
@@ -40,6 +42,7 @@ export default function TagView({
   tags,
   preSelectedTag,
   initialSearchQuery = "",
+  startHere = [],
 }: TagViewProps) {
   const selectedTag = preSelectedTag ?? null;
 
@@ -267,6 +270,27 @@ export default function TagView({
                 ))}
               </nav>
             )}
+            {startHere.length > 0 && !search.trim() && (
+              <nav
+                className="topic-atlas__start"
+                aria-labelledby="topic-start-heading"
+              >
+                <h3 id="topic-start-heading">Start here</h3>
+                <ol>
+                  {startHere.map((post) => {
+                    const collection = collectionDetails[post.collection];
+                    return (
+                      <li key={postKeyFor(post)}>
+                        <a href={`/${collection.path}/${post.id}/`}>
+                          {post.data.title}
+                        </a>
+                        <span>{collection.label}</span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </nav>
+            )}
           </div>
           <PostList
             tagHref={tagHref}
@@ -454,7 +478,7 @@ const Search = ({
       <label htmlFor="tag-search" className="topic-search__label">
         Search posts
       </label>
-      <div className="relative">
+      <div className="topic-search__field">
         <input
           id="tag-search"
           type="search"
@@ -468,10 +492,7 @@ const Search = ({
           className="topic-search__input"
           placeholder="Search all the writing…"
         />
-        <span
-          className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
-          aria-hidden="true"
-        >
+        <span className="topic-search__icon" aria-hidden="true">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="24"
@@ -482,7 +503,6 @@ const Search = ({
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-5 w-5 text-muted-foreground"
           >
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.3-4.3"></path>

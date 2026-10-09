@@ -26,6 +26,46 @@ const familyStyles: Record<
   },
 };
 
+/**
+ * Marks every element outside `layer` inert, without moving `layer` out of its
+ * stacking context. Returns a function that restores only what it changed.
+ */
+function makeOutsideInert(layer: HTMLElement) {
+  const changed: Element[] = [];
+  let node: Element = layer;
+  while (node !== document.body && node.parentElement) {
+    const parent: Element = node.parentElement;
+    for (const sibling of parent.children) {
+      if (sibling === node || sibling.hasAttribute("inert")) continue;
+      sibling.setAttribute("inert", "");
+      changed.push(sibling);
+    }
+    node = parent;
+  }
+  return () => changed.forEach((element) => element.removeAttribute("inert"));
+}
+
+function keepFocusInside(container: HTMLElement, event: KeyboardEvent) {
+  const focusable = [
+    ...container.querySelectorAll<HTMLElement>("a[href], button:not([disabled])"),
+  ];
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  if (!first || !last) return;
+
+  const active = document.activeElement;
+  if (!container.contains(active)) {
+    event.preventDefault();
+    first.focus();
+  } else if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 export default function TableOfContents({
   headingsArr,
   family,
@@ -37,7 +77,11 @@ export default function TableOfContents({
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
-  const mobileSheetRef = useRef<HTMLElement>(null);
+  const mobileLayerRef = useRef<HTMLDivElement>(null);
+  const mobileSheetRef = useRef<HTMLDivElement>(null);
+  // Heading chosen in the mobile sheet; navigation waits until the sheet has
+  // closed and released the page.
+  const pendingTargetRef = useRef<string | null>(null);
   const [currentHeading, setCurrentHeading] = useState(
     headingsArr[0]?.slug ?? "",
   );
@@ -93,26 +137,51 @@ export default function TableOfContents({
   }, [handleScroll]);
 
   useEffect(() => {
-    if (!isMobileOpen) return;
+    const layer = mobileLayerRef.current;
+    const sheet = mobileSheetRef.current;
+    if (!isMobileOpen || !layer || !sheet) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const restoreBackground = makeOutsideInert(layer);
 
-    const activeLink = mobileSheetRef.current?.querySelector<HTMLAnchorElement>(
+    const activeLink = sheet.querySelector<HTMLAnchorElement>(
       '[aria-current="location"]',
     );
     activeLink?.focus({ preventScroll: true });
     activeLink?.scrollIntoView({ block: "center" });
 
-    const closeOnEscape = (event: KeyboardEvent) => {
+    const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsMobileOpen(false);
+      if (event.key === "Tab") keepFocusInside(sheet, event);
     };
-    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("keydown", handleKeydown);
+
+    // The sheet is hidden from the sm breakpoint up, so close it there
+    // instead of leaving the page inert and unscrollable.
+    const desktopQuery = window.matchMedia("(min-width: 640px)");
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setIsMobileOpen(false);
+    };
+    desktopQuery.addEventListener("change", closeOnDesktop);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", closeOnEscape);
-      mobileTriggerRef.current?.focus({ preventScroll: true });
+      restoreBackground();
+      document.removeEventListener("keydown", handleKeydown);
+      desktopQuery.removeEventListener("change", closeOnDesktop);
+
+      const targetSlug = pendingTargetRef.current;
+      pendingTargetRef.current = null;
+      if (targetSlug === null) {
+        mobileTriggerRef.current?.focus({ preventScroll: true });
+      } else if (window.location.hash === `#${targetSlug}`) {
+        document.getElementById(targetSlug)?.scrollIntoView();
+      } else {
+        // Native fragment navigation scrolls with the heading scroll margin
+        // and moves the keyboard starting point to the heading.
+        window.location.hash = targetSlug;
+      }
     };
   }, [isMobileOpen]);
 
@@ -152,22 +221,27 @@ export default function TableOfContents({
         </button>
 
         {isMobileOpen && (
-          <>
-            <button
-              type="button"
-              aria-label="Close table of contents"
+          <div ref={mobileLayerRef}>
+            {/* Pointer-only backdrop; Escape and the close button cover keyboards. */}
+            <div
+              aria-hidden="true"
               className="fixed inset-0 z-50 bg-black/40"
               onClick={() => setIsMobileOpen(false)}
             />
-            <nav
+            <div
               ref={mobileSheetRef}
               id="mobile-table-of-contents"
-              aria-label="Table of contents"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mobile-table-of-contents-title"
               className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[65vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl"
               style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
             >
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                <span className="font-semibold text-foreground">
+                <span
+                  id="mobile-table-of-contents-title"
+                  className="font-semibold text-foreground"
+                >
                   On this page
                 </span>
                 <button
@@ -188,7 +262,10 @@ export default function TableOfContents({
                   </svg>
                 </button>
               </div>
-              <div className="overflow-y-auto p-2">
+              <nav
+                aria-label="Table of contents"
+                className="overflow-y-auto p-2"
+              >
                 {headingsArr.map((heading) => {
                   const isCurrent = currentHeading === heading.slug;
                   return (
@@ -196,7 +273,11 @@ export default function TableOfContents({
                       key={heading.slug}
                       href={`#${heading.slug}`}
                       aria-current={isCurrent ? "location" : undefined}
-                      onClick={() => setIsMobileOpen(false)}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        pendingTargetRef.current = heading.slug;
+                        setIsMobileOpen(false);
+                      }}
                       style={{
                         paddingLeft: `${1 + Math.max(heading.depth - 2, 0)}rem`,
                       }}
@@ -210,9 +291,9 @@ export default function TableOfContents({
                     </a>
                   );
                 })}
-              </div>
-            </nav>
-          </>
+              </nav>
+            </div>
+          </div>
         )}
       </div>
 

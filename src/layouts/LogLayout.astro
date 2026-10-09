@@ -1,9 +1,12 @@
 ---
+import ArticleAuthor from "@/components/content/ArticleAuthor.astro";
+import ArticleJsonLd from "@/components/content/ArticleJsonLd.astro";
 import FontmatterTagsList from "@/components/content/FontmatterTagsList.astro";
 import PostImageLoader from "@/components/content/PostImageLoader.astro";
 import ReadingProgress from "@/components/content/ReadingProgress";
 import RelatedPosts from "@/components/content/RelatedPosts.astro";
 import TableOfContents from "@/components/content/TableOfContents";
+import { getArticleDates } from "@/utils/server/articleDates";
 import { getArticleOgImageUrl, getArticleTrail } from "@/utils/server/content";
 import type { HeadingType } from "@/utils/types";
 import StarLayout from "./StarLayout.astro";
@@ -24,9 +27,10 @@ interface Props {
 
 const { frontmatter, headings = [] } = Astro.props;
 const releaseDate = new Date(frontmatter.releaseDate);
-const articleModifiedTime = frontmatter.lastModified
-  ? new Date(frontmatter.lastModified).toISOString()
-  : releaseDate.toISOString();
+const { publishedAt, modifiedAt, updatedAt } = getArticleDates(
+  frontmatter.releaseDate,
+  frontmatter.lastModified,
+);
 const slugFromPath = Astro.url.pathname
   .replace(/^\/dev-log\//, "")
   .replace(/\/$/, "");
@@ -42,7 +46,7 @@ const publishedDateLabel = releaseDate.toLocaleDateString("en-US", {
   year: "numeric",
   timeZone: "UTC",
 });
-const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
+const updatedDateLabel = new Date(updatedAt).toLocaleDateString(
   "en-US",
   {
     month: "long",
@@ -58,10 +62,20 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
   title={frontmatter.title}
   image={frontmatter.image}
   ogImageUrl={ogImageUrl}
-  articlePublishedTime={releaseDate.toISOString()}
-  articleModifiedTime={articleModifiedTime}
+  articlePublishedTime={publishedAt}
+  articleModifiedTime={modifiedAt}
   articleAuthor="Maximilian Mauroner"
 >
+  <ArticleJsonLd
+    slot="head"
+    title={frontmatter.title}
+    description={frontmatter.description}
+    publishedAt={publishedAt}
+    modifiedAt={modifiedAt}
+    sectionName="Dev Log"
+    sectionPath="/dev-log/"
+    tags={frontmatter.tags ?? []}
+  />
   <ReadingProgress family="log" client:load />
   <div class="log-editorial">
     <div class="log-shell log-reader">
@@ -71,10 +85,11 @@ const updatedDateLabel = new Date(articleModifiedTime).toLocaleDateString(
           <time datetime={releaseDate.toISOString()}>{publishedDateLabel}</time>
           <span>{year} / {entryId}</span>
           {frontmatter.minutesRead && <span>{frontmatter.minutesRead}</span>}
+          <ArticleAuthor />
         </div>
         <h1 style={`view-transition-name: ${titleTransitionName};`}>{frontmatter.title}</h1>
         {frontmatter.tags && frontmatter.tags.length > 0 && <div class="log-reading-tags"><FontmatterTagsList tags={frontmatter.tags} /></div>}
-        {articleModifiedTime !== releaseDate.toISOString() && <p class="log-updated">Updated <time datetime={articleModifiedTime}>{updatedDateLabel}</time></p>}
+        {updatedAt !== publishedAt && <p class="log-updated">Updated <time datetime={updatedAt}>{updatedDateLabel}</time></p>}
       </header>
       {frontmatter.image && <figure class="log-reading-image"><PostImageLoader imagePath={frontmatter.image} altText={frontmatter.title} /></figure>}
       <div class="log-reading-columns">

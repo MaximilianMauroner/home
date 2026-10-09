@@ -60,6 +60,22 @@
   font-size: 0.9rem;
   font-weight: 650;
 }
+.topic-search__field {
+  position: relative;
+}
+.topic-search__icon {
+  position: absolute;
+  inset-block: 0;
+  left: 0.75rem;
+  display: flex;
+  align-items: center;
+  color: var(--atlas-muted);
+  pointer-events: none;
+}
+.topic-search__icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
 .topic-search__input {
   width: 100%;
   min-height: 3.25rem;
@@ -240,6 +256,49 @@
 }
 .topic-atlas__connections a:hover {
   color: var(--atlas-marker);
+}
+.topic-atlas__start {
+  margin-top: 1.6rem;
+}
+.topic-atlas__start h3 {
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+.topic-atlas__start ol {
+  margin-top: 0.6rem;
+  counter-reset: start-here;
+}
+.topic-atlas__start li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--atlas-line);
+  counter-increment: start-here;
+  font-size: 0.9rem;
+}
+.topic-atlas__start li::before,
+.topic-atlas__start li > span {
+  flex: none;
+  font:
+    0.68rem "JetBrains_Mono",
+    monospace;
+}
+.topic-atlas__start li::before {
+  content: counter(start-here, decimal-leading-zero);
+  content: counter(start-here, decimal-leading-zero) / "";
+  color: var(--atlas-marker);
+}
+.topic-atlas__start li > span {
+  margin-left: auto;
+  color: var(--atlas-muted);
+}
+.topic-atlas__start a {
+  font-weight: 600;
+}
+.topic-atlas__start a:hover {
+  color: var(--atlas-marker);
+  text-decoration: underline;
 }
 .topic-posts {
   margin-top: 2.25rem;

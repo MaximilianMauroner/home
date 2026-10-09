@@ -1,10 +1,11 @@
 ---
 import { serializeJsonLd } from "@/utils/server/seo";
 import { getArticleOgImageUrl } from "@/utils/server/content";
+import { authorPerson } from "@/utils/authorIdentity";
 
 interface Props {
   description?: string;
-  modifiedAt: string;
+  modifiedAt?: string;
   publishedAt: string;
   sectionName: string;
   sectionPath: string;
@@ -21,13 +22,10 @@ const {
   tags,
   title,
 } = Astro.props;
-const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
-const imageUrl = getArticleOgImageUrl(Astro.url.pathname, Astro.site);
-const person = {
-  "@type": "Person",
-  name: "Maximilian Mauroner",
-  url: "https://www.mauroner.net",
-};
+// Match the canonical URL, which always ends with a slash.
+const pathname = Astro.url.pathname.replace(/\/?$/, "/");
+const pageUrl = new URL(pathname, Astro.site).href;
+const imageUrl = getArticleOgImageUrl(pathname, Astro.site);
 const articleSchema = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
@@ -41,8 +39,8 @@ const articleSchema = {
     width: 1200,
     height: 630,
   },
-  author: person,
-  publisher: person,
+  author: authorPerson,
+  publisher: authorPerson,
   dateModified: modifiedAt,
   datePublished: publishedAt,
   mainEntityOfPage: { "@type": "WebPage", "@id": pageUrl },
@@ -51,7 +49,12 @@ const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   itemListElement: [
-    { "@type": "ListItem", position: 1, name: "Home", item: Astro.site },
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Home",
+      item: new URL("/", Astro.site).href,
+    },
     {
       "@type": "ListItem",
       position: 2,

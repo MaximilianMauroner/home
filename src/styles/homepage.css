@@ -1,2 +1,2 @@
-@import "./globals.css";
+@import "./shared.css";
 @config "../../tailwind.home.config.mjs";

@@ -62,7 +62,7 @@ export default function ContentPreview({
 
   return (
     <article
-      className={`content-preview content-preview--${family}${family === "blog" && (image || imageUrl) ? "content-preview--cover" : ""} group`}
+      className={`content-preview content-preview--${family}${family === "blog" && (image || imageUrl) ? " content-preview--cover" : ""} group`}
     >
       <header className="content-preview__header">
         <span className="content-preview__family">
