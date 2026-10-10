@@ -436,9 +436,10 @@ export function ContentManager({
                     "Reset to saved stretches? This replaces your unsaved Studio draft.",
                   )
                 ) {
-                  setDraftStretches(
-                    createRoutineWorkingStretches(managedRoutine),
-                  );
+                  const nextDraft =
+                    createRoutineWorkingStretches(managedRoutine);
+                  setDraftStretches(nextDraft);
+                  setSavedDraft(JSON.stringify(nextDraft));
                 }
               }}
               className="min-h-11 w-full rounded-xl bg-secondary px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
