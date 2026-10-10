@@ -131,8 +131,8 @@ describe("getGitModifiedDate", () => {
     commit(origin, "boundary.md", "2025-01-01T10:00:00Z");
     commit(origin, "new.md", "2026-01-01T10:00:00Z");
 
-    expect(getGitModifiedDate(join(origin, "old.md"))).toBe(
-      "2024-01-01T10:00:00Z",
+    expect(Date.parse(getGitModifiedDate(join(origin, "old.md")) ?? "")).toBe(
+      Date.parse("2024-01-01T10:00:00Z"),
     );
 
     const clone = join(makeTempDir(), "clone");
@@ -145,8 +145,8 @@ describe("getGitModifiedDate", () => {
       clone,
     ]);
 
-    expect(getGitModifiedDate(join(clone, "new.md"))).toBe(
-      "2026-01-01T10:00:00Z",
+    expect(Date.parse(getGitModifiedDate(join(clone, "new.md")) ?? "")).toBe(
+      Date.parse("2026-01-01T10:00:00Z"),
     );
     // The boundary commit appears to add old.md, which would be a false date.
     expect(getGitModifiedDate(join(clone, "old.md"))).toBeUndefined();
@@ -156,8 +156,8 @@ describe("getGitModifiedDate", () => {
     // rather than in their own worktree-specific git directory.
     const worktree = join(makeTempDir(), "worktree");
     git(clone, ["worktree", "add", "-q", "--detach", worktree]);
-    expect(getGitModifiedDate(join(worktree, "new.md"))).toBe(
-      "2026-01-01T10:00:00Z",
+    expect(Date.parse(getGitModifiedDate(join(worktree, "new.md")) ?? "")).toBe(
+      Date.parse("2026-01-01T10:00:00Z"),
     );
     expect(getGitModifiedDate(join(worktree, "old.md"))).toBeUndefined();
   });
