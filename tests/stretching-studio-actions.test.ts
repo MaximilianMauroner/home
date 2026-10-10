@@ -10,6 +10,7 @@ import {
   vi,
   type Mock,
 } from "vitest";
+import { createRoutineWorkingStretches } from "@/components/tools/Stretching/studioHelpers";
 import { ContentManager } from "@/components/tools/Stretching/components/ContentManager";
 import type {
   Stretch,
@@ -46,6 +47,7 @@ describe("Routine Studio actions", () => {
   let container: HTMLDivElement;
   let root: Root;
   let onStartRoutine: Mock<(id: string, stretches: readonly Stretch[]) => void>;
+  let onClose: Mock<() => void>;
   let onSaveRoutine: Mock<(routine: StretchRoutine) => void>;
   let onUpdateRoutine: Mock<
     (id: string, routine: Omit<StretchRoutine, "id">) => void
@@ -58,6 +60,7 @@ describe("Routine Studio actions", () => {
     root = createRoot(container);
     onStartRoutine =
       vi.fn<(id: string, stretches: readonly Stretch[]) => void>();
+    onClose = vi.fn<() => void>();
     onSaveRoutine = vi.fn<(routine: StretchRoutine) => void>();
     onUpdateRoutine =
       vi.fn<(id: string, routine: Omit<StretchRoutine, "id">) => void>();
@@ -73,7 +76,7 @@ describe("Routine Studio actions", () => {
           onSaveRoutine,
           onUpdateRoutine,
           onDeleteRoutine: vi.fn(),
-          onClose: vi.fn(),
+          onClose,
         }),
       );
     });
@@ -240,6 +243,100 @@ describe("Routine Studio actions", () => {
     expect(
       onUpdateRoutine.mock.calls[0]?.[1].stretches.map(({ id }) => id),
     ).toEqual(["two", "one"]);
+  });
+
+  function openModifiedWorkingDraft() {
+    const workingStretches = createRoutineWorkingStretches(routine).map(
+      (item) => ({ ...item, duration: 47 }),
+    );
+    act(() => {
+      root.render(
+        createElement(ContentManager, {
+          key: "modified-working-draft",
+          defaultRoutines: [],
+          customRoutines: [routine],
+          selectedRoutineId: routine.id,
+          currentStretches: workingStretches,
+          onStartRoutine,
+          onSaveRoutine,
+          onUpdateRoutine,
+          onDeleteRoutine: vi.fn(),
+          onClose,
+        }),
+      );
+    });
+  }
+
+  it("closes without a discard prompt after resetting a modified working sequence", () => {
+    openModifiedWorkingDraft();
+    act(() => button(container, "Reset to saved stretches").click());
+    expect(window.confirm).toHaveBeenCalledOnce();
+    vi.mocked(window.confirm).mockClear().mockReturnValue(false);
+
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[aria-label="Close Routine Studio"]',
+        )!
+        .click(),
+    );
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("protects new changes made after resetting to saved stretches", () => {
+    openModifiedWorkingDraft();
+    act(() => button(container, "Reset to saved stretches").click());
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[aria-label="Move Stretch one down"]',
+        )!
+        .click(),
+    );
+    vi.mocked(window.confirm).mockClear().mockReturnValue(false);
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[aria-label="Close Routine Studio"]',
+        )!
+        .click(),
+    );
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Discard your unsaved Studio changes?",
+    );
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => button(container, "Edit routine").click());
+    act(() => button(container, "Save changes").click());
+    expect(
+      onUpdateRoutine.mock.calls[0]?.[1].stretches.map(({ name }) => name),
+    ).toEqual(["Stretch two", "Stretch one"]);
+  });
+
+  it("keeps the working sequence and clean baseline when reset is cancelled", () => {
+    openModifiedWorkingDraft();
+    vi.mocked(window.confirm).mockReturnValue(false);
+    act(() => button(container, "Reset to saved stretches").click());
+    vi.mocked(window.confirm).mockClear();
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[aria-label="Close Routine Studio"]',
+        )!
+        .click(),
+    );
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledOnce();
+    act(() => button(container, "Edit routine").click());
+    act(() => button(container, "Save changes").click());
+    expect(
+      onUpdateRoutine.mock.calls[0]?.[1].stretches.map(
+        ({ duration }) => duration,
+      ),
+    ).toEqual([47, 47]);
   });
 
   it("opens an empty saved routine in Studio so it can be repaired", () => {
