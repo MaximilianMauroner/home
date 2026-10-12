@@ -6,6 +6,9 @@ description: Verify Home content routes and browser-local tools. Use when checki
 # Verify Home
 
 Read AGENTS.md, README.md, content schemas, toolCatalog.ts and [the feature index](features/README.md).
+Use its product-area map to select guides for the task. Open every selected
+guide before setup or execution; its actions, expected results and reset steps
+are required. The index's coverage status does not replace those checks.
 Use an isolated worktree and distinct test origin. Check active servers but do not
 share another repository's instance. Check memory, load and owned port first.
 Select only journeys affected by product work in the requested window.
