@@ -5,7 +5,7 @@ description: Verify Home content routes and browser-local tools. Use when checki
 
 # Verify Home
 
-Read AGENTS.md, README.md, content schemas, toolCatalog.ts and [features.md](features.md).
+Read AGENTS.md, README.md, content schemas, toolCatalog.ts and [the feature index](features/README.md).
 Use an isolated worktree and distinct test origin. Check active servers but do not
 share another repository's instance. Check memory, load and owned port first.
 Select only journeys affected by product work in the requested window.
