@@ -221,3 +221,42 @@ describe("mobile table of contents sheet", () => {
     expect(press("Tab").defaultPrevented).toBe(false);
   });
 });
+
+describe("current heading", () => {
+  let root: Root;
+
+  beforeEach(() => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal("scrollY", 3000);
+    vi.spyOn(document.body, "offsetHeight", "get").mockReturnValue(20000);
+    document.body.innerHTML = `
+      <div id="island"></div>
+      ${headings.map((h) => `<h2 id="${h.slug}" style="scroll-margin-top: 112px">${h.text}</h2>`).join("")}`;
+    root = createRoot(document.querySelector("#island")!);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    document.body.innerHTML = "";
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  test("marks a heading that a link scrolled to its scroll margin", async () => {
+    // Where following the link to "second" leaves the headings, with the
+    // subpixel offset a real scroll can end on.
+    const tops: Record<string, number> = { first: -800, second: 112.4, third: 900 };
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: Element) {
+        return DOMRect.fromRect({ y: tops[this.id] ?? 0 });
+      },
+    );
+
+    await act(async () =>
+      root.render(createElement(TableOfContents, { headingsArr: headings, family: "blog" })),
+    );
+
+    const current = document.querySelector('nav[aria-label="Table of contents"] [aria-current="location"]');
+    expect(current?.textContent).toBe("Second section");
+  });
+});
