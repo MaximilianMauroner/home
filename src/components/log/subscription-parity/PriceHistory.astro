@@ -1,0 +1,98 @@
+---
+import { HISTORY_HEIGHT, dateLabel, familyLabels, familyReleases, historyChartMarkup, mixPrice } from "./history";
+import { dollars } from "./parity";
+import "./parity.css";
+
+const width = 680;
+const groups = (["gpt", "opus"] as const).map((family) => ({
+  label: familyLabels[family],
+  rows: familyReleases(family).map((release, index, list) => {
+    const price = mixPrice(release);
+    const previous = index ? mixPrice(list[index - 1]) : null;
+    const change = previous === null ? null : price / previous - 1;
+    return { release, price, change };
+  }),
+}));
+const changeText = (change: number | null) =>
+  change === null ? "" : Math.abs(change) < 0.005 ? "same" : `${change > 0 ? "+" : "−"}${Math.round(Math.abs(change) * 100)}%`;
+const listPrice = (value: number) => `$${Number.isInteger(value) ? value : value.toFixed(Number.isInteger(value * 100) ? 2 : 3)}`;
+---
+
+<figure class="sp not-prose" data-ph>
+  <figcaption class="sp-head">
+    <h3>Every flagship release on the same scale</h3>
+    <p>What a million tokens of my own mix would cost on each model at its launch price. The line is the newest model at each point in time.</p>
+  </figcaption>
+
+  <ul class="sp-legend">
+    <li class="sp-chatgpt"><span class="sp-swatch" aria-hidden="true"></span>GPT</li>
+    <li class="sp-claude"><span class="sp-swatch" aria-hidden="true"></span>Claude Opus</li>
+  </ul>
+
+  <div class="sp-plot">
+    <svg viewBox={`0 0 ${width} ${HISTORY_HEIGHT}`} role="img" aria-label="Price of my token mix for each GPT and Opus release from August 2025 to October 2026, on a log scale" data-ph-chart set:html={historyChartMarkup(width)} />
+  </div>
+
+  <div class="sp-table-wrap">
+    <table class="sp-table">
+      <caption>Launch list prices per million tokens, and the same prices applied to my token mix</caption>
+      <thead>
+        <tr>
+          <th scope="col">Release</th>
+          <th scope="col">Released</th>
+          <th scope="col">Input</th>
+          <th scope="col">Cached</th>
+          <th scope="col">Output</th>
+          <th scope="col">My mix</th>
+          <th scope="col">Change</th>
+        </tr>
+      </thead>
+      <tbody>
+        {groups.map(({ label, rows }) => (
+          <>
+            <tr class="sp-group"><th scope="rowgroup" colspan="7">{label}</th></tr>
+            {rows.map(({ release, price, change }) => (
+              <tr>
+                <th scope="row">{release.label}{release.note && <small>{release.note}</small>}</th>
+                <td>{dateLabel(release.date)}</td>
+                <td>{listPrice(release.input)}</td>
+                <td>{listPrice(release.cached)}</td>
+                <td>{listPrice(release.output)}</td>
+                <td class="sp-when">{dollars(price)}</td>
+                <td class={change !== null && change > 0.005 ? "sp-change-up" : undefined}>{changeText(change)}</td>
+              </tr>
+            ))}
+          </>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <details class="sp-method">
+    <summary>Where the numbers come from</summary>
+    <p>
+      My mix is the share of fresh input, cached input, cache writes and output in my recovered history from the
+      <a href="/blog/008-the-price-tag-isnt-the-cost-of-ai/">token price article</a>: for Codex about 96.5% cached input, 3.2% fresh input and 0.3% output.
+      Claude Code also writes caches, which cost 1.25× or 2× the input price.
+      Prices are each model's launch list price from the OpenAI and Anthropic pricing pages and model announcements, checked on 14 October 2026.
+      GPT-5.6 Sol was cut to $4 / $20 in August, and Opus 4.7 uses a tokenizer that makes the same text about 30% more tokens, so its real cost went up even though the list price didn't.
+    </p>
+  </details>
+</figure>
+
+<script>
+  import { HISTORY_HEIGHT, historyChartMarkup } from "./history";
+
+  const svg = document.querySelector<SVGSVGElement>("[data-ph-chart]");
+  if (svg) {
+    // Height follows the viewBox, so only a width change needs a new chart.
+    let renderedWidth = 0;
+    new ResizeObserver(() => {
+      const width = Math.round(svg.clientWidth);
+      if (!width || width === renderedWidth) return;
+      renderedWidth = width;
+      svg.setAttribute("viewBox", `0 0 ${width} ${HISTORY_HEIGHT}`);
+      svg.innerHTML = historyChartMarkup(width);
+    }).observe(svg);
+  }
+</script>

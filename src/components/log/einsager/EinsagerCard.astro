@@ -1,0 +1,137 @@
+---
+import "./einsager.css";
+
+const repository = "https://github.com/MaximilianMauroner/einsager";
+const bars = 14;
+---
+
+<aside class="es not-prose" aria-labelledby="es-title" data-es>
+  <header class="es-head">
+    <svg class="es-logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13c0-4-2.7-7-6.5-7S5 8 5 12s2.7 7 6.5 7c3 0 4.2-1.8 6.2-1.8 1.1 0 2 .6 2.8 1.4"></path></svg>
+    <span class="es-word" id="es-title">einsager</span>
+    <span class="es-platforms">macOS on Apple silicon</span>
+  </header>
+
+  <div class="es-pitch">
+    <p class="es-claim">Hold a key, speak, and the text appears where you were typing.</p>
+    <p class="es-sub">Dictation that runs on the Codex login you already have. No extra account, no extra subscription, no API key.</p>
+  </div>
+
+  <div class="es-demo">
+    <div class="es-field">
+      <span class="es-field-name">Notes</span>
+      <p class="es-text" aria-live="polite" data-es-text>Remind me to cancel the Claude plan if I stop using it.<span class="es-caret" aria-hidden="true"></span></p>
+    </div>
+    <div class="es-base">
+      <button type="button" class="es-pill" data-state="idle" aria-describedby="es-hint" disabled data-es-pill>
+        <span class="es-wave" aria-hidden="true">{Array.from({ length: bars }, () => <i></i>)}</span>
+        <span class="es-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="es-pill-label" data-es-label>Hold to talk</span>
+      </button>
+      <p class="es-hint" id="es-hint">Press and hold, or hold <kbd>Space</kbd> on the button. Nothing is recorded here.</p>
+    </div>
+  </div>
+
+  <dl class="es-facts">
+    <div><dt>Shortcut</dt><dd><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>Space</kbd>, or hold <kbd>Fn</kbd> on a Mac</dd></div>
+    <div><dt>Login</dt><dd>Your Codex ChatGPT login, from <code>codex login</code></dd></div>
+    <div><dt>Paste</dt><dd>Automatic on macOS and Linux X11, plus a tray history with search and retry</dd></div>
+  </dl>
+
+  <div class="es-actions">
+    <a class="es-download" href={`${repository}/releases/latest`}>Download for macOS</a>
+    <a class="es-source" href={repository}>Source on GitHub</a>
+  </div>
+
+  <p class="es-fine">
+    The build is unsigned, so the first start needs one extra step. Windows and Linux work too, but you build them from source for now. einsager uses ChatGPT's internal transcription endpoint, which is not a public API and can stop working. Your audio goes to OpenAI and is not kept after a successful transcription. Not affiliated with OpenAI or Wispr.
+  </p>
+</aside>
+
+<script>
+  const samples = [
+    "Okay so the chart is done, I just need to write the einsager part and push it.",
+    "Remind me to cancel the Claude plan if I stop using it.",
+    "The subscription only beats the API if I actually use the limit.",
+  ];
+
+  const card = document.querySelector<HTMLElement>("[data-es]");
+  const pill = card?.querySelector<HTMLButtonElement>("[data-es-pill]");
+  const text = card?.querySelector<HTMLElement>("[data-es-text]");
+  const label = card?.querySelector<HTMLElement>("[data-es-label]");
+
+  if (pill && text && label) {
+    const bars = [...pill.querySelectorAll<HTMLElement>(".es-wave i")];
+    const caret = text.querySelector(".es-caret")!;
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+    let next = 0;
+    let frame = 0;
+    let typing = 0;
+
+    const setState = (state: "idle" | "listening" | "processing") => {
+      pill.dataset.state = state;
+      label.textContent = { idle: "Hold to talk", listening: "Listening", processing: "Transcribing" }[state];
+    };
+
+    // A made-up voice signal. It only moves while the button is held.
+    const animate = (time: number) => {
+      bars.forEach((bar, index) => {
+        const level = Math.abs(Math.sin(time / 140 + index * 0.9) * Math.sin(time / 410 + index * 0.35));
+        bar.style.height = `${2.25 + level * 13.75}px`;
+      });
+      frame = requestAnimationFrame(animate);
+    };
+
+    const write = (sample: string) => {
+      if (reducedMotion.matches) {
+        text.replaceChildren(sample, caret);
+        setState("idle");
+        return;
+      }
+      let length = 0;
+      typing = window.setInterval(() => {
+        length += 2;
+        text.replaceChildren(sample.slice(0, length), caret);
+        if (length >= sample.length) {
+          clearInterval(typing);
+          setState("idle");
+        }
+      }, 24);
+    };
+
+    const start = () => {
+      if (pill.dataset.state !== "idle") return;
+      setState("listening");
+      if (reducedMotion.matches) bars.forEach((bar, index) => (bar.style.height = `${4 + (index % 4) * 3}px`));
+      else frame = requestAnimationFrame(animate);
+    };
+
+    const stop = () => {
+      if (pill.dataset.state !== "listening") return;
+      cancelAnimationFrame(frame);
+      bars.forEach((bar) => bar.style.removeProperty("height"));
+      setState("processing");
+      text.replaceChildren(caret);
+      const sample = samples[next++ % samples.length];
+      window.setTimeout(() => write(sample), reducedMotion.matches ? 0 : 450);
+    };
+
+    pill.addEventListener("pointerdown", (event) => {
+      pill.setPointerCapture(event.pointerId);
+      start();
+    });
+    pill.addEventListener("pointerup", stop);
+    pill.addEventListener("lostpointercapture", stop);
+    pill.addEventListener("keydown", (event) => {
+      if (event.key !== " " && event.key !== "Enter") return;
+      event.preventDefault();
+      if (!event.repeat) start();
+    });
+    pill.addEventListener("keyup", (event) => {
+      if (event.key === " " || event.key === "Enter") stop();
+    });
+    pill.addEventListener("blur", stop);
+    pill.addEventListener("contextmenu", (event) => event.preventDefault());
+    pill.disabled = false;
+  }
+</script>

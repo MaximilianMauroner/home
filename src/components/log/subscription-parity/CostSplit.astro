@@ -1,0 +1,80 @@
+---
+import { familyReleases, mixParts, mixPrice, mixes, type Family } from "./history";
+import { dollars } from "./parity";
+import "./parity.css";
+
+const parts = [
+  { key: "cacheReads", label: "Cache reads", className: "sp-part-read" },
+  { key: "cacheWrites", label: "Cache writes", className: "sp-part-write" },
+  { key: "freshInput", label: "Fresh input", className: "sp-part-fresh" },
+  { key: "output", label: "Output", className: "sp-part-output" },
+] as const;
+
+const families: { family: Family; name: string; tokens: string }[] = [
+  { family: "gpt", name: "GPT", tokens: "My Codex tokens" },
+  { family: "opus", name: "Opus", tokens: "My Claude Code tokens" },
+];
+
+const tokenShares = (family: Family) => {
+  const mix = mixes[family];
+  return { cacheReads: mix.cached, cacheWrites: mix.write5m + mix.write1h, freshInput: mix.fresh, output: mix.output };
+};
+
+const groups = families.map(({ family, name, tokens }) => {
+  const list = familyReleases(family);
+  const shown = [list[0], list[list.length - 1]];
+  return {
+    name,
+    rows: [
+      { label: tokens, note: "share of tokens", shares: tokenShares(family) },
+      ...shown.map((release) => {
+        const price = mixPrice(release);
+        const values = mixParts(release);
+        const shares = { cacheReads: 0, cacheWrites: 0, freshInput: 0, output: 0 };
+        for (const { key } of parts) shares[key] = values[key] / price;
+        return { label: release.label, note: `share of cost, ${dollars(price)} per million`, shares };
+      }),
+    ],
+  };
+});
+
+const percent = (share: number) => (share < 0.01 ? "<1%" : `${Math.round(share * 100)}%`);
+---
+
+<figure class="sp not-prose">
+  <figcaption class="sp-head">
+    <h3>Where the money goes</h3>
+    <p>Almost all of my tokens are cache reads, but they are only about half of the cost. The first and the newest flagship of each family, priced on my own mix.</p>
+  </figcaption>
+
+  <ul class="sp-legend">
+    {parts.map(({ label, className }) => (
+      <li class={className}><span class="sp-swatch sp-block-swatch" aria-hidden="true"></span>{label}</li>
+    ))}
+  </ul>
+
+  {groups.map(({ name, rows }) => (
+    <div class="sp-split-group" role="group" aria-label={name}>
+      {rows.map(({ label, note, shares }) => (
+        <div class="sp-split-row">
+          <p class="sp-split-label">{label} <small>{note}</small></p>
+          <div class="sp-split-bar" role="img" aria-label={`${label}: ${parts.filter(({ key }) => shares[key] > 0).map(({ key, label: part }) => `${part} ${percent(shares[key])}`).join(", ")}`}>
+            {parts.map(({ key, className }) =>
+              shares[key] > 0 && (
+                <span class={className} style={`flex-grow: ${shares[key]}`}>{shares[key] >= 0.09 && percent(shares[key])}</span>
+              ),
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  ))}
+
+  <details class="sp-method">
+    <summary>Where the numbers come from</summary>
+    <p>
+      Token shares are from my recovered history in the <a href="/blog/008-the-price-tag-isnt-the-cost-of-ai/">token price article</a>. Each cost bar applies one release's launch list prices to that mix.
+      Cache writes only show up for Claude, because my Codex history has no cache-write counts. They cost 1.25× the input price for a 5-minute cache and 2× for a 1-hour cache.
+    </p>
+  </details>
+</figure>

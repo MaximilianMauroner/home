@@ -1,0 +1,106 @@
+---
+layout: "@/layouts/LogLayout.astro"
+title: "Where does AI get cheaper from here? Also, einsager is out"
+description: "Per token, GPT didn't get cheaper in 14 months and caching is close to its limit. Per solved task, the newest GPT got 9× cheaper since April. So my $240 of subscriptions have an end date: ChatGPT Pro in about half a year, Claude in about two years. Also, einsager is out: dictation that runs on my Codex login."
+tags:
+  - ai
+  - pricing
+  - subscriptions
+  - codex
+  - einsager
+  - dictation
+image: "/src/assets/log/covers/2026-42.webp"
+published: true
+releaseDate: 2026-10-14
+---
+
+import CostSplit from "@/components/log/subscription-parity/CostSplit.astro";
+import EffortCost from "@/components/log/subscription-parity/EffortCost.astro";
+import PriceHistory from "@/components/log/subscription-parity/PriceHistory.astro";
+import SubscriptionParity from "@/components/log/subscription-parity/SubscriptionParity.astro";
+import TaskCost from "@/components/log/subscription-parity/TaskCost.astro";
+import EinsagerCard from "@/components/log/einsager/EinsagerCard.astro";
+
+## The short answer
+
+After [the price tag article](/blog/008-the-price-tag-isnt-the-cost-of-ai/) last week I wanted to know two things. 96% of my tokens are cache reads, so is caching where the savings come from? And the API keeps getting cheaper while my subscriptions cost the same every month, so how long until the subscription stops being the better deal? My setup is ChatGPT Pro for $200, a second ChatGPT account on Plus for $20, and Claude Pro for $20, so $240 a month.
+
+Here's where I ended up. Per token, GPT didn't get cheaper at all in 14 months (Opus did), and caching is close to its limit. Per solved task both got a lot cheaper: the newest GPT about 9× since April, the newest Opus about 1.6× since July. About half of that is price cuts, the other half is models solving more tasks with fewer tokens.
+
+So my subscriptions have an end date. At that pace the API catches up with ChatGPT Pro in about half a year, with Claude in about two years, and with my $240 bundle in about 10 months. And for ChatGPT, none of that shows up if I count tokens instead of solved tasks.
+
+## Tokens are the wrong thing to watch
+
+First the tokens, because that's where the caching question lives. I split the price of my token mix into the four kinds of tokens I pay for: cache reads, cache writes, fresh input and output.
+
+<CostSplit />
+
+Cache reads are 96.5% of my Codex tokens, but on GPT-6.1 Sol they're only 51% of the cost. Fresh input is 3% of the tokens and 34% of the cost, and output is 0.3% of the tokens and 15% of the cost. On Claude, cache writes are about 4% of my tokens and 48% of what Opus 5.5 costs me.
+
+And the cache discount is close to the end. A cached token went from 50% of the input price (o3-mini, January 2025) to 10% (GPT-5 on), and in September to 5% for GPT-6.1 Sol, Opus 5.5 and Sonnet 5.5. That last step made my Codex mix 34% cheaper. But even free cache reads would only make GPT-6.1 Sol about half as expensive for me, and Opus 5.5 about 42% cheaper.
+
+And per token, only Opus really got cheaper:
+
+<PriceHistory />
+
+GPT-5 cost me about $0.19 per million tokens in August 2025, and GPT-6.1 Sol costs about the same today. In between GPT-5.5 and 5.6 Sol launched at $5 / $30, almost 4× that. Opus went down in two big steps, 4.5 and 5.5, and stayed flat in between. If tokens were the whole story, ChatGPT wouldn't have gotten cheaper at all in 14 months.
+
+But a token isn't what I pay for. I pay for a finished task. A model that's 10× smarter but needs 50× the tokens is more expensive, and a model with cheap tokens that fails half the time isn't cheap either.
+
+## What a solved task costs
+
+[Artificial Analysis](https://artificialanalysis.ai/leaderboards/models) publishes what it cost them to run their Intelligence Index on each model and effort setting. The score is roughly the share of their tasks a model gets right. So if I divide the cost per task by that share, I get the cost per solved task, and a failed attempt still counts.
+
+I left out Max effort by default. Those runs are basically benchmaxxed: the setting that squeezes the last few points out of a benchmark, and not what I use for real work (more on that below). So the numbers here are Low, Medium, High and Xhigh. Opus 4.8 was only measured at Max, so the Opus line starts with Opus 5 in July.
+
+<TaskCost />
+
+The newest GPT at Xhigh went from $6.86 per solved task with GPT-5.5 in April to $0.77 with GPT-6.1 Sol now, so about 9× cheaper. About half of that is the price: GPT-5.5 was the most expensive GPT per token, and GPT-6.1 Sol costs a third as much per output token. The other half is the model. GPT-6.1 Sol solves more of the tasks (index 51.0 vs 38.4) with less than half the tokens.
+
+Opus is the same split, just slower. From Opus 5 in July to Opus 5.5 now a solved task went from $9.81 to $6.18. Opus 5.5 is 20% cheaper per output token, solves more tasks (56.0 vs 49.7) and uses about 10% fewer tokens.
+
+And if I don't need the newest model, it gets cheap really fast. The cheapest way to get GPT-5.5-level work done in April was GPT-5.5 itself at $6.86 per solved task. Now it's GPT-6.1 Sol on Low effort, or Claude Haiku 5.5 on Xhigh, at about $0.30. That's 23× cheaper in under six months.
+
+One catch: for the big models this only goes back to April, because Artificial Analysis only measures the cost for models it ran on the current version of the index. So it's a short window, and for GPT it starts right at the most expensive model.
+
+## What the effort setting costs
+
+Inside one model, more effort solves more tasks, but each extra solved task costs more than the one before. Same model, same price per token:
+
+<EffortCost />
+
+The last step up is the expensive one. Going from High to Xhigh on Opus 5.5 solves about 2.4 more tasks out of 100 for about $164 more per 100 tasks, so roughly $68 per extra solved task. On GPT-6.1 Sol it's about $9. So Xhigh only makes sense for the tasks that actually need it, especially on Opus.
+
+> Side note on why Max is off: the next step up just looks outrageous. Going from Xhigh to Max on Opus 5.5 solves about 1.6 more tasks out of 100 for about $250 more per 100 tasks, so roughly $160 per extra solved task. On GPT-6.1 Sol it's about $40, more than four times the step before. And it flips the result. With Max in, the newest Opus costs more per solved task than Opus 4.8 did in May, and my Claude plan never stops being a bargain. The three task charts have an "Include Max effort" switch if you want to see the difference.
+
+## What that means for my subscriptions
+
+SemiAnalysis published what a full month of each plan's limit would cost at API list prices (5 October). For my three plans that's about $3,473 of API usage for $240, so roughly 14.5× the fee. I took the trends from above and continued them to see when that drops to 1×.
+
+<SubscriptionParity />
+
+Per task, ChatGPT Pro reaches 1× after about 6 months. Claude takes longer for two reasons: Opus gets cheaper more slowly, and the plans are worth a lot more (Claude Pro alone is about 59× its $20 at list price). So Claude Pro and Max 20x get there after about 22 months, and my bundle after about 10.
+
+The ChatGPT number is the shakiest one. Half of that trend is GPT-5.5's price coming back down, and that only happens once. Without it, it would be roughly a year.
+
+If today's level is good enough ("Same capability"), it's faster: ChatGPT Pro after about 4 months, Claude Pro and Max 20x after about 7, and my bundle after about 5. Per token, ChatGPT basically never gets there (it's thousands of years), because GPT is back at the GPT-5 price. Claude Max 20x would take about 34 months.
+
+The per-task trends only cover a few months and a few big releases, so continuing them for years is a stretch. I'd read these as "within a year" vs "in a couple of years", not as exact months. And it's all list price. It says what my work would cost me on the API, not what it costs OpenAI or Anthropic to run it, so I can't tell how long they can afford the plans.
+
+## So I'm keeping both, for now
+
+Both subscriptions are still way ahead today, so I'm keeping both. ChatGPT Pro is the one to watch: if GPT keeps getting cheaper per solved task like this, the API catches up within a year, sooner if I'm fine with today's level. Claude has about two years.
+
+That's if I keep doing the same amount of work, though, and I never have. I always use more as it gets cheaper. So I'll check again when the next GPT and Opus ship.
+
+## einsager is out
+
+I installed Wispr Flow and it changed my flow entirely. It was too good not to have, so I just made it myself. And since I'm paying for Codex anyway, it runs on that. einsager is basically a Wispr Flow alternative: you hold a key, talk, and the text appears in whatever field you were typing in. It uses the Codex login that's already on my machine, so there's no extra account, subscription or API key.
+
+While you talk, a small pill floats on the screen with a live waveform. The shortcut is <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>Space</kbd>, on a Mac you can just hold <kbd>Fn</kbd>, and <kbd>Escape</kbd> cancels. On macOS and Linux X11 it pastes the text for you, and everything ends up in a history in the tray, so you can search it or retry a failed one. I've been using it for a few days now and I really like it.
+
+<EinsagerCard />
+
+The pill in the card is a fake, it doesn't record anything. Hold it anyway, it's fun.
+
+And that's it for this log.

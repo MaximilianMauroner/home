@@ -1,0 +1,380 @@
+.sp {
+  --sp-chatgpt: var(--log-accent);
+  --sp-claude: var(--log-ink);
+  --sp-mine: #216e3a;
+  margin: 2.25rem 0;
+  padding: 1.25rem 0;
+  border-block: 1px solid var(--log-line);
+  font-size: 0.95rem;
+}
+.dark .sp {
+  --sp-mine: #8fc9a2;
+}
+.sp .sp-head h3 {
+  line-height: 1.3;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+.sp .sp-head p {
+  font-size: inherit;
+  margin: 0.35rem 0 0;
+  color: var(--log-muted);
+  line-height: 1.55;
+}
+
+.sp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+.sp-controls[hidden] {
+  display: none;
+}
+/* The 1px gaps show the line color behind the buttons as dividers. */
+.sp-trend {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 1px;
+  background: var(--log-line);
+  border: 1px solid var(--log-line);
+  border-radius: 0.4rem;
+  overflow: hidden;
+}
+@media (max-width: 30rem) {
+  .sp-trend {
+    grid-auto-flow: row;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.sp-trend button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+  color: var(--log-muted);
+  background: hsl(var(--background));
+}
+.sp-trend button[aria-pressed="true"] {
+  color: var(--log-ink);
+  background: hsl(var(--muted));
+  font-weight: 600;
+}
+.sp-trend button:focus-visible,
+.sp-use input:focus-visible {
+  outline: 2px solid var(--log-accent);
+  outline-offset: -2px;
+}
+.sp-use {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--log-muted);
+}
+.sp-use output {
+  color: var(--log-ink);
+  font-family: JetBrains_Mono, monospace;
+}
+.sp-use input {
+  width: 12rem;
+  accent-color: var(--log-accent);
+}
+
+.sp-max-toggle {
+  display: inline-flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--log-muted);
+}
+.sp-controls .sp-max-toggle {
+  margin-top: 0;
+}
+.sp-max-toggle[hidden] {
+  display: none;
+}
+/* Rows and columns that only apply with or without the Max effort runs. */
+.sp[data-max="false"] .sp-max-only,
+.sp[data-max="true"] .sp-no-max {
+  display: none;
+}
+
+.sp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  margin: 1rem 0 0.25rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+.sp-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.sp-legend strong {
+  font-family: JetBrains_Mono, monospace;
+  font-weight: 500;
+  color: var(--log-muted);
+}
+.sp-swatch {
+  width: 1.1rem;
+  border-top: 2.5px solid currentColor;
+}
+.sp-legend .sp-claude .sp-swatch {
+  border-top-style: dashed;
+}
+.sp-legend .sp-chatgpt .sp-swatch { color: var(--sp-chatgpt); }
+.sp-legend .sp-claude .sp-swatch { color: var(--sp-claude); }
+.sp-legend .sp-mine .sp-swatch { color: var(--sp-mine); }
+
+.sp-plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: pan-y;
+}
+.sp-grid {
+  stroke: var(--log-line);
+  stroke-width: 1;
+}
+.sp-parity {
+  stroke: var(--log-ink);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.sp-tick {
+  fill: var(--log-muted);
+  font: 11px JetBrains_Mono, monospace;
+}
+.sp-tick-strong {
+  fill: var(--log-ink);
+  font-weight: 600;
+}
+.sp-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.sp-line.sp-chatgpt { stroke: var(--sp-chatgpt); }
+.sp-line.sp-claude { stroke: var(--sp-claude); stroke-dasharray: 6 4; }
+.sp-line.sp-mine { stroke: var(--sp-mine); stroke-width: 3; }
+.sp-dot,
+.sp-cursor circle {
+  stroke: hsl(var(--background));
+  stroke-width: 2;
+}
+.sp-chatgpt.sp-dot, .sp-cursor .sp-chatgpt { fill: var(--sp-chatgpt); }
+.sp-claude.sp-dot, .sp-cursor .sp-claude { fill: var(--sp-claude); }
+.sp-mine.sp-dot, .sp-cursor .sp-mine { fill: var(--sp-mine); }
+.sp-cursor path {
+  stroke: var(--log-muted);
+  stroke-width: 1;
+}
+.sp .sp-readout {
+  min-height: 1.4em;
+  margin: 0.35rem 0 0;
+  font: 0.78rem/1.5 JetBrains_Mono, monospace;
+  color: var(--log-muted);
+}
+
+.sp-table-wrap {
+  margin-top: 1.25rem;
+  overflow-x: auto;
+}
+.sp .sp-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.sp-table caption {
+  text-align: left;
+  color: var(--log-muted);
+  font-size: 0.8rem;
+  padding-bottom: 0.4rem;
+}
+.sp-table th,
+.sp-table td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--log-line);
+  text-align: right;
+  white-space: nowrap;
+}
+.sp-table th:first-child {
+  padding-left: 0;
+  text-align: left;
+  white-space: normal;
+  min-width: 8.5rem;
+}
+.sp-table thead th {
+  color: var(--log-muted);
+  font-weight: 500;
+  font-size: 0.78rem;
+}
+.sp-table td {
+  font-family: JetBrains_Mono, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.sp-table tbody th {
+  font-weight: 500;
+}
+.sp-table small {
+  display: block;
+  color: var(--log-muted);
+  font-size: 0.72rem;
+  font-weight: 400;
+}
+.sp-table .sp-group th {
+  padding-top: 0.9rem;
+  font-weight: 650;
+  border-bottom-color: transparent;
+}
+.sp-tag {
+  margin-left: 0.25rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--log-line);
+  border-radius: 0.25rem;
+  color: var(--log-muted);
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+.sp-table .sp-below {
+  color: var(--log-accent);
+  font-weight: 600;
+}
+.sp-when {
+  color: var(--log-ink);
+}
+
+.sp-method {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--log-muted);
+}
+.sp-method summary {
+  cursor: pointer;
+  color: var(--log-ink);
+}
+.sp .sp-method p {
+  font-size: inherit;
+  margin: 0.5rem 0 0;
+  line-height: 1.6;
+}
+
+.sp-point {
+  font: 600 11px JetBrains_Mono, monospace;
+}
+.sp-point.sp-chatgpt { fill: var(--sp-chatgpt); }
+.sp-point.sp-claude { fill: var(--sp-claude); }
+.sp-change-up {
+  color: var(--log-accent);
+}
+
+.sp-legend .sp-dot-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 0;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sp-market-dot {
+  stroke: hsl(var(--background));
+  stroke-width: 1;
+  fill-opacity: 0.6;
+}
+.sp-market-dot.sp-chatgpt { fill: var(--sp-chatgpt); }
+.sp-market-dot.sp-claude { fill: var(--sp-claude); }
+.sp-market-dot.sp-active {
+  stroke: var(--log-ink);
+  stroke-width: 2;
+  fill-opacity: 1;
+}
+.sp-legend .sp-level-swatch .sp-swatch { color: var(--sp-mine); }
+.sp-axis-title {
+  fill: var(--log-ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sp-part-read { --sp-part: color-mix(in srgb, var(--log-muted) 45%, transparent); }
+.sp-part-write { --sp-part: var(--sp-claude); }
+.sp-part-fresh { --sp-part: var(--sp-mine); }
+.sp-part-output { --sp-part: var(--sp-chatgpt); }
+.sp-legend .sp-block-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 0;
+  border-radius: 0.15rem;
+  background: var(--sp-part);
+}
+.sp-split-group {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.sp-split-group + .sp-split-group {
+  padding-top: 1rem;
+  border-top: 1px solid var(--log-line);
+}
+.sp .sp-split-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.sp-split-label small {
+  color: var(--log-muted);
+  font-weight: 400;
+}
+.sp-split-bar {
+  display: flex;
+  gap: 2px;
+  height: 1.5rem;
+}
+/* Basis 0 keeps segment widths proportional to their share; labels only appear on wide segments. */
+.sp-split-bar span {
+  display: flex;
+  flex-basis: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 2px;
+  overflow: hidden;
+  border-radius: 0.15rem;
+  background: var(--sp-part);
+  color: hsl(var(--background));
+  font: 600 0.72rem JetBrains_Mono, monospace;
+  white-space: nowrap;
+}
+.sp-split-bar .sp-part-read {
+  color: var(--log-ink);
+}
+
+.sp-task-halo {
+  fill: none;
+  stroke: hsl(var(--background));
+  stroke-width: 6;
+  stroke-linejoin: round;
+}
+.sp-task-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.sp-task-line.sp-chatgpt { stroke: var(--sp-chatgpt); }
+.sp-task-line.sp-claude { stroke: var(--sp-claude); stroke-dasharray: 6 4; }
+.sp-task-line.sp-level { stroke: var(--sp-mine); }
+.sp-task-step {
+  stroke: hsl(var(--background));
+  stroke-width: 2;
+}
+.sp-task-step.sp-chatgpt { fill: var(--sp-chatgpt); }
+.sp-task-step.sp-claude { fill: var(--sp-claude); }
+.sp-task-step.sp-level { fill: var(--sp-mine); }
+.sp-task-label {
+  fill: var(--log-ink);
+  font-size: 12px;
+  font-weight: 600;
+}

@@ -1,0 +1,146 @@
+---
+import MaxToggle from "./MaxToggle.astro";
+import { CHART_HEIGHT, chartMarkup, defaultScenario, horizons, parityDays, parityText, series, tableRows } from "./parity";
+import "./parity.css";
+
+const width = 680;
+const chart = chartMarkup(width, defaultScenario);
+---
+
+<figure class="sp not-prose" data-sp data-max="false">
+  <figcaption class="sp-head">
+    <h3>How long the subscriptions stay a bargain</h3>
+    <p>Each line is what the work in a full monthly limit today would cost on the API, divided by the fee. Above 1×, the subscription is cheaper than the API. The dots mark where that stops.</p>
+  </figcaption>
+
+  <div class="sp-controls" data-sp-controls hidden>
+    <div class="sp-trend" role="group" aria-label="Price trend">
+      <button type="button" data-sp-trend="flat" aria-pressed="false">Costs stay flat</button>
+      <button type="button" data-sp-trend="perToken" aria-pressed="false">Per token</button>
+      <button type="button" data-sp-trend="perTask" aria-pressed="true">Per task</button>
+      <button type="button" data-sp-trend="sameCapability" aria-pressed="false">Same capability</button>
+    </div>
+    <label class="sp-use">
+      <span>Share of the limit I use <output data-sp-use-label>100%</output></span>
+      <input type="range" min="10" max="100" step="5" value="100" data-sp-use />
+    </label>
+    <MaxToggle />
+  </div>
+
+  <ul class="sp-legend" aria-live="polite">
+    {series.map(({ name, className, plans }) => (
+      <li class={className}>
+        <span class="sp-swatch" aria-hidden="true"></span>
+        {name}
+        <strong data-sp-parity>{parityText(parityDays(plans, defaultScenario))}</strong>
+      </li>
+    ))}
+  </ul>
+
+  <div class="sp-plot">
+    <svg viewBox={`0 0 ${width} ${CHART_HEIGHT}`} role="img" aria-label="Value-to-fee ratio over the next four years for three subscriptions, on a square-root scale" data-sp-chart set:html={chart.markup} />
+    <p class="sp-readout" data-sp-readout>Hover or tap the chart to read a month.</p>
+  </div>
+
+  <div class="sp-table-wrap">
+    <table class="sp-table">
+      <caption>Value-to-fee ratio at each horizon, and when it reaches 1×</caption>
+      <thead>
+        <tr>
+          <th scope="col">Plan</th>
+          {horizons.map(({ label }) => <th scope="col">{label}</th>)}
+          <th scope="col">Reaches 1×</th>
+        </tr>
+      </thead>
+      <tbody data-sp-table set:html={tableRows(defaultScenario)} />
+    </table>
+  </div>
+
+  <details class="sp-method">
+    <summary>How this is calculated</summary>
+    <p>
+      Limit values come from SemiAnalysis (5 October 2026): what one full month of each plan would cost at API list prices.
+      Pro $500 was not tested, so it uses the same value per dollar as Pro $200.
+      From there, the API cost of the same work changes at the rate of one of these trends, measured until 8 October 2026:
+      “Per token” is the price of my token mix on the newest model since August 2025 (GPT-5 to GPT-6.1 Sol, Opus 4.1 to Opus 5.5).
+      “Per task” is the cost per solved task on Artificial Analysis for the newest model at its highest effort shown, since the first one they measured (GPT-5.5 in April; Opus 5 in July, or Opus 4.8 in May with Max). Max effort is off by default, because it is tuned for benchmarks and not how I use the models. The switch adds it back; it only changes the per-task trend. GPT-5.5 was the most expensive GPT per token, so about half of the ChatGPT trend is the price coming back down.
+      “Same capability” is the cheapest model and effort setting from either lab that scores at least as high as GPT-5.5, per solved task, since April.
+      The per-task trends only cover a few months (GPT since April, Opus since July), so continuing them for years is a stretch.
+      The Max API credits count as fully used and never get cheaper.
+    </p>
+  </details>
+</figure>
+
+<script>
+  import { CHART_DAYS, CHART_HEIGHT, chartMarkup, defaultScenario, monthLabel, parityDays, parityText, ratio, ratioText, series, tableRows, type Scenario } from "./parity";
+  import { trendNames } from "./history";
+  import { bindMaxToggle } from "./max-toggle";
+
+  const figure = document.querySelector<HTMLElement>("[data-sp]");
+  if (figure) {
+    const controls = figure.querySelector<HTMLElement>("[data-sp-controls]")!;
+    const svg = figure.querySelector<SVGSVGElement>("[data-sp-chart]")!;
+    const table = figure.querySelector<HTMLElement>("[data-sp-table]")!;
+    const readout = figure.querySelector<HTMLElement>("[data-sp-readout]")!;
+    const useInput = figure.querySelector<HTMLInputElement>("[data-sp-use]")!;
+    const useLabel = figure.querySelector<HTMLElement>("[data-sp-use-label]")!;
+    const trendButtons = figure.querySelectorAll<HTMLButtonElement>("[data-sp-trend]");
+    const parityLabels = figure.querySelectorAll<HTMLElement>("[data-sp-parity]");
+    const scenario: Scenario = { ...defaultScenario };
+    let chart = chartMarkup(svg.clientWidth || 680, scenario);
+    let cursor: SVGGElement | null = null;
+
+    const render = () => {
+      const width = Math.round(svg.clientWidth) || 680;
+      svg.setAttribute("viewBox", `0 0 ${width} ${CHART_HEIGHT}`);
+      chart = chartMarkup(width, scenario);
+      svg.innerHTML = `${chart.markup}<g class="sp-cursor" hidden><path/>${series.map(({ className }) => `<circle class="${className}" r="3.5"/>`).join("")}</g>`;
+      cursor = svg.querySelector("g.sp-cursor");
+      table.innerHTML = tableRows(scenario);
+      series.forEach(({ plans }, index) => (parityLabels[index].textContent = parityText(parityDays(plans, scenario))));
+      useLabel.textContent = `${Math.round(scenario.use * 100)}%`;
+      trendButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.spTrend === scenario.trend)));
+    };
+
+    const showMonth = (clientX: number) => {
+      const box = svg.getBoundingClientRect();
+      const days = Math.min(CHART_DAYS, Math.max(0, chart.toDays(clientX - box.left)));
+      const values = series.map(({ plans }) => ratio(plans, days, scenario));
+      readout.textContent = `${monthLabel(days)}: ${series.map(({ name }, index) => `${name} ${ratioText(values[index])}`).join(", ")}`;
+      if (!cursor) return;
+      cursor.removeAttribute("hidden");
+      cursor.querySelector("path")!.setAttribute("d", `M${chart.x(days)} ${chart.top}V${chart.bottom}`);
+      cursor.querySelectorAll("circle").forEach((dot, index) => {
+        dot.setAttribute("cx", String(chart.x(days)));
+        dot.setAttribute("cy", String(chart.y(values[index])));
+      });
+    };
+
+    trendButtons.forEach((button) =>
+      button.addEventListener("click", () => {
+        scenario.trend = trendNames.find((name) => name === button.dataset.spTrend) ?? scenario.trend;
+        render();
+      }),
+    );
+    useInput.addEventListener("input", () => {
+      scenario.use = Number(useInput.value) / 100;
+      render();
+    });
+    svg.addEventListener("pointermove", (event) => showMonth(event.clientX));
+    svg.addEventListener("pointerdown", (event) => showMonth(event.clientX));
+    // Height follows the viewBox, so only a width change needs a new chart.
+    let renderedWidth = 0;
+    new ResizeObserver(() => {
+      const width = Math.round(svg.clientWidth);
+      if (width === renderedWidth) return;
+      renderedWidth = width;
+      render();
+    }).observe(svg);
+    bindMaxToggle(figure, (includeMax) => {
+      scenario.includeMax = includeMax;
+      render();
+    });
+    controls.hidden = false;
+    render();
+  }
+</script>

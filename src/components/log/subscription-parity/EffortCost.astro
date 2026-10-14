@@ -1,0 +1,56 @@
+---
+import MaxToggle from "./MaxToggle.astro";
+import { costPerSolvedTask, dollarText, runsFor, type TaskRun } from "./tasks";
+import "./parity.css";
+
+/** The Max column only shows while the switch is on: Max is tuned for benchmarks (see tasks.ts). */
+const efforts = ["Low", "Medium", "High", "Xhigh", "Max"];
+const spreadText = (low?: TaskRun, top?: TaskRun) => (low && top ? `${(costPerSolvedTask(top) / costPerSolvedTask(low)).toFixed(1)}×` : "–");
+const models = ["GPT-6.1 Sol", "GPT-6 Luna", "Claude Opus 5.5", "Claude Haiku 5.5"].map((model) => {
+  const runs = efforts.map((effort) => runsFor(true).find((run) => run.model === model && run.effort === effort));
+  const [low, , , xhigh, max] = runs;
+  return { model, runs, xhighSpread: spreadText(low, xhigh), maxSpread: spreadText(low, max) };
+});
+---
+
+<figure class="sp not-prose" data-ec data-max="false">
+  <figcaption class="sp-head">
+    <h3>Higher effort costs a lot more per solved task</h3>
+    <p>Cost per solved task on the Artificial Analysis benchmark at each effort setting, with the score below. Same model, same price per token. Max effort is off by default because it is tuned for benchmarks.</p>
+  </figcaption>
+
+  <MaxToggle />
+
+  <div class="sp-table-wrap">
+    <table class="sp-table">
+      <caption>Cost per solved task in dollars, Intelligence Index score below</caption>
+      <thead>
+        <tr>
+          <th scope="col">Model</th>
+          {efforts.map((effort) => <th scope="col" class={effort === "Max" ? "sp-max-only" : undefined}>{effort}</th>)}
+          <th scope="col" class="sp-no-max">Xhigh ÷ Low</th>
+          <th scope="col" class="sp-max-only">Max ÷ Low</th>
+        </tr>
+      </thead>
+      <tbody>
+        {models.map(({ model, runs, xhighSpread, maxSpread }) => (
+          <tr>
+            <th scope="row">{model}</th>
+            {runs.map((run, index) => (
+              <td class={efforts[index] === "Max" ? "sp-max-only" : undefined}>{run ? <>{dollarText(costPerSolvedTask(run))}<small>{run.intelligence.toFixed(1)}</small></> : "–"}</td>
+            ))}
+            <td class="sp-when sp-no-max">{xhighSpread}</td>
+            <td class="sp-when sp-max-only">{maxSpread}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</figure>
+
+<script>
+  import { bindMaxToggle } from "./max-toggle";
+
+  const figure = document.querySelector<HTMLElement>("[data-ec]");
+  if (figure) bindMaxToggle(figure);
+</script>

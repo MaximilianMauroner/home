@@ -1,0 +1,144 @@
+---
+import { dateLabel } from "./history";
+import MaxToggle from "./MaxToggle.astro";
+import { TASK_HEIGHT, capabilityModel, costPerSolvedTask, dollarText, labClass, labs, maxRunCount, runsFor, taskChartMarkup } from "./tasks";
+import "./parity.css";
+
+const width = 680;
+// The table lists every run; Max rows only show while the switch is on.
+const allRuns = runsFor(true);
+const models = [...new Set(allRuns.map(({ model }) => model))];
+---
+
+<figure class="sp not-prose" data-tc data-max="false">
+  <figcaption class="sp-head">
+    <h3>What a solved task costs</h3>
+    <p>
+      Every OpenAI and Anthropic model and effort setting that Artificial Analysis measured, as the cost of their benchmark per task it gets right. Max effort is off by default.
+      A column of dots is one model at different effort settings. The lines follow each family's newest model at its highest effort, and the cheapest way to get at least {capabilityModel} level. The chart starts in April; older small models are only in the table.
+    </p>
+  </figcaption>
+
+  <MaxToggle />
+
+  <ul class="sp-legend">
+    {labs.map((lab) => (
+      <li class={labClass(lab)}><span class="sp-swatch sp-dot-swatch" aria-hidden="true"></span>{lab}</li>
+    ))}
+    <li class="sp-level-swatch"><span class="sp-swatch" aria-hidden="true"></span>Cheapest at {capabilityModel} level</li>
+  </ul>
+
+  <div class="sp-plot">
+    <svg viewBox={`0 0 ${width} ${TASK_HEIGHT}`} role="img" aria-label="Cost per solved task for OpenAI and Anthropic model settings from April to October 2026, on a log scale." data-tc-chart set:html={taskChartMarkup(width, false).markup} />
+    <p class="sp-readout" data-tc-readout>Hover or tap a dot to see the model.</p>
+  </div>
+
+  <details class="sp-method">
+    <summary>All <span class="sp-no-max">{runsFor(false).length}</span><span class="sp-max-only">{allRuns.length}</span> settings</summary>
+    <div class="sp-table-wrap">
+      <table class="sp-table">
+        <caption>Cost per task and per solved task in dollars, by model and effort setting</caption>
+        <thead>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col">Released</th>
+            <th scope="col">Effort</th>
+            <th scope="col">Index</th>
+            <th scope="col">Per task</th>
+            <th scope="col">Per solved task</th>
+          </tr>
+        </thead>
+        {labs.map((lab) => (
+          <tbody>
+            <tr class="sp-group"><th scope="rowgroup" colspan="6">{lab}</th></tr>
+            {models.filter((model) => allRuns.find((run) => run.model === model)?.lab === lab).flatMap((model) =>
+              allRuns.filter((run) => run.model === model).map((run) => (
+                <tr class={run.effort === "Max" ? "sp-max-only" : undefined}>
+                  <th scope="row">{model}</th>
+                  <td>{dateLabel(run.date)}</td>
+                  <td>{run.effort}</td>
+                  <td>{run.intelligence.toFixed(1)}</td>
+                  <td>{dollarText(run.costPerTask)}</td>
+                  <td class="sp-when">{dollarText(costPerSolvedTask(run))}</td>
+                </tr>
+              )),
+            )}
+          </tbody>
+        ))}
+      </table>
+    </div>
+  </details>
+
+  <details class="sp-method">
+    <summary>Where the numbers come from</summary>
+    <p>
+      From the <a href="https://artificialanalysis.ai/leaderboards/models">Artificial Analysis leaderboard</a> (downloaded 14 October 2026, used with permission).
+      “Per task” is what running their Intelligence Index cost at list prices, divided by the number of tasks. The index score is roughly the share of those tasks a model gets right, so “per solved task” divides the cost by that share: a failed attempt still costs money.
+      Max effort is off by default ({maxRunCount} runs): those settings are tuned to squeeze the last points out of benchmarks, and I don't use them for normal work. The switch adds them back. Opus 4.8 and Fable 5 were only measured at Max, so without Max the Opus line starts with Opus 5 in July. GPT-5.5 was not measured at Max, so with Max on the GPT line starts at Xhigh.
+      Artificial Analysis only measures the cost for models it ran on the current index, which starts with GPT-5.5 for the flagships. Older models only have estimated scores, so they are not here.
+      Artificial Analysis does not publish token counts, so “tokens per task” in the text is a rough estimate: the cost per task divided by the output price.
+      Costs use each model's current list price, so GPT-5.6 Sol is priced at the $4 / $20 it was cut to in August.
+      The GPT line follows Sol, the model I use in Codex. GPT-6 Astra (September) scores a little higher but costs $4.41 per solved task at Xhigh.
+      Artificial Analysis lists the Opus 5.5, Sonnet 5.5 and Fable 5.1 runs with Anthropic's default fallback setting. Some tasks in those runs may have been answered by the fallback model.
+      Their tasks are benchmark runs, not long agent sessions in one repository, so the token mix is different from mine. GPT-6 Luna and Claude Haiku 5.5 at low effort look very cheap per solved task, but they only solve the easier tasks.
+    </p>
+  </details>
+</figure>
+
+<script>
+  import { dateLabel } from "./history";
+  import { bindMaxToggle } from "./max-toggle";
+  import { TASK_HEIGHT, costPerSolvedTask, dollarText, taskChartMarkup } from "./tasks";
+
+  const figure = document.querySelector<HTMLElement>("[data-tc]");
+  const svg = figure?.querySelector<SVGSVGElement>("[data-tc-chart]");
+  const readout = figure?.querySelector<HTMLElement>("[data-tc-readout]");
+  if (figure && svg && readout) {
+    let includeMax = false;
+    let points = taskChartMarkup(680, includeMax).points;
+    // Kept as an array so raising the active dot to the top does not change the order.
+    let dots = [...svg.querySelectorAll<SVGCircleElement>("circle.sp-market-dot")];
+    let active: SVGCircleElement | undefined;
+
+    const showNearest = (clientX: number, clientY: number) => {
+      const box = svg.getBoundingClientRect();
+      const scale = box.width / svg.viewBox.baseVal.width;
+      const px = (clientX - box.left) / scale;
+      const py = (clientY - box.top) / scale;
+      let best = 0;
+      points.forEach((point, index) => {
+        if (Math.hypot(point.cx - px, point.cy - py) < Math.hypot(points[best].cx - px, points[best].cy - py)) best = index;
+      });
+      const { run } = points[best];
+      readout.textContent = `${run.model}, ${run.effort} (${dateLabel(run.date)}): index ${run.intelligence.toFixed(1)}, ${dollarText(run.costPerTask)} per task, ${dollarText(costPerSolvedTask(run))} per solved task`;
+      active?.classList.remove("sp-active");
+      active = dots[best];
+      active.classList.add("sp-active");
+      svg.appendChild(active);
+    };
+
+    svg.addEventListener("pointermove", (event) => showNearest(event.clientX, event.clientY));
+    svg.addEventListener("pointerdown", (event) => showNearest(event.clientX, event.clientY));
+    let renderedWidth = 0;
+    const render = () => {
+      const chart = taskChartMarkup(renderedWidth, includeMax);
+      points = chart.points;
+      active = undefined;
+      svg.setAttribute("viewBox", `0 0 ${renderedWidth} ${TASK_HEIGHT}`);
+      svg.innerHTML = chart.markup;
+      dots = [...svg.querySelectorAll<SVGCircleElement>("circle.sp-market-dot")];
+    };
+    // Height follows the viewBox, so only a width change needs a new chart.
+    new ResizeObserver(() => {
+      const width = Math.round(svg.clientWidth);
+      if (!width || width === renderedWidth) return;
+      renderedWidth = width;
+      render();
+    }).observe(svg);
+    bindMaxToggle(figure, (checked) => {
+      includeMax = checked;
+      readout.textContent = "Hover or tap a dot to see the model.";
+      render();
+    });
+  }
+</script>
