@@ -26,3 +26,6 @@ pnpm-debug.log*
 .vercel
 .cursor/
 .agents/
+
+# Local T3 Code project configuration
+t3.json
