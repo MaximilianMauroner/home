@@ -12,7 +12,7 @@ published: true
 releaseDate: 2025-04-30
 ---
 
-## 💡 Idea
+## Idea
 
 At home, I have a FritzBox router, a home server, and Home Assistant running on a Raspberry Pi. Since I don't have a static IP address, I need a way to access the server and Pi from outside through DNS.
 That requires a dynamic DNS record that updates whenever the router's IP address changes. My router has a built-in DynDNS function, but it doesn't work with Cloudflare.
@@ -24,11 +24,11 @@ I adapted the idea from the old PHP code I previously hosted on my server. Since
 
 I only had to migrate it to JavaScript and use the Cloudflare library to update the DNS record. A random token ensures that only I can send the request, then the function updates the DNS record with the new IP address.
 
-That's it. This week was kinda short, but that's because I didn't do that much, since it took like 2 hours to find out what the problem was 😂
+That's it. This week was kinda short, but that's because I didn't do that much, since it took like 2 hours to find out what the problem was.
 
 ---
 
-## 🛠️ Code
+## Code
 
 ```ts
 import { NextRequest, NextResponse } from "next/server";

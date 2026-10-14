@@ -12,28 +12,28 @@ published: true
 releaseDate: 2025-04-20
 ---
 
-## 🐢 Performance Problems
+## Performance Problems
 
 Sooo I finally got around to upgrading the WhatsApp Stats page so that it's more performant and maintainable while storing data in IndexedDB. The process itself was quite straightforward, so I decided it was time to also add some _cool_ features.
 The main goal was to allow larger chats to be uploaded without storing all the data in local storage. I also wanted to keep performance relatively good and restructure the code away from my 1,500-line, one-component solution.
 
-## ✨ The New Features
+## The New Features
 
 - **IndexedDB** - I used [Dexie](https://dexie.org/), a wrapper around the native API, to store the data in IndexedDB. This allows for better performance and more maintainable code.
 - **Better file upload** - I added the option to select multiple chats, and better syncing between uploads, to allow for multiple things to happen in an almost "async" way. And to allow for the user to get better and more feedback.
 - **Better UI** - I added data to most of the graphs to expose (in my opinion) cool information.
 
-## ⚡ Result
+## Result
 
 The result should be a page that loads faster, with a JavaScript layer that stores less information in memory and uses IndexedDB instead. The main challenge was learning how Dexie works with indexes and multi-entry indexes to optimize queries. I think I got it right, and the performance is quite good. You can check it out under [tools/whatsapp-stats](/tools/whatsapp-stats/).
 
-## 🛠️ TODO
+## TODO
 
 - Add a few more dynamic graphs (like I had before with words)
 - Add an option to exclude certain words from the stats
 - Add some other cool graphs, and highlight "interesting" stats (like longest message, and stuff like that )
 
-## 🏷️ Other Stuff
+## Other Stuff
 
 I also did some work on finally getting the tags to play nicely on mobile (for the blog and the logs) and I'm very happy with the solution I have now
 
