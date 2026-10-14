@@ -616,6 +616,84 @@ function Timeline({
           height: auto;
         }
 
+        /* The dev-log row layout needs a card surface to fit a grid slot. */
+        #home-timeline .timeline-entry--log .log-preview {
+          grid-template-columns: minmax(0, 1fr) 1.5rem;
+          gap: 0.5rem 1rem;
+          padding: 1rem 1.1rem;
+          border: 1px solid var(--log-line, #a7baae);
+          border-radius: var(--radius-lg);
+          background: hsl(var(--card));
+        }
+
+        #home-timeline .timeline-entry--log .log-preview__date {
+          display: flex;
+          gap: 0.75rem;
+          padding-top: 0;
+        }
+
+        #home-timeline .timeline-entry--log .log-preview__date span {
+          margin: 0;
+        }
+
+        #home-timeline .timeline-entry--log .log-preview__copy {
+          grid-column: 1;
+        }
+
+        #home-timeline .timeline-entry--log .log-preview__arrow {
+          grid-column: 2;
+          grid-row: 1 / 3;
+        }
+
+        /* With a cover, a log card matches the blog card height: cover on
+           top, no description, and the tags in a footer at the bottom. */
+        #home-timeline .log-preview--cover {
+          min-height: 30rem;
+          grid-template-rows: auto auto 1fr;
+          overflow: hidden;
+        }
+
+        #home-timeline .log-preview--cover .log-preview__cover {
+          grid-column: 1 / -1;
+          grid-row: 1;
+          margin: -1rem -1.1rem 0.4rem;
+          background: #1b2b25;
+        }
+
+        #home-timeline .log-preview--cover .log-preview__cover img {
+          display: block;
+          width: 100%;
+          height: 12rem;
+          object-fit: cover;
+        }
+
+        #home-timeline .log-preview--cover .log-preview__date {
+          grid-row: 2;
+        }
+
+        #home-timeline .log-preview--cover .log-preview__copy {
+          display: flex;
+          grid-row: 3;
+          flex-direction: column;
+        }
+
+        #home-timeline .log-preview--cover .log-preview__copy p {
+          display: none;
+        }
+
+        #home-timeline .log-preview--cover .log-preview__arrow {
+          grid-row: 2;
+          align-self: start;
+          font-size: 1.1rem;
+        }
+
+        /* The right margin also spans the arrow column and the column gap. */
+        #home-timeline .log-preview--cover .log-preview__tags {
+          margin: auto -3.6rem -1rem -1.1rem;
+          padding: 0.7rem 1.1rem 0.8rem;
+          border-top: 1px solid var(--log-line, #a7baae);
+        }
+
         #home-timeline .timeline-entry--image .content-preview {
           min-height: 30rem;
         }

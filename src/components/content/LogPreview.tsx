@@ -10,7 +10,25 @@ export default function LogPreview({ log }: LogPreviewProps) {
   const href = `/dev-log/${log.id}/`;
   const releaseDate = new Date(log.data.releaseDate);
   return (
-    <article className="log-preview">
+    <article className={`log-preview${log._imageUrl ? " log-preview--cover" : ""}`}>
+      {log._imageUrl && (
+        // The title and arrow links already name the entry, so the cover
+        // stays out of the tab order and the accessibility tree.
+        <a
+          className="log-preview__cover"
+          href={href}
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          <img
+            src={log._imageUrl}
+            {...log._imageAttributes}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+        </a>
+      )}
       <div className="log-preview__date">
         <time dateTime={releaseDate.toISOString()}>
           {releaseDate.toLocaleDateString("en-GB", {

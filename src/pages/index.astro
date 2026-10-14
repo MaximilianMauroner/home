@@ -23,11 +23,14 @@ const toPreviewEntry = (entry: PreviewSource): PreviewEntry => ({
     releaseDate: entry.data.releaseDate.toISOString(),
   },
 });
-const blogPreviews = await Promise.all(blogs.map(async (entry) => ({
+const toCoveredPreviewEntry = async (
+  entry: PreviewSource,
+): Promise<PreviewEntry> => ({
   ...toPreviewEntry(entry),
   ...await getHomepageCover(entry.data.image),
-})));
-const logPreviews = logs.map(toPreviewEntry);
+});
+const blogPreviews = await Promise.all(blogs.map(toCoveredPreviewEntry));
+const logPreviews = await Promise.all(logs.map(toCoveredPreviewEntry));
 const snackPreviews = snacks.map(toPreviewEntry);
 const initialAge =
   dayjs().diff(dayjs("2000-03-13T04:00:00Z"), "year", true).toFixed(9);
