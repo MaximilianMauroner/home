@@ -278,3 +278,15 @@
 .blog-detail-prose :where(img, video, iframe) {
   max-width: 100%;
 }
+
+.blog-detail-route a {
+  color: color-mix(in srgb, var(--ink), transparent 25%);
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+.blog-detail-route a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}

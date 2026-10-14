@@ -57,6 +57,7 @@ const articleTrail = slugFromPath
   : { related: [] };
 const ogImageUrl = getArticleOgImageUrl(Astro.url.pathname, Astro.site);
 const tags = frontmatter.tags ?? [];
+const sectionHeadings = headings.filter((heading) => heading.depth === 2);
 ---
 
 <StarLayout
@@ -159,12 +160,28 @@ const tags = frontmatter.tags ?? [];
     )}
 
     <div class="blog-detail-body mx-auto mt-[clamp(2.5rem,7vw,5.5rem)] w-full overflow-hidden rounded-[var(--radius-lg)] border max-[720px]:mt-9 max-[720px]:w-full">
-      <div
-        class="blog-detail-body-label flex items-center justify-between gap-4 border-b px-[clamp(1.25rem,4vw,2.5rem)] py-[0.85rem] font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.08em] text-[var(--marker)] max-[720px]:px-[1.1rem] max-[720px]:py-3 max-[720px]:text-[0.6rem]"
-        aria-hidden="true"
-      >
-        <span>Reading route</span>
-        <span>Follow trail ↓</span>
+      <div class="blog-detail-body-label border-b px-[clamp(1.25rem,4vw,2.5rem)] py-[0.85rem] max-[720px]:px-[1.1rem] max-[720px]:py-3">
+        <div
+          class="flex items-center justify-between gap-4 font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.08em] text-[var(--marker)] max-[720px]:text-[0.6rem]"
+          aria-hidden="true"
+        >
+          <span>Reading route</span>
+          <span>Follow trail ↓</span>
+        </div>
+        {sectionHeadings.length > 0 && (
+          <nav class="blog-detail-route mt-3 hidden sm:block" aria-label="In this post">
+            <ol class="m-0 grid list-none gap-1.5 p-0">
+              {sectionHeadings.map((heading, index) => (
+                <li class="flex items-baseline gap-3">
+                  <span class="font-mono text-[0.68rem] font-extrabold text-[var(--marker)]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <a href={`#${heading.slug}`}>{heading.text}</a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )}
       </div>
       <article class="blog-detail-prose prose prose-lg prose-slate max-w-none p-[clamp(1.5rem,5vw,3.5rem)] dark:prose-invert max-[720px]:p-[1.2rem] max-[720px]:text-base">
         <slot />
