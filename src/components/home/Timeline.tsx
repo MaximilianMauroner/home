@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { PreviewEntry } from "@/components/content/previewTypes";
 import BlogPreview from "@/components/content/BlogPreview";
 import LogPreview from "@/components/content/LogPreview";
@@ -377,7 +377,7 @@ const TimelineChapterSection = ({
   );
 };
 
-export default function Timeline({
+function Timeline({
   blogs,
   logs,
   snacks,
@@ -678,3 +678,5 @@ export default function Timeline({
     </section>
   );
 }
+
+export default memo(Timeline);

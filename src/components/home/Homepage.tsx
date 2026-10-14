@@ -5,6 +5,7 @@ dayjs.extend(weekOfYear);
 import type { PreviewEntry } from "@/components/content/previewTypes";
 import { Queue } from "@/utils/queue";
 import Timeline from "./Timeline";
+import AgeCalculator from "./AgeCalculator";
 import { beginTimelineScroll } from "./scrollToTimeline";
 import {
   clampLetterCardPosition,
@@ -16,7 +17,6 @@ const ogFirst = "maximilian";
 const ogLast = "mauroner";
 const initialCrypticFirst = "M@X1M1L14N";
 const initialCrypticLast = "M4UR0N3R";
-const birthday = dayjs("2000-03-13T04:00:00Z");
 
 interface ContentItem {
   id: string;
@@ -275,6 +275,7 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const cancelTimelineScroll = useRef<() => void>(() => undefined);
   const letterButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const expandTimeline = useCallback(() => setTimelineExpanded(true), []);
 
   useEffect(() => () => cancelTimelineScroll.current(), []);
 
@@ -638,26 +639,11 @@ const Homepage = ({ blogs, logs, snacks, initialAge }: HomepageProps) => {
           logs={logs}
           snacks={snacks}
           expanded={timelineExpanded}
-          onExpand={() => setTimelineExpanded(true)}
+          onExpand={expandTimeline}
         />
       </div>
     </div>
   );
-};
-
-const AgeCalculator = ({ initialAge }: { initialAge: string }) => {
-  const [age, setAge] = useState(initialAge);
-
-  useEffect(() => {
-    const updateAge = () =>
-      setAge(dayjs().diff(birthday, "year", true).toFixed(9));
-
-    updateAge();
-    const interval = window.setInterval(updateAge, 50);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  return <>{age}</>;
 };
 
 const TechStackItem = ({ name, href }: { name: string; href: string }) => {
