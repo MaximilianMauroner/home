@@ -2,8 +2,9 @@ type Point = { x: number; y: number };
 type Sample = Point & { distance: number };
 
 // Points on (almost) the same vertical line, such as the ends of the spine,
-// join with a straight segment. Other points join with an S-curve, or with a
-// shallow arc when they sit at almost the same height.
+// join with a straight segment. Other points join with an S-curve. The route
+// (launch dock, beside the header, spine top, spine bottom, station) always
+// moves well down between points that are not on one vertical line.
 function controlPoints(previous: Point, current: Point, index: number) {
   const deltaX = current.x - previous.x;
   const deltaY = current.y - previous.y;
@@ -11,14 +12,6 @@ function controlPoints(previous: Point, current: Point, index: number) {
     return [
       { x: previous.x, y: previous.y + deltaY / 3 },
       { x: current.x, y: current.y - deltaY / 3 },
-    ];
-  }
-
-  if (Math.abs(deltaY) < 32) {
-    const bend = index % 2 === 0 ? 18 : -18;
-    return [
-      { x: previous.x + deltaX * 0.34, y: previous.y + bend },
-      { x: current.x - deltaX * 0.34, y: current.y + bend },
     ];
   }
 

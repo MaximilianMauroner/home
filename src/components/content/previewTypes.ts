@@ -6,7 +6,8 @@ export interface PreviewEntry {
     width: number;
     height: number;
     srcSet: string;
-    sizes: string;
+    // The page that lays out the preview sets this for its own grid.
+    sizes?: string;
   };
   data: {
     description: string;

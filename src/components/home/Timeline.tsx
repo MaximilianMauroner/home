@@ -160,26 +160,44 @@ const TimelineStation = () => (
   </div>
 );
 
-const TimelineEntry = ({ timelineItem }: { timelineItem: TimelineItem }) => {
-  const hasImage = Boolean(
-    timelineItem.item._imageUrl || timelineItem.item.data.image,
-  );
+// Rendered cover widths for the bay layout in the styles below. A bay with
+// one post is one card wide and capped at 34rem below 1280px. Larger bays
+// split into two card columns from 768px.
+const coverSizes = {
+  single:
+    "(min-width: 1760px) 764px, (min-width: 1280px) calc(50vw - 116px), (min-width: 624px) 516px, calc(100vw - 108px)",
+  paired:
+    "(min-width: 1760px) 376px, (min-width: 1280px) calc(25vw - 64px), (min-width: 1024px) calc(50vw - 68px), (min-width: 768px) calc(50vw - 60px), calc(100vw - 108px)",
+};
+
+const TimelineEntry = ({
+  timelineItem,
+  sizes,
+}: {
+  timelineItem: TimelineItem;
+  sizes: string;
+}) => {
+  const { item: entry, type } = timelineItem;
+  const hasImage = Boolean(entry._imageUrl || entry.data.image);
+  const item = entry._imageAttributes
+    ? { ...entry, _imageAttributes: { ...entry._imageAttributes, sizes } }
+    : entry;
 
   const renderPreview = () => {
-    if (timelineItem.type === "blog") {
-      return <BlogPreview blog={timelineItem.item} />;
+    if (type === "blog") {
+      return <BlogPreview blog={item} />;
     }
 
-    if (timelineItem.type === "log") {
-      return <LogPreview log={timelineItem.item} />;
+    if (type === "log") {
+      return <LogPreview log={item} />;
     }
 
-    return <SnackPreview snack={timelineItem.item} />;
+    return <SnackPreview snack={item} />;
   };
 
   return (
     <div
-      className={`timeline-entry timeline-entry--${timelineItem.type} ${hasImage ? "timeline-entry--image" : "timeline-entry--text"}`}
+      className={`timeline-entry timeline-entry--${type} ${hasImage ? "timeline-entry--image" : "timeline-entry--text"}`}
     >
       {renderPreview()}
     </div>
@@ -255,7 +273,10 @@ const TimelineMasonry = ({ items }: { items: TimelineChapter["items"] }) => {
           key={`${timelineItem.type}-${timelineItem.item.id}`}
           className="relative z-10 min-w-0 self-start"
         >
-          <TimelineEntry timelineItem={timelineItem} />
+          <TimelineEntry
+            timelineItem={timelineItem}
+            sizes={items.length > 1 ? coverSizes.paired : coverSizes.single}
+          />
         </li>
       ))}
     </ol>
@@ -345,7 +366,7 @@ const TimelineBay = ({ chapter }: { chapter: TimelineChapter }) => {
       >
         <span
           data-timeline-node
-          className="timeline-node border-indigo-300 bg-white data-[passed]:bg-indigo-500 data-[passed]:shadow-[0_0_12px_rgba(129,140,248,0.9)] motion-safe:transition-colors dark:border-indigo-300/80 dark:bg-slate-950 dark:data-[passed]:bg-indigo-500"
+          className="timeline-node border-indigo-300 bg-white data-[passed]:bg-indigo-500 data-[passed]:shadow-[0_0_12px_rgba(129,140,248,0.9)] motion-safe:transition-colors dark:border-indigo-300/80 dark:bg-slate-950"
         />
       </span>
       <header className="flex items-center gap-2 whitespace-nowrap px-1 py-3 font-mono text-[0.5625rem] uppercase tracking-[0.2em]">
@@ -763,7 +784,9 @@ function Timeline({ blogs, logs, snacks, expanded, onExpand }: TimelineProps) {
         }
 
         /* From 1280px the spine runs down the middle. Months alternate left
-           and right, and the right side starts lower so the arms stagger. */
+           and right. The first right bay of a year starts well below the
+           first left bay. Later right bays start 3rem lower than their slot,
+           so their 18px node clears the node of the left neighbour by 30px. */
         @media (min-width: 1280px) {
           #home-timeline .timeline-spine {
             --spine-x: 50%;
@@ -797,6 +820,10 @@ function Timeline({ blogs, logs, snacks, expanded, onExpand }: TimelineProps) {
 
           #home-timeline .timeline-slot:nth-child(even) {
             grid-column: 3;
+            padding-top: 3rem;
+          }
+
+          #home-timeline .timeline-slot:nth-child(2) {
             padding-top: 9.375rem;
           }
 
