@@ -1,6 +1,29 @@
 type Point = { x: number; y: number };
 type Sample = Point & { distance: number };
 
+// Points on (almost) the same vertical line, such as the ends of the spine,
+// join with a straight segment. Other points join with an S-curve. The route
+// (launch dock, beside the header, spine top, spine bottom, station) always
+// moves well down between points that are not on one vertical line.
+function controlPoints(previous: Point, current: Point, index: number) {
+  const deltaX = current.x - previous.x;
+  const deltaY = current.y - previous.y;
+  if (Math.abs(deltaX) < 4) {
+    return [
+      { x: previous.x, y: previous.y + deltaY / 3 },
+      { x: current.x, y: current.y - deltaY / 3 },
+    ];
+  }
+
+  const middleY = previous.y + deltaY / 2;
+  const direction = index === 1 || index % 2 === 0 ? 1 : -1;
+  const curve = Math.min(72, Math.max(24, Math.abs(deltaY) * 0.12));
+  return [
+    { x: previous.x + curve * direction, y: middleY },
+    { x: current.x - curve * direction, y: middleY },
+  ];
+}
+
 // Sample the cubic curves directly. SVG getPointAtLength becomes costly on a
 // long timeline, especially when repeated during every animation frame.
 export function createTimelineFlightPath(points: Point[]) {
@@ -10,20 +33,7 @@ export function createTimelineFlightPath(points: Point[]) {
   for (let index = 1; index < points.length; index += 1) {
     const previous = points[index - 1];
     const current = points[index];
-    const deltaX = current.x - previous.x;
-    const deltaY = current.y - previous.y;
-    const middleY = previous.y + deltaY / 2;
-    const direction = index === 1 || index % 2 === 0 ? 1 : -1;
-    const curve = Math.min(72, Math.max(24, Math.abs(deltaY) * 0.12));
-    const bend = index % 2 === 0 ? 18 : -18;
-    const first =
-      Math.abs(deltaY) < 32
-        ? { x: previous.x + deltaX * 0.34, y: previous.y + bend }
-        : { x: previous.x + curve * direction, y: middleY };
-    const second =
-      Math.abs(deltaY) < 32
-        ? { x: current.x - deltaX * 0.34, y: current.y + bend }
-        : { x: current.x - curve * direction, y: middleY };
+    const [first, second] = controlPoints(previous, current, index);
     path += ` C ${first.x} ${first.y}, ${second.x} ${second.y}, ${current.x} ${current.y}`;
 
     for (let step = 1; step <= 24; step += 1) {

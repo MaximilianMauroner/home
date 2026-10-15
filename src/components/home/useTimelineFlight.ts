@@ -33,61 +33,56 @@ export function useTimelineFlight(
     let frame = 0;
     const updateFlightPath = () => {
       const containerBounds = container.getBoundingClientRect();
-      const entries = Array.from(
-        container.querySelectorAll<HTMLElement>("[data-timeline-entry]"),
+      const centerOf = (element: Element) => {
+        const bounds = element.getBoundingClientRect();
+        return {
+          x: bounds.left - containerBounds.left + bounds.width / 2,
+          y: bounds.top - containerBounds.top + bounds.height / 2,
+        };
+      };
+      const spine = container.querySelector<HTMLElement>(
+        "[data-timeline-spine]",
       );
       const destination = container.querySelector<HTMLElement>(
         "[data-flight-destination]",
       );
-      const launchButton = document.querySelector<HTMLElement>(
-        "[data-timeline-launch-button]",
+      const launchDock = document.querySelector<HTMLElement>(
+        "[data-timeline-launch-button] [data-timeline-button-dock]",
+      );
+      const header = document.querySelector<HTMLElement>(
+        "[data-timeline-header]",
       );
 
-      if (entries.length === 0) {
+      if (!spine) {
         setFlightPath(null);
         return;
       }
 
-      const points = entries
-        .map((entry) => {
-          const bounds = entry.getBoundingClientRect();
-          return {
-            top: bounds.top - containerBounds.top,
-            x: bounds.left - containerBounds.left + bounds.width / 2,
-            y: bounds.top - containerBounds.top + bounds.height / 2,
-          };
-        })
-        .sort((a, b) => a.top - b.top || a.x - b.x);
-
-      const firstPoint = points[0];
-      const launchBounds = launchButton
-        ?.querySelector<HTMLElement>("[data-timeline-button-dock]")
-        ?.getBoundingClientRect();
-      const routeStart = launchBounds
-        ? {
-            x:
-              launchBounds.left - containerBounds.left + launchBounds.width / 2,
-            y: launchBounds.top - containerBounds.top + launchBounds.height / 2,
-          }
-        : { x: 12, y: firstPoint.top + 20 };
+      // The ship leaves the launch button, passes left of the header text,
+      // runs down the station spine, and then docks at the orbital station
+      // when the full timeline is shown.
+      const spineBounds = spine.getBoundingClientRect();
+      const spineX =
+        spineBounds.left - containerBounds.left + spineBounds.width / 2;
+      const spineTop = spineBounds.top - containerBounds.top;
+      const besideHeader = (element: HTMLElement) => {
+        const textLeft = Math.min(
+          ...Array.from(
+            element.children,
+            (child) => child.getBoundingClientRect().left,
+          ),
+        );
+        return {
+          x: Math.max(12, textLeft - containerBounds.left - 48),
+          y: element.getBoundingClientRect().bottom - containerBounds.top,
+        };
+      };
       const routePoints = [
-        ...(launchBounds ? [routeStart] : []),
-        { x: 12, y: firstPoint.top + 20 },
-        ...points.map(({ x, y }) => ({ x, y })),
-        ...(destination
-          ? [
-              {
-                x:
-                  destination.getBoundingClientRect().left -
-                  containerBounds.left +
-                  destination.getBoundingClientRect().width / 2,
-                y:
-                  destination.getBoundingClientRect().top -
-                  containerBounds.top +
-                  destination.getBoundingClientRect().height / 2,
-              },
-            ]
-          : []),
+        ...(launchDock ? [centerOf(launchDock)] : []),
+        ...(launchDock && header ? [besideHeader(header)] : []),
+        { x: spineX, y: spineTop },
+        { x: spineX, y: spineTop + spineBounds.height },
+        ...(destination ? [centerOf(destination)] : []),
       ];
       const geometry = createTimelineFlightPath(routePoints);
 
@@ -126,9 +121,6 @@ export function useTimelineFlight(
     };
     const observer = new ResizeObserver(scheduleUpdate);
     observer.observe(container);
-    container
-      .querySelectorAll<HTMLElement>("[data-timeline-entry]")
-      .forEach((entry) => observer.observe(entry));
     const destination = container.querySelector<HTMLElement>(
       "[data-flight-destination]",
     );
@@ -182,6 +174,21 @@ export function useTimelineFlight(
       return lower.distance + (upper.distance - lower.distance) * interpolation;
     };
 
+    // Each arm node on the spine lights up once the ship has flown past it.
+    const containerTop = container.getBoundingClientRect().top;
+    const nodes = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-timeline-node]"),
+      (node) => {
+        const bounds = node.getBoundingClientRect();
+        return {
+          node,
+          distance: getDistanceForY(
+            bounds.top - containerTop + bounds.height / 2,
+          ),
+        };
+      },
+    );
+
     let frame = 0;
     let currentDistance: number | null = null;
     let targetDistance = 0;
@@ -205,6 +212,9 @@ export function useTimelineFlight(
         `translate(${point.x} ${point.y}) rotate(${distance < 0.01 ? 90 : angle}) scale(1.2)`,
       );
       spaceship.dataset.flightProgress = progress.toFixed(4);
+      for (const { node, distance: nodeDistance } of nodes) {
+        node.toggleAttribute("data-passed", distance >= nodeDistance);
+      }
       if (
         targetDistance <= pathLength * 0.001 &&
         distance <= pathLength * 0.0015

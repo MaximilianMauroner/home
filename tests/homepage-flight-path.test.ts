@@ -23,28 +23,39 @@ describe("timeline flight geometry", () => {
     ).toBe(true);
   });
 
-  test("preserves travel through each card, including cards in the same row", () => {
-    const cards = [
-      { x: 12, y: -200 },
-      { x: 150, y: 100 },
-      { x: 450, y: 100 },
-      { x: 150, y: 900 },
+  test("runs straight down the station spine", () => {
+    const route = createTimelineFlightPath([
+      { x: 500, y: -300 },
+      { x: 500, y: 0 },
+      { x: 500, y: 4000 },
+    ]);
+    for (const point of route.samples) expect(point.x).toBeCloseTo(500, 6);
+    expect(route.length).toBeCloseTo(4300);
+  });
+
+  test("passes exactly through each point of the dock-to-station route", () => {
+    const route = [
+      { x: 960, y: -420 },
+      { x: 640, y: 96 },
+      { x: 880, y: 220 },
+      { x: 880, y: 6200 },
+      { x: 880, y: 6460 },
     ];
-    const route = createTimelineFlightPath(cards);
-    for (const card of cards) {
-      const sample = route.samples.find(
-        (sample) => sample.x === card.x && sample.y === card.y,
+    const flight = createTimelineFlightPath(route);
+    for (const point of route) {
+      const sample = flight.samples.find(
+        (sample) => sample.x === point.x && sample.y === point.y,
       );
       expect(sample).toBeDefined();
-      expect(pointAtFlightDistance(route.samples, sample!.distance)).toEqual(
-        card,
+      expect(pointAtFlightDistance(flight.samples, sample!.distance)).toEqual(
+        point,
       );
     }
     expect(
-      route.samples
+      flight.samples
         .slice(1)
         .every(
-          (point, index) => point.distance > route.samples[index].distance,
+          (point, index) => point.distance > flight.samples[index].distance,
         ),
     ).toBe(true);
   });

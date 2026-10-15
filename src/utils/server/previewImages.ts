@@ -12,7 +12,8 @@ export async function resolvePreviewImageUrl(image?: string) {
 }
 
 // This derivative set is used only by homepage timeline cards. Other routes
-// keep their original covers and loading behavior.
+// keep their original covers and loading behavior. The timeline sets `sizes`
+// for each card, because the card width depends on its month bay.
 export async function getHomepageCover(
   image?: string,
 ): Promise<Pick<PreviewEntry, "_imageUrl" | "_imageAttributes">> {
@@ -35,8 +36,6 @@ export async function getHomepageCover(
       srcSet: covers
         .map((cover, index) => `${cover.src} ${widths[index]}w`)
         .join(", "),
-      sizes:
-        "(min-width: 1440px) 355px, (min-width: 1280px) calc((100vw - 376px) / 3), (min-width: 1024px) calc((100vw - 360px) / 2), (min-width: 768px) calc((100vw - 96px) / 2), (min-width: 640px) calc(100vw - 74px), calc(100vw - 66px)",
     },
   };
 }
