@@ -23,6 +23,16 @@ describe("timeline flight geometry", () => {
     ).toBe(true);
   });
 
+  test("runs straight down the station spine", () => {
+    const route = createTimelineFlightPath([
+      { x: 500, y: -300 },
+      { x: 500, y: 0 },
+      { x: 500, y: 4000 },
+    ]);
+    for (const point of route.samples) expect(point.x).toBeCloseTo(500, 6);
+    expect(route.length).toBeCloseTo(4300);
+  });
+
   test("preserves travel through each card, including cards in the same row", () => {
     const cards = [
       { x: 12, y: -200 },

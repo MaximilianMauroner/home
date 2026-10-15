@@ -1,4 +1,11 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import type { PreviewEntry } from "@/components/content/previewTypes";
 import BlogPreview from "@/components/content/BlogPreview";
 import LogPreview from "@/components/content/LogPreview";
@@ -21,9 +28,16 @@ type TimelineItem = {
 
 type TimelineChapter = {
   key: string;
+  code: string;
+  index: number;
   month: string;
   year: number;
   items: TimelineItem[];
+};
+
+type TimelineYearGroup = {
+  year: number;
+  chapters: TimelineChapter[];
 };
 
 const months = [
@@ -41,34 +55,13 @@ const months = [
   "December",
 ];
 
+// Each month bay shows a status light in the next accent color.
 const monthAccents = [
-  {
-    node: "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-    panel:
-      "border-emerald-200/70 bg-emerald-50/80 dark:border-emerald-900 dark:bg-emerald-950/45",
-    text: "text-emerald-700 dark:text-emerald-300",
-  },
-  {
-    node: "border-orange-300 bg-orange-100 text-orange-700 dark:border-orange-700 dark:bg-orange-950 dark:text-orange-300",
-    panel:
-      "border-orange-200/70 bg-orange-50/80 dark:border-orange-900 dark:bg-orange-950/45",
-    text: "text-orange-700 dark:text-orange-300",
-  },
-  {
-    node: "border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-300",
-    panel:
-      "border-violet-200/70 bg-violet-50/80 dark:border-violet-900 dark:bg-violet-950/45",
-    text: "text-violet-700 dark:text-violet-300",
-  },
-  {
-    node: "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-300",
-    panel:
-      "border-sky-200/70 bg-sky-50/80 dark:border-sky-900 dark:bg-sky-950/45",
-    text: "text-sky-700 dark:text-sky-300",
-  },
+  "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] dark:bg-emerald-300",
+  "bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)] dark:bg-orange-300",
+  "bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.8)] dark:bg-violet-300",
+  "bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.8)] dark:bg-sky-300",
 ];
-
-const monthIcons = ["✦", "●", "✷", "◆"];
 
 export const TimelineSpaceshipGlyph = () => (
   <>
@@ -193,71 +186,74 @@ const TimelineEntry = ({ timelineItem }: { timelineItem: TimelineItem }) => {
   );
 };
 
-const TimelineMasonry = ({ items }: { items: TimelineChapter["items"] }) => {
-  const gridRef = useRef<HTMLOListElement>(null);
-
+// Places each list item in 4px grid rows, so items in different columns
+// pack under each other without row gaps. One column keeps normal flow.
+function useMasonryRows(gridRef: RefObject<HTMLOListElement>, itemKey: string) {
   useEffect(() => {
     const grid = gridRef.current;
     if (!grid) return;
 
+    const listItems = Array.from(grid.children) as HTMLLIElement[];
     const updateSpans = () => {
       const styles = getComputedStyle(grid);
       const columnCount = styles.gridTemplateColumns.split(" ").length;
       const rowHeight = 4;
       const parsedRowGap = Number.parseFloat(styles.rowGap);
       const rowGap = Number.isFinite(parsedRowGap) ? parsedRowGap : 0;
-      const listItems = Array.from(grid.children) as HTMLLIElement[];
 
       if (columnCount === 1) {
-        grid.classList.remove("timeline-masonry--ready");
+        delete grid.dataset.masonryReady;
         listItems.forEach((listItem) => {
           listItem.style.gridRowEnd = "auto";
         });
         return;
       }
 
-      const spans = listItems.map((listItem) => {
-        const card = listItem.firstElementChild as HTMLElement | null;
-        if (!card) return 1;
-        return Math.ceil(
-          (card.getBoundingClientRect().height + rowGap) / (rowHeight + rowGap),
-        );
-      });
+      const spans = listItems.map((listItem) =>
+        Math.ceil(
+          (listItem.getBoundingClientRect().height + rowGap) /
+            (rowHeight + rowGap),
+        ),
+      );
 
       listItems.forEach((listItem, index) => {
         listItem.style.gridRowEnd = `span ${spans[index]}`;
       });
-      grid.classList.add("timeline-masonry--ready");
+      grid.dataset.masonryReady = "";
     };
 
     const observer = new ResizeObserver(updateSpans);
     observer.observe(grid);
-    Array.from(grid.children).forEach((child) => {
-      const card = child.firstElementChild;
-      if (card) observer.observe(card);
-    });
+    listItems.forEach((listItem) => observer.observe(listItem));
 
     const frame = requestAnimationFrame(updateSpans);
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
-      grid.classList.remove("timeline-masonry--ready");
-      Array.from(grid.children).forEach((child) => {
-        (child as HTMLLIElement).style.gridRowEnd = "auto";
+      delete grid.dataset.masonryReady;
+      listItems.forEach((listItem) => {
+        listItem.style.gridRowEnd = "auto";
       });
     };
-  }, [items]);
+  }, [gridRef, itemKey]);
+}
+
+const TimelineMasonry = ({ items }: { items: TimelineChapter["items"] }) => {
+  const gridRef = useRef<HTMLOListElement>(null);
+  useMasonryRows(
+    gridRef,
+    items.map(({ item, type }) => `${type}-${item.id}`).join("|"),
+  );
 
   return (
     <ol
       ref={gridRef}
-      className="timeline-masonry grid list-none grid-cols-1 gap-5 p-0 md:grid-cols-2 xl:grid-cols-3"
+      className={`timeline-masonry grid list-none grid-cols-1 gap-3 p-0 ${items.length > 1 ? "md:grid-cols-2" : ""}`}
     >
       {items.map((timelineItem) => (
         <li
           key={`${timelineItem.type}-${timelineItem.item.id}`}
-          className="relative z-10 min-w-0"
-          data-timeline-entry
+          className="relative z-10 min-w-0 self-start"
         >
           <TimelineEntry timelineItem={timelineItem} />
         </li>
@@ -280,7 +276,7 @@ const TimelineFlight = ({
     {flightPath && (
       <svg
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-0 z-0 overflow-visible"
+        className="pointer-events-none absolute left-0 top-0 z-[1] overflow-visible"
         focusable="false"
         height={flightPath.height}
         viewBox={`0 0 ${flightPath.width} ${flightPath.height}`}
@@ -332,58 +328,96 @@ const TimelineFlight = ({
   </>
 );
 
-const TimelineChapterSection = ({
-  chapter,
-  index,
-}: {
-  chapter: TimelineChapter;
-  index: number;
-}) => {
-  const accent = monthAccents[index % monthAccents.length];
-  const icon = monthIcons[index % monthIcons.length];
+// A month bay hangs off the station spine on an arm. The arm's node lights
+// up once the ship has passed it. Below 1280px a bay with one post stays
+// narrow, so its cover does not fill the whole row.
+const TimelineBay = ({ chapter }: { chapter: TimelineChapter }) => {
   const headingId = `timeline-${chapter.key}`;
+  const count = chapter.items.length;
   return (
     <section
       aria-labelledby={headingId}
-      className="relative z-10 grid gap-5 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-6"
+      className={`relative z-[2] rounded-[1.375rem] border-2 border-indigo-200 bg-white/85 px-3 pb-3 shadow-[0_0_0_5px_rgba(199,210,254,0.35)] dark:border-indigo-300/55 dark:bg-slate-950/90 dark:shadow-[0_0_0_5px_rgba(49,46,129,0.35),0_0_22px_rgba(129,140,248,0.22)] ${count === 1 ? "max-w-[34rem] xl:max-w-none" : ""}`}
     >
-      <div
+      <span
         aria-hidden="true"
-        className={`absolute -left-8 top-5 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border ${accent.node} shadow-sm sm:-left-10`}
+        className="timeline-arm border-indigo-300/70 bg-indigo-50 text-indigo-300 dark:bg-[#0b0f24] dark:text-indigo-400/35"
       >
-        <span className="text-sm leading-none">{icon}</span>
-      </div>
-      <div
-        className={`flex flex-col rounded-2xl border p-5 lg:p-6 ${accent.panel}`}
-      >
-        <p
-          className={`mb-3 font-mono text-xs font-bold uppercase tracking-[0.18em] ${accent.text}`}
+        <span
+          data-timeline-node
+          className="timeline-node border-indigo-300 bg-white data-[passed]:bg-indigo-500 data-[passed]:shadow-[0_0_12px_rgba(129,140,248,0.9)] motion-safe:transition-colors dark:border-indigo-300/80 dark:bg-slate-950 dark:data-[passed]:bg-indigo-500"
+        />
+      </span>
+      <header className="flex items-center gap-2 whitespace-nowrap px-1 py-3 font-mono text-[0.5625rem] uppercase tracking-[0.2em]">
+        <span
+          aria-hidden="true"
+          className={`h-[7px] w-[7px] flex-none rounded-full ${monthAccents[chapter.index % monthAccents.length]}`}
+        />
+        <span
+          aria-hidden="true"
+          className="hidden text-indigo-500/80 sm:inline dark:text-indigo-300/75"
         >
-          {chapter.items.length} {chapter.items.length === 1 ? "post" : "posts"}
-        </p>
-        <h3
+          {chapter.code}
+        </span>
+        <h4
           id={headingId}
-          className="text-[2.125rem] font-extrabold leading-[0.98] tracking-[-0.035em] text-gray-900 dark:text-gray-100"
+          className="min-w-0 truncate font-sans text-base font-extrabold normal-case tracking-[-0.03em] text-gray-900 dark:text-gray-100"
         >
-          {chapter.month}
-          <span className="mt-1 block text-2xl font-medium tracking-[-0.03em] text-gray-500 dark:text-gray-400">
-            {chapter.year}
+          {chapter.month} {chapter.year}
+        </h4>
+        <span className="ml-auto text-fuchsia-700/70 dark:text-fuchsia-200/70">
+          <span aria-hidden="true">{count} docked</span>
+          <span className="sr-only">
+            {count} {count === 1 ? "post" : "posts"}
           </span>
-        </h3>
-      </div>
+        </span>
+      </header>
 
       <TimelineMasonry items={chapter.items} />
     </section>
   );
 };
 
-function Timeline({
-  blogs,
-  logs,
-  snacks,
-  expanded,
-  onExpand,
-}: TimelineProps) {
+// A solar wing marks each year on the spine. Wide screens hang the months
+// left and right of the spine; smaller screens keep the spine on the left.
+const TimelineYear = ({ group }: { group: TimelineYearGroup }) => {
+  const listRef = useRef<HTMLOListElement>(null);
+  const headingId = `timeline-year-${group.year}`;
+  useMasonryRows(
+    listRef,
+    group.chapters.map(({ key, items }) => `${key}:${items.length}`).join("|"),
+  );
+
+  return (
+    <section aria-labelledby={headingId} className="timeline-year">
+      <div className="timeline-wing">
+        <span
+          aria-hidden="true"
+          className="timeline-wing__panel border-sky-300 bg-sky-50 text-sky-300/60 dark:border-blue-400/55 dark:bg-[#0b1736] dark:text-blue-400/30"
+        />
+        <h3
+          id={headingId}
+          className="timeline-wing__hub border-indigo-300 bg-white font-mono font-extrabold text-indigo-700 shadow-[0_0_0_6px_rgba(199,210,254,0.5)] dark:bg-slate-950 dark:text-indigo-200 dark:shadow-[0_0_0_6px_rgba(49,46,129,0.45),0_0_26px_rgba(129,140,248,0.5)]"
+        >
+          {group.year}
+        </h3>
+        <span
+          aria-hidden="true"
+          className="timeline-wing__panel border-sky-300 bg-sky-50 text-sky-300/60 dark:border-blue-400/55 dark:bg-[#0b1736] dark:text-blue-400/30"
+        />
+      </div>
+      <ol ref={listRef} className="timeline-spine-grid list-none p-0">
+        {group.chapters.map((chapter) => (
+          <li key={chapter.key} className="timeline-slot">
+            <TimelineBay chapter={chapter} />
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+};
+
+function Timeline({ blogs, logs, snacks, expanded, onExpand }: TimelineProps) {
   const allItems = useMemo<TimelineItem[]>(
     () =>
       [
@@ -429,6 +463,8 @@ function Timeline({
         } else {
           groups.push({
             key,
+            code: `bay ${String(monthIndex + 1).padStart(2, "0")}·${String(year).slice(2)}`,
+            index: groups.length,
             month: months[monthIndex],
             year,
             items: [item],
@@ -438,6 +474,19 @@ function Timeline({
         return groups;
       }, []),
     [visibleItems],
+  );
+  const years = useMemo(
+    () =>
+      chapters.reduce<TimelineYearGroup[]>((groups, chapter) => {
+        const current = groups.at(-1);
+        if (current?.year === chapter.year) {
+          current.chapters.push(chapter);
+        } else {
+          groups.push({ year: chapter.year, chapters: [chapter] });
+        }
+        return groups;
+      }, []),
+    [chapters],
   );
   const { flightPath, spaceshipRef, shipDocked } = useTimelineFlight(
     chaptersRef,
@@ -497,9 +546,12 @@ function Timeline({
         <div className="absolute bottom-40 right-20 h-80 w-80 rounded-full bg-violet-200/10 blur-3xl dark:bg-violet-800/10" />
       </div>
 
-      <div className="relative mx-auto max-w-[90rem] px-4 lg:px-6">
-        {/* Section Header */}
-        <div className="mb-12 text-center lg:mb-14">
+      <div className="relative mx-auto max-w-[110rem] px-4 lg:px-6">
+        {/* Section Header. The flight route swings around its text. */}
+        <div
+          data-timeline-header
+          className="mb-12 flex flex-col items-center text-center lg:mb-14"
+        >
           <h2
             className="mb-4 text-4xl font-extrabold tracking-tight text-gray-900 lg:text-5xl dark:text-gray-100"
             style={{
@@ -532,11 +584,8 @@ function Timeline({
           </p>
         </div>
 
-        {/* Month chapters preserve newest-first DOM order in a dense editorial grid. */}
-        <div
-          ref={chaptersRef}
-          className="relative pl-8 [overflow-anchor:none] sm:pl-10"
-        >
+        {/* Years and months keep newest-first DOM order along the station spine. */}
+        <div ref={chaptersRef} className="relative [overflow-anchor:none]">
           <TimelineFlight
             flightPath={flightPath}
             spaceshipRef={spaceshipRef}
@@ -553,15 +602,18 @@ function Timeline({
             </div>
           )}
 
-          <div className="space-y-16 lg:space-y-20">
-            {chapters.map((chapter, chapterIndex) => (
-              <TimelineChapterSection
-                key={chapter.key}
-                chapter={chapter}
-                index={chapterIndex}
+          {years.length > 0 && (
+            <div className="timeline-spine">
+              <span
+                aria-hidden="true"
+                className="timeline-truss border-indigo-300 bg-indigo-50 text-indigo-300/60 dark:border-indigo-400/55 dark:bg-[#070a1a] dark:text-indigo-400/30"
               />
-            ))}
-          </div>
+              <span aria-hidden="true" data-timeline-spine />
+              {years.map((group) => (
+                <TimelineYear key={group.year} group={group} />
+              ))}
+            </div>
+          )}
 
           {!expanded && allItems.length > visibleItems.length && (
             <div className="mt-12 flex justify-center">
@@ -605,15 +657,169 @@ function Timeline({
           animation: bobDockedShip 1s ease-in-out infinite;
         }
 
-        @media (min-width: 768px) {
-          #home-timeline .timeline-masonry--ready {
-            grid-auto-flow: dense;
-            grid-auto-rows: 4px;
+        #home-timeline [data-masonry-ready] {
+          grid-auto-rows: 4px;
+        }
+
+        #home-timeline .timeline-masonry[data-masonry-ready] {
+          grid-auto-flow: dense;
+        }
+
+        /* Station spine. Below 1280px the truss runs down the left edge and
+           every month bay hangs to its right. Colors come from the classes. */
+        #home-timeline .timeline-spine {
+          --spine-x: 0.8125rem;
+          --truss-width: 1.375rem;
+          --bay-inset: 3rem;
+          position: relative;
+        }
+
+        #home-timeline .timeline-year + .timeline-year {
+          margin-top: 2.75rem;
+        }
+
+        #home-timeline .timeline-truss {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: calc(var(--spine-x) - var(--truss-width) / 2);
+          width: var(--truss-width);
+          border-inline: 2px solid;
+          background-image:
+            repeating-linear-gradient(45deg, transparent 0 15px, currentColor 15px 16.5px),
+            repeating-linear-gradient(-45deg, transparent 0 15px, currentColor 15px 16.5px);
+        }
+
+        #home-timeline [data-timeline-spine] {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: var(--spine-x);
+          width: 0;
+        }
+
+        #home-timeline .timeline-wing {
+          position: relative;
+          z-index: 2;
+          display: flex;
+          align-items: center;
+          margin-bottom: 1.5rem;
+        }
+
+        #home-timeline .timeline-wing__panel {
+          width: 5.5rem;
+          height: 2rem;
+          border: 1px solid;
+          background-image:
+            linear-gradient(90deg, currentColor 1px, transparent 1px),
+            linear-gradient(currentColor 1px, transparent 1px);
+          background-size: 1.75rem 100%, 100% 1.25rem;
+        }
+
+        #home-timeline .timeline-wing__hub {
+          display: grid;
+          flex: none;
+          place-items: center;
+          width: 4rem;
+          height: 4rem;
+          margin: 0 -2px;
+          border: 2px solid;
+          border-radius: 50%;
+          font-size: 0.875rem;
+          letter-spacing: 0.04em;
+        }
+
+        #home-timeline .timeline-spine-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          padding-left: var(--bay-inset);
+        }
+
+        #home-timeline .timeline-slot {
+          align-self: start;
+          min-width: 0;
+          padding-bottom: 2rem;
+        }
+
+        /* The arm sits inside the bay border, so it also crosses that 2px. */
+        #home-timeline .timeline-arm {
+          position: absolute;
+          top: 2.75rem;
+          left: calc(var(--spine-x) - var(--bay-inset) - 2px);
+          width: calc(var(--bay-inset) - var(--spine-x));
+          height: 8px;
+          border-block: 1px solid;
+          background-image: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 8px);
+        }
+
+        #home-timeline .timeline-node {
+          position: absolute;
+          top: -6px;
+          left: -9px;
+          width: 18px;
+          height: 18px;
+          border: 2px solid;
+          border-radius: 50%;
+        }
+
+        /* From 1280px the spine runs down the middle. Months alternate left
+           and right, and the right side starts lower so the arms stagger. */
+        @media (min-width: 1280px) {
+          #home-timeline .timeline-spine {
+            --spine-x: 50%;
+            --truss-width: 2.875rem;
+            --bay-inset: 0px;
+          }
+
+          #home-timeline .timeline-wing {
+            justify-content: center;
+            margin-bottom: 1.875rem;
+          }
+
+          #home-timeline .timeline-wing__panel {
+            width: 17.5rem;
+            height: 2.5rem;
+          }
+
+          #home-timeline .timeline-wing__hub {
+            width: 5.5rem;
+            height: 5.5rem;
+            font-size: 1.1875rem;
+          }
+
+          #home-timeline .timeline-spine-grid {
+            grid-template-columns: minmax(0, 1fr) 8rem minmax(0, 1fr);
+          }
+
+          #home-timeline .timeline-slot:nth-child(odd) {
+            grid-column: 1;
+          }
+
+          #home-timeline .timeline-slot:nth-child(even) {
+            grid-column: 3;
+            padding-top: 9.375rem;
+          }
+
+          #home-timeline .timeline-slot:nth-child(odd) .timeline-arm {
+            left: auto;
+            right: calc(-4rem - 2px);
+            width: 4rem;
+          }
+
+          #home-timeline .timeline-slot:nth-child(odd) .timeline-node {
+            left: auto;
+            right: -9px;
+          }
+
+          #home-timeline .timeline-slot:nth-child(even) .timeline-arm {
+            left: calc(-4rem - 2px);
+            width: 4rem;
           }
         }
 
         #home-timeline .timeline-entry .content-preview {
           height: auto;
+          min-height: 0;
         }
 
         /* The dev-log row layout needs a card surface to fit a grid slot. */
@@ -645,10 +851,9 @@ function Timeline({
           grid-row: 1 / 3;
         }
 
-        /* With a cover, a log card matches the blog card height: cover on
-           top, no description, and the tags in a footer at the bottom. */
+        /* With a cover, a log card shows the cover on top, no description,
+           and the tags in a footer at the bottom. */
         #home-timeline .log-preview--cover {
-          min-height: 30rem;
           grid-template-rows: auto auto 1fr;
           overflow: hidden;
         }
@@ -663,7 +868,7 @@ function Timeline({
         #home-timeline .log-preview--cover .log-preview__cover img {
           display: block;
           width: 100%;
-          height: 12rem;
+          height: 9rem;
           object-fit: cover;
         }
 
@@ -694,16 +899,11 @@ function Timeline({
           border-top: 1px solid var(--log-line, #a7baae);
         }
 
-        #home-timeline .timeline-entry--image .content-preview {
-          min-height: 30rem;
-        }
-
-        #home-timeline .timeline-entry--image .content-preview__visual {
-          height: 12rem;
-        }
-
-        #home-timeline .timeline-entry--text .content-preview {
-          min-height: 0;
+        #home-timeline
+          .timeline-entry--image
+          .content-preview:not(.content-preview--cover)
+          .content-preview__visual {
+          height: 9rem;
         }
 
         #home-timeline .timeline-entry--text .content-preview__visual {
