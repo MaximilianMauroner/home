@@ -13,7 +13,7 @@ Use an isolated worktree and distinct test origin. Check active servers but do n
 share another repository's instance. Check memory, load and owned port first.
 Select only journeys affected by product work in the requested window.
 Record revision, Node/runtime versions and fixture identity. package.json specifies
-Node 22 and pnpm 9.15.5; install with `pnpm install --frozen-lockfile`.
+Node 22 and pnpm 11.16.0; install with `pnpm install --frozen-lockfile`.
 Start `pnpm dev --host 0.0.0.0 --port 43136` on an owned network. Astro 7 runs
 a managed background server in agent sessions. Retain its printed PID and inspect
 `.astro/dev.log` if startup fails. An IP-only bind can leave its local URL unset.
