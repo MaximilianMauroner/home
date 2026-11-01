@@ -20,7 +20,7 @@ is the tool inventory.
 
 | Command | Action |
 | --- | --- |
-| `bun install` | Install dependencies |
+| `pnpm install` | Install dependencies |
 | `bun run dev` | Start the development server on `localhost:4321` |
 | `bun run test` | Run the Vitest suite |
 | `bun run build` | Check Astro and build `dist/` |
